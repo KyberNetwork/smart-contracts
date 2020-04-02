@@ -147,6 +147,55 @@ contract('KyberNetwork', function(accounts) {
             tempNetwork = await KyberNetwork.new(admin);
         })
 
+        it.only("test value loss due to using BPS values on split", async() => {
+            const srcAmounts = [
+                new BN("123456789012345678"),
+                new BN("1234567890123456789"),
+                new BN("12345678901234567890"),
+                new BN("123456789012345678901"),
+            ];
+            
+            const splits = [
+                new BN(1500),
+                new BN(2500),
+                new BN(3201),
+                new BN(BPS - 3201 - 2500 - 1500)
+            ]
+
+            for (let i = 0; i < srcAmounts.length; i++) {
+                let splitsAddup = new BN(0);
+                for (let j = 0; j < splits.length; j++) {
+                    splitsAddup = splitsAddup.add(srcAmounts[i].mul(splits[j]).div(BPS));
+                }
+                console.log("srcAmount - splitAddup for src: " + srcAmounts[i] + " = " + srcAmounts[i].sub(splitsAddup));
+            }
+        })
+
+        it.only("test value loss due to using BPS values on split", async() => {
+            const srcAmounts = [
+                new BN("523456789012345678"),
+                new BN("5234567890123456789"),
+                new BN("52345678901234567890"),
+                new BN("423456789012345678901"),
+            ];
+            
+            const splits = [
+                new BN(1134),
+                new BN(2785),
+                new BN(3435),
+                new BN(236),
+                new BN(BPS - 1134 - 2785 - 3435 - 236)
+            ]
+
+            for (let i = 0; i < srcAmounts.length; i++) {
+                let splitsAddup = new BN(0);
+                for (let j = 0; j < splits.length; j++) {
+                    splitsAddup = splitsAddup.add(srcAmounts[i].mul(splits[j]).div(BPS));
+                }
+                console.log("srcAmount - splitAddup for src: " + srcAmounts[i] + " = " + srcAmounts[i].sub(splitsAddup));
+            }
+        })
+
         it("test can add max two proxies", async() => {
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
             await tempNetwork.addKyberProxy(proxy2, {from: admin});
