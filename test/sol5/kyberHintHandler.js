@@ -55,8 +55,8 @@ contract('KyberHintHandler', function(accounts) {
     describe("test building various hints", function() {
         describe("Token to ETH (T2E)", function() {
             before('one time init of vars', async() => {
-                t2eReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xcc12345675fff057000000000000000000000000000000000000000000000000'];
-                t2eDupReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xff1234567a334f7d000000000000000000000000000000000000000000000000'];
+                t2eReserves = ['0xff1234567a334f7d', '0xcc12345675fff057'];
+                t2eDupReserves = ['0xff1234567a334f7d', '0xff1234567a334f7d'];
             });
 
             Object.keys(TRADE_TYPES).forEach(tradeType => {
@@ -136,8 +136,8 @@ contract('KyberHintHandler', function(accounts) {
 
         describe("ETH to Token (E2T)", function() {
             before('one time init of vars', async() => {
-                e2tReserves = ['0xff12345663820d8f000000000000000000000000000000000000000000000000', '0xaa12345616709a5d000000000000000000000000000000000000000000000000'];
-                e2tDupReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xff1234567a334f7d000000000000000000000000000000000000000000000000'];
+                e2tReserves = ['0xff12345663820d8f', '0xaa12345616709a5d'];
+                e2tDupReserves = ['0xff1234567a334f7d', '0xff1234567a334f7d'];
             });
 
             Object.keys(TRADE_TYPES).forEach(tradeType => {
@@ -217,10 +217,10 @@ contract('KyberHintHandler', function(accounts) {
 
         describe("Token to Token (T2T)", function() {
             before('one time init of vars', async() => {
-                t2eReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xcc12345675fff057000000000000000000000000000000000000000000000000'];
-                e2tReserves = ['0xff12345663820d8f000000000000000000000000000000000000000000000000', '0xaa12345616709a5d000000000000000000000000000000000000000000000000'];
-                t2eDupReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xff1234567a334f7d000000000000000000000000000000000000000000000000'];
-                e2tDupReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xff1234567a334f7d000000000000000000000000000000000000000000000000'];
+                t2eReserves = ['0xff1234567a334f7d', '0xcc12345675fff057'];
+                e2tReserves = ['0xff12345663820d8f', '0xaa12345616709a5d'];
+                t2eDupReserves = ['0xff1234567a334f7d', '0xff1234567a334f7d'];
+                e2tDupReserves = ['0xff1234567a334f7d', '0xff1234567a334f7d'];
             });
 
             Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
@@ -442,7 +442,7 @@ contract('KyberHintHandler', function(accounts) {
     describe("test parsing various hints", function() {
         describe("Token to ETH (T2E)", function() {
             before('one time init of vars', async() => {
-                t2eReserves = ['0xff12345663820d8f000000000000000000000000000000000000000000000000', '0xaa12345616709a5d000000000000000000000000000000000000000000000000'];
+                t2eReserves = ['0xff12345663820d8f', '0xaa12345616709a5d'];
             });
 
             Object.keys(TRADE_TYPES).forEach(tradeType => {
@@ -465,7 +465,7 @@ contract('KyberHintHandler', function(accounts) {
 
         describe("ETH to Token (E2T)", function() {
             before('one time init of vars', async() => {
-                e2tReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xcc12345675fff057000000000000000000000000000000000000000000000000'];
+                e2tReserves = ['0xff1234567a334f7d', '0xcc12345675fff057'];
             });
 
             Object.keys(TRADE_TYPES).forEach(tradeType => {
@@ -488,8 +488,8 @@ contract('KyberHintHandler', function(accounts) {
 
         describe("Token to Token (T2T)", function() {
             before('one time init of vars', async() => {
-                t2eReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xcc12345675fff057000000000000000000000000000000000000000000000000'];
-                e2tReserves = ['0xff12345663820d8f000000000000000000000000000000000000000000000000', '0xaa12345616709a5d000000000000000000000000000000000000000000000000'];
+                t2eReserves = ['0xff1234567a334f7d', '0xcc12345675fff057'];
+                e2tReserves = ['0xff12345663820d8f', '0xaa12345616709a5d'];
             });
 
             Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
@@ -531,8 +531,8 @@ contract('KyberHintHandler', function(accounts) {
     describe("test parsing various incorrect hints", function() {
         describe("Token to ETH (T2E)", function() {
             before('one time init of vars', async() => {
-                t2eReserves = ['0xff12345663820d8f000000000000000000000000000000000000000000000000', '0xaa12345616709a5d000000000000000000000000000000000000000000000000'];
-                t2eDupReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xff1234567a334f7d000000000000000000000000000000000000000000000000'];
+                t2eReserves = ['0xff12345663820d8f', '0xaa12345616709a5d'];
+                t2eDupReserves = ['0xff1234567a334f7d', '0xff1234567a334f7d'];
             });
             
             Object.keys(TRADE_TYPES).forEach(tradeType => {
@@ -613,8 +613,8 @@ contract('KyberHintHandler', function(accounts) {
 
         describe("ETH to Token (E2T)", function() {
             before('one time init of vars', async() => {
-                e2tReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xcc12345675fff057000000000000000000000000000000000000000000000000'];
-                e2tDupReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xff1234567a334f7d000000000000000000000000000000000000000000000000'];
+                e2tReserves = ['0xff1234567a334f7d', '0xcc12345675fff057'];
+                e2tDupReserves = ['0xff1234567a334f7d', '0xff1234567a334f7d'];
             });
             
             Object.keys(TRADE_TYPES).forEach(tradeType => {
@@ -695,10 +695,10 @@ contract('KyberHintHandler', function(accounts) {
 
         describe("Token to Token (T2T)", function() {
             before('one time init of vars', async() => {
-                t2eReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xcc12345675fff057000000000000000000000000000000000000000000000000'];
-                e2tReserves = ['0xff12345663820d8f000000000000000000000000000000000000000000000000', '0xaa12345616709a5d000000000000000000000000000000000000000000000000'];
-                t2eDupReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xff1234567a334f7d000000000000000000000000000000000000000000000000'];
-                e2tDupReserves = ['0xff1234567a334f7d000000000000000000000000000000000000000000000000', '0xff1234567a334f7d000000000000000000000000000000000000000000000000'];
+                t2eReserves = ['0xff1234567a334f7d', '0xcc12345675fff057'];
+                e2tReserves = ['0xff12345663820d8f', '0xaa12345616709a5d'];
+                t2eDupReserves = ['0xff1234567a334f7d', '0xff1234567a334f7d'];
+                e2tDupReserves = ['0xff1234567a334f7d', '0xff1234567a334f7d'];
             });
 
             Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
