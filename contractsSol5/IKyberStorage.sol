@@ -21,12 +21,41 @@ contract IKyberStorage {
 
     function removeReserve(address reserve, uint256 startIndex)
         external
+        returns (bytes8 reserveId);
+
+    function listPairForReserve(address reserve, IERC20 token, bool ethToToken, bool tokenToEth, bool add)
+        external
         returns (bool);
 
-    function convertReserveIdToAddress(bytes8[] calldata reserveIds)
+    function convertReserveAddresstoId(address reserve)
+        external
+        view
+        returns (bytes8 reserveId);
+
+    function convertReserveIdToAddress(bytes8 reserveId)
+        external
+        view
+        returns (address reserveAddress);
+
+    function convertReserveAddressestoIds(address[] calldata reserveAddresses)
+        external
+        view
+        returns (bytes8[] memory reserveIds);
+
+    function convertReserveIdsToAddresses(bytes8[] calldata reserveIds)
         external
         view
         returns (address[] memory reserveAddresses);
+
+    function getReservesPerTokenSrc(address token)
+        external
+        view
+        returns (bytes8[] memory reserveIds);
+
+    function getReservesPerTokenDest(address token)
+        external
+        view
+        returns (bytes8[] memory reserveIds);
 
     function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
         external

@@ -27,7 +27,7 @@ contract GenerousKyberNetwork2 is KyberNetwork {
 
         // amounts excluding fees
         uint rateWithNetworkFee;
-        (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData.input.src, tData.input.dest, tData.input.srcAmount, tData, hint);
+        (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
         
         require(rateWithNetworkFee > 0, "0 rate");
         require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
