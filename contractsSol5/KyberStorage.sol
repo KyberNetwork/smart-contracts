@@ -22,8 +22,8 @@ contract KyberStorage is IKyberStorage {
     IKyberReserve[] internal reserves;
     IKyberNetworkProxy[] internal kyberProxyArray;
 
-    mapping(bytes8 => address[]) public reserveIdToAddresses;
-    mapping(address => bytes8) internal reserveAddressToId;
+    mapping(bytes32 => address[]) public reserveIdToAddresses;
+    mapping(address => bytes32) internal reserveAddressToId;
 
     IKyberNetwork public network;
 
@@ -88,13 +88,13 @@ contract KyberStorage is IKyberStorage {
         return (kyberDAO, feeHandler, matchingEngine);
     }
 
-    function addReserve(address reserve, bytes8 reserveId)
+    function addReserve(address reserve, bytes32 reserveId)
         external
         onlyNetwork
         returns (bool)
     {
         reserves.push(IKyberReserve(reserve));
-        require(reserveAddressToId[reserve] == bytes8(0), "reserve has id");
+        require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         reserveAddressToId[reserve] = reserveId;
         return true;
@@ -117,17 +117,16 @@ contract KyberStorage is IKyberStorage {
         reserves.pop();
         // remove reserve from mapping to address
         require(
-            reserveAddressToId[reserve] != bytes8(0),
+            reserveAddressToId[reserve] != bytes32(0),
             "reserve -> 0 reserveId"
         );
-        bytes8 reserveId = reserveAddressToId[reserve];
+        bytes32 reserveId = reserveAddressToId[reserve];
 
         reserveIdToAddresses[reserveId].push(
             reserveIdToAddresses[reserveId][0]
         );
         reserveIdToAddresses[reserveId][0] = address(0);
-        reserveAddressToId[reserve] = bytes8(0);
-        return true;
+        reserveAddressToId[reserve] = bytes32(0);
     }
 
     /// @notice should be called off chain
@@ -137,7 +136,7 @@ contract KyberStorage is IKyberStorage {
         return reserves;
     }
 
-    function convertReserveIdToAddress(bytes8[] calldata reserveIds)
+    function convertReserveIdToAddress(bytes32[] calldata reserveIds)
         external
         view
         returns (address[] memory reserveAddresses)

@@ -10,7 +10,7 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
     IKyberMatchingEngine public matchingEngine;
     address public kyberNetwork;
     // mapping reserve ID to address, keeps an array of all previous reserve addresses with this ID
-    mapping(bytes8=>address[]) public reserveIdToAddresses;
+    mapping(bytes32=>address[]) public reserveIdToAddresses;
 
     constructor(address _kyberNetwork) public {
         require(_kyberNetwork != address(0), "network is 0");
@@ -40,14 +40,14 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
     /// @param decimals Token decimals. Src decimals when for src -> ETH, dest decimals when ETH -> dest
     struct TradingReserves {
         IKyberReserve[] addresses;
-        bytes8[] ids;
+        bytes32[] ids;
         uint[] rates;
         bool[] isFeePaying;
         uint[] splitValuesBps;
         uint decimals;
     }
 
-    function addReserve(address reserve, bytes8 reserveId) external onlyKyberNetwork returns (bool) {
+    function addReserve(address reserve, bytes32 reserveId) external onlyKyberNetwork returns (bool) {
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
         } else {
@@ -57,7 +57,7 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
         return true;
     }
 
-    function removeReserve(address reserve, bytes8 reserveId) external onlyKyberNetwork returns (bool) {
+    function removeReserve(address reserve, bytes32 reserveId) external onlyKyberNetwork returns (bool) {
         require(reserveIdToAddresses[reserveId][0] == reserve, "reserve and id mismatch");
 
         reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
@@ -82,7 +82,7 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
             uint[] memory rates,
             uint[] memory splitValuesBps,
             bool[] memory isFeeCounted,
-            bytes8[] memory ids
+            bytes32[] memory ids
         )
     {
         require(token != ETH_TOKEN_ADDRESS, "should not call eth-eth");
@@ -201,7 +201,7 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
         uint srcAmount,
         bool isTokenToEth,
         uint networkFee, // bps in case t2e, wei value in case e2t
-        bytes8[] memory reserveIDs,
+        bytes32[] memory reserveIDs,
         uint[] memory splitValuesBps,
         bool[] memory isFeeCounted
     )
@@ -244,7 +244,7 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
             selectedIndexes = matchingEngine.doMatchEthToToken(ETH_TOKEN_ADDRESS, token, srcAmounts, rates);
         }
 
-        tradingReserves.ids = new bytes8[](selectedIndexes.length);
+        tradingReserves.ids = new bytes32[](selectedIndexes.length);
         tradingReserves.addresses = new IKyberReserve[](selectedIndexes.length);
         tradingReserves.splitValuesBps = new uint[](selectedIndexes.length);
         tradingReserves.isFeePaying = new bool[](selectedIndexes.length);
@@ -274,14 +274,14 @@ contract KyberNetworkRateHelper is IKyberNetworkRateHelper, Utils4 {
                 return false; // invalid split
             }
             totalSplitBps += tradingReserves.splitValuesBps[i];
-            if (i > 0 && (uint64(tradingReserves.ids[i]) <= uint64(tradingReserves.ids[i - 1]))) {
+            if (i > 0 && (uint(tradingReserves.ids[i]) <= uint(tradingReserves.ids[i - 1]))) {
                 return false; // ids are not in increasing order
             }
         }
         return totalSplitBps == BPS;
     }
 
-    function convertReserveIdToAddress(bytes8 reserveId)
+    function convertReserveIdToAddress(bytes32 reserveId)
         internal
         view
         returns (address)
