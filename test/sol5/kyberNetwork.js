@@ -147,7 +147,7 @@ contract('KyberNetwork', function(accounts) {
             tempNetwork = await KyberNetwork.new(admin);
         })
 
-        it.only("test value loss due to using BPS values on split", async() => {
+        it("test value loss due to using BPS values on split", async() => {
             const srcAmounts = [
                 new BN("123456789012345678"),
                 new BN("1234567890123456789"),
@@ -171,7 +171,7 @@ contract('KyberNetwork', function(accounts) {
             }
         })
 
-        it.only("test value loss due to using BPS values on split", async() => {
+        it("test value loss due to using BPS values on split", async() => {
             const srcAmounts = [
                 new BN("523456789012345678"),
                 new BN("5234567890123456789"),
