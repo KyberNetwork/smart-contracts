@@ -11,6 +11,7 @@ import "./IKyberDAO.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberStorage.sol";
 import "./IGasHelper.sol";
+import "./IKyberNetworkRateHelper.sol";
 
 /*
 *   @title Kyber Network main contract
@@ -39,6 +40,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     IKyberMatchingEngine    public   matchingEngine;
     IKyberStorage           public   kyberStorage;
     IGasHelper              internal gasHelper;
+    IKyberNetworkRateHelper public rateHelper;
 
     NetworkFeeData internal networkFeeData; // data is feeBps and expiry block
     uint internal maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
@@ -203,16 +205,22 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     event FeeHandlerUpdated(IKyberFeeHandler newHandler);
     event MatchingEngineUpdated(IKyberMatchingEngine matchingEngine);
     event GasHelperUpdated(IGasHelper gasHelper);
+    event RateHelperUpdated(IKyberNetworkRateHelper rateHelper);
 
     function setContracts(IKyberFeeHandler _feeHandler,
         IKyberMatchingEngine _matchingEngine,
-        IGasHelper _gasHelper
+        IGasHelper _gasHelper,
+        IKyberNetworkRateHelper _rateHelper
     )
         external
     {
         onlyAdmin();
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
         require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
+        require(_rateHelper != IKyberNetworkRateHelper(0), "rateHelper 0");
+        // rateHelper is only set once
+        require(rateHelper == IKyberNetworkRateHelper(0) || rateHelper == _rateHelper, "rateHelper existed");
+
         if (feeHandler != _feeHandler) {
             feeHandler = _feeHandler;
             emit FeeHandlerUpdated(_feeHandler);
@@ -226,6 +234,12 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         if ((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
             gasHelper = _gasHelper;
             emit GasHelperUpdated(_gasHelper);
+        }
+
+        if (rateHelper != _rateHelper) {
+            rateHelper = _rateHelper;
+            emit RateHelperUpdated(_rateHelper);
+            rateHelper.setMatchingEngineContract(_matchingEngine);
         }
 
         require(kyberStorage.setContracts(_feeHandler, _matchingEngine));
@@ -298,6 +312,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         require(kyberProxyContracts[networkProxy], "proxy not found");
 
         require(kyberStorage.removeKyberProxy(networkProxy));
+        kyberProxyContracts[networkProxy] = false;
 
         emit KyberProxyRemoved(networkProxy);
     }

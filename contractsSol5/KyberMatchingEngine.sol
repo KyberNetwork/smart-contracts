@@ -25,7 +25,12 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     IKyberNetwork   public networkContract;
     IKyberStorage   public kyberStorage;
 
-    mapping(bytes32=>uint) internal reserveType;           //type from enum ReserveType
+    // mapping reserve ID to address, keeps an array of all previous reserve addresses with this ID
+    mapping(bytes32=>address[])          public reserveIdToAddresses;
+    mapping(address=>bytes32)            internal reserveAddressToId;
+    mapping(bytes32=>uint)               internal reserveType;           //type from enum ReserveType
+    mapping(address=>bytes32[])   internal reservesPerTokenSrc;   // reserves supporting token to eth
+    mapping(address=>bytes32[])   internal reservesPerTokenDest;  // reserves support eth to token
 
     uint internal feePayingPerType = 0xffffffff;
 
@@ -59,16 +64,34 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     function addReserve(bytes32 reserveId, ReserveType resType) external onlyNetwork returns (bool) {
+
+        require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
+        require(reserveId != 0, "reserveId = 0");
         require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
         require(feePayingPerType != 0xffffffff, "Fee paying not set");
+
+        if (reserveIdToAddresses[reserveId].length == 0) {
+            reserveIdToAddresses[reserveId].push(reserve);
+        } else {
+            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId taken");
+            reserveIdToAddresses[reserveId][0] = reserve;
+        }
+
+        reserveAddressToId[reserve] = reserveId;
 
         reserveType[reserveId] = uint(resType);
         return true;
     }
 
-    function removeReserve(bytes32 reserveId) external onlyNetwork returns (bool) {
-        reserveType[reserveId] = uint(ReserveType.NONE);
-        return true;
+    function removeReserve(address reserve) external onlyNetwork returns (bytes32) {
+        require(reserveAddressToId[reserve] != bytes32(0), "reserve -> 0 reserveId");
+        bytes32 reserveId = convertAddressToReserveId(reserve);
+
+        reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
+        reserveIdToAddresses[reserveId][0] = address(0);
+        reserveAddressToId[reserve] = bytes32(0);
+
+        return reserveId;
     }
 
     function setFeePayingPerReserveType(bool fpr, bool apr, bool bridge, bool utility, bool custom, bool orderbook)

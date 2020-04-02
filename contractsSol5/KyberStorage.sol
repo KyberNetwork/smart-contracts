@@ -58,6 +58,7 @@ contract KyberStorage is IKyberStorage {
         } else {
             matchingEngine.push(_matchingEngine);
         }
+        return true;
     }
 
     function setDAOContract(IKyberDAO _kyberDAO)
@@ -71,6 +72,7 @@ contract KyberStorage is IKyberStorage {
         } else {
             kyberDAO.push(_kyberDAO);
         }
+        return true;
     }
 
     /// @notice should be called off chain
@@ -105,6 +107,14 @@ contract KyberStorage is IKyberStorage {
         
         reserves.push(IKyberReserve(reserve));
         reserveAddressToId[reserve] = reserveId;
+
+        if (reserveIdToAddresses[reserveId].length == 0) {
+            reserveIdToAddresses[reserveId].push(reserve);
+        } else {
+            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId taken");
+            reserveIdToAddresses[reserveId][0] = reserve;
+        }
+
         return true;
     }
 

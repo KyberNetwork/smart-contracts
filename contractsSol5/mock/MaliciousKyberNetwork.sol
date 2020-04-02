@@ -110,7 +110,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
     {
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
-            if (destAddress != (address(this)))
+            if (destAddress != (address(this)) && amount >= myFeeWei)
                 destAddress.transfer(amount - myFeeWei);
             return true;
         }
@@ -128,7 +128,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
             require(reservesData.addresses[i].trade.value(callValue)(src, splitAmount, dest, address(this), reservesData.rates[i], true));
         }
 
-        if (destAddress != address(this)) {
+        if (destAddress != address(this) && expectedDestAmount >= myFeeWei) {
             dest.safeTransfer(destAddress, (expectedDestAmount - myFeeWei));
         }
 
