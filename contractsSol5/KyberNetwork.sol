@@ -111,7 +111,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
     event AddReserveToNetwork (
         address indexed reserve,
-        bytes8 indexed reserveId,
+        bytes32 indexed reserveId,
         IKyberMatchingEngine.ReserveType reserveType,
         address indexed rebateWallet,
         bool add);
@@ -122,7 +122,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param reserveId The reserve ID in 8 bytes. 1st byte is reserve type.
     /// @param reserveType Type of the reserve out of enum ReserveType
     /// @param rebateWallet Rebate wallet address for this reserve.
-    function addReserve(address reserve, bytes8 reserveId, IKyberMatchingEngine.ReserveType reserveType,
+    function addReserve(address reserve, bytes32 reserveId, IKyberMatchingEngine.ReserveType reserveType,
         address payable rebateWallet)
         external returns(bool)
     {
@@ -138,7 +138,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         return true;
     }
 
-    event RemoveReserveFromNetwork(address reserve, bytes8 indexed reserveId);
+    event RemoveReserveFromNetwork(address reserve, bytes32 indexed reserveId);
 
     /// @notice can be called only by operator
     /// @dev removes a reserve from Kyber network.
@@ -146,7 +146,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param startIndex to search in reserve array.
     function removeReserve(address reserve, uint startIndex) public returns(bool) {
         onlyOperator();
-        bytes8 reserveId = matchingEngine.removeReserve(reserve);
+        bytes32 reserveId = matchingEngine.removeReserve(reserve);
 
         require(kyberStorage.removeReserve(reserve, startIndex));
         require(rateHelper.removeReserve(reserve, reserveId));
@@ -414,7 +414,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param decimals Token decimals. Src decimals when for src -> ETH, dest decimals when ETH -> dest
     struct TradingReserves {
         IKyberReserve[] addresses;
-        bytes8[] ids;
+        bytes32[] ids;
         uint[] rates;
         bool[] isFeePaying;
         uint[] splitValuesBps;
@@ -710,7 +710,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
     event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
         address destAddress, uint ethWeiValue, uint networkFeeWei, uint customPlatformFeeWei,
-        bytes8[] t2eIds, bytes8[] e2tIds, bytes hint);
+        bytes32[] t2eIds, bytes32[] e2tIds, bytes hint);
 
     /* solhint-disable function-max-lines */
     //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
@@ -735,7 +735,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         if (gasHelper != IGasHelper(0)) {
             (bool success, ) = address(gasHelper).call(
                 abi.encodeWithSignature(
-                    "freeGas(address,address,address,uint256,bytes8[],bytes8[])",
+                    "freeGas(address,address,address,uint256,bytes32[],bytes32[])",
                     tData.input.platformWallet,
                     tData.input.src,
                     tData.input.dest,

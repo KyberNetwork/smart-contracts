@@ -6,8 +6,8 @@ import "./IKyberMatchingEngine.sol";
 
 interface IKyberNetworkRateHelper {
 
-    function addReserve(address reserve, bytes8 reserveId) external returns (bool);
-    function removeReserve(address reserve, bytes8 reserveId) external returns (bool);
+    function addReserve(address reserve, bytes32 reserveId) external returns (bool);
+    function removeReserve(address reserve, bytes32 reserveId) external returns (bool);
     function setMatchingEngineContract(IKyberMatchingEngine _newMatchingEngine) external;
 
     function calculateTradeData(
@@ -25,6 +25,6 @@ interface IKyberNetworkRateHelper {
             uint[] memory rates,
             uint[] memory splitValuesBps,
             bool[] memory isFeeCounted,
-            bytes8[] memory ids
+            bytes32[] memory ids
         );
 }
