@@ -1,7 +1,6 @@
 pragma solidity 0.5.11;
 
 import "./IKyberFeeHandler.sol";
-import "./IKyberMatchingEngine.sol";
 import "./IKyberDAO.sol";
 import "./IKyberNetworkProxy.sol";
 
@@ -10,7 +9,7 @@ import "./IKyberNetworkProxy.sol";
 contract IKyberStorage {
     function setContracts(
         IKyberFeeHandler _feeHandler,
-        IKyberMatchingEngine _matchingEngine
+        address _matchingEngine
     ) external returns (bool);
 
     function setDAOContract(IKyberDAO _kyberDAO) external returns (bool);

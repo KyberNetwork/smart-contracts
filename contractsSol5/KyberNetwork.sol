@@ -202,10 +202,12 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
     event FeeHandlerUpdated(IKyberFeeHandler newHandler);
     event MatchingEngineUpdated(IKyberMatchingEngine matchingEngine);
+    event KyberStorageUpdated(IKyberStorage newStorage);
     event GasHelperUpdated(IGasHelper gasHelper);
 
     function setContracts(IKyberFeeHandler _feeHandler,
         IKyberMatchingEngine _matchingEngine,
+        IKyberStorage _kyberStorage,
         IGasHelper _gasHelper
     )
         external
@@ -213,6 +215,14 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         onlyAdmin();
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
         require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
+        require(_kyberStorage != IKyberStorage(0), "storage 0");
+
+        if (kyberStorage != _kyberStorage) {
+            kyberStorage = _kyberStorage;
+            require(_matchingEngine.setKyberStorage(_kyberStorage));
+            emit KyberStorageUpdated(_kyberStorage);
+        }
+
         if (feeHandler != _feeHandler) {
             feeHandler = _feeHandler;
             emit FeeHandlerUpdated(_feeHandler);
@@ -228,7 +238,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
             emit GasHelperUpdated(_gasHelper);
         }
 
-        require(kyberStorage.setContracts(_feeHandler, _matchingEngine));
+        require(kyberStorage.setContracts(_feeHandler, address(_matchingEngine)), "set contract fail");
     }
 
     event KyberDAOUpdated(IKyberDAO newDAO);
@@ -250,18 +260,6 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         maxGasPriceValue = _maxGasPrice;
         require(matchingEngine.setNegligbleRateDiffBps(_negligibleRateDiffBps));
         emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
-    }
-
-    event KyberStorageUpdated(IKyberStorage newStorage);
-
-    function setKyberStorage(IKyberStorage _kyberStorage) external {
-        onlyAdmin();
-        require(_kyberStorage != IKyberStorage(0), "storage 0");
-        if (kyberStorage != _kyberStorage) {
-            kyberStorage = _kyberStorage;
-            require(matchingEngine.setKyberStorage(_kyberStorage));
-            emit KyberStorageUpdated(_kyberStorage);
-        }
     }
 
     event KyberNetworkSetEnable(bool isEnabled);
@@ -343,6 +341,69 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
             tData.ethToToken.decimals);
     }
 
+    //backward compatible
+    /// @dev gets the expected and slippage rate for exchanging src -> dest token
+    /// @dev slippage rate is hardcoded to be 3% lower of expected rate
+    /// @param src Source token
+    /// @param dest Destination token
+    /// @param srcQty amount of src tokens in twei
+    /// @return returns expected and slippage rates
+    function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
+        returns (uint expectedRate, uint worstRate)
+    {
+        if (src == dest) return (0, 0);
+        uint qty = srcQty & ~PERM_HINT_GET_RATE;
+
+        TradeData memory tData = initTradeInput({
+            trader: address(uint160(0)),
+            src: src,
+            dest: dest,
+            srcAmount: (qty == 0) ? 1 : qty,
+            destAddress: address(uint160(0)),
+            maxDestAmount: 2 ** 255,
+            minConversionRate: 0,
+            platformWallet: address(uint160(0)),
+            platformFeeBps: 0
+        });
+
+        tData.networkFeeBps = getNetworkFee();
+
+        ( , expectedRate) = calcRatesAndAmounts(tData, "");
+
+        worstRate = expectedRate * 97 / 100; // backward compatible formula
+    }
+
+    /// @notice backward compatible function
+    /// @notice use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev trade from src to dest token and sends dest token to destAddress
+    /// @param trader Address of the taker side of this trade
+    /// @param src Source token
+    /// @param srcAmount amount of src tokens in twei
+    /// @param dest Destination token
+    /// @param destAddress Address to send tokens to
+    /// @param maxDestAmount Limit amount of dest tokens in twei. if limit is passed, srcAmount will be reduced.
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverted.
+    /// @param walletId will not be used since no fees are set with this API
+    /// @param hint defines which reserves should be used
+    function tradeWithHint(address trader, ERC20 src, uint srcAmount, ERC20 dest, address destAddress,
+        uint maxDestAmount, uint minConversionRate, address walletId, bytes calldata hint)
+        external payable returns(uint destAmount)
+    {
+        TradeData memory tData = initTradeInput({
+            trader: address(uint160(trader)),
+            src: src,
+            dest: dest,
+            srcAmount: srcAmount,
+            destAddress: address(uint160(destAddress)),
+            maxDestAmount: maxDestAmount,
+            minConversionRate: minConversionRate,
+            platformWallet: address(uint160(walletId)),
+            platformFeeBps: 0
+            });
+
+        return trade(tData, hint);
+    }
+    
     function initTradeInput(
         address payable trader,
         IERC20 src,
@@ -381,7 +442,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         uint expiryBlock)
     {
         (networkFeeBps, expiryBlock) = readNetworkFeeData();
-        negligibleDiffBps = matchingEngine.negligibleRateDiffBps();
+        negligibleDiffBps = matchingEngine.getNegligibleRateDiffBps();
         return(negligibleDiffBps, networkFeeBps, expiryBlock);
     }
 
