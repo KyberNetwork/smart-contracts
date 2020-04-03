@@ -3,7 +3,7 @@ pragma solidity 0.5.11;
 import "../utils/PermissionGroups3.sol";
 
 
-contract MockPermission2 is PermissionGroups3 {
+contract MockPermission3 is PermissionGroups3 {
     uint256 public rate;
     bool public tradeActive = true;
 

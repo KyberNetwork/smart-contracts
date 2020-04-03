@@ -16,7 +16,7 @@ let alerter;
 let user;
 
 
-contract('PermissionGroups2', function(accounts) {
+contract('PermissionGroups3', function(accounts) {
     before("init global accounts", async() => {
         // global inits in first test
         user = accounts[0];

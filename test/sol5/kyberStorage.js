@@ -227,7 +227,7 @@ contract('KyberStorage', function(accounts) {
 
             await expectRevert(
                 kyberStorage.addKyberProxy(proxy3, maxProxies, {from: network}),
-                "Max proxy"
+                "Max proxies"
             );
         });
 
