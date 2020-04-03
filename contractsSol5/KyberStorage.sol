@@ -121,13 +121,13 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         return true;
     }
 
-    function removeReserve(address reserve, uint256 startIndex)
+    function removeReserve(address reserve, uint startIndex)
         external
         onlyNetwork
         returns (bytes32 reserveId)
     {
-        uint256 reserveIndex = 2**255;
-        for (uint256 i = startIndex; i < reserves.length; i++) {
+        uint reserveIndex = 2**255;
+        for (uint i = startIndex; i < reserves.length; i++) {
             if (reserves[i] == IKyberReserve(reserve)) {
                 reserveIndex = i;
                 break;
@@ -184,7 +184,7 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         bool isTokenToEth,
         bool add
     ) internal {
-        uint256 i;
+        uint i;
         bytes32[] storage reserveArr = reservesPerTokenDest[address(token)];
 
         if (isTokenToEth) {
@@ -239,7 +239,7 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         returns (bytes32[] memory reserveIds)
     {
         reserveIds = new bytes32[](reserveAddresses.length);
-        for (uint256 i = 0; i < reserveAddresses.length; i++) {
+        for (uint i = 0; i < reserveAddresses.length; i++) {
             reserveIds[i] = reserveAddressToId[reserveAddresses[i]];
         }
     }
@@ -250,7 +250,7 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         returns (address[] memory reserveAddresses)
     {
         reserveAddresses = new address[](reserveIds.length);
-        for (uint256 i = 0; i < reserveIds.length; i++) {
+        for (uint i = 0; i < reserveIds.length; i++) {
             reserveAddresses[i] = reserveIdToAddresses[reserveIds[i]][0];
         }
     }
@@ -272,7 +272,7 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
     }
 
     /// @dev no. of KyberNetworkProxies are capped
-    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
+    function addKyberProxy(address networkProxy, uint max_approved_proxies)
         external
         onlyNetwork
         returns (bool)
@@ -289,9 +289,9 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         onlyNetwork
         returns (bool)
     {
-        uint256 proxyIndex = 2**255;
+        uint proxyIndex = 2**255;
 
-        for (uint256 i = 0; i < kyberProxyArray.length; i++) {
+        for (uint i = 0; i < kyberProxyArray.length; i++) {
             if (kyberProxyArray[i] == IKyberNetworkProxy(networkProxy)) {
                 proxyIndex = i;
                 break;

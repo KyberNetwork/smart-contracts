@@ -325,7 +325,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                 // remove this camp id out of list
                 campIDs[i] = campIDs[campIDs.length - 1];
                 delete campIDs[campIDs.length - 1];
-                campIDs.length--;
+                campIDs.pop();
                 break;
             }
         }

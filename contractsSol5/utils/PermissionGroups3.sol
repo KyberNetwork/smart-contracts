@@ -93,7 +93,7 @@ contract PermissionGroups3 {
         for (uint i = 0; i < alertersGroup.length; ++i) {
             if (alertersGroup[i] == alerter) {
                 alertersGroup[i] = alertersGroup[alertersGroup.length - 1];
-                alertersGroup.length--;
+                alertersGroup.pop();
                 emit AlerterAdded(alerter, false);
                 break;
             }
@@ -120,7 +120,7 @@ contract PermissionGroups3 {
         for (uint i = 0; i < operatorsGroup.length; ++i) {
             if (operatorsGroup[i] == operator) {
                 operatorsGroup[i] = operatorsGroup[operatorsGroup.length - 1];
-                operatorsGroup.length -= 1;
+                operatorsGroup.pop();
                 emit OperatorAdded(operator, false);
                 break;
             }
