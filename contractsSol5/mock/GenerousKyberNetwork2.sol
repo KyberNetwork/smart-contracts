@@ -26,12 +26,12 @@ contract GenerousKyberNetwork2 is KyberNetwork {
         require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
 
         // amounts excluding fees
-        uint rateWithNetworkFee;
-        (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
+        uint rateAfterNetworkFee;
+        (destAmount, rateAfterNetworkFee) = calcRatesAndAmounts(tData, hint);
         
-        require(rateWithNetworkFee > 0, "0 rate");
-        require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(rateWithNetworkFee >= tData.input.minConversionRate, "rate < min Rate");
+        require(rateAfterNetworkFee > 0, "0 rate");
+        require(rateAfterNetworkFee < MAX_RATE, "rate > MAX_RATE");
+        require(rateAfterNetworkFee >= tData.input.minConversionRate, "rate < min Rate");
 
         if (gasHelper != IGasHelper(0)) {
             gasHelper.freeGas(tData.input.platformWallet, tData.input.src, tData.input.dest, tData.tradeWei,

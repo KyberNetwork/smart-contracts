@@ -307,13 +307,13 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param platformFeeBps Percentage of trade to be allocated as platform fee. Ex: 10000 = 100%, 100 = 1%
     /// @param hint defines which reserves should be used for this trade
     /// @return returns 3 different rates
-    /// @param rateWithoutFees rate excluding network and platform fees
-    /// @param rateWithNetworkFee rate excluding network fee, but includes platform fee
-    /// @param rateWithAllFees rate after accounting for both network and platform fees
+    /// @param rateNoFees rate excluding network and platform fees
+    /// @param rateAfterNetworkFee rate excluding network fee, but includes platform fee
+    /// @param rateAfterAllFees rate after accounting for both network and platform fees
     function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps,
         bytes calldata hint)
         external view
-        returns (uint rateWithoutFees, uint rateWithNetworkFee, uint rateWithAllFees)
+        returns (uint rateNoFees, uint rateAfterNetworkFee, uint rateAfterAllFees)
     {
         if (src == dest) return (0, 0, 0);
 
@@ -332,12 +332,12 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         tData.networkFeeBps = getNetworkFee();
 
         uint destAmount;
-        (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
+        (destAmount, rateAfterNetworkFee) = calcRatesAndAmounts(tData, hint);
 
-        rateWithoutFees = calcRateFromQty(tData.input.srcAmount, tData.destAmountWithoutFees, tData.tokenToEth.decimals,
+        rateNoFees = calcRateFromQty(tData.input.srcAmount, tData.destAmountWithoutFees, tData.tokenToEth.decimals,
             tData.ethToToken.decimals);
 
-        rateWithAllFees = calcRateFromQty(tData.input.srcAmount, destAmount, tData.tokenToEth.decimals,
+        rateAfterAllFees = calcRateFromQty(tData.input.srcAmount, destAmount, tData.tokenToEth.decimals,
             tData.ethToToken.decimals);
     }
 
@@ -499,7 +499,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     ///     Some reserve types don't require users to pay the network fee
     /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * B
     /// @param destAmountWithoutFees Twei amount of dest tokens, without network and platform fee
-    /// @param rateWithNetworkFee src -> dest token rate, after accounting for only network fee
+    /// @param rateAfterNetworkFee src -> dest token rate, after accounting for only network fee
     struct TradeData {
 
         TradeInput input;
@@ -517,7 +517,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         uint feeAccountedBps; // what part of this trade is fee paying. for token to token - up to 200%
 
         uint destAmountWithoutFees;
-        uint rateWithNetworkFee;
+        uint rateAfterNetworkFee;
     }
 
     /// @notice
@@ -528,7 +528,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     /// @param tData main trade data object for trade info to be stored
     /// @param hint which reserves should be used for the trade
     function calcRatesAndAmounts(TradeData memory tData, bytes memory hint)
-        internal view returns(uint destAmount, uint rateWithNetworkFee)
+        internal view returns(uint destAmount, uint rateAfterNetworkFee)
     {
         // token to eth. find best reserve match and calculate wei amount
         (tData.tradeWei, tData.networkFeeWei) = calcDestQtyAndMatchReserves(tData.input.src, ETH_TOKEN_ADDRESS,
@@ -558,7 +558,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
         tData.destAmountWithoutFees = calcDstQty(tData.tradeWei, ETH_DECIMALS, tData.ethToToken.decimals, e2tRate);
 
-        rateWithNetworkFee = calcRateFromQty(tData.input.srcAmount, destAmountWithNetworkFee,
+        rateAfterNetworkFee = calcRateFromQty(tData.input.srcAmount, destAmountWithNetworkFee,
             tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
 
@@ -874,12 +874,12 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
         require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
 
-        uint rateWithNetworkFee;
-        (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
+        uint rateAfterNetworkFee;
+        (destAmount, rateAfterNetworkFee) = calcRatesAndAmounts(tData, hint);
 
-        require(rateWithNetworkFee > 0, "0 rate");
-        require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(rateWithNetworkFee >= tData.input.minConversionRate, "rate < min Rate");
+        require(rateAfterNetworkFee > 0, "0 rate");
+        require(rateAfterNetworkFee < MAX_RATE, "rate > MAX_RATE");
+        require(rateAfterNetworkFee >= tData.input.minConversionRate, "rate < min Rate");
 
         if (gasHelper != IGasHelper(0)) {
             (bool success, ) = address(gasHelper).call(

@@ -83,7 +83,6 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //deploy network
         network = await KyberNetwork.new(admin);
-        storage = await KyberStorage.new(network.address);
 
         // init proxy
         networkProxy = await KyberNetworkProxy.new(admin);
@@ -95,6 +94,10 @@ contract('KyberNetworkProxy', function(accounts) {
 
         rateHelper = await RateHelper.new(admin);
         await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
+
+        //init storage
+        storage = await KyberStorage.new(admin);
+        await storage.setNetworkContract(network.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -367,7 +370,7 @@ contract('KyberNetworkProxy', function(accounts) {
         });
     });
 
-    describe("test trades - report gas", async() => {
+    describe.only("test trades - report gas", async() => {
         before("    ", async() => {
             
         });

@@ -70,7 +70,7 @@ async function setupReserves
             rebateWallet = rebateWallets[i];
         }
 
-        result.reserveInstances[reserve.address] = {
+        result.reserveInstances[reserveId] = {
             'address': reserve.address,
             'instance': reserve,
             'reserveId': reserveId,
@@ -120,7 +120,7 @@ async function setupReserves
             rebateWallet = rebateWallets[i];
         }
 
-        result.reserveInstances[reserve.address] = {
+        result.reserveInstances[reserveId] = {
             'address': reserve.address,
             'instance': reserve,
             'reserveId': reserveId,
@@ -139,12 +139,13 @@ async function setupReserves
 
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
-    (network, networkProxyAddress, KNCAddress, DAOAddress, tokens, accounts, admin, operator){
+    (network, networkProxyAddress, KNCAddress, DAOAddress, admin, operator) {
     await network.addOperator(operator, { from: admin });
     //init matchingEngine, feeHandler
     const matchingEngine = await MatchingEngine.new(admin);
-    const storage =  await KyberStorage.new(network.address);
+    const storage =  await KyberStorage.new(admin);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
+    await storage.setNetworkContract(network.address, {from: admin});
     await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
     let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
     await network.setContracts(feeHandler.address, matchingEngine.address, storage.address, zeroAddress, { from: admin });
@@ -307,7 +308,7 @@ module.exports.removeReservesFromNetwork = async function (networkInstance, rese
 
 module.exports.genReserveID = genReserveID; 
 function genReserveID(reserveID, reserveAddress) {
-    return reserveID + reserveAddress.substring(2,10);
+    return reserveID + reserveAddress.substring(2,20);
 }
 
 
@@ -325,10 +326,12 @@ async function fetchReservesRatesFromNetwork(rateHelper, reserveInstances, token
         reserves = result.buyReserves;
         rates = result.buyRates;
     }
+
     for (i=0; i<reserves.length; i++) {
-        reserveAddress = reserves[i];
+        reserveID = reserves[i];
+        reserveID = reserveID.substring(0,28);
         //deep copy the object to avoid assign buy and sell rate to the same object
-        reserve = Object.assign({}, reserveInstances[reserveAddress]);
+        reserve = Object.assign({}, reserveInstances[reserveID]);
         reserve.rate = rates[i];
         reservesArray.push(reserve);
     }
@@ -373,6 +376,7 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
         'reservesForFetchRate': [],
         'splits': []
     }
+
     if (tradeType == EMPTY_HINTTYPE) {
         numReserves = reserves.length;
         for (let i=0; i < numReserves; i++) {
