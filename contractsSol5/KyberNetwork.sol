@@ -530,9 +530,10 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     function calcRatesAndAmounts(TradeData memory tData, bytes memory hint)
         internal view returns(uint destAmount, uint rateAfterNetworkFee)
     {
+        bool isTokenToToken = (tData.input.src != ETH_TOKEN_ADDRESS) && (tData.input.dest != ETH_TOKEN_ADDRESS);
         // token to eth. find best reserve match and calculate wei amount
         (tData.tradeWei, tData.networkFeeWei) = calcDestQtyAndMatchReserves(tData.input.src, ETH_TOKEN_ADDRESS,
-            tData.input.srcAmount, tData, tData.tokenToEth, hint);
+            tData.input.srcAmount, isTokenToToken, tData, tData.tokenToEth, hint);
 
         if (tData.tradeWei == 0) {
             return (0, 0);
@@ -547,7 +548,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         uint actualSrcWei = tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei;
         uint networkFeeE2tWei;
         (destAmount, networkFeeE2tWei) = calcDestQtyAndMatchReserves(ETH_TOKEN_ADDRESS, tData.input.dest, actualSrcWei,
-            tData, tData.ethToToken, hint);
+            isTokenToToken, tData, tData.ethToToken, hint);
         tData.networkFeeWei += networkFeeE2tWei;
 
         // calculate different rates: rate with only network fee, dest amount without fees.
@@ -567,6 +568,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         IERC20 src,
         IERC20 dest,
         uint srcAmount,
+        bool isTokenToToken,
         TradeData memory tData,
         TradingReserves memory tradingReserves,
         bytes memory hint
@@ -584,7 +586,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
             matchingEngine.getReserveList(
                 src,
                 dest,
-                (src != ETH_TOKEN_ADDRESS) && (dest != ETH_TOKEN_ADDRESS),
+                isTokenToToken,
                 hint
             );
 
