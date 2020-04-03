@@ -584,7 +584,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
             matchingEngine.getReserveList(
                 src,
                 dest,
-                (src != ETH_TOKEN_ADDRESS) && (dest != ETH_TOKEN_ADDRESS),
+                (tData.input.src != ETH_TOKEN_ADDRESS) && (tData.input.dest != ETH_TOKEN_ADDRESS),
                 hint
             );
 
