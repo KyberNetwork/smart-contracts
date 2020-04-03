@@ -1,6 +1,7 @@
 pragma  solidity 0.5.11;
 
 import "../IKyberMatchingEngine.sol";
+import "../IKyberStorage.sol";
 import "../IKyberRateHelper.sol";
 import "../IKyberDAO.sol";
 import "../utils/Utils4.sol";
@@ -10,6 +11,7 @@ import "../utils/Withdrawable2.sol";
 contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
 
     IKyberMatchingEngine public matchingEngine;
+    IKyberStorage public kyberStorage;
     IKyberDAO public kyberDAO;
 
     constructor(address _admin) public
@@ -18,10 +20,14 @@ contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
 
     event MatchingEngineContractSet(IKyberMatchingEngine matchingEngine);
     event KyberDAOContractSet(IKyberDAO kyberDAO);
+    event KyberStorageContractSet(IKyberStorage kyberStorage);
 
-    function setContracts(IKyberMatchingEngine _matchingEngine, IKyberDAO _kyberDAO) public onlyAdmin {
-        require(_matchingEngine != IKyberMatchingEngine(0), "missing addr");
-        require(_kyberDAO != IKyberDAO(0), "missing addr");
+    function setContracts(IKyberMatchingEngine _matchingEngine, IKyberDAO _kyberDAO, IKyberStorage _kyberStorage) 
+        public onlyAdmin 
+    {
+        require(_matchingEngine != IKyberMatchingEngine(0), "MatchingEngine 0");
+        require(_kyberDAO != IKyberDAO(0), "DAO 0");
+        require(_kyberStorage != IKyberStorage(0), "KyberStorage 0");
 
         if (matchingEngine != _matchingEngine) {
             matchingEngine = _matchingEngine;
@@ -31,6 +37,11 @@ contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
         if (kyberDAO != _kyberDAO) {
             kyberDAO = _kyberDAO;
             emit KyberDAOContractSet(_kyberDAO);
+        }
+
+        if (kyberStorage != _kyberStorage) {
+            kyberStorage = _kyberStorage;
+            emit KyberStorageContractSet(_kyberStorage);
         }
     }
 
@@ -55,6 +66,18 @@ contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
         return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, 0);
     }
 
+    function getReserveAddresses(IERC20 token, bool buy) public view returns(IKyberReserve[] memory reserveAddresses) {
+        bytes32[] memory reserveIds = buy ?
+            kyberStorage.getReservesPerTokenDest(address(token)) :
+            kyberStorage.getReservesPerTokenSrc(address(token));
+
+        reserveAddresses = new IKyberReserve[](reserveIds.length);
+
+        for (uint i = 0; i < reserveIds.length; i++) {
+            reserveAddresses[i] = IKyberReserve(kyberStorage.convertReserveIdToAddress(reserveIds[i]));
+        }
+    }
+
     function getRatesForTokenWithCustomFee(IERC20 token, uint optionalBuyAmount, uint optionalSellAmount, uint networkFeeBps)
         public view
         returns(IKyberReserve[] memory buyReserves, uint[] memory buyRates,
@@ -64,7 +87,7 @@ contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
 
         A.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
         // TODO: Fix it
-        // buyReserves = matchingEngine.getReservesPerTokenDest(token);
+        buyReserves = getReserveAddresses(token, true);
         buyRates = new uint[](buyReserves.length);
         bool[] memory isFeePaying = getIsFeePayingReserves(buyReserves);
 
@@ -84,7 +107,7 @@ contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
 
         A.srcAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
         // TODO: Fix it
-        // sellReserves = matchingEngine.getReservesPerTokenSrc(token);
+        sellReserves = getReserveAddresses(token, false);
         sellRates = new uint[](sellReserves.length);
         isFeePaying = getIsFeePayingReserves(sellReserves);
 

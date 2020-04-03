@@ -94,7 +94,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
+        await rateHelper.setContracts(matchingEngine.address, DAO.address, storage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -367,7 +367,7 @@ contract('KyberNetworkProxy', function(accounts) {
         });
     });
 
-    describe("test trades - report gas", async() => {
+    describe.only("test trades - report gas", async() => {
         before("    ", async() => {
             
         });
@@ -442,6 +442,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
     describe("test trade with token does not return values for its functions", async() => {
         let mockNetwork;
+        let mockStorage;
         let mockProxy;
         let mockMatchingEngine;
         let mockRateHelper;
@@ -467,6 +468,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
             //deploy network
             mockNetwork = await KyberNetwork.new(admin);
+            mockStorage = await KyberStorage.new(mockNetwork.address);
 
             // init proxy
             mockProxy = await KyberNetworkProxy.new(admin);
@@ -477,7 +479,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await mockMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
 
             mockRateHelper = await RateHelper.new(admin);
-            await mockRateHelper.setContracts(mockMatchingEngine.address, mockDAO.address, {from: admin});
+            await mockRateHelper.setContracts(mockMatchingEngine.address, mockDAO.address, mockStorage.address, {from: admin});
 
             // setup proxy
             await mockProxy.setKyberNetwork(mockNetwork.address, {from: admin});
@@ -499,10 +501,10 @@ contract('KyberNetworkProxy', function(accounts) {
 
             //setup network
             ///////////////
+            await mockNetwork.setContracts(mockFeeHandler.address, mockMatchingEngine.address, mockStorage.address, zeroAddress, {from: admin});
             await mockNetwork.addKyberProxy(mockProxy.address, {from: admin});
             await mockNetwork.addOperator(operator, {from: admin});
 
-            await mockNetwork.setContracts(mockFeeHandler.address, mockMatchingEngine.address, zeroAddress, {from: admin});
             await mockNetwork.setDAOContract(mockDAO.address, {from: admin});
 
             //add and list pair for reserve
@@ -891,7 +893,6 @@ contract('KyberNetworkProxy', function(accounts) {
                 { from: taker }
             );
         });
-
 
         it("trade revert if dest balance after is smaller than dest balance before", async() =>{
             await networkProxy.setKyberNetwork(maliciousNetwork.address, { from: admin });

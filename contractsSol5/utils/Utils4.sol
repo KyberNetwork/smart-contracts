@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
 import "../IERC20.sol";
-// import "@nomiclabs/buidler/console.sol";
+import "@nomiclabs/buidler/console.sol";
 
 
 /// @title Kyber utility file

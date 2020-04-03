@@ -228,7 +228,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         return doTrade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet, 
             platformFeeBps, hint);
     }
-    
+
     struct UserBalance {
         uint srcTok;
         uint destTok;
