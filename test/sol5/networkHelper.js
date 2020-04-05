@@ -737,12 +737,12 @@ async function calcParamsFromMaxDestAmt(srcToken, destToken, unpackedOutput, inf
 
 function calcTradeSrcAmount(srcDecimals, destDecimals, destAmt, rates, splits) {
     let srcAmt = zeroBN;
-    let amtSoFar = zeroBN;
-    let destAmtSplit = zeroBN;
-    for (let i = 0; i < rates.length; i++) {
-        destAmtSplit = i == (splits.length - 1) ? (destAmt.sub(amtSoFar)) : splits[i].mul(destAmt).div(BPS);
-        amtSoFar = amtSoFar.add(destAmtSplit);
-        srcAmt = srcAmt.add(Helper.calcSrcQty(destAmtSplit, srcDecimals, destDecimals, rates[i]));
+    let totalSplitRates = zeroBN;
+
+    for(let i = 0; i < rates.length; i++) {
+        totalSplitRates = totalSplitRates.add(splits[i].mul(rates[i]));
     }
-    return srcAmt;
+    let averageRate = new BN(totalSplitRates).div(new BN(BPS));
+
+    return Helper.calcSrcQty(destAmt, srcDecimals, destDecimals, averageRate);
 }

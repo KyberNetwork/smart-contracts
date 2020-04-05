@@ -729,15 +729,15 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
                                 uint[] memory splitValuesBps)
         internal pure returns (uint srcAmount)
     {
-        uint destAmountSoFar;
-
-        for (uint i = 0; i < rates.length; i++) {
-            uint destAmountSplit = i == (splitValuesBps.length - 1) ?
-                (destAmount - destAmountSoFar) : splitValuesBps[i] * destAmount / BPS;
-            destAmountSoFar += destAmountSplit;
-
-            srcAmount += calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
+        uint totalSplitRates = 0;
+        for(uint i = 0; i < rates.length; i++) {
+            totalSplitRates += splitValuesBps[i] * rates[i];
         }
+        // total split bps should be = BPS
+        uint averageRate = totalSplitRates / BPS;
+        require(averageRate > 0, "average rate is 0");
+
+        srcAmount = calcSrcQty(destAmount, srcDecimals, destDecimals, averageRate);
     }
 
     /// @notice Recalculates tradeWei, network and platform fees, and actual source amount needed for the trade
