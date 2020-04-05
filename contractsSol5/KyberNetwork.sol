@@ -729,12 +729,10 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
                                 uint[] memory splitValuesBps)
         internal pure returns (uint srcAmount)
     {
-        uint totalSplitRates = 0;
+        uint averageRate = 0;
         for(uint i = 0; i < rates.length; i++) {
-            totalSplitRates += splitValuesBps[i] * rates[i];
+            averageRate += splitValuesBps[i] * rates[i] / BPS;
         }
-        // total split bps should be = BPS
-        uint averageRate = totalSplitRates / BPS;
         require(averageRate > 0, "average rate is 0");
 
         srcAmount = calcSrcQty(destAmount, srcDecimals, destDecimals, averageRate);
