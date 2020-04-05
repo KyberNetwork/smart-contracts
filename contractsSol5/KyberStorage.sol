@@ -12,8 +12,9 @@ import "./utils/PermissionGroups2.sol";
  *   Receives call from KyberNetwork for:
  *   - record contract changes for matchingEngine, feeHandler, reserves and kyberDAO
  */
-contract KyberStorage is IKyberStorage {
+contract KyberStorage is IKyberStorage, PermissionGroups2 {
     // store current and previous contracts.
+    IKyberNetwork[] internal oldNetworks;
     IKyberFeeHandler[] internal feeHandler;
     IKyberDAO[] internal kyberDAO;
     IKyberMatchingEngine[] internal matchingEngine;
@@ -27,16 +28,19 @@ contract KyberStorage is IKyberStorage {
 
     IKyberNetwork public network;
 
-    event KyberProxyAdded(address proxy);
-    event KyberProxyRemoved(address proxy);
-
     modifier onlyNetwork() {
         require(msg.sender == address(network), "Only network");
         _;
     }
 
-    constructor(IKyberNetwork _network) public {
+    constructor(address _admin) public PermissionGroups2(_admin) {}
+
+    event KyberNetworkUpdated(IKyberNetwork network);
+    function setNetworkContract(IKyberNetwork _network) external onlyAdmin {
+        require(_network != IKyberNetwork(0), "network 0");
+        oldNetworks.push(network);
         network = _network;
+        emit KyberNetworkUpdated(_network);
     }
 
     function setContracts(

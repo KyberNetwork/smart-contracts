@@ -27,7 +27,6 @@ let admin;
 let operator;
 let network;
 let matchingEngine;
-let storage;
 let rateHelper;
 let user;
 
@@ -76,9 +75,8 @@ contract('KyberMatchingEngine', function(accounts) {
     });
 
     describe("test onlyAdmin and onlyNetwork permissions", async() => {
-        before("deploy matchingEngine and storage instance, 1 mock reserve and 1 mock token", async() => {
+        before("deploy matchingEngine instance, 1 mock reserve and 1 mock token", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
-            storage = await KyberStorage.new(admin);
             token = await TestToken.new("test", "tst", 18);
 
             rateHelper = await RateHelper.new(admin);
@@ -103,6 +101,16 @@ contract('KyberMatchingEngine', function(accounts) {
                 matchingEngine.setNetworkContract(network, {from: operator}),
                 "Only admin"
             );
+
+            await expectRevert(
+                matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: operator}),
+                "Only admin"
+            );
+
+            await expectRevert(
+                matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, {from: network}),
+                "Only admin"
+            );
         });
 
         it("should have admin set network contract", async() => {
@@ -111,36 +119,20 @@ contract('KyberMatchingEngine', function(accounts) {
             Helper.assertEqual(network, result, "network not set by admin");
         });
 
-        it("should not have unauthorized personnel set fee paying data", async() => {
-            await expectRevert(
-                matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: operator}),
-                "Only admin"
-            );
-
-            await expectRevert(
-                matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: network}),
-                "Only admin"
-            );
-        });
-
-        it("should have admin set fee paying data", async() => {
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
-        });
-
         it("should not have unauthorized personnel set negligble rate diff bps", async() => {
             await expectRevert(
                 matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: user}),
-                "Only network"
+                "ONLY_NETWORK"
             );
 
             await expectRevert(
                 matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: operator}),
-                "Only network"
+                "ONLY_NETWORK"
             );
 
             await expectRevert(
                 matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: admin}),
-                "Only network"
+                "ONLY_NETWORK"
             );
         });
 
@@ -150,90 +142,91 @@ contract('KyberMatchingEngine', function(accounts) {
             Helper.assertEqual(negligibleRateDiffBps, result, "negligbleRateDiffInBps not set by network");
         });
 
-        it("should not have unauthorized personnel set storage", async() => {
-            await expectRevert(
-                matchingEngine.setKyberStorage(storage.address, {from: user}),
-                "Only network"
-            );
-
-            await expectRevert(
-                matchingEngine.setKyberStorage(storage.address, {from: operator}),
-                "Only network"
-            );
-
-            await expectRevert(
-                matchingEngine.setKyberStorage(storage.address, {from: admin}),
-                "Only network"
-            );
-        });
-
-        it("should have network set storage contract", async() => {
-            await matchingEngine.setKyberStorage(storage.address, {from: network});
-            let result = await matchingEngine.kyberStorage();
-            Helper.assertEqual(storage.address, result, "storage not set by admin");
-        });
-
         it("should not have unauthorized personnel add reserve", async() => {
             await expectRevert(
-                matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: user}),
-                "Only network"
+                matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: user}),
+                "ONLY_NETWORK"
             );
 
             await expectRevert(
-                matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: operator}),
-                "Only network"
+                matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: operator}),
+                "ONLY_NETWORK"
             );
 
             await expectRevert(
-                matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: admin}),
-                "Only network"
+                matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: admin}),
+                "ONLY_NETWORK"
             );
         });
 
         it("should have network add reserve", async() => {
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
-            await matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: network});
+            await matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            let reserveDetails = await matchingEngine.getReserveDetails(reserve.address);
+            let reserveId = reserveDetails.reserveId;
+            let reserveAddress = await matchingEngine.reserveIdToAddresses(reserve.reserveId, 0);
+            Helper.assertEqual(reserve.reserveId, reserveId, "wrong address to ID");
+            Helper.assertEqual(reserve.address, reserveAddress, "wrong ID to address");
+        });
+
+        it("should not have unauthorized personnel list token pair for reserve", async() => {
+            await expectRevert(
+                matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: user}),
+                "ONLY_NETWORK"
+            );
+
+            await expectRevert(
+                matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator}),
+                "ONLY_NETWORK"
+            );
+
+            await expectRevert(
+                matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: admin}),
+                "ONLY_NETWORK"
+            );
+        });
+
+        it("should have network list pair for reserve", async() => {
+            await matchingEngine.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
+            let result = await matchingEngine.getReservesPerTokenSrc(token.address);
+            Helper.assertEqual(result[0], reserve.address, "reserve should have supported token");
+            result = await matchingEngine.getReservesPerTokenDest(token.address);
+            Helper.assertEqual(result[0], reserve.address, "reserve should have supported token");
         });
 
         it("should not have unauthorized personnel remove reserve", async() => {
             await expectRevert(
-                matchingEngine.removeReserve(reserve.reserveId, {from: user}),
-                "Only network"
+                matchingEngine.removeReserve(reserve.address, {from: user}),
+                "ONLY_NETWORK"
             );
 
             await expectRevert(
-                matchingEngine.removeReserve(reserve.reserveId, {from: operator}),
-                "Only network"
+                matchingEngine.removeReserve(reserve.address, {from: operator}),
+                "ONLY_NETWORK"
             );
 
             await expectRevert(
-                matchingEngine.removeReserve(reserve.reserveId, {from: admin}),
-                "Only network"
+                matchingEngine.removeReserve(reserve.address, {from: admin}),
+                "ONLY_NETWORK"
             );
         });
 
         it("should have network remove reserve", async() => {
-            await matchingEngine.removeReserve(reserve.reserveId, {from: network});
+            await matchingEngine.removeReserve(reserve.address, {from: network});
         });
     });
 
     describe("test contract event", async() => {
         before("deploy and setup matchingEngine instance", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setContracts(matchingEngine.address, accounts[9], {from: admin});
         });
 
         it("shoud test set network event", async() => {
             txResult = await matchingEngine.setNetworkContract(network, {from: admin});
-            expectEvent(txResult, "NetworkContractUpdated", {
+            expectEvent(txResult, "NetworkContractUpdate", {
                 newNetwork: network
-            });
-        });
-
-        it("should test set storage event", async() => {
-            await matchingEngine.setNetworkContract(network, {from: admin});
-            txResult = await matchingEngine.setKyberStorage(storage.address, {from: network});
-            expectEvent(txResult, "KyberStorageUpdated", {
-                newStorage: storage.address
             });
         });
     });
