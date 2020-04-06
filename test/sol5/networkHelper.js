@@ -23,6 +23,7 @@ const APR_ID = '0xaa000000';
 const BRIDGE_ID  = '0xbb000000';
 const MOCK_ID  = '0x22000000';
 const FPR_ID = '0xff000000';
+const ZERO_RESERVE_ID = "0x" + "0".repeat(64);
 
 const type_apr = "TYPE_APR";
 const type_MOCK = "TYPE_MOCK";
@@ -41,7 +42,7 @@ const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
 const negligibleRateDiffBps = new BN(10); //0.01%;
 const burnBlockInterval = new BN(30);
 
-module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
+module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, ZERO_RESERVE_ID, type_apr, type_fpr, type_MOCK, 
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType};
 
     
@@ -308,7 +309,7 @@ module.exports.removeReservesFromNetwork = async function (networkInstance, rese
 
 module.exports.genReserveID = genReserveID; 
 function genReserveID(reserveID, reserveAddress) {
-    return reserveID + reserveAddress.substring(2,20);
+    return reserveID + reserveAddress.substring(2,20) + "0".repeat(38);
 }
 
 
