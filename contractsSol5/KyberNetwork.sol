@@ -531,6 +531,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         internal view returns(uint destAmount, uint rateAfterNetworkFee)
     {
         // token to eth. find best reserve match and calculate wei amount
+        /////////////////////////////////////////////////////////////////
         tData.tradeWei = calcDestQtyAndMatchReserves(tData.input.src, ETH_TOKEN_ADDRESS,
             tData.input.srcAmount, tData, tData.tokenToEth, hint);
 
@@ -541,7 +542,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         // platform fee
         tData.platformFeeWei = tData.tradeWei * tData.input.platformFeeBps / BPS;
         tData.networkFeeWei = tData.tradeWei * tData.networkFeeBps / BPS * tData.feeAccountedBps / BPS;
-
+        // set networkFeeWei in stack. since we set it again after full flow done.
         require(tData.tradeWei >= (tData.networkFeeWei + tData.platformFeeWei), "fees exceed trade");
 
         // Eth to Token. find best reserve match and calculate trade dest amount
