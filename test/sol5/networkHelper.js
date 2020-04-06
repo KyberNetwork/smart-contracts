@@ -309,7 +309,7 @@ module.exports.removeReservesFromNetwork = async function (networkInstance, rese
 
 module.exports.genReserveID = genReserveID; 
 function genReserveID(reserveID, reserveAddress) {
-    return reserveID + reserveAddress.substring(2,20) + "0".repeat(38);
+    return reserveID + reserveAddress.substring(2,20);
 }
 
 
