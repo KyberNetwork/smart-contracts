@@ -297,6 +297,8 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
         require(kyberStorage.removeKyberProxy(networkProxy));
 
+        kyberProxyContracts[networkProxy] = false;
+
         emit KyberProxyRemoved(networkProxy);
     }
 

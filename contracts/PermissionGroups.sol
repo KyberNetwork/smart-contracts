@@ -91,7 +91,7 @@ contract PermissionGroups {
         for (uint i = 0; i < alertersGroup.length; ++i) {
             if (alertersGroup[i] == alerter) {
                 alertersGroup[i] = alertersGroup[alertersGroup.length - 1];
-                alertersGroup.length--;
+                alertersGroup.pop();
                 AlerterAdded(alerter, false);
                 break;
             }
