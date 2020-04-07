@@ -1,6 +1,6 @@
 pragma  solidity 0.5.11;
 
-import "./utils/Withdrawable2.sol";
+import "./utils/WithdrawableNoModifiers.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
 import "./KyberHintHandler.sol";
@@ -20,7 +20,7 @@ import "./IKyberStorage.sol";
 *           - calclutate trade amounts
 *           - return all data to kyber Network 
 */
-contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdrawable2 {
+contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, WithdrawableNoModifiers {
     uint            public negligibleRateDiffBps = 5; // 1 bps is 0.01%
     IKyberNetwork   public networkContract;
     IKyberStorage   public kyberStorage;
@@ -30,35 +30,38 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     uint internal feePayingPerType = 0xffffffff;
 
     constructor(address _admin) public
-        Withdrawable2(_admin)
+        WithdrawableNoModifiers(_admin)
     { /* empty body */ }
 
-    modifier onlyNetwork() {
+    function onlyNetwork() internal view {
         require(msg.sender == address(networkContract), "Only network");
-        _;
     }
 
-    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external onlyNetwork returns (bool) {
+    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool) {
+        onlyNetwork();
         require(_negligibleRateDiffBps <= BPS, "rateDiffBps > BPS"); // at most 100%
         negligibleRateDiffBps = _negligibleRateDiffBps;
         return true;
     }
 
     event NetworkContractUpdated(IKyberNetwork newNetwork);
-    function setNetworkContract(IKyberNetwork _networkContract) external onlyAdmin {
+    function setNetworkContract(IKyberNetwork _networkContract) external {
+        onlyAdmin();
         require(_networkContract != IKyberNetwork(0), "network 0");
         emit NetworkContractUpdated(_networkContract);
         networkContract = _networkContract;
     }
 
     event KyberStorageUpdated(IKyberStorage newStorage);
-    function setKyberStorage(IKyberStorage _kyberStorage) external onlyNetwork returns (bool) {
+    function setKyberStorage(IKyberStorage _kyberStorage) external returns (bool) {
+        onlyNetwork();
         emit KyberStorageUpdated(_kyberStorage);
         kyberStorage = _kyberStorage;
         return true;
     }
 
-    function addReserve(bytes32 reserveId, ReserveType resType) external onlyNetwork returns (bool) {
+    function addReserve(bytes32 reserveId, ReserveType resType) external returns (bool) {
+        onlyNetwork();
         require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
         require(feePayingPerType != 0xffffffff, "Fee paying not set");
 
@@ -66,14 +69,16 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return true;
     }
 
-    function removeReserve(bytes32 reserveId) external onlyNetwork returns (bool) {
+    function removeReserve(bytes32 reserveId) external returns (bool) {
+        onlyNetwork();
         reserveType[reserveId] = uint(ReserveType.NONE);
         return true;
     }
 
     function setFeePayingPerReserveType(bool fpr, bool apr, bool bridge, bool utility, bool custom, bool orderbook)
-        external onlyAdmin
+        external
     {
+        onlyAdmin();
         uint feePayingData;
 
         if (apr) feePayingData |= 1 << uint(ReserveType.APR);

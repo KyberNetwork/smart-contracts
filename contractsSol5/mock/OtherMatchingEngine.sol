@@ -9,7 +9,8 @@ contract OtherMatchingEngine is KyberMatchingEngine {
     }
 
     // return false instead
-    function addReserve(bytes32 reserveId, ReserveType resType) external onlyNetwork returns (bool) {
+    function addReserve(bytes32 reserveId, ReserveType resType) external returns (bool) {
+        onlyNetwork();
         require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
         require(feePayingPerType != 0xffffffff, "Fee paying not set");
 
@@ -17,12 +18,14 @@ contract OtherMatchingEngine is KyberMatchingEngine {
         return false;
     }
 
-    function removeReserve(bytes32 reserveId) external onlyNetwork returns (bool) {
+    function removeReserve(bytes32 reserveId) external returns (bool) {
+        onlyNetwork();
         reserveType[reserveId] = uint(ReserveType.NONE);
         return false;
     }
 
-    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external onlyNetwork returns (bool) {
+    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool) {
+        onlyNetwork();
         if (_negligibleRateDiffBps > BPS) return false; // return false instead of revert
         negligibleRateDiffBps = _negligibleRateDiffBps;
         return true;

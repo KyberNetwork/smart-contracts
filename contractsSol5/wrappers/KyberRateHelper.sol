@@ -4,22 +4,23 @@ import "../IKyberMatchingEngine.sol";
 import "../IKyberRateHelper.sol";
 import "../IKyberDAO.sol";
 import "../utils/Utils4.sol";
-import "../utils/Withdrawable2.sol";
+import "../utils/WithdrawableNoModifiers.sol";
 
 
-contract KyberRateHelper is IKyberRateHelper, Withdrawable2, Utils4 {
+contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
 
     IKyberMatchingEngine public matchingEngine;
     IKyberDAO public kyberDAO;
 
     constructor(address _admin) public
-        Withdrawable2(_admin)
+        WithdrawableNoModifiers(_admin)
     { /* empty body */ }
 
     event MatchingEngineContractSet(IKyberMatchingEngine matchingEngine);
     event KyberDAOContractSet(IKyberDAO kyberDAO);
 
-    function setContracts(IKyberMatchingEngine _matchingEngine, IKyberDAO _kyberDAO) public onlyAdmin {
+    function setContracts(IKyberMatchingEngine _matchingEngine, IKyberDAO _kyberDAO) public {
+        onlyAdmin();
         require(_matchingEngine != IKyberMatchingEngine(0), "missing addr");
         require(_kyberDAO != IKyberDAO(0), "missing addr");
 

@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
 
-contract PermissionGroups3 {
+contract PermissionGroupsNoModifiers {
 
     address public admin;
     address public pendingAdmin;

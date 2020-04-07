@@ -4,7 +4,7 @@ import "./IKyberStorage.sol";
 import "./IKyberFeeHandler.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
-import "./utils/PermissionGroups2.sol";
+import "./utils/PermissionGroupsNoModifiers.sol";
 
 
 /**
@@ -12,7 +12,7 @@ import "./utils/PermissionGroups2.sol";
  *   Receives call from KyberNetwork for:
  *   - record contract changes for matchingEngine, feeHandler, reserves and kyberDAO
  */
-contract KyberStorage is IKyberStorage, PermissionGroups2 {
+contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     // store current and previous contracts.
     IKyberNetwork[] internal oldNetworks;
     IKyberFeeHandler[] internal feeHandler;
@@ -28,16 +28,16 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
 
     IKyberNetwork public network;
 
-    modifier onlyNetwork() {
+    function onlyNetwork() internal view {
         require(msg.sender == address(network), "ONLY_NETWORK");
-        _;
     }
 
-    constructor(address _admin) public PermissionGroups2(_admin) {}
+    constructor(address _admin) public PermissionGroupsNoModifiers(_admin) {}
 
     event KyberNetworkUpdated(IKyberNetwork network);
 
-    function setNetworkContract(IKyberNetwork _network) external onlyAdmin {
+    function setNetworkContract(IKyberNetwork _network) external {
+        onlyAdmin();
         require(_network != IKyberNetwork(0), "network 0");
         oldNetworks.push(network);
         network = _network;
@@ -46,9 +46,9 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
 
     function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
         external
-        onlyNetwork
         returns (bool)
     {
+        onlyNetwork();
         IKyberMatchingEngine newMatchingEngine = IKyberMatchingEngine(
             _matchingEngine
         );
@@ -71,9 +71,9 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
 
     function setDAOContract(IKyberDAO _kyberDAO)
         external
-        onlyNetwork
         returns (bool)
     {
+        onlyNetwork();
         if (kyberDAO.length > 0) {
             kyberDAO.push(kyberDAO[0]);
             kyberDAO[0] = _kyberDAO;
@@ -100,9 +100,9 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
 
     function addReserve(address reserve, bytes32 reserveId)
         external
-        onlyNetwork
         returns (bool)
     {
+        onlyNetwork();
         require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         if (reserveIdToAddresses[reserveId].length == 0) {
@@ -123,9 +123,9 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
 
     function removeReserve(address reserve, uint startIndex)
         external
-        onlyNetwork
         returns (bytes32 reserveId)
     {
+        onlyNetwork();
         uint reserveIndex = 2**255;
         for (uint i = startIndex; i < reserves.length; i++) {
             if (reserves[i] == IKyberReserve(reserve)) {
@@ -163,7 +163,8 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
         bool ethToToken,
         bool tokenToEth,
         bool add
-    ) external onlyNetwork returns (bool) {
+    ) external returns (bool) {
+        onlyNetwork();
         bytes32 reserveId = reserveAddressToId[reserve];
         require(reserveId != bytes32(0), "reserveId = 0");
 
@@ -274,9 +275,9 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
     /// @dev no. of KyberNetworkProxies are capped
     function addKyberProxy(address networkProxy, uint max_approved_proxies)
         external
-        onlyNetwork
         returns (bool)
     {
+        onlyNetwork();
         require(kyberProxyArray.length < max_approved_proxies, "Max proxies");
 
         kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
@@ -286,9 +287,9 @@ contract KyberStorage is IKyberStorage, PermissionGroups2 {
 
     function removeKyberProxy(address networkProxy)
         external
-        onlyNetwork
         returns (bool)
     {
+        onlyNetwork();
         uint proxyIndex = 2**255;
 
         for (uint i = 0; i < kyberProxyArray.length; i++) {

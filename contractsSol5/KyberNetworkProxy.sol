@@ -1,6 +1,6 @@
 pragma solidity 0.5.11;
 
-import "./utils/Withdrawable2.sol";
+import "./utils/WithdrawableNoModifiers.sol";
 import "./utils/Utils4.sol";
 import "./utils/zeppelin/SafeERC20.sol";
 import "./IKyberNetwork.sol";
@@ -11,13 +11,13 @@ import "./IKyberHint.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
-contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable2, Utils4 {
+contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, WithdrawableNoModifiers, Utils4 {
     using SafeERC20 for IERC20;
 
     IKyberNetwork public kyberNetwork;
     IKyberHint public hintHandler; // hint handler pointer for users.
 
-    constructor(address _admin) public Withdrawable2(_admin)
+    constructor(address _admin) public WithdrawableNoModifiers(_admin)
         {/*empty body*/}
 
     /// @notice backward compatible API
@@ -279,7 +279,8 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
 
     event KyberNetworkSet(IKyberNetwork newNetwork, IKyberNetwork oldNetwork);
 
-    function setKyberNetwork(IKyberNetwork _kyberNetwork) public onlyAdmin {
+    function setKyberNetwork(IKyberNetwork _kyberNetwork) public {
+        onlyAdmin();
         require(_kyberNetwork != IKyberNetwork(0), "KyberNetwork 0");
         emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
 
@@ -288,7 +289,8 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
 
     event HintHandlerSet(IKyberHint hintHandler);
 
-    function setHintHandler(IKyberHint _hintHandler) public onlyAdmin {
+    function setHintHandler(IKyberHint _hintHandler) public {
+        onlyAdmin();
         require(_hintHandler != IKyberHint(0), "Hint handler 0");
         emit HintHandlerSet(_hintHandler);
 
