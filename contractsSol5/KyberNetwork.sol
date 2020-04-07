@@ -803,17 +803,26 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     function calcTradeSrcAmount(uint srcDecimals, uint destDecimals, uint destAmount, uint[] memory rates,
-        uint[] memory splitsBps)
-        internal pure returns (uint srcAmount)
+        uint[] memory splitsBps, uint[] memory currentSrcAmounts)
+        internal pure returns (uint srcAmount, uint[] memory newSrcAmounts)
     {
+        uint totalSplitRates;
+        for(uint i = 0;i < rates.length; i++) {
+            totalSplitRates += splitsBps[i] * rates[i];
+        }
+
         uint destAmountSoFar;
+        newSrcAmounts = new uint[](rates.length);
 
         for (uint i = 0; i < rates.length; i++) {
             uint destAmountSplit = i == (splitsBps.length - 1) ?
-                (destAmount - destAmountSoFar) : splitsBps[i] * destAmount / BPS;
+                (destAmount - destAmountSoFar) : destAmount * splitsBps[i] * rates[i] / totalSplitRates;
             destAmountSoFar += destAmountSplit;
 
-            srcAmount += calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
+            newSrcAmounts[i] = calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
+            require(newSrcAmounts[i] <= currentSrcAmounts[i], "new src amount is high");
+
+            srcAmount += newSrcAmounts[i];
         }
     }
 
@@ -824,8 +833,8 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     {
         uint weiAfterFees;
         if (tData.input.dest != ETH_TOKEN_ADDRESS) {
-            weiAfterFees = calcTradeSrcAmount(ETH_DECIMALS, tData.ethToToken.decimals, tData.input.maxDestAmount,
-                tData.ethToToken.rates, tData.ethToToken.splitsBps);
+            (weiAfterFees, tData.ethToToken.srcAmounts) = calcTradeSrcAmount(ETH_DECIMALS, tData.ethToToken.decimals, tData.input.maxDestAmount,
+                tData.ethToToken.rates, tData.ethToToken.splitsBps, tData.ethToToken.srcAmounts);
         } else {
             weiAfterFees = tData.input.maxDestAmount;
         }
@@ -838,8 +847,8 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         tData.platformFeeWei = tData.tradeWei * tData.input.platformFeeBps / BPS;
 
         if (tData.input.src != ETH_TOKEN_ADDRESS) {
-            actualSrcAmount = calcTradeSrcAmount(tData.tokenToEth.decimals, ETH_DECIMALS, tData.tradeWei,
-                tData.tokenToEth.rates, tData.tokenToEth.splitsBps);
+            (actualSrcAmount, tData.tokenToEth.srcAmounts) = calcTradeSrcAmount(tData.tokenToEth.decimals, ETH_DECIMALS, tData.tradeWei,
+                tData.tokenToEth.rates, tData.tokenToEth.splitsBps, tData.tokenToEth.srcAmounts);
         } else {
             actualSrcAmount = tData.tradeWei;
         }
@@ -960,7 +969,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
             if (destAddress != (address(this))) {
-                (bool success, ) = destAddress.call.value(amount)("");
+                (bool success, ) = destAddress.call.value(expectedDestAmount)("");
                 require(success, "send dest qty failed");
             }
             return true;
