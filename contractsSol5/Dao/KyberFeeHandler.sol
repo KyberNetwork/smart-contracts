@@ -495,6 +495,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             totalRebateBps += rebateBpsPerWallet[i];
         }
 
-        require(totalRebateBps == BPS, "Not 100% rebate distributed.");
+        require(totalRebateBps <= BPS, "Rebates more then 100%");
     }
 }
