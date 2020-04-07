@@ -309,7 +309,7 @@ module.exports.removeReservesFromNetwork = async function (networkInstance, rese
 
 module.exports.genReserveID = genReserveID; 
 function genReserveID(reserveID, reserveAddress) {
-    return reserveID + reserveAddress.substring(2,20);
+    return reserveID + reserveAddress.substring(2,20) + "0".repeat(38);
 }
 
 
@@ -330,7 +330,6 @@ async function fetchReservesRatesFromNetwork(rateHelper, reserveInstances, token
 
     for (i=0; i<reserves.length; i++) {
         reserveID = reserves[i];
-        reserveID = reserveID.substring(0,28);
         //deep copy the object to avoid assign buy and sell rate to the same object
         reserve = Object.assign({}, reserveInstances[reserveID]);
         reserve.rate = rates[i];
