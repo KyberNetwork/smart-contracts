@@ -175,6 +175,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
 
     struct WeiData {
         uint rebate;
+        uint totalRebatePaid;
         uint reward;
     }
     
@@ -211,14 +212,16 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             // Internal accounting for rebates per reserve wallet (rebatePerWallet)
             require(rebateWallets[i] != address(0), "rebate wallet 0");
             rebatePerWallet[rebateWallets[i]] += weiData.rebate * rebateBpsPerWallet[i] / BPS;
+            // a few wei could be left out due to rounding down. so count only paid wei
+            weiData.totalRebatePaid += weiData.rebate * rebateBpsPerWallet[i] / BPS;
             totalRebateBps += rebateBpsPerWallet[i];
         }
-        require(totalRebateBps <= BPS, "Total rebates too high");
+        require(totalRebateBps == BPS, "Not 100% rebate distributed.");
 
         rewardsPerEpoch[epoch] += weiData.reward;
 
         // update balance for rewards, rebates, fee
-        totalPayoutBalance += (platformFeeWei + weiData.reward + weiData.rebate);
+        totalPayoutBalance += (platformFeeWei + weiData.reward + weiData.totalRebatePaid);
 
         emit FeeDistributed(platformWallet, platformFeeWei, weiData.reward, weiData.rebate, rebateWallets, 
             rebateBpsPerWallet, (feeBRR - weiData.reward - weiData.rebate));
