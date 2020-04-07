@@ -65,27 +65,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         emit EtherReceival(msg.sender, msg.value);
     }
 
-
-    function getContracts()
-        external
-        view
-        returns (
-            IKyberFeeHandler memory feeHandlerAddresses,
-            IKyberDAO memory daoAddresses,
-            IKyberMatchingEngine memory matchingEngineAddresses,
-            IKyberStorage memory storageAddress,
-            IKyberNetworkProxy[] memory proxyAddresses
-        )
-    {
-        return (
-            feeHandler,
-            kyberDAO,
-            matchingEngine,
-            kyberStorage,
-            kyberStorage.getKyberProxies()
-        );
-    }
-
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade from src to dest token and sends dest token to destAddress
     /// @param trader Address of the taker side of this trade
@@ -467,6 +446,28 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         (networkFeeBps, expiryBlock) = readNetworkFeeData();
         negligibleDiffBps = matchingEngine.getNegligibleRateDiffBps();
         return(negligibleDiffBps, networkFeeBps, expiryBlock);
+    }
+
+    function getContracts()
+        external
+        view
+        returns (
+            IKyberFeeHandler feeHandlerAddresses,
+            IKyberDAO daoAddresses,
+            IKyberMatchingEngine matchingEngineAddresses,
+            IKyberStorage storageAddress,
+            IGasHelper gasHelperAddress,
+            IKyberNetworkProxy[] memory proxyAddresses
+        )
+    {
+        return (
+            feeHandler,
+            kyberDAO,
+            matchingEngine,
+            kyberStorage,
+            gasHelper,
+            kyberStorage.getKyberProxies()
+        );
     }
 
     /// @notice returns the max gas price allowable for trades
