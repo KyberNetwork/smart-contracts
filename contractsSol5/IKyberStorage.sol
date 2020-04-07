@@ -37,10 +37,12 @@ contract IKyberStorage {
     function getReservesPerTokenSrc(address token) external view returns (bytes32[] memory reserveIds);
 
     function getReservesPerTokenDest(address token) external view returns (bytes32[] memory reserveIds);
- 
+
     function addKyberProxy(address networkProxy, uint256 max_approved_proxies) external returns (bool);
 
     function removeKyberProxy(address networkProxy) external returns (bool);
 
     function isKyberProxyAdded() external view returns (bool);
+
+    function getKyberProxies() external view returns (IKyberNetworkProxy[] memory);
 }

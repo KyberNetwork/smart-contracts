@@ -34,11 +34,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     uint  internal constant DEFAULT_NETWORK_FEE_BPS = 25;    // till we read value from DAO
     uint  internal constant MAX_APPROVED_PROXIES = 2;        // limit number of proxies that can trade here.
 
-    IKyberFeeHandler        public   feeHandler;
-    IKyberDAO               public   kyberDAO;
-    IKyberMatchingEngine    public   matchingEngine;
-    IKyberStorage           public   kyberStorage;
-    IGasHelper              internal gasHelper;
+    IKyberFeeHandler        internal   feeHandler;
+    IKyberDAO               internal   kyberDAO;
+    IKyberMatchingEngine    internal   matchingEngine;
+    IKyberStorage           internal   kyberStorage;
+    IGasHelper              internal   gasHelper;
 
     NetworkFeeData internal networkFeeData; // data is feeBps and expiry block
     uint internal maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
@@ -63,6 +63,27 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
     function() external payable {
         emit EtherReceival(msg.sender, msg.value);
+    }
+
+
+    function getContracts()
+        external
+        view
+        returns (
+            IKyberFeeHandler memory feeHandlerAddresses,
+            IKyberDAO memory daoAddresses,
+            IKyberMatchingEngine memory matchingEngineAddresses,
+            IKyberStorage memory storageAddress,
+            IKyberNetworkProxy[] memory proxyAddresses
+        )
+    {
+        return (
+            feeHandler,
+            kyberDAO,
+            matchingEngine,
+            kyberStorage,
+            kyberStorage.getKyberProxies()
+        );
     }
 
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -131,7 +152,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         require(matchingEngine.addReserve(reserveId, reserveType));
 
         reserveIdToAddress[reserveId] = reserve;
-        
+
         reserveRebateWallet[reserve] = rebateWallet;
 
         emit AddReserveToNetwork(reserve, reserveId, reserveType, rebateWallet, true);
@@ -149,7 +170,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         onlyOperator();
         bytes32 reserveId = kyberStorage.removeReserve(reserve, startIndex);
         require(matchingEngine.removeReserve(reserveId));
-        
+
         require(reserveIdToAddress[reserveId] == reserve, "reserve and id mismatch");
 
         reserveIdToAddress[reserveId] = address(0);
@@ -405,7 +426,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
         return trade(tData, hint);
     }
-    
+
     function initTradeInput(
         address payable trader,
         IERC20 src,
@@ -710,7 +731,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         internal pure returns(uint destAmount)
     {
         uint totalBps;
-        
+
         for (uint i = 0; i < tradingReserves.addresses.length; i++) {
             if (i > 0 && (uint(tradingReserves.ids[i]) <= uint(tradingReserves.ids[i - 1]))) {
                 return 0; // ids are not in increasing order

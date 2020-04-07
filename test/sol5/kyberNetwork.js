@@ -167,7 +167,7 @@ contract('KyberNetwork', function(accounts) {
                 new BN("12345678901234567890"),
                 new BN("123456789012345678901"),
             ];
-            
+
             const splits = [
                 new BN(1500),
                 new BN(2500),
@@ -191,7 +191,7 @@ contract('KyberNetwork', function(accounts) {
                 new BN("52345678901234567890"),
                 new BN("423456789012345678901"),
             ];
-            
+
             const splits = [
                 new BN(1134),
                 new BN(2785),
@@ -245,11 +245,13 @@ contract('KyberNetwork', function(accounts) {
         it("test added proxies returned in get proxies.", async() => {
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
 
-            let rxProxy = await tempNetwork.getKyberProxies();
+            let contracts = await network.getContracts();
+            let rxProxy = contracts.proxyAddresses;
             Helper.assertEqual(rxProxy[0], proxy1);
 
             await tempNetwork.addKyberProxy(proxy2, {from: admin});
-            rxProxy = await tempNetwork.getKyberProxies();
+            contracts = await network.getContracts();
+            rxProxy = contracts.proxyAddresses;
             Helper.assertEqual(rxProxy[0], proxy1);
             Helper.assertEqual(rxProxy[1], proxy2);
         });
@@ -258,7 +260,8 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
             await tempNetwork.removeKyberProxy(proxy1, {from: admin});
 
-            let rxProxy = await tempNetwork.getKyberProxies();
+            let contracts = await network.getContracts();
+            let rxProxy = contracts.proxyAddresses;
             Helper.assertEqual(rxProxy.length, 0);
 
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
@@ -266,7 +269,8 @@ contract('KyberNetwork', function(accounts) {
 
             await tempNetwork.removeKyberProxy(proxy1, {from: admin});
 
-            rxProxy = await tempNetwork.getKyberProxies();
+            contracts = await network.getContracts();
+            rxProxy = contracts.proxyAddresses;
             Helper.assertEqual(rxProxy[0], proxy2);
         });
 
@@ -304,24 +308,21 @@ contract('KyberNetwork', function(accounts) {
                 newDAO : dao1
             });
             let contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.daoAddresses[0], dao1);
+            Helper.assertEqual(contracts.daoAddress, dao1);
 
             txResult = await tempNetwork.setDAOContract(dao2, {from: admin});
             expectEvent(txResult, 'KyberDAOUpdated', {
                 newDAO : dao2
             });
             contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.daoAddresses[0], dao2);
-            Helper.assertEqual(contracts.daoAddresses[1], dao1);
+            Helper.assertEqual(contracts.daoAddress, dao2);
 
             txResult = await tempNetwork.setDAOContract(dao3, {from: admin});
             expectEvent(txResult, 'KyberDAOUpdated', {
                 newDAO : dao3
             });
             contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.daoAddresses[0], dao3);
-            Helper.assertEqual(contracts.daoAddresses[1], dao1);
-            Helper.assertEqual(contracts.daoAddresses[2], dao2);
+            Helper.assertEqual(contracts.daoAddress, dao3);
         });
 
         it("add a few matchingEngine + feeHandler contracts, see event + updated in getter.", async() => {
@@ -341,36 +342,29 @@ contract('KyberNetwork', function(accounts) {
                 newStorage : tempStorage.address
             });
             let contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.feeHandlerAddresses[0], handler1);
-            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine1);
+            Helper.assertEqual(contracts.feeHandlerAddress, handler1);
+            Helper.assertEqual(contracts.matchingEngineAddress, matchingEngine1);
 
             txResult = await tempNetwork.setContracts(handler1, matchingEngine2, storage1, zeroAddress, {from: admin});
             expectEvent(txResult, 'MatchingEngineUpdated', {
                 matchingEngine : matchingEngine2
             });
             contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.feeHandlerAddresses[0], handler1);
-            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine2);
-            Helper.assertEqual(contracts.matchingEngineAddresses[1], matchingEngine1);
+            Helper.assertEqual(contracts.feeHandlerAddress, handler1);
+            Helper.assertEqual(contracts.matchingEngineAddress, matchingEngine2);
 
             txResult = await tempNetwork.setContracts(handler2, matchingEngine2, storage1, zeroAddress, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler : handler2
             });
             contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.feeHandlerAddresses[0], handler2);
-            Helper.assertEqual(contracts.feeHandlerAddresses[1], handler1);
-            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine2);
-            Helper.assertEqual(contracts.matchingEngineAddresses[1], matchingEngine1);
+            Helper.assertEqual(contracts.feeHandlerAddress, handler2);
+            Helper.assertEqual(contracts.matchingEngineAddress, matchingEngine2);
 
             await tempNetwork.setContracts(handler3, matchingEngine3, storage1, zeroAddress, {from: admin});
             contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.feeHandlerAddresses[0], handler3);
-            Helper.assertEqual(contracts.feeHandlerAddresses[1], handler1);
-            Helper.assertEqual(contracts.feeHandlerAddresses[2], handler2);
-            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine3);
-            Helper.assertEqual(contracts.matchingEngineAddresses[1], matchingEngine1);
-            Helper.assertEqual(contracts.matchingEngineAddresses[2], matchingEngine2);
+            Helper.assertEqual(contracts.feeHandlerAddress, handler3);
+            Helper.assertEqual(contracts.matchingEngineAddress, matchingEngine3);
         });
     });
 
@@ -1241,9 +1235,9 @@ contract('KyberNetwork', function(accounts) {
 
         it("test contract addresses for fee handler and DAO", async() => {
             let contracts = await network.getContracts();
-            Helper.assertEqual(contracts.daoAddresses[0], DAO.address)
-            Helper.assertEqual(contracts.feeHandlerAddresses[0], feeHandler.address)
-            Helper.assertEqual(contracts.matchingEngineAddresses[0], matchingEngine.address);
+            Helper.assertEqual(contracts.daoAddress, DAO.address)
+            Helper.assertEqual(contracts.feeHandlerAddress, feeHandler.address)
+            Helper.assertEqual(contracts.matchingEngineAddress, matchingEngine.address);
         });
 
         it("test encode decode network fee data with mock setter getter", async() => {
@@ -1638,7 +1632,8 @@ contract('KyberNetwork', function(accounts) {
 
         it("test can not trade when caller is not proxy", async () => {
             let notAProxy = accounts[9];
-            let proxies = await network.getKyberProxies();
+            let contracts = await network.getContracts();
+            let proxies = contracts.proxyAddresses;
             Helper.assertEqual(proxies.length, 1);
             assert.notEqual(proxies, notAProxy)
 
