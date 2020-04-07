@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
 import "../IGasHelper.sol";
-import "../utils/Withdrawable2.sol";
+import "../utils/WithdrawableNoModifiers.sol";
 
 
 interface IGST2 {
@@ -11,7 +11,7 @@ interface IGST2 {
 }
 
 
-contract GasHelper is IGasHelper, Withdrawable2 {
+contract GasHelper is IGasHelper, WithdrawableNoModifiers {
 
     IGST2 constant GST2 = IGST2(0x0000000000b3F879cb30FE243b4Dfee438691c04);
     uint constant MIN_ACTIVATE_PRICE = 8 * 1000 * 1000 * 1000; // 8 gwei
@@ -19,7 +19,7 @@ contract GasHelper is IGasHelper, Withdrawable2 {
     // todo: consider constant network address
     address kyberNetwork;
 
-    constructor(address _kyberNetwork, address _admin) public Withdrawable2(_admin) {
+    constructor(address _kyberNetwork, address _admin) public WithdrawableNoModifiers(_admin) {
         require(_kyberNetwork != address(0));
         kyberNetwork = _kyberNetwork;
     }

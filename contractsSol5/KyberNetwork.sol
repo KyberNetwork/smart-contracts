@@ -1,6 +1,6 @@
 pragma  solidity 0.5.11;
 
-import "./utils/Withdrawable3.sol";
+import "./utils/WithdrawableNoModifiers.sol";
 import "./utils/Utils4.sol";
 import "./utils/zeppelin/ReentrancyGuard.sol";
 import "./utils/zeppelin/SafeERC20.sol";
@@ -26,7 +26,7 @@ import "./IGasHelper.sol";
 *       - trade.
 */
 
-contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
+contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, ReentrancyGuard {
 
     using SafeERC20 for IERC20;
 
@@ -55,7 +55,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         uint16 feeBps;
     }
 
-    constructor(address _admin) public Withdrawable3(_admin) {
+    constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         updateNetworkFee(block.number, DEFAULT_NETWORK_FEE_BPS);
     }
 

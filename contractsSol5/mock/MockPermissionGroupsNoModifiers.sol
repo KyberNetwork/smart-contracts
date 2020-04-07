@@ -1,13 +1,13 @@
 pragma solidity 0.5.11;
 
-import "../utils/PermissionGroups3.sol";
+import "../utils/PermissionGroupsNoModifiers.sol";
 
 
-contract MockPermission3 is PermissionGroups3 {
+contract MockPermissionGroupsNoModifiers is PermissionGroupsNoModifiers {
     uint256 public rate;
     bool public tradeActive = true;
 
-    constructor() public PermissionGroups3(msg.sender) {}
+    constructor() public PermissionGroupsNoModifiers(msg.sender) {}
 
     function setRate(uint256 newRate) public {
         onlyOperator();
