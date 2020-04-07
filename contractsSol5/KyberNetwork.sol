@@ -673,7 +673,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     {
         uint numReserves = selectedIndexes.length;
 
-        require(numReserves <= tradingReserves.addresses.length, "too big reserve selection");
+        require(numReserves <= tradingReserves.addresses.length, "doMatch: too many reserves");
 
         IKyberReserve[] memory reserveAddresses = new IKyberReserve[](numReserves);
         bytes32[] memory reserveIds = new bytes32[](numReserves);
