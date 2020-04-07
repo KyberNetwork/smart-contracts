@@ -85,7 +85,6 @@ contract MaliciousKyberNetwork is KyberNetwork {
             e2tIds: tData.ethToToken.ids,
             hint: hint
         });
-
         return (destAmount - myFeeWei);
     }
     /* solhint-enable function-max-lines */
