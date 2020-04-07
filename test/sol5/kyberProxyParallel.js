@@ -5,6 +5,7 @@ const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const NetworkProxyV1 = artifacts.require("KyberProxyV1.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const KyberConnector = artifacts.require("KyberNetworkConnector.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const Helper = require("../helper.js");
@@ -29,6 +30,7 @@ let networkFeeBps = new BN(20);
 let admin;
 let networkProxy;
 let networkProxyV1;
+let networkConnector;
 let networkStorage;
 let network;
 let DAO;
@@ -92,6 +94,12 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         // init proxy v1
         networkProxyV1 = await NetworkProxyV1.new(admin);
 
+        // init connector
+        networkConnector = await KyberConnector.new(admin);
+
+        // init storage
+        networkStorage = await KyberStorage.new(admin);
+
         //init matchingEngine
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
@@ -106,7 +114,9 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         await networkProxy.setHintHandler(matchingEngine.address, {from: admin});
 
         // setup proxy v1
-        await networkProxyV1.setKyberNetworkContract(network.address, {from: admin});
+        await networkConnector.setKyberNetwork(network.address, {from: admin});
+        await networkConnector.setKyberProxy(networkProxyV1.address, {from: admin});
+        await networkProxyV1.setKyberNetworkContract(networkConnector.address, {from: admin});
 
         //init tokens
         for (let i = 0; i < numTokens; i++) {
@@ -126,13 +136,14 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
 
         //setup network
         ///////////////
+        //set storage and contracts
+        await network.setContracts(feeHandler.address, matchingEngine.address, networkStorage.address, zeroAddress, {from: admin});
+        await network.addOperator(operator, {from: admin});
+        await network.setDAOContract(DAO.address, {from: admin});
         // add new proxy
         await network.addKyberProxy(networkProxy.address, {from: admin});
         // add proxy v1
-        await network.addKyberProxy(networkProxyV1.address, {from: admin});
-        await network.addOperator(operator, {from: admin});
-        await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
-        await network.setDAOContract(DAO.address, {from: admin});
+        await network.addKyberProxy(networkConnector.address, {from: admin});
 
         //add and list pair for reserve
         await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);

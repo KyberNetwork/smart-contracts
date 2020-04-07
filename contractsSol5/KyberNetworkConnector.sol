@@ -20,8 +20,7 @@ import "./IKyberNetwork.sol";
 
 contract KyberNetworkConnector is
     Withdrawable2,
-    Utils4,
-    ReentrancyGuard
+    Utils4
 {
     using SafeERC20 for IERC20;
 
@@ -73,10 +72,11 @@ contract KyberNetworkConnector is
             // get min of currentBalance and srcAmount and then transfer to network.
             // in case token taking fee to transfer network will cover fee
             uint curentBalance = getBalance(src, address(this));
-            uint sentBalance = srcAmount < curentBalance ? curentBalance : curentBalance;
+            uint sentBalance = srcAmount < curentBalance ? srcAmount : curentBalance;
             src.safeTransferFrom(address(this), address(kyberNetwork), sentBalance);
         }
     }
+
     function tradeWithHint(ERC20 src, uint srcAmount, ERC20 dest, address destAddress, uint maxDestAmount,
         uint minConversionRate, address walletId, bytes calldata hint)
         external payable
