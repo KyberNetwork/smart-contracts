@@ -326,10 +326,10 @@ contract('KyberNetwork', function(accounts) {
 
         it("add a few matchingEngine + feeHandler contracts, see event + updated in getter.", async() => {
             tempStorage2 = await KyberStorage.new(admin);
-            tempMatchingEngine1 = MatchingEngine.new(admin);
-            tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
-            tempStorage2.setNetworkContract(tempNetwork.address, {from: admin});
-            tempMatchingEngine1.setNetworkContract(tempNetwork.address, {from: admin});
+            tempMatchingEngine1 = await MatchingEngine.new(admin);
+            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempStorage2.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempMatchingEngine1.setNetworkContract(tempNetwork.address, {from: admin});
             let txResult = await tempNetwork.setContracts(handler1, matchingEngine1, tempStorage2.address, zeroAddress, {from: admin});
             expectEvent(txResult, 'MatchingEngineUpdated', {
                 matchingEngine : matchingEngine1
@@ -377,8 +377,8 @@ contract('KyberNetwork', function(accounts) {
     describe("test add contract nil address", async function(){
         let tempMatchingEngine;
         let tempStorage;
-        let mockReserve;
-        let gasHelperAdd
+        let gasHelperAdd;
+        
         before("const setup", async function(){
             tempMatchingEngine = await MatchingEngine.new(admin);
             mockReserve = await MockReserve.new();
