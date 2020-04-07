@@ -800,7 +800,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         );
 
         // tokenToEth
-        index = populateRebateWalletList(
+        populateRebateWalletList(
             rebateWallets,
             rebatePercentBps,
             tData.tokenToEth,
