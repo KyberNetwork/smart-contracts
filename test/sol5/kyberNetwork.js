@@ -621,11 +621,11 @@ contract('KyberNetwork', function(accounts) {
         beforeEach("global setup ", async() => {
             tempNetwork = await KyberNetwork.new(admin);
             tempStorage = await KyberStorage.new(admin);
+            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
             tempMatchingEngine = await OtherMatchingEngine.new(admin);
             mockReserve = await MockReserve.new();
 
             await tempNetwork.addOperator(operator, {from: admin});
-            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
             //init feeHandler
@@ -1390,7 +1390,7 @@ contract('KyberNetwork', function(accounts) {
             // init network
             tempNetwork = await KyberNetwork.new(admin);
             tempStorage = await KyberStorage.new(admin);
-            await tempStorage.setNetworkContract(network.address, {from: admin});
+            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
@@ -1631,7 +1631,7 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint),
-                "!network"
+                "network disabled"
             );
             await network.setEnable(true, { from: admin });
         });
