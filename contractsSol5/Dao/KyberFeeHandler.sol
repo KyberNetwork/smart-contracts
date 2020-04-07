@@ -359,7 +359,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             KNC,
             address(uint160(address(this))), // Convert this address into address payable
             MAX_QTY,
-            kyberEthKncRate * 97 / 100,
+            kyberEthKncRate,
             address(0), // platform wallet
             0, // platformFeeBps
             "" // hint
