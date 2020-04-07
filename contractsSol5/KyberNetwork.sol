@@ -47,7 +47,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     mapping(address=>bool) internal kyberProxyContracts;
 
     // mapping reserve ID to address, keeps an array of all previous reserve addresses with this ID
-    mapping(bytes32=>address) public reserveIdToAddress;
+    mapping(bytes32=>address) internal reserveIdToAddress;
     mapping(address=>address) public reserveRebateWallet;
 
     struct NetworkFeeData {
@@ -694,7 +694,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     {
         uint numReserves = selectedIndexes.length;
 
-        require(numReserves <= tradingReserves.addresses.length, "too big reserve selection");
+        require(numReserves <= tradingReserves.addresses.length, "doMatch: too many reserves");
 
         IKyberReserve[] memory reserveAddresses = new IKyberReserve[](numReserves);
         bytes32[] memory reserveIds = new bytes32[](numReserves);

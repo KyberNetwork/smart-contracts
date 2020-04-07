@@ -50,15 +50,11 @@ contract MockNetwork is KyberNetwork {
     // allow set zero contract
     function setContracts(IKyberFeeHandler _feeHandler,
         IKyberMatchingEngine _matchingEngine,
+        IKyberStorage _storage,
         IGasHelper _gasHelper
     )
         external
     {
-        // require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
-        // require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
-
-        require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
-        require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
         if (feeHandler != _feeHandler) {
             feeHandler = _feeHandler;
             emit FeeHandlerUpdated(_feeHandler);
@@ -69,11 +65,14 @@ contract MockNetwork is KyberNetwork {
             emit MatchingEngineUpdated(_matchingEngine);
         }
 
+        if (kyberStorage != _storage) {
+            kyberStorage = _storage;
+            emit KyberStorageUpdated(_storage);
+        }
+
         if ((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
             gasHelper = _gasHelper;
             emit GasHelperUpdated(_gasHelper);
         }
-
-        require(kyberStorage.setContracts(_feeHandler, address(_matchingEngine)));
     }
 }
