@@ -803,20 +803,20 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
     }
 
     function calcTradeSrcAmount(uint srcDecimals, uint destDecimals, uint destAmount, uint[] memory rates,
-        uint[] memory splitsBps, uint[] memory currentSrcAmounts)
+        uint[] memory currentSrcAmounts)
         internal pure returns (uint srcAmount, uint[] memory newSrcAmounts)
     {
-        uint totalSplitRates;
-        for(uint i = 0;i < rates.length; i++) {
-            totalSplitRates += splitsBps[i] * rates[i];
+        uint totalDestAmount;
+        for(uint i = 0;i < currentSrcAmounts.length; i++) {
+            totalDestAmount += currentSrcAmounts[i] * rates[i];
         }
 
         uint destAmountSoFar;
-        newSrcAmounts = new uint[](rates.length);
+        newSrcAmounts = new uint[](currentSrcAmounts.length);
 
-        for (uint i = 0; i < rates.length; i++) {
-            uint destAmountSplit = i == (splitsBps.length - 1) ?
-                (destAmount - destAmountSoFar) : destAmount * splitsBps[i] * rates[i] / totalSplitRates;
+        for (uint i = 0; i < currentSrcAmounts.length; i++) {
+            uint destAmountSplit = i == (currentSrcAmounts.length - 1) ?
+                (destAmount - destAmountSoFar) : destAmount * currentSrcAmounts[i] * rates[i] / totalDestAmount;
             destAmountSoFar += destAmountSplit;
 
             newSrcAmounts[i] = calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
@@ -834,7 +834,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         uint weiAfterFees;
         if (tData.input.dest != ETH_TOKEN_ADDRESS) {
             (weiAfterFees, tData.ethToToken.srcAmounts) = calcTradeSrcAmount(ETH_DECIMALS, tData.ethToToken.decimals, tData.input.maxDestAmount,
-                tData.ethToToken.rates, tData.ethToToken.splitsBps, tData.ethToToken.srcAmounts);
+                tData.ethToToken.rates, tData.ethToToken.srcAmounts);
         } else {
             weiAfterFees = tData.input.maxDestAmount;
         }
@@ -848,7 +848,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
 
         if (tData.input.src != ETH_TOKEN_ADDRESS) {
             (actualSrcAmount, tData.tokenToEth.srcAmounts) = calcTradeSrcAmount(tData.tokenToEth.decimals, ETH_DECIMALS, tData.tradeWei,
-                tData.tokenToEth.rates, tData.tokenToEth.splitsBps, tData.tokenToEth.srcAmounts);
+                tData.tokenToEth.rates, tData.tokenToEth.srcAmounts);
         } else {
             actualSrcAmount = tData.tradeWei;
         }
@@ -966,6 +966,7 @@ contract KyberNetwork is Withdrawable3, Utils4, IKyberNetwork, ReentrancyGuard {
         internal
         returns(bool)
     {
+        amount;
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
             if (destAddress != (address(this))) {
