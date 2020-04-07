@@ -264,14 +264,16 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
     event KyberNetworkSetEnable(bool isEnabled);
 
-    function setEnable(bool _enable) external {
+    function setEnable(bool enable) external {
         onlyAdmin();
-        if (_enable) {
+
+        if (enable) {
             require(feeHandler != IKyberFeeHandler(0), "feeHandler 0");
             require(matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
             require(kyberStorage.isKyberProxyAdded(), "proxy 0");
         }
-        isEnabled = _enable;
+
+        isEnabled = enable;
 
         emit KyberNetworkSetEnable(isEnabled);
     }
