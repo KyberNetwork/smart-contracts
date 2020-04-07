@@ -209,6 +209,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         uint totalRebateBps;
         for (uint i = 0; i < rebateWallets.length; i++) {
             // Internal accounting for rebates per reserve wallet (rebatePerWallet)
+            require(rebateWallets[i] != address(0), "rebate wallet 0");
             rebatePerWallet[rebateWallets[i]] += weiData.rebate * rebateBpsPerWallet[i] / BPS;
             totalRebateBps += rebateBpsPerWallet[i];
         }

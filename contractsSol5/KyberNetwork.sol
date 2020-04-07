@@ -718,7 +718,6 @@ contract KyberNetwork is Withdrawable2, Utils4, IKyberNetwork, ReentrancyGuard {
         for(uint i = 0; i < resList.isFeePaying.length; i++) {
             if (resList.isFeePaying[i]) {
                 rebateWallets[_index] = reserveRebateWallet[address(resList.addresses[i])];
-                require(rebateWallets[_index] != address(0), "reserve not listed");
                 rebatePercentBps[_index] = resList.splitValuesBps[i] * BPS / feePayingReservesBps;
                 _index++;
             }
