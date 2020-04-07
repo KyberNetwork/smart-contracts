@@ -48,7 +48,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
     // mapping reserve ID to address, keeps an array of all previous reserve addresses with this ID
     mapping(bytes32=>address) internal reserveIdToAddress;
-    mapping(address=>address) internal reserveRebateWallet;
+    mapping(address=>address) public reserveRebateWallet;
 
     struct NetworkFeeData {
         uint64 expiryBlock;
