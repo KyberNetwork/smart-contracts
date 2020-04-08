@@ -780,7 +780,7 @@ contract('KyberNetwork', function(accounts) {
                     Helper.assertEqual(actualResult.rateAfterAllFees, zeroBN, "rate with all fees not 0");
                 });
 
-                it(`should return 0 rate (${tradeStr[hintType]}} with zero srcQty, and all reserves return zero rate`, async() => {
+                it(`should return 0 rate (${tradeStr[hintType]}) with zero srcQty, and all reserves return zero rate`, async() => {
                     srcQty = zeroBN;
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
