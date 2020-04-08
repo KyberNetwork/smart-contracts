@@ -72,19 +72,18 @@ contract KyberNetworkConnector is
             // get min of currentBalance and srcAmount and then transfer to network.
             // in case token taking fee to transfer network will cover fee
             uint curentBalance = getBalance(src, address(this));
-            uint sentBalance = srcAmount < curentBalance ? srcAmount : curentBalance;
+            uint sentBalance = minOf(srcAmount, curentBalance);
             src.safeTransferFrom(address(this), address(kyberNetwork), sentBalance);
         }
     }
 
-    function tradeWithHint(ERC20 src, uint srcAmount, ERC20 dest, address destAddress, uint maxDestAmount,
-        uint minConversionRate, address walletId, bytes calldata hint)
-        external payable
-        returns(uint)
+    function tradeWithHint(address trader, ERC20 src, uint srcAmount, ERC20 dest, address destAddress,
+        uint maxDestAmount, uint minConversionRate, address walletId, bytes calldata hint)
+        external payable returns(uint destAmount)
     {
         prepareTrade(src, srcAmount);
         return kyberNetwork.tradeWithHintAndFee.value(msg.value)(
-            msg.sender,
+            address(uint160(trader)),
             src,
             srcAmount,
             dest,

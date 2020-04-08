@@ -99,6 +99,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
 
         // init storage
         networkStorage = await KyberStorage.new(admin);
+        await networkStorage.setNetworkContract(network.address, {from:admin});
 
         //init matchingEngine
         matchingEngine = await MatchingEngine.new(admin);
