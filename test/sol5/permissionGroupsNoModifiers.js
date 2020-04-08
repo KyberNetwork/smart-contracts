@@ -1,5 +1,5 @@
-let MockPermission = artifacts.require("./MockPermissionGroups2.sol");
-let Permission = artifacts.require("./PermissionGroups2.sol");
+let MockPermission = artifacts.require("./MockPermissionGroupsNoModifiers.sol");
+let Permission = artifacts.require("./PermissionGroupsNoModifiers.sol");
 let Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
@@ -16,7 +16,7 @@ let alerter;
 let user;
 
 
-contract('PermissionGroups2', function(accounts) {
+contract('PermissionGroupsNoModifiers', function(accounts) {
     before("init global accounts", async() => {
         // global inits in first test
         user = accounts[0];

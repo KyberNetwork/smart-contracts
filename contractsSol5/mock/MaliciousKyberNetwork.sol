@@ -27,17 +27,16 @@ contract MaliciousKyberNetwork is KyberNetwork {
     {
         tData.networkFeeBps = getAndUpdateNetworkFee();
 
-        // destAmount = printGas("start_tr", 0, Module.NETWORK);
+        
         require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
 
         // amounts excluding fees
-        // destAmount = printGas("start to calc", destAmount, Module.NETWORK);
-        calcRatesAndAmounts(tData.input.src, tData.input.dest, tData.input.srcAmount, tData, hint);
-        // destAmount = printGas("calcRatesAndAmounts", destAmount, Module.NETWORK);
-
-        require(tData.rateOnlyNetworkFee > 0, "0 rate");
-        require(tData.rateOnlyNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(tData.rateOnlyNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
+        uint rateAfterNetworkFee;
+        (destAmount, rateAfterNetworkFee) = calcRatesAndAmounts(tData, hint);
+        
+        require(rateAfterNetworkFee > 0, "0 rate");
+        require(rateAfterNetworkFee < MAX_RATE, "rate > MAX_RATE");
+        require(rateAfterNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
 
         if (gasHelper != IGasHelper(0)) {
             gasHelper.freeGas(tData.input.platformWallet, tData.input.src, tData.input.dest, tData.tradeWei,
@@ -46,9 +45,9 @@ contract MaliciousKyberNetwork is KyberNetwork {
 
         uint actualSrcAmount;
 
-        if (tData.actualDestAmount > tData.input.maxDestAmount) {
+        if (destAmount > tData.input.maxDestAmount) {
             // notice tData passed by reference. and updated
-            tData.actualDestAmount = tData.input.maxDestAmount;
+            destAmount = tData.input.maxDestAmount;
             actualSrcAmount = calcTradeSrcAmountFromDest(tData);
 
             require(handleChange(tData.input.src, tData.input.srcAmount, actualSrcAmount, tData.input.trader));
@@ -70,14 +69,14 @@ contract MaliciousKyberNetwork is KyberNetwork {
                 tData.input.dest,
                 tData.input.destAddress,
                 tData,
-                tData.actualDestAmount));
+                destAmount));
         require(handleFees(tData));
         emit KyberTrade({
             trader: tData.input.trader,
             src: tData.input.src,
             dest: tData.input.dest,
             srcAmount: actualSrcAmount,
-            dstAmount: tData.actualDestAmount,
+            dstAmount: destAmount,
             destAddress: tData.input.destAddress,
             ethWeiValue: tData.tradeWei,
             networkFeeWei: tData.networkFeeWei,
@@ -86,8 +85,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
             e2tIds: tData.ethToToken.ids,
             hint: hint
         });
-
-        return (tData.actualDestAmount - myFeeWei);
+        return (destAmount - myFeeWei);
     }
     /* solhint-enable function-max-lines */
 
@@ -121,7 +119,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
         uint srcAmountSoFar;
 
         for(uint i = 0; i < reservesData.addresses.length; i++) {
-            uint splitAmount = i == (reservesData.splitValuesBps.length - 1) ? (amount - srcAmountSoFar) : reservesData.splitValuesBps[i] * amount / BPS;
+            uint splitAmount = i == (reservesData.splitsBps.length - 1) ? (amount - srcAmountSoFar) : reservesData.splitsBps[i] * amount / BPS;
             srcAmountSoFar += splitAmount;
             callValue = (src == ETH_TOKEN_ADDRESS)? splitAmount : 0;
 

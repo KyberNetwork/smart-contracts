@@ -5,6 +5,7 @@ const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const KyberStorage = artifacts.require("KyberStorage.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const GenerousNetwork = artifacts.require("GenerousKyberNetwork.sol");
 const GenerousNetwork2 = artifacts.require("GenerousKyberNetwork2.sol");
@@ -31,6 +32,7 @@ let admin;
 let alerter;
 let networkProxy;
 let network;
+let storage;
 let DAO;
 let feeHandler;
 let matchingEngine;
@@ -93,6 +95,10 @@ contract('KyberNetworkProxy', function(accounts) {
         rateHelper = await RateHelper.new(admin);
         await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
 
+        //init storage
+        storage = await KyberStorage.new(admin);
+        await storage.setNetworkContract(network.address, {from: admin});
+
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
         await networkProxy.setHintHandler(matchingEngine.address, {from: admin});
@@ -115,9 +121,9 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //setup network
         ///////////////
+        await network.setContracts(feeHandler.address, matchingEngine.address, storage.address, zeroAddress, {from: admin});
         await network.addKyberProxy(networkProxy.address, {from: admin});
         await network.addOperator(operator, {from: admin});
-        await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
         await network.setDAOContract(DAO.address, {from: admin});
 
         //add and list pair for reserve
@@ -344,33 +350,51 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         describe("test getPriceData no fee - different hints.", async() => {
-            it("check for e2t, with fees, no hint.", async() => {
-                let fee = 10;
-                let tokenAdd = tokens[3].address; 
-                let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
-                let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, fee, emptyHint)
-                let proxyRate = await networkProxy.getPriceDataNoFees(ethAddress, tokenAdd, srcQty, emptyHint);
-                Helper.assertEqual(networkRate.rateNoFees, proxyRate, "expected rate network not equal rate proxy");
-            });
-            it("check for t2e, with fees, no hint.", async() => {
-                let fee = 14;
-                let tokenAdd = tokens[0].address; 
-                let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[0])));
-                let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
-                let proxyRate = await networkProxy.getPriceDataNoFees(tokenAdd, ethAddress, srcQty, emptyHint);
-                Helper.assertEqual(networkRate.rateNoFees, proxyRate, "expected rate network not equal rate proxy");     
-            });
-            //TODO: add trade type
+            let tradeType = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE];
+            let typeStr = ['MASK_IN', 'MASK_OUT', 'SPLIT', 'NO HINT'];
+
+            for(let i = 0; i < tradeType.length; i++) {
+                let type = tradeType[i];
+                const numResForTest = getNumReservesForType(type);
+
+                it(`check for t2e, ${typeStr[i]} hint.`, async() => {
+                    let tokenId = i;
+                    let tokenAdd = tokens[tokenId].address;
+                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
+
+                    let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, tokenAdd, ethAddress, srcQty);
+                    let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, 0, hint);
+                    let proxyRate = await networkProxy.getPriceDataNoFees(tokenAdd, ethAddress, srcQty, hint);
+                    Helper.assertEqual(networkRate.rateNoFees, proxyRate, "expected rate network not equal rate proxy");
+                });
+
+                it(`check for e2t, ${typeStr[i]} hint.`, async() => {
+                    let tokenId = i;
+                    let tokenAdd = tokens[tokenId].address;
+                    let srcQty = (new BN(3)).mul((new BN(10)).pow(ethDecimals));
+                    
+                    let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, tokenAdd, ethAddress, srcQty);
+                    let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, 0, hint)
+                    let proxyRate = await networkProxy.getPriceDataNoFees(ethAddress, tokenAdd, srcQty, hint);
+                    Helper.assertEqual(networkRate.rateNoFees, proxyRate, "expected rate network not equal rate proxy");     
+                });
+
+                it(`check for t2t, ${typeStr[i]} hint.`, async() => {
+                    let tokenId = i;
+                    let srcAdd = tokens[tokenId].address;
+                    let destAdd = tokens[(tokenId + 1) % numTokens].address;
+                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
+                    
+                    let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, srcAdd, destAdd, srcQty);
+                    let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, 0, hint)
+                    let proxyRate = await networkProxy.getPriceDataNoFees(srcAdd, destAdd, srcQty, hint);
+                    Helper.assertEqual(networkRate.rateNoFees, proxyRate, "expected rate network not equal rate proxy");     
+                });
+            }
         });
     });
 
     describe("test trades - report gas", async() => {
-        before("    ", async() => {
-            
-        });
-        
-        
-        let PlatformFeeValue = [0, 111];
         let tradeType = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE];
         let typeStr = ['MASK_IN', 'MASK_OUT', 'SPLIT', 'NO HINT'];
 
@@ -391,7 +415,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 
                 await token.transfer(taker, srcQty);
                 await token.approve(networkProxy.address, srcQty, {from: taker});   
-                let rate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, 0, hint);
+                let rate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, hint);
                 
                 let txResult = await networkProxy.tradeWithHintAndFee(tokenAdd, srcQty, ethAddress, taker, 
                     maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker});
@@ -406,7 +430,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 
                 let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, ethAddress, tokenAdd, srcQty);
                 
-                let rate = await networkProxy.getExpectedRateAfterFee(ethAddress, tokenAdd, srcQty, 0, hint);
+                let rate = await networkProxy.getExpectedRateAfterFee(ethAddress, tokenAdd, srcQty, fee, hint);
                 let txResult = await networkProxy.tradeWithHintAndFee(ethAddress, srcQty, tokenAdd, taker, 
                     maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker, value: srcQty});
                 console.log(`e2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
@@ -421,7 +445,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 const numResForTest = getNumReservesForType(type);
                 
                 let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, srcAdd, destAdd, srcQty);
-                let rate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, 0, hint);
+                let rate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, hint);
                 
                 await srcToken.transfer(taker, srcQty);
                 await srcToken.approve(networkProxy.address, srcQty, {from: taker});   
@@ -429,7 +453,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker});
                 console.log(`t2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
             });
-        } // loop trade types
+        }
     });
 
 
@@ -437,14 +461,15 @@ contract('KyberNetworkProxy', function(accounts) {
         //todo: use minRate = network.getRateWithFee and see why its very different then actual calculated rate in proxy
     });
 
-    describe("test trade with token does not return values for its functions", async() => {
+    describe("test trade with tokens that don't return values for its functions", async() => {
         let mockNetwork;
         let mockProxy;
         let mockMatchingEngine;
         let mockRateHelper;
         let mockTokens = [];
         let mockTokenDecimals = [];
-        let feeHandler;
+        let tempFeeHandler;
+        let tempStorage;
         let mockReserveInstances;
 
         // loop trades
@@ -456,7 +481,7 @@ contract('KyberNetworkProxy', function(accounts) {
         let destToken;
         let destDecimals;
 
-        before("Setup contracts with token not return any thing", async() => {
+        before("Setup contracts with tokens with no return values", async() => {    
             //DAO related init.
             let expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
             let mockDAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
@@ -476,6 +501,10 @@ contract('KyberNetworkProxy', function(accounts) {
             mockRateHelper = await RateHelper.new(admin);
             await mockRateHelper.setContracts(mockMatchingEngine.address, mockDAO.address, {from: admin});
 
+            //init storage
+            tempStorage = await KyberStorage.new(admin);
+            await tempStorage.setNetworkContract(mockNetwork.address, {from: admin});
+
             // setup proxy
             await mockProxy.setKyberNetwork(mockNetwork.address, {from: admin});
             await mockProxy.setHintHandler(mockMatchingEngine.address, {from: admin});
@@ -488,18 +517,19 @@ contract('KyberNetworkProxy', function(accounts) {
             }
 
             //init feeHandler
-            mockFeeHandler = await FeeHandler.new(mockDAO.address, mockProxy.address, mockNetwork.address, KNC.address, burnBlockInterval, mockDAO.address);
-
+            tempFeeHandler = await FeeHandler.new(mockDAO.address, mockProxy.address, mockNetwork.address, KNC.address, burnBlockInterval, mockDAO.address);
+            
             // init and setup reserves
             let result = await nwHelper.setupReserves(mockNetwork, mockTokens, 5, 0, 0, 0, accounts, admin, operator);
             mockReserveInstances = result.reserveInstances;
 
             //setup network
             ///////////////
+            await mockNetwork.setContracts(tempFeeHandler.address, mockMatchingEngine.address, tempStorage.address, zeroAddress, {from: admin});
+            
             await mockNetwork.addKyberProxy(mockProxy.address, {from: admin});
             await mockNetwork.addOperator(operator, {from: admin});
 
-            await mockNetwork.setContracts(mockFeeHandler.address, mockMatchingEngine.address, zeroAddress, {from: admin});
             await mockNetwork.setDAOContract(mockDAO.address, {from: admin});
 
             //add and list pair for reserve
@@ -529,7 +559,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
                 await srcToken.transfer(taker, srcQty);
                 await srcToken.approve(mockProxy.address, srcQty, {from: taker});
-                let rate = await mockProxy.getExpectedRateAfterFee(srcToken.address, ethAddress, srcQty, 0, hint);
+                let rate = await mockProxy.getExpectedRateAfterFee(srcToken.address, ethAddress, srcQty, fee, hint);
 
                 let txResult = await mockProxy.tradeWithHintAndFee(
                     srcToken.address,
@@ -560,7 +590,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     srcQty
                 );
 
-                let rate = await mockProxy.getExpectedRateAfterFee(ethAddress, destToken.address, srcQty, 0, hint);
+                let rate = await mockProxy.getExpectedRateAfterFee(ethAddress, destToken.address, srcQty, fee, hint);
                 let txResult = await mockProxy.tradeWithHintAndFee(
                     ethAddress,
                     srcQty,
@@ -581,7 +611,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 const numResForTest = getNumReservesForType(type);
 
                 let hint = await nwHelper.getHint(mockRateHelper, mockMatchingEngine, mockReserveInstances, type, numResForTest, srcToken.address, destToken.address, srcQty);
-                let rate = await mockProxy.getExpectedRateAfterFee(srcToken.address, destToken.address, srcQty, 0, hint);
+                let rate = await mockProxy.getExpectedRateAfterFee(srcToken.address, destToken.address, srcQty, fee, hint);
 
                 await srcToken.transfer(taker, srcQty);
                 await srcToken.approve(mockProxy.address, srcQty, {from: taker});
@@ -647,7 +677,7 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         it("ExecuteTrade", async () => {
-            let srcToken = tokens[1]
+            let srcToken = tokens[1];
             let srcAmount = new BN(2).mul(new BN(10).pow(new BN(tokenDecimals[1])));
             let destAddress = accounts[7];
             let initialBalance = await Helper.getBalancePromise(destAddress);
@@ -762,17 +792,17 @@ contract('KyberNetworkProxy', function(accounts) {
         before("init 'generous' network and 'malicious' network", async () => {
             // set up generousNetwork
             generousNetwork = await GenerousNetwork.new(admin);
-            await nwHelper.setupNetwork(generousNetwork, networkProxy.address, KNC.address, DAO.address, tokens, accounts, admin, operator);
+            await nwHelper.setupNetwork(generousNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
             let result = await nwHelper.setupReserves(generousNetwork, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToNetwork(generousNetwork, result.reserveInstances, tokens, operator);
             // set up maliciousNetwork
             maliciousNetwork = await MaliciousNetwork.new(admin);
-            await nwHelper.setupNetwork(maliciousNetwork, networkProxy.address, KNC.address, DAO.address, tokens, accounts, admin, operator);
+            await nwHelper.setupNetwork(maliciousNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
             result = await nwHelper.setupReserves(maliciousNetwork, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToNetwork(maliciousNetwork, result.reserveInstances, tokens, operator);
             // set up generousNetwork2
-            generousNetwork2 =await GenerousNetwork2.new(admin);
-            await nwHelper.setupNetwork(generousNetwork2, networkProxy.address, KNC.address, DAO.address, tokens, accounts, admin, operator);
+            generousNetwork2 = await GenerousNetwork2.new(admin);
+            await nwHelper.setupNetwork(generousNetwork2, networkProxy.address, KNC.address, DAO.address, admin, operator);
             result = await nwHelper.setupReserves(generousNetwork2, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToNetwork(generousNetwork2, result.reserveInstances, tokens, operator);
         });
@@ -898,6 +928,7 @@ contract('KyberNetworkProxy', function(accounts) {
             //get rate
             let rate = await networkProxy.getExpectedRate(srcToken.address, dstToken.address, amountTwei);
             dstQty = Helper.calcDstQty(amountTwei, tokenDecimals[1], tokenDecimals[2], rate.expectedRate);
+            dstQty = dstQty.add(new BN(1));
             await srcToken.transfer(taker, amountTwei);
             await srcToken.approve(networkProxy.address, amountTwei, { from: taker });
             await dstToken.transfer(destAddress, new BN(2200));
@@ -990,23 +1021,12 @@ contract('KyberNetworkProxy', function(accounts) {
     // test 
 })
 
-function getQtyTokensDecimals(srcTokId, destTokId, qtyDecimals, qtyToken) {
-    let srcToken = tokens[srcTokId];
-    let srcDecimals = tokenDecimals[srcTokId];
-    let destToken = tokens[destTokId];
-    let destDecimals = tokens[destTokId];
-    let qty = new BN(qtyToken).mul(new BN(10).pow(new BN(qtyDecimals)));
-
-    return [qty, srcToken, srcDecimals, destToken, destDecimals];
-}
-
 function calcMinRate(rate) {
     let minRate = rate.mul(new BN(999)).div(new BN(1000));
     return minRate;
 }
 
 function getNumReservesForType(type) {
-
     if (type == MASK_OUT_HINTTYPE) return 2;
     if (type == MASK_IN_HINTTYPE) return 3;
     if (type == SPLIT_HINTTYPE) return 3;

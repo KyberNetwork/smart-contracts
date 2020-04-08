@@ -1,6 +1,6 @@
 pragma solidity 0.5.11;
 
-import "./utils/Withdrawable2.sol";
+import "./utils/WithdrawableNoModifiers.sol";
 import "./utils/Utils4.sol";
 import "./utils/zeppelin/SafeERC20.sol";
 import "./IKyberNetwork.sol";
@@ -11,15 +11,15 @@ import "./IKyberHint.sol";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// @title Kyber Network proxy for main contract
-contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawable2, Utils4 {
+contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, WithdrawableNoModifiers, Utils4 {
     using SafeERC20 for IERC20;
 
     IKyberNetwork public kyberNetwork;
     IKyberHint public hintHandler; // hint handler pointer for users.
-    
-    constructor(address _admin) public Withdrawable2(_admin) 
+
+    constructor(address _admin) public WithdrawableNoModifiers(_admin)
         {/*empty body*/}
-    
+
     /// @notice backward compatible API
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade from src to dest token and sends dest token to destAddress
@@ -33,11 +33,11 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     /// @param hint defines which reserves should be used for this trade.
     /// @return amount of actual dest tokens in twei
     function tradeWithHint(ERC20 src, uint srcAmount, ERC20 dest, address destAddress, uint maxDestAmount,
-        uint minConversionRate, address walletId, bytes calldata hint) 
-        external payable 
+        uint minConversionRate, address walletId, bytes calldata hint)
+        external payable
         returns(uint)
     {
-        return doTrade(src, srcAmount, dest, address(uint160(destAddress)), maxDestAmount, minConversionRate, 
+        return doTrade(src, srcAmount, dest, address(uint160(destAddress)), maxDestAmount, minConversionRate,
             address(uint160(walletId)), 0, hint);
     }
 
@@ -157,12 +157,12 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     /// @param dest Destination token
     /// @param srcQty amount of src tokens in twei
     /// @return expectedRate for a trade after deducting network fee. Rate = destQty (twei) / srcQty (twei) * 10 ** 18
-    /// @return worstRate for a trade. Usually expectedRate * 97 / 100. 
+    /// @return worstRate for a trade. Usually expectedRate * 97 / 100.
     ///             Use worstRate value as trade min conversion rate at your own risk.
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) external view
         returns (uint expectedRate, uint worstRate)
     {
-        bytes memory hint;    
+        bytes memory hint;
         ( , expectedRate, ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
         // use simple backward compatible optoin.
         worstRate = expectedRate * 97 / 100;
@@ -175,7 +175,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     /// @param srcQty amount of src tokens in twei
     /// @param customFeeBps part of the trade that will be sent as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
     /// @param hint to define which reserves should be used for a trade.
-    /// @return expectedRate for a trade after deducting network + platform fee. 
+    /// @return expectedRate for a trade after deducting network + platform fee.
     ///             Rate = destQty (twei) / srcQty (twei) * 10 ** 18
     function getExpectedRateAfterFee(IERC20 src, IERC20 dest, uint srcQty, uint customFeeBps, bytes calldata hint) 
         external view
@@ -190,9 +190,9 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
     /// @param dest Destination token
     /// @param srcQty amount of src tokens in twei
     /// @param hint define which reserves should be used for this trade.
-    /// @return expectedRate for a trade without deducting any fees, network or platform fee. 
+    /// @return expectedRate for a trade without deducting any fees, network or platform fee.
     ///             Rate = destQty (twei) / srcQty (twei) * 10 ** 18
-    function getPriceDataNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view 
+    function getPriceDataNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) external view
         returns (uint priceNoFee)
     {
         (priceNoFee, , ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
@@ -225,10 +225,10 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         payable
         returns(uint destAmount)
     {
-        return doTrade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet, 
+        return doTrade(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate, platformWallet,
             platformFeeBps, hint);
     }
-    
+
     struct UserBalance {
         uint srcTok;
         uint destTok;
@@ -247,7 +247,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         address payable platformWallet,
         uint platformFeeBps,
         bytes memory hint
-        ) 
+        )
         internal
         returns(uint)
     {
@@ -265,7 +265,6 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
             platformFeeBps,
             hint
         );
-
         TradeOutcome memory tradeOutcome = calculateTradeOutcome(src, dest, destAddress, platformFeeBps, balanceBefore);
 
         require(tradeOutcome.userDeltaDestToken == reportedDestAmount, "Kyber network returned wrong amount");
@@ -277,25 +276,27 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
 
         return tradeOutcome.userDeltaDestToken;
     }
-    
+
     event KyberNetworkSet(IKyberNetwork newNetwork, IKyberNetwork oldNetwork);
 
-    function setKyberNetwork(IKyberNetwork _kyberNetwork) public onlyAdmin {
+    function setKyberNetwork(IKyberNetwork _kyberNetwork) public {
+        onlyAdmin();
         require(_kyberNetwork != IKyberNetwork(0), "KyberNetwork 0");
         emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
 
         kyberNetwork = _kyberNetwork;
     }
-    
+
     event HintHandlerSet(IKyberHint hintHandler);
 
-    function setHintHandler(IKyberHint _hintHandler) public onlyAdmin {
+    function setHintHandler(IKyberHint _hintHandler) public {
+        onlyAdmin();
         require(_hintHandler != IKyberHint(0), "Hint handler 0");
         emit HintHandlerSet(_hintHandler);
 
         hintHandler = _hintHandler;
     }
-    
+
     function maxGasPrice() public view returns(uint) {
         return kyberNetwork.maxGasPrice();
     }
@@ -309,10 +310,10 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         uint userDeltaDestToken;
         uint actualRate;
     }
-    
-    function prepareTrade(IERC20 src, IERC20 dest, uint srcAmount, address destAddress) 
+
+    function prepareTrade(IERC20 src, IERC20 dest, uint srcAmount, address destAddress)
         internal returns
-        (UserBalance memory balanceBefore) 
+        (UserBalance memory balanceBefore)
     {
         require(src == ETH_TOKEN_ADDRESS || msg.value == 0, "msg.value should be 0");
 
@@ -324,8 +325,8 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         } else {
             src.safeTransferFrom(msg.sender, address(kyberNetwork), srcAmount);
         }
-    } 
-   
+    }
+
     function calculateTradeOutcome (IERC20 src, IERC20 dest,
         address destAddress, uint platformFeeBps, UserBalance memory balanceBefore)
         internal returns(TradeOutcome memory outcome)
@@ -342,11 +343,11 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
 
         outcome.userDeltaSrcToken = balanceBefore.srcTok - srcTokenBalanceAfter;
         outcome.userDeltaDestToken = destTokenBalanceAfter - balanceBefore.destTok;
-        
+
         // what would be the src amount after deducting platformFee
         // not protecting from platform fee
         uint srcTokenAmountAfterDeductingFee = outcome.userDeltaSrcToken * (BPS - platformFeeBps) / BPS;
-        
+
         outcome.actualRate = calcRateFromQty(
             srcTokenAmountAfterDeductingFee,
             outcome.userDeltaDestToken,

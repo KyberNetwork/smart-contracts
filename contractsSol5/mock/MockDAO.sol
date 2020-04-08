@@ -90,4 +90,10 @@ contract MockDAO is IKyberDAO, Utils4 {
         epoch++;
         expiryBlockNumber = block.number + epochPeriod;
     }
+
+    function vote(uint campID, uint option) external {
+        // must implement so it can be deployed.
+        campID;
+        option;
+    }
 }

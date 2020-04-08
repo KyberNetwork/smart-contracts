@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
 
-contract PermissionGroups2 {
+contract PermissionGroupsNoModifiers {
 
     address public admin;
     address public pendingAdmin;
@@ -16,19 +16,16 @@ contract PermissionGroups2 {
         admin = _admin;
     }
 
-    modifier onlyAdmin() {
+    function onlyAdmin() internal view {
         require(msg.sender == admin, "Only admin");
-        _;
     }
 
-    modifier onlyOperator() {
+    function onlyOperator() internal view {
         require(operators[msg.sender], "Only operator");
-        _;
     }
 
-    modifier onlyAlerter() {
+    function onlyAlerter() internal view {
         require(alerters[msg.sender], "Only alerter");
-        _;
     }
 
     function getOperators () external view returns(address[] memory) {
@@ -45,7 +42,8 @@ contract PermissionGroups2 {
      * @dev Allows the current admin to set the pendingAdmin address.
      * @param newAdmin The address to transfer ownership to.
      */
-    function transferAdmin(address newAdmin) public onlyAdmin {
+    function transferAdmin(address newAdmin) public {
+        onlyAdmin();
         require(newAdmin != address(0), "New admin 0");
         emit TransferAdminPending(newAdmin);
         pendingAdmin = newAdmin;
@@ -55,7 +53,8 @@ contract PermissionGroups2 {
      * @dev Allows the current admin to set the admin in one tx. Useful initial deployment.
      * @param newAdmin The address to transfer ownership to.
      */
-    function transferAdminQuickly(address newAdmin) public onlyAdmin {
+    function transferAdminQuickly(address newAdmin) public {
+        onlyAdmin();
         require(newAdmin != address(0), "Admin 0");
         emit TransferAdminPending(newAdmin);
         emit AdminClaimed(newAdmin, admin);
@@ -76,7 +75,8 @@ contract PermissionGroups2 {
 
     event AlerterAdded (address newAlerter, bool isAdd);
 
-    function addAlerter(address newAlerter) public onlyAdmin {
+    function addAlerter(address newAlerter) public {
+        onlyAdmin();
         require(!alerters[newAlerter], "Alerter exists"); // prevent duplicates.
         require(alertersGroup.length < MAX_GROUP_SIZE, "Max alerters");
 
@@ -85,7 +85,8 @@ contract PermissionGroups2 {
         alertersGroup.push(newAlerter);
     }
 
-    function removeAlerter (address alerter) public onlyAdmin {
+    function removeAlerter (address alerter) public {
+        onlyAdmin();
         require(alerters[alerter], "Not alerter");
         alerters[alerter] = false;
 
@@ -101,7 +102,8 @@ contract PermissionGroups2 {
 
     event OperatorAdded(address newOperator, bool isAdd);
 
-    function addOperator(address newOperator) public onlyAdmin {
+    function addOperator(address newOperator) public {
+        onlyAdmin();
         require(!operators[newOperator], "Operator exists"); // prevent duplicates.
         require(operatorsGroup.length < MAX_GROUP_SIZE, "Max operators");
 
@@ -110,7 +112,8 @@ contract PermissionGroups2 {
         operatorsGroup.push(newOperator);
     }
 
-    function removeOperator (address operator) public onlyAdmin {
+    function removeOperator (address operator) public {
+        onlyAdmin();
         require(operators[operator], "Not operator");
         operators[operator] = false;
 

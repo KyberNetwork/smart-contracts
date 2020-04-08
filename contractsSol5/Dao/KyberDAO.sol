@@ -176,7 +176,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @param staker address of staker to reduce reward
     * @param reduceAmount amount voting power to be reduced for each campaign staker has voted at this epoch
     */
-    function handleWithdrawal(address staker, uint reduceAmount) public onlyStakingContract returns(bool) {
+    function handleWithdrawal(address staker, uint reduceAmount) external onlyStakingContract returns(bool) {
         // staking shouldn't call this func with reduce amount = 0
         if (reduceAmount == 0) { return false; }
         uint curEpoch = getCurrentEpochNumber();
@@ -226,9 +226,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     function submitNewCampaign(
         CampaignType campType, uint startBlock, uint endBlock,
         uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
-        uint[] memory options, bytes memory link
+        uint[] calldata options, bytes calldata link
     )
-        public onlyCampaignCreator returns(uint campID)
+        external onlyCampaignCreator returns(uint campID)
     {
         // campaign epoch could be different from current epoch
         // as we allow to create campaign of next epoch as well
@@ -299,7 +299,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @dev only can cancel campaigns that have not started yet
     * @param campID id of the campaign to cancel
     */
-    function cancelCampaign(uint campID) public onlyCampaignCreator {
+    function cancelCampaign(uint campID) external onlyCampaignCreator {
         require(campExists[campID], "cancelCampaign: campID doesn't exist");
 
         Campaign storage camp = campaignData[campID];
@@ -325,7 +325,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                 // remove this camp id out of list
                 campIDs[i] = campIDs[campIDs.length - 1];
                 delete campIDs[campIDs.length - 1];
-                campIDs.length--;
+                campIDs.pop();
                 break;
             }
         }
@@ -341,7 +341,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @param campID id of campaign to vote for
     * @param option id of options to vote for
     */
-    function vote(uint campID, uint option) public returns(bool) {
+    function vote(uint campID, uint option) external {
         require(validateVoteOption(campID, option), "vote: invalid campID or option");
         address staker = msg.sender;
 
@@ -379,7 +379,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @param staker address to claim reward for
     * @param epoch to claim reward
     */
-    function claimReward(address staker, uint epoch) public nonReentrant {
+    function claimReward(address staker, uint epoch) external nonReentrant {
         uint curEpoch = getCurrentEpochNumber();
         require(epoch < curEpoch, "claimReward: only for past epochs");
         require(!hasClaimedReward[staker][epoch], "claimReward: alr claimed");
@@ -464,14 +464,14 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @dev return true if should burn all that reward
     * @param epoch epoch to check for burning reward
     */
-    function shouldBurnRewardForEpoch(uint epoch) public view returns(bool) {
+    function shouldBurnRewardForEpoch(uint epoch) external view returns(bool) {
         uint curEpoch = getCurrentEpochNumber();
         if (epoch >= curEpoch) { return false; }
         return totalEpochPoints[epoch] == 0;
     }
 
     function getCampaignDetails(uint campID)
-        public view
+        external view
         returns(
             CampaignType campType, uint startBlock, uint endBlock, uint totalKNCSupply,
             uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
@@ -490,7 +490,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         options = camp.options;
     }
 
-    function getCampaignVoteCountData(uint campID) public view returns(uint[] memory voteCounts, uint totalVoteCount) {
+    function getCampaignVoteCountData(uint campID) external view returns(uint[] memory voteCounts, uint totalVoteCount) {
         uint[] memory votes = campOptionVotes[campID];
         if (votes.length == 0) {
             return (voteCounts, totalVoteCount);
@@ -565,7 +565,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     /**
     * @dev return latest network fee with expiry block number
     */
-    function getLatestNetworkFeeData() public view returns(uint feeInBps, uint expiryBlockNumber) {
+    function getLatestNetworkFeeData() external view returns(uint feeInBps, uint expiryBlockNumber) {
         uint curEpoch = getCurrentEpochNumber();
         feeInBps = latestNetworkFeeResult;
         // expiryBlockNumber = FIRST_EPOCH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
@@ -614,7 +614,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     // return list campaign ids for epoch, excluding non-existed ones
-    function getListCampIDs(uint epoch) public view returns(uint[] memory campIDs) {
+    function getListCampIDs(uint epoch) external view returns(uint[] memory campIDs) {
         return epochCampaigns[epoch];
     }
 
@@ -622,7 +622,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @dev return latest brr data after decoded so it is easily to check from read contract
     */
     function latestBRRDataDecoded()
-        public view
+        external view
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
     {
         epoch = getCurrentEpochNumber();

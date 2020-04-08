@@ -4,6 +4,7 @@ const Helper = require("../helper.js");
 const Reserve = artifacts.require("KyberReserve.sol");
 const ConversionRates = artifacts.require("ConversionRates.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const KyberStorage = artifacts.require("KyberStorage.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 
@@ -22,6 +23,7 @@ const APR_ID = '0xaa000000';
 const BRIDGE_ID  = '0xbb000000';
 const MOCK_ID  = '0x22000000';
 const FPR_ID = '0xff000000';
+const ZERO_RESERVE_ID = "0x" + "0".repeat(64);
 
 const type_apr = "TYPE_APR";
 const type_MOCK = "TYPE_MOCK";
@@ -40,7 +42,7 @@ const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
 const negligibleRateDiffBps = new BN(10); //0.01%;
 const burnBlockInterval = new BN(30);
 
-module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, 
+module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, ZERO_RESERVE_ID, type_apr, type_fpr, type_MOCK, 
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType};
 
     
@@ -69,7 +71,7 @@ async function setupReserves
             rebateWallet = rebateWallets[i];
         }
 
-        result.reserveInstances[reserve.address] = {
+        result.reserveInstances[reserveId] = {
             'address': reserve.address,
             'instance': reserve,
             'reserveId': reserveId,
@@ -119,7 +121,7 @@ async function setupReserves
             rebateWallet = rebateWallets[i];
         }
 
-        result.reserveInstances[reserve.address] = {
+        result.reserveInstances[reserveId] = {
             'address': reserve.address,
             'instance': reserve,
             'reserveId': reserveId,
@@ -138,14 +140,16 @@ async function setupReserves
 
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
-    (network, networkProxyAddress, KNCAddress, DAOAddress, tokens, accounts, admin, operator){
+    (network, networkProxyAddress, KNCAddress, DAOAddress, admin, operator) {
     await network.addOperator(operator, { from: admin });
     //init matchingEngine, feeHandler
-    let matchingEngine = await MatchingEngine.new(admin);
+    const matchingEngine = await MatchingEngine.new(admin);
+    const storage =  await KyberStorage.new(admin);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
+    await storage.setNetworkContract(network.address, {from: admin});
     await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
     let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
-    await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
+    await network.setContracts(feeHandler.address, matchingEngine.address, storage.address, zeroAddress, { from: admin });
     // set DAO contract
     await network.setDAOContract(DAOAddress, { from: admin });
     // point proxy to network
@@ -305,7 +309,7 @@ module.exports.removeReservesFromNetwork = async function (networkInstance, rese
 
 module.exports.genReserveID = genReserveID; 
 function genReserveID(reserveID, reserveAddress) {
-    return reserveID + reserveAddress.substring(2,10);
+    return reserveID + reserveAddress.substring(2,20) + "0".repeat(38);
 }
 
 
@@ -323,10 +327,11 @@ async function fetchReservesRatesFromNetwork(rateHelper, reserveInstances, token
         reserves = result.buyReserves;
         rates = result.buyRates;
     }
+
     for (i=0; i<reserves.length; i++) {
-        reserveAddress = reserves[i];
+        reserveID = reserves[i];
         //deep copy the object to avoid assign buy and sell rate to the same object
-        reserve = Object.assign({}, reserveInstances[reserveAddress]);
+        reserve = Object.assign({}, reserveInstances[reserveID]);
         reserve.rate = rates[i];
         reservesArray.push(reserve);
     }
@@ -371,6 +376,7 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
         'reservesForFetchRate': [],
         'splits': []
     }
+
     if (tradeType == EMPTY_HINTTYPE) {
         numReserves = reserves.length;
         for (let i=0; i < numReserves; i++) {

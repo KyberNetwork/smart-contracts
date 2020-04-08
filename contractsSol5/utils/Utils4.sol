@@ -1,10 +1,12 @@
 pragma solidity 0.5.11;
 
 import "../IERC20.sol";
-// import "@nomiclabs/buidler/console.sol";
+import "@nomiclabs/buidler/console.sol";
 
 
-/// @title Kyber utils and utils2 contracts
+/// @title Kyber utility file
+/// mostly shared constants and rate calculation helpers
+/// inherited by most of kyber contracts
 contract Utils4 {
 
     IERC20 constant internal ETH_TOKEN_ADDRESS = IERC20(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
@@ -28,6 +30,8 @@ contract Utils4 {
     }
 
     function setDecimals(IERC20 token) internal {
+        if (decimals[address(token)] != 0) return; //already set
+
         if (token == ETH_TOKEN_ADDRESS)
             decimals[address(token)] = ETH_DECIMALS;
         else
