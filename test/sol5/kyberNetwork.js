@@ -160,55 +160,6 @@ contract('KyberNetwork', function(accounts) {
                 zeroAddress, {from: admin});
         })
 
-        it("test value loss due to using BPS values on split", async() => {
-            const srcAmounts = [
-                new BN("123456789012345678"),
-                new BN("1234567890123456789"),
-                new BN("12345678901234567890"),
-                new BN("123456789012345678901"),
-            ];
-
-            const splits = [
-                new BN(1500),
-                new BN(2500),
-                new BN(3201),
-                new BN(BPS - 3201 - 2500 - 1500)
-            ]
-
-            for (let i = 0; i < srcAmounts.length; i++) {
-                let splitsAddup = new BN(0);
-                for (let j = 0; j < splits.length; j++) {
-                    splitsAddup = splitsAddup.add(srcAmounts[i].mul(splits[j]).div(BPS));
-                }
-                console.log("srcAmount - splitAddup for src: " + srcAmounts[i] + " = " + srcAmounts[i].sub(splitsAddup));
-            }
-        })
-
-        it("test value loss due to using BPS values on split", async() => {
-            const srcAmounts = [
-                new BN("523456789012345678"),
-                new BN("5234567890123456789"),
-                new BN("52345678901234567890"),
-                new BN("423456789012345678901"),
-            ];
-
-            const splits = [
-                new BN(1134),
-                new BN(2785),
-                new BN(3435),
-                new BN(236),
-                new BN(BPS - 1134 - 2785 - 3435 - 236)
-            ]
-
-            for (let i = 0; i < srcAmounts.length; i++) {
-                let splitsAddup = new BN(0);
-                for (let j = 0; j < splits.length; j++) {
-                    splitsAddup = splitsAddup.add(srcAmounts[i].mul(splits[j]).div(BPS));
-                }
-                console.log("srcAmount - splitAddup for src: " + srcAmounts[i] + " = " + srcAmounts[i].sub(splitsAddup));
-            }
-        })
-
         it("test can add max two proxies", async() => {
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
             await tempNetwork.addKyberProxy(proxy2, {from: admin});
@@ -245,7 +196,7 @@ contract('KyberNetwork', function(accounts) {
         it("test added proxies returned in get proxies.", async() => {
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
 
-            let contracts = await network.getContracts();
+            let contracts = await tempNetwork.getContracts();
             let rxProxy = contracts.proxyAddresses;
             Helper.assertEqual(rxProxy[0], proxy1);
 
@@ -260,7 +211,7 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
             await tempNetwork.removeKyberProxy(proxy1, {from: admin});
 
-            let contracts = await network.getContracts();
+            let contracts = await tempNetwork.getContracts();
             let rxProxy = contracts.proxyAddresses;
             Helper.assertEqual(rxProxy.length, 0);
 
@@ -331,7 +282,8 @@ contract('KyberNetwork', function(accounts) {
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
             await tempStorage2.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine1.setNetworkContract(tempNetwork.address, {from: admin});
-            let txResult = await tempNetwork.setContracts(handler1, matchingEngine1, tempStorage2.address, zeroAddress, {from: admin});
+            let txResult = await tempNetwork.setContracts(handler1, tempMatchingEngine1.address, tempStorage2.address,
+                zeroAddress, {from: admin});
             expectEvent(txResult, 'MatchingEngineUpdated', {
                 matchingEngine : matchingEngine1
             });
@@ -1941,6 +1893,57 @@ contract('KyberNetwork', function(accounts) {
             );
         });
     });
+
+    describe("misc - tests related to network logic", async() => {
+         it("test value loss due to using BPS values on split", async() => {
+            const srcAmounts = [
+                new BN("123456789012345678"),
+                new BN("1234567890123456789"),
+                new BN("12345678901234567890"),
+                new BN("123456789012345678901"),
+            ];
+
+            const splits = [
+                new BN(1500),
+                new BN(2500),
+                new BN(3201),
+                new BN(BPS - 3201 - 2500 - 1500)
+            ]
+
+            for (let i = 0; i < srcAmounts.length; i++) {
+                let splitsAddup = new BN(0);
+                for (let j = 0; j < splits.length; j++) {
+                    splitsAddup = splitsAddup.add(srcAmounts[i].mul(splits[j]).div(BPS));
+                }
+                // console.log("srcAmount - splitAddup for src: " + srcAmounts[i] + " = " + srcAmounts[i].sub(splitsAddup));
+            }
+        })
+
+        it("test value loss due to using BPS values on split", async() => {
+            const srcAmounts = [
+                new BN("523456789012345678"),
+                new BN("5234567890123456789"),
+                new BN("52345678901234567890"),
+                new BN("423456789012345678901"),
+            ];
+
+            const splits = [
+                new BN(1134),
+                new BN(2785),
+                new BN(3435),
+                new BN(236),
+                new BN(BPS - 1134 - 2785 - 3435 - 236)
+            ]
+
+            for (let i = 0; i < srcAmounts.length; i++) {
+                let splitsAddup = new BN(0);
+                for (let j = 0; j < splits.length; j++) {
+                    splitsAddup = splitsAddup.add(srcAmounts[i].mul(splits[j]).div(BPS));
+                }
+                // console.log("srcAmount - splitAddup for src: " + srcAmounts[i] + " = " + srcAmounts[i].sub(splitsAddup));
+            }
+        })
+    })
 });
 
 //returns random integer between min (inclusive) and max (inclusive)
