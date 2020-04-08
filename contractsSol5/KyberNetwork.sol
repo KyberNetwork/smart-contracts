@@ -600,7 +600,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         TradingReserves memory tradingReserves,
         bytes memory hint
     )
-        internal view returns (uint destAmout)
+        internal view returns (uint destAmount)
     {
         if (src == dest) {
             return srcAmount;
@@ -640,7 +640,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         }
 
         // calculate dest amount and fee paying data of this part (t2e or e2t)
-        destAmout = validateTradeCalcDestQtyAndFeeData(src, tradingReserves, tData);
+        destAmount = validateTradeCalcDestQtyAndFeeData(src, tradingReserves, tData);
     }
 
     /// @dev calculates source amounts per reserve. does get rate call.
@@ -828,27 +828,27 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         return _index;
     }
 
-    function calcTradeSrcAmount(uint srcDecimals, uint destDecimals, uint destAmount, uint[] memory rates,
-        uint[] memory currentSrcAmounts)
-        internal pure returns (uint srcAmount, uint[] memory newSrcAmounts)
+    function calcTradeSrcAmount(uint srcDecimals, uint destDecimals, uint destAmount, TradingReserves memory tradingReserves)
+        internal pure returns (uint srcAmount)
     {
-        uint totalDestAmount;
-        for(uint i = 0;i < currentSrcAmounts.length; i++) {
-            totalDestAmount += currentSrcAmounts[i] * rates[i];
+        uint totalWeightedDestAmount;
+        for (uint i = 0; i < tradingReserves.srcAmounts.length; i++) {
+            totalWeightedDestAmount += tradingReserves.srcAmounts[i] * tradingReserves.rates[i];
         }
 
         uint destAmountSoFar;
-        newSrcAmounts = new uint[](currentSrcAmounts.length);
-
-        for (uint i = 0; i < currentSrcAmounts.length; i++) {
-            uint destAmountSplit = i == (currentSrcAmounts.length - 1) ?
-                (destAmount - destAmountSoFar) : destAmount * currentSrcAmounts[i] * rates[i] / totalDestAmount;
+        for (uint i = 0; i < tradingReserves.srcAmounts.length; i++) {
+            uint currentSrcAmt = tradingReserves.srcAmounts[i];
+            uint destAmountSplit = i == (tradingReserves.srcAmounts.length - 1) ?
+                (destAmount - destAmountSoFar) :
+                destAmount * currentSrcAmt * tradingReserves.rates[i] / totalWeightedDestAmount;
             destAmountSoFar += destAmountSplit;
 
-            newSrcAmounts[i] = calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
-            require(newSrcAmounts[i] <= currentSrcAmounts[i], "new src amount is high");
+            uint newSrcAmt = calcSrcQty(destAmountSplit, srcDecimals, destDecimals, tradingReserves.rates[i]);
+            tradingReserves.srcAmounts[i] = newSrcAmt;
+            require(newSrcAmt <= currentSrcAmt, "new src amount is high");
 
-            srcAmount += newSrcAmounts[i];
+            srcAmount += tradingReserves.srcAmounts[i];
         }
     }
 
@@ -859,8 +859,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     {
         uint weiAfterFees;
         if (tData.input.dest != ETH_TOKEN_ADDRESS) {
-            (weiAfterFees, tData.ethToToken.srcAmounts) = calcTradeSrcAmount(ETH_DECIMALS, tData.ethToToken.decimals, tData.input.maxDestAmount,
-                tData.ethToToken.rates, tData.ethToToken.srcAmounts);
+            weiAfterFees = calcTradeSrcAmount(ETH_DECIMALS, tData.ethToToken.decimals,
+                tData.input.maxDestAmount, tData.ethToToken);
         } else {
             weiAfterFees = tData.input.maxDestAmount;
         }
@@ -873,8 +873,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         tData.platformFeeWei = tData.tradeWei * tData.input.platformFeeBps / BPS;
 
         if (tData.input.src != ETH_TOKEN_ADDRESS) {
-            (actualSrcAmount, tData.tokenToEth.srcAmounts) = calcTradeSrcAmount(tData.tokenToEth.decimals, ETH_DECIMALS, tData.tradeWei,
-                tData.tokenToEth.rates, tData.tokenToEth.srcAmounts);
+            actualSrcAmount = calcTradeSrcAmount(tData.tokenToEth.decimals, ETH_DECIMALS,
+                tData.tradeWei, tData.tokenToEth);
         } else {
             actualSrcAmount = tData.tradeWei;
         }

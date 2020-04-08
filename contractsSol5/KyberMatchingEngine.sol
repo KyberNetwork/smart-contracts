@@ -240,9 +240,9 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         BestReserveInfo memory bestReserve;
         bestReserve.numRelevantReserves = 1; // assume always best reserve will be relevant
 
-        //return zero rate for empty reserve array (unlisted token)?
+        //return empty array for unlisted tokens
         if (rates.length == 0) {
-            reserveIndexes[0] = 0;
+            reserveIndexes = new uint[](0);
             return reserveIndexes;
         }
 
