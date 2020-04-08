@@ -990,8 +990,12 @@ contract('KyberNetwork', function(accounts) {
                 };
             });
 
-            it.only("should emit KyberTrade event for a test T2T split trade", async() => {
+            it("should emit KyberTrade event for a test T2T split trade", async() => {
                 hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
+                expectedResult = await nwHelper.getAndCalcRates(matchingEngine, reserveInstances,
+                    srcToken.address, destToken.address, srcQty,
+                    srcDecimals, destDecimals,
+                    networkFeeBps, platformFeeBps, hint);
 
                 await srcToken.transfer(network.address, srcQty);
                 let txResult = await network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, destToken.address, taker,
@@ -1013,16 +1017,14 @@ contract('KyberNetwork', function(accounts) {
 
                 let actualT2Eids = txResult.logs[3].args.t2eIds;
                 let actualE2Tids = txResult.logs[3].args.e2tIds;
-                console.log(actualT2Eids);
-                console.log(actualE2Tids);
-                // Helper.assertEqual(expectedResult.t2eIds.length, actualT2Eids.length, "T2E id length not equal");
-                // Helper.assertEqual(expectedResult.e2tIds.length, actualE2Tids.length, "E2T id length not equal");
-                // for (let i = 0; i < expectedResult.t2eIds.length; i++) {
-                //     Helper.assertEqual(expectedResult.t2eIds[i], actualT2Eids[i], "T2E id not equal");
-                // }
-                // for (let i = 0; i < expectedResult.e2tIds.length; i++) {
-                //     Helper.assertEqual(expectedResult.e2tIds[i], actualE2Tids[i], "E2T id not equal");
-                // }
+                Helper.assertEqual(expectedResult.t2eIds.length, actualT2Eids.length, "T2E id length not equal");
+                Helper.assertEqual(expectedResult.e2tIds.length, actualE2Tids.length, "E2T id length not equal");
+                for (let i = 0; i < expectedResult.t2eIds.length; i++) {
+                    Helper.assertEqual(expectedResult.t2eIds[i], actualT2Eids[i], "T2E id not equal");
+                }
+                for (let i = 0; i < expectedResult.e2tIds.length; i++) {
+                    Helper.assertEqual(expectedResult.e2tIds[i], actualE2Tids[i], "E2T id not equal");
+                }
             });
 
             for (tradeType of tradeTypesArray) {

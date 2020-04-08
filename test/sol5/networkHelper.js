@@ -515,26 +515,32 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
     srcDecimals, destDecimals,
     networkFeeBps, platformFeeBps, hint) {
 
-    let reserves;
-
     let result = {
+        t2eIds: [],
+        e2tIds: [],
+        t2eSrcAmts: [],
+        e2tSrcAmts: [],
+        t2eDestAmts: [],
+        e2tDestAmts: [],
+        tradeWei: zeroBN,
+        networkFeeWei: zeroBN,
+        platformFeeWei: zeroBN,
+        actualDestAmount: zeroBN,
         rateNoFees: zeroBN,
         rateAfterNetworkFee: zeroBN,
-        rateAfterAllFees: zeroBN
+        rateAfterAllFees: zeroBN,
     };
 
-    let srcAmts = [];
+    let reserves;
     let reserveInstance;
     let blockNum = new BN(await web3.eth.getBlockNumber());
     let rates = [];
     let feeAccountedBps = [];
     let indexes = [];
+    let tmpAmts = [];
     let dstQty;
-    let tradeWei = zeroBN;
-    let totalFeePayingReservesBps = zeroBN;
-    let networkFeeWei;
-    let platformFeeWei;
     let actualDestAmount = zeroBN;
+    let totalFeePayingReservesBps = zeroBN;
 
     if (srcToken != ethAddress) {
         reserves = await matchingEngine.getReserveList(
@@ -545,9 +551,9 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
             );
 
         for (let i = 0; i < reserves.reserveIds.length; i++) {
-            srcAmts[i] = srcQty.mul(reserves.splitValuesBps[i]).div(BPS);
+            result.t2eSrcAmts[i] = srcQty.mul(reserves.splitValuesBps[i]).div(BPS);
             reserveInstance = reserveInstances[reserves.reserveIds[i]].instance;
-            rates[i] = await reserveInstance.getConversionRate(srcToken, ethAddress, srcAmts[i], blockNum);
+            rates[i] = await reserveInstance.getConversionRate(srcToken, ethAddress, result.t2eSrcAmts[i], blockNum);
             if (reserves.isFeeAccounted[i]) {
                 feeAccountedBps.push(networkFeeBps);
             } else {
@@ -563,30 +569,34 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
             indexes = await matchingEngine.doMatch(
                 srcToken,
                 ethAddress,
-                srcAmts,
+                result.t2eSrcAmts,
                 feeAccountedBps,
                 rates
             );
         }
 
         for (let i = 0; i < indexes.length; i++) {
-            dstQty = Helper.calcDstQty(srcAmts[indexes[i]], srcDecimals, ethDecimals, rates[indexes[i]]);
-            tradeWei = tradeWei.add(dstQty);
+            result.t2eIds.push(reserves.reserveIds[indexes[i]]);
+            tmpAmts.push(result.t2eSrcAmts[indexes[i]]);
+            dstQty = Helper.calcDstQty(result.t2eSrcAmts[indexes[i]], srcDecimals, ethDecimals, rates[indexes[i]]);
+            result.t2eDestAmts.push(dstQty);
+            result.tradeWei = result.tradeWei.add(dstQty);
             if(reserves.isFeeAccounted[indexes[i]]) {
                 totalFeePayingReservesBps = totalFeePayingReservesBps.add(reserves.splitValuesBps[i]);
             }
         };
+        result.t2eSrcAmts = tmpAmts;
     } else {
-        tradeWei = srcQty;
+        result.tradeWei = srcQty;
     }
 
-    if (tradeWei.eq(zeroBN)) return result;
-    networkFeeWei = tradeWei.mul(networkFeeBps).div(BPS).mul(totalFeePayingReservesBps).div(BPS);
-    platformFeeWei = tradeWei.mul(platformFeeBps).div(BPS);
-    let actualSrcWei = tradeWei.sub(networkFeeWei).sub(platformFeeWei);
+    if (result.tradeWei.eq(zeroBN)) return result;
+    result.networkFeeWei = result.tradeWei.mul(networkFeeBps).div(BPS).mul(totalFeePayingReservesBps).div(BPS);
+    result.platformFeeWei = result.tradeWei.mul(platformFeeBps).div(BPS);
+    let actualSrcWei = result.tradeWei.sub(result.networkFeeWei).sub(result.platformFeeWei);
 
     if (destToken != ethAddress) {
-        srcAmts = [];
+        tmpAmts = [];
         rates = [];
         feeAccountedBps = [];
         indexes = [];
@@ -600,14 +610,14 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
 
         for (let i = 0; i < reserves.reserveIds.length; i++) {
             if (reserves.isFeeAccounted[i]) {
-                srcAmts[i] = actualSrcWei.sub((tradeWei.mul(networkFeeBps).div(BPS)));
+                result.e2tSrcAmts[i] = actualSrcWei.sub((result.tradeWei.mul(networkFeeBps).div(BPS)));
             } else {
-                srcAmts[i] = actualSrcWei;
+                result.e2tSrcAmts[i] = actualSrcWei;
             }
 
-            srcAmts[i] = srcAmts[i].mul(reserves.splitValuesBps[i]).div(BPS);
+            result.e2tSrcAmts[i] = result.e2tSrcAmts[i].mul(reserves.splitValuesBps[i]).div(BPS);
             reserveInstance = reserveInstances[reserves.reserveIds[i]].instance;
-            rates[i] = await reserveInstance.getConversionRate(ethAddress, destToken, srcAmts[i], blockNum);
+            rates[i] = await reserveInstance.getConversionRate(ethAddress, destToken, result.e2tSrcAmts[i], blockNum);
             feeAccountedBps.push(zeroBN);
         }
 
@@ -619,30 +629,35 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
             indexes = await matchingEngine.doMatch(
                 ethAddress,
                 destToken,
-                srcAmts,
+                result.e2tSrcAmts[i],
                 feeAccountedBps,
                 rates
             );
         }
 
         for (let i = 0; i < indexes.length; i++) {
-            dstQty = Helper.calcDstQty(srcAmts[indexes[i]], ethDecimals, destDecimals, rates[indexes[i]]);
-            actualDestAmount = actualDestAmount.add(dstQty);
+            result.e2tIds.push(reserves.reserveIds[indexes[i]]);
+            tmpAmts.push(result.e2tSrcAmts[indexes[i]]);
+            dstQty = Helper.calcDstQty(result.e2tSrcAmts[indexes[i]], ethDecimals, destDecimals, rates[indexes[i]]);
+            result.e2tDestAmts.push(dstQty);
+            result.actualDestAmount = result.actualDestAmount.add(dstQty);
             if(reserves.isFeeAccounted[indexes[i]]) {
                 totalFeePayingReservesBps = totalFeePayingReservesBps.add(reserves.splitValuesBps[i]);
             }
         }
+        result.e2tSrcAmts = tmpAmts;
     } else {
-        actualDestAmount = actualSrcWei;
+        result.actualDestAmount = actualSrcWei;
     }
 
-    if (actualDestAmount.eq(zeroBN)) return result;
-    networkFeeWei = tradeWei.mul(networkFeeBps).div(BPS).mul(totalFeePayingReservesBps).div(BPS);
-    actualSrcWei = tradeWei.sub(networkFeeWei).sub(platformFeeWei);
+    if (result.actualDestAmount.eq(zeroBN)) return result;
+    result.networkFeeWei = result.tradeWei.mul(networkFeeBps).div(BPS).mul(totalFeePayingReservesBps).div(BPS);
+    result.platformFeeWei = result.tradeWei.mul(platformFeeBps).div(BPS);
+    actualSrcWei = result.tradeWei.sub(result.networkFeeWei).sub(result.platformFeeWei);
 
-    let e2tRate = Helper.calcRateFromQty(actualSrcWei, actualDestAmount, ethDecimals, destDecimals);
-    destAmountWithNetworkFee = Helper.calcDstQty(tradeWei.sub(networkFeeWei), ethDecimals, destDecimals, e2tRate);
-    destAmountWithoutFees = Helper.calcDstQty(tradeWei, ethDecimals, destDecimals, e2tRate);
+    let e2tRate = Helper.calcRateFromQty(actualSrcWei, result.actualDestAmount, ethDecimals, destDecimals);
+    destAmountWithNetworkFee = Helper.calcDstQty(result.tradeWei.sub(result.networkFeeWei), ethDecimals, destDecimals, e2tRate);
+    destAmountWithoutFees = Helper.calcDstQty(result.tradeWei, ethDecimals, destDecimals, e2tRate);
 
     result.rateNoFees = Helper.calcRateFromQty(srcQty, destAmountWithoutFees, srcDecimals, destDecimals);
     result.rateAfterNetworkFee = Helper.calcRateFromQty(srcQty, destAmountWithNetworkFee, srcDecimals, destDecimals);
