@@ -187,30 +187,31 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         // handle platform fee
         feePerPlatformWallet[platformWallet] += platformFeeWei;
 
-        uint feeBRR = msg.value - platformFeeWei;
+        uint feeBRRWei = msg.value - platformFeeWei;
 
-        if (feeBRR == 0) {
+        if (feeBRRWei == 0) {
             // only platform fee paid
             totalPayoutBalance += platformFeeWei;
             emit FeeDistributed(platformWallet, platformFeeWei, 0, 0, rebateWallets, rebateBpsPerWallet, 0);
             return true;
         }
 
-        // Decoding BRR data
-        (uint rewardWei, uint rebateWei, uint epoch) = getRRWeiValues(feeBRR);
+        uint rebateWei;
+        uint rewardWei;
+        uint epoch;
 
-        for (uint i = 0; i < rebateWallets.length; i++) {
-            // Internal accounting for rebates per reserve wallet (rebatePerWallet)
-            rebatePerWallet[rebateWallets[i]] += rebateWei * rebateBpsPerWallet[i] / BPS;
-        }
+        // Decoding BRR data
+        (rewardWei, rebateWei, epoch) = getRRWeiValues(feeBRRWei);
+
+        rebateWei = updateRebateValues(rebateWei, rebateWallets, rebateBpsPerWallet);
 
         rewardsPerEpoch[epoch] += rewardWei;
 
         // update balance for rewards, rebates, fee
         totalPayoutBalance += (platformFeeWei + rewardWei + rebateWei);
 
-        emit FeeDistributed(platformWallet, platformFeeWei, rewardWei, rebateWei, rebateWallets, rebateBpsPerWallet,
-            (feeBRR - rewardWei - rebateWei));
+        emit FeeDistributed(platformWallet, platformFeeWei, rewardWei, rebateWei, rebateWallets, 
+            rebateBpsPerWallet, (feeBRRWei - rewardWei - rebateWei));
 
         return true;
     }
@@ -358,7 +359,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             KNC,
             address(uint160(address(this))), // Convert this address into address payable
             MAX_QTY,
-            kyberEthKncRate * 97 / 100,
+            kyberEthKncRate,
             address(0), // platform wallet
             0, // platformFeeBps
             "" // hint
@@ -474,5 +475,26 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         require(rateEthToKnc * BPS >= sanityEthToKncRate * (BPS - SANITY_RATE_DIFF_BPS), "Kyber Eth To KNC rate too low");
 
         return true;
+    }
+
+    function updateRebateValues(uint rebateWei, address[] memory rebateWallets, uint[] memory rebateBpsPerWallet) 
+        internal returns (uint totalRebatePaidWei) 
+    {
+
+        uint totalRebateBps;
+        uint walletRebateWei;
+
+        for (uint i = 0; i < rebateWallets.length; i++) {
+            require(rebateWallets[i] != address(0), "rebate wallet address 0");
+
+            walletRebateWei = rebateWei * rebateBpsPerWallet[i] / BPS;
+            rebatePerWallet[rebateWallets[i]] += walletRebateWei;
+
+            // a few wei could be left out due to rounding down. so count only paid wei
+            totalRebatePaidWei += walletRebateWei;
+            totalRebateBps += rebateBpsPerWallet[i];
+        }
+
+        require(totalRebateBps <= BPS, "Rebates more then 100%");
     }
 }
