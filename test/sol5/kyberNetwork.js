@@ -621,7 +621,7 @@ contract('KyberNetwork', function(accounts) {
         it("remove reserve revert", async function(){
             await expectRevert(
                 tempNetwork.removeReserve(ethAddress, 0, {from: operator}),
-                "reserve ?"
+                "reserve not found"
             )
         });
 
@@ -1613,6 +1613,8 @@ contract('KyberNetwork', function(accounts) {
     });
 
     describe("test verifying trade inputs", async () => {
+        let platformFee = 79;
+        
         before("initialise network", async () => {
             // init network
             network = await KyberNetwork.new(admin);
