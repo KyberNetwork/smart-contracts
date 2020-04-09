@@ -34,12 +34,12 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     { /* empty body */ }
 
     function onlyNetwork() internal view {
-        require(msg.sender == address(networkContract), "Only network");
+        require(msg.sender == address(networkContract), "only network");
     }
 
     function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool) {
         onlyNetwork();
-        require(_negligibleRateDiffBps <= BPS, "rateDiffBps > BPS"); // at most 100%
+        require(_negligibleRateDiffBps <= BPS, "rateDiffBps exceed BPS"); // at most 100%
         negligibleRateDiffBps = _negligibleRateDiffBps;
         return true;
     }
@@ -62,8 +62,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
     function addReserve(bytes32 reserveId, ReserveType resType) external returns (bool) {
         onlyNetwork();
-        require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
-        require(feePayingPerType != 0xffffffff, "Fee paying not set");
+        require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad reserve type");
+        require(feePayingPerType != 0xffffffff, "fee paying data not set");
 
         reserveType[reserveId] = uint(resType);
         return true;
@@ -107,7 +107,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         isFeePaying = (feePayingPerType & (1 << reserveType[reserveId])) > 0;
     }
 
-    function getReserveList(IERC20 src, IERC20 dest, bool isTokenToToken, bytes calldata hint)
+    function getTradingReserves(IERC20 src, IERC20 dest, bool isTokenToToken, bytes calldata hint)
         external
         view
         returns (
@@ -189,7 +189,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     function maskOutReserves(bytes32[] memory allReservesPerToken, bytes32[] memory maskedOutReserves)
         internal pure returns (bytes32[] memory filteredReserves)
     {
-        require(allReservesPerToken.length >= maskedOutReserves.length, "MASK_OUT_TOO_LONG");
+        require(allReservesPerToken.length >= maskedOutReserves.length, "mask out exceeds available reserves");
         filteredReserves = new bytes32[](allReservesPerToken.length - maskedOutReserves.length);
         uint currentResultIndex = 0;
 

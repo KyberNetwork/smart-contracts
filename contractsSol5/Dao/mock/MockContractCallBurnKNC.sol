@@ -3,7 +3,7 @@ pragma solidity 0.5.11;
 import "../KyberFeeHandler.sol";
 
 
-contract MockContractCallBurnKNC {
+contract MockContractCallBurnKnc {
 
     KyberFeeHandler public feeHandler;
 
@@ -11,7 +11,7 @@ contract MockContractCallBurnKNC {
         feeHandler = _feeHandler;
     }
 
-    function callBurnKNC() public {
-        feeHandler.burnKNC();
+    function callBurnKnc() public {
+        feeHandler.burnKnc();
     }
 }

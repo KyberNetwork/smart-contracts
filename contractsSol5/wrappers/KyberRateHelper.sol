@@ -21,8 +21,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
 
     function setContracts(IKyberMatchingEngine _matchingEngine, IKyberDAO _kyberDAO) public {
         onlyAdmin();
-        require(_matchingEngine != IKyberMatchingEngine(0), "missing addr");
-        require(_kyberDAO != IKyberDAO(0), "missing addr");
+        require(_matchingEngine != IKyberMatchingEngine(0), "matching engine 0");
+        require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
 
         if (matchingEngine != _matchingEngine) {
             matchingEngine = _matchingEngine;
@@ -75,7 +75,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         address reserve;
 
         A.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
-        (buyReserves, ,isFeeAccounted, ) = matchingEngine.getReserveList(ETH_TOKEN_ADDRESS, token, false, "");
+        (buyReserves, ,isFeeAccounted, ) = matchingEngine.getTradingReserves(ETH_TOKEN_ADDRESS, token, false, "");
         buyRates = new uint[](buyReserves.length);
 
         for (uint i = 0; i < buyReserves.length; i++) {
@@ -102,7 +102,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         address reserve;
 
         A.srcAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
-        (sellReserves, ,isFeeAccounted, ) = matchingEngine.getReserveList(token, ETH_TOKEN_ADDRESS, false, "");
+        (sellReserves, ,isFeeAccounted, ) = matchingEngine.getTradingReserves(token, ETH_TOKEN_ADDRESS, false, "");
         sellRates = new uint[](sellReserves.length);
 
         for (uint i = 0; i < sellReserves.length; i++) {

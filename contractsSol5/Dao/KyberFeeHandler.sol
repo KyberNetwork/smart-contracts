@@ -90,7 +90,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     IKyberDAO public kyberDAO;
     IKyberNetworkProxy public networkProxy;
     address public kyberNetwork;
-    IERC20 public KNC;
+    IERC20 public knc;
 
     uint public burnBlockInterval = 15;
     uint public lastBurnBlock;
@@ -120,16 +120,16 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             address _burnConfigSetter
         ) BurnConfigPermission(_burnConfigSetter) public
     {
-        require(address(_daoSetter) != address(0), "FeeHandler: daoSetter 0");
-        require(address(_networkProxy) != address(0), "FeeHandler: KyberNetworkProxy 0");
-        require(address(_kyberNetwork) != address(0), "FeeHandler: KyberNetwork 0");
-        require(address(_knc) != address(0), "FeeHandler: KNC 0");
-        require(_burnBlockInterval != 0, "FeeHandler: _burnBlockInterval 0");
+        require(address(_daoSetter) != address(0), "daoSetter 0");
+        require(address(_networkProxy) != address(0), "KyberNetworkProxy 0");
+        require(address(_kyberNetwork) != address(0), "KyberNetwork 0");
+        require(address(_knc) != address(0), "knc 0");
+        require(_burnBlockInterval != 0, "_burnBlockInterval 0");
 
         daoSetter = _daoSetter;
         networkProxy = _networkProxy;
         kyberNetwork = _kyberNetwork;
-        KNC = _knc;
+        knc = _knc;
         burnBlockInterval = _burnBlockInterval;
 
         //start with epoch 0
@@ -145,7 +145,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     modifier onlyDAO {
         require(
             msg.sender == address(kyberDAO),
-            "Only DAO"
+            "only DAO"
         );
         _;
     }
@@ -153,15 +153,15 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     modifier onlyKyberNetwork {
         require(
             msg.sender == address(kyberNetwork),
-            "Only Kyber"
+            "only Kyber"
         );
         _;
     }
 
-    modifier onlyNoneContract {
+    modifier onlyNonContract {
         require(
             tx.origin == msg.sender,
-            "Only none contract"
+            "only non-contract"
         );
         _;
     }
@@ -232,18 +232,18 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         external onlyDAO returns(bool)
     {
         // Amount of reward to be sent to staker
-        require(percentageInPrecision <= PRECISION, "percentage high");
+        require(percentageInPrecision <= PRECISION, "percentage too high");
         uint amount = rewardsPerEpoch[epoch].mul(percentageInPrecision).div(PRECISION);
 
         // redundant check, but better revert message
-        require(totalPayoutBalance >= amount, "Amount underflow");
-        require(rewardsPaidPerEpoch[epoch].add(amount) <= rewardsPerEpoch[epoch], "paid per epoch high");
+        require(totalPayoutBalance >= amount, "staker reward too high");
+        require(rewardsPaidPerEpoch[epoch].add(amount) <= rewardsPerEpoch[epoch], "reward paid per epoch too high");
         rewardsPaidPerEpoch[epoch] = rewardsPaidPerEpoch[epoch].add(amount);
         totalPayoutBalance = totalPayoutBalance.sub(amount);
 
         // send reward to staker
         (bool success, ) = staker.call.value(amount)("");
-        require(success, "Transfer staker rewards failed.");
+        require(success, "staker rewards transfer failed");
 
         emit RewardPaid(staker, epoch, amount);
 
@@ -261,14 +261,14 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         uint amount = rebatePerWallet[rebateWallet].sub(1);
 
         // redundant check, but better revert message
-        require(totalPayoutBalance >= amount, "amount too high");
+        require(totalPayoutBalance >= amount, "rebate amount too high");
         totalPayoutBalance = totalPayoutBalance.sub(amount);
 
         rebatePerWallet[rebateWallet] = 1; // avoid zero to non zero storage cost
 
         // send rebate to rebate wallet
         (bool success, ) = rebateWallet.call.value(amount)("");
-        require(success, "Transfer rebates failed.");
+        require(success, "rebate transfer failed");
 
         emit RebatePaid(rebateWallet, amount);
 
@@ -282,17 +282,17 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     /// @return amount of fee claimed
     function claimPlatformFee(address platformWallet) external returns(uint feeWei) {
         require(feePerPlatformWallet[platformWallet] > 1, "no fee to claim");
-        // Get total amount of rebate accumulated
+        // Get total amount of fees accumulated
         uint amount = feePerPlatformWallet[platformWallet].sub(1);
 
         // redundant check, but better revert message
-        require(totalPayoutBalance >= amount, "amount too high");
+        require(totalPayoutBalance >= amount, "platform fee amount too high");
         totalPayoutBalance = totalPayoutBalance.sub(amount);
 
         feePerPlatformWallet[platformWallet] = 1; // avoid zero to non zero storage cost
 
         (bool success, ) = platformWallet.call.value(amount)("");
-        require(success, "Transfer fee failed.");
+        require(success, "platform fee transfer failed");
 
         emit PlatformFeePaid(platformWallet, amount);
         return amount;
@@ -303,7 +303,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     /// @dev set dao contract address once and set setter address to zero.
     /// @param _kyberDAO Dao address.
     function setDaoContract(IKyberDAO _kyberDAO) public {
-        require(msg.sender == daoSetter, "Only daoSetter");
+        require(msg.sender == daoSetter, "only daoSetter");
 
         kyberDAO = _kyberDAO;
         emit KyberDaoAddressSet(kyberDAO);
@@ -336,14 +336,14 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         emit BurnConfigSet(_sanityRate, _weiToBurn);
     }
 
-    event KNCBurned(uint KNCTWei, uint amountWei);
+    event KncBurned(uint kncTWei, uint amountWei);
 
     /// @dev Burn knc. Burn amount limited. Forces block delay between burn calls.
     /// @dev only none contract can call this function
     /// @return amount of KNC burned
-    function burnKNC() public onlyNoneContract returns(uint) {
+    function burnKnc() public onlyNonContract returns(uint) {
         // check if current block > last burn block number + num block interval
-        require(block.number > lastBurnBlock + burnBlockInterval, "Wait more block to burn");
+        require(block.number > lastBurnBlock + burnBlockInterval, "wait more blocks to burn");
 
         // update last burn block number
         lastBurnBlock = block.number;
@@ -357,15 +357,15 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         srcQty = srcQty > weiToBurn ? weiToBurn : srcQty;
 
         // Get rate
-        uint kyberEthKncRate = networkProxy.getExpectedRateAfterFee(ETH_TOKEN_ADDRESS, KNC, srcQty, 0, "");
+        uint kyberEthKncRate = networkProxy.getExpectedRateAfterFee(ETH_TOKEN_ADDRESS, knc, srcQty, 0, "");
 
-        require(validateEthToKncRateToBurn(kyberEthKncRate), "Kyber KNC rate invalid");
+        require(validateEthToKncRateToBurn(kyberEthKncRate), "Kyber knc rate invalid");
 
         // Buy some KNC and burn
         uint destQty = networkProxy.tradeWithHintAndFee.value(srcQty)(
             ETH_TOKEN_ADDRESS,
             srcQty,
-            KNC,
+            knc,
             address(uint160(address(this))), // Convert this address into address payable
             MAX_QTY,
             kyberEthKncRate,
@@ -374,9 +374,9 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             "" // hint
         );
 
-        require(IBurnableToken(address(KNC)).burn(destQty), "KNC burn failed");
+        require(IBurnableToken(address(knc)).burn(destQty), "knc burn failed");
 
-        emit KNCBurned(destQty, srcQty);
+        emit KncBurned(destQty, srcQty);
         return destQty;
     }
 
@@ -423,7 +423,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             require(burnBps <= BPS, "burnBps overflow");
             require(rewardBps <= BPS, "rewardBps overflow");
             require(rebateBps <= BPS, "rebateBps overflow");
-            require(burnBps.add(rewardBps).add(rebateBps) == BPS, "Bad BRR values");
+            require(burnBps.add(rewardBps).add(rebateBps) == BPS, "bad BRR values");
             emit BRRUpdated(rewardBps, rebateBps, burnBps, expiryBlock, epoch);
 
             // Update brrAndEpochData
@@ -482,13 +482,13 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         uint sanityEthToKncRate = PRECISION.mul(PRECISION).div(kncToEthRate);
 
         // rate shouldn't be 10% lower than sanity rate
-        require(rateEthToKnc.mul(BPS) >= sanityEthToKncRate.mul(BPS.sub(SANITY_RATE_DIFF_BPS)), "Kyber Eth To KNC rate too low");
+        require(rateEthToKnc.mul(BPS) >= sanityEthToKncRate.mul(BPS.sub(SANITY_RATE_DIFF_BPS)), "Kyber eth to knc rate too low");
 
         return true;
     }
 
-    function updateRebateValues(uint rebateWei, address[] memory rebateWallets, uint[] memory rebateBpsPerWallet) 
-        internal returns (uint totalRebatePaidWei) 
+    function updateRebateValues(uint rebateWei, address[] memory rebateWallets, uint[] memory rebateBpsPerWallet)
+        internal returns (uint totalRebatePaidWei)
     {
 
         uint totalRebateBps;
@@ -505,6 +505,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             totalRebateBps = totalRebateBps.add(rebateBpsPerWallet[i]);
         }
 
-        require(totalRebateBps <= BPS, "Rebates more then 100%");
+        require(totalRebateBps <= BPS, "rebates more then 100%");
     }
 }

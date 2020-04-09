@@ -267,9 +267,9 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         );
         TradeOutcome memory tradeOutcome = calculateTradeOutcome(src, dest, destAddress, platformFeeBps, balanceBefore);
 
-        require(tradeOutcome.userDeltaDestToken == reportedDestAmount, "Kyber network returned wrong amount");
-        require(tradeOutcome.userDeltaDestToken <= maxDestAmount, "Destination amount bigger then max destination amount");
-        require(tradeOutcome.actualRate >= minConversionRate, "rate < minRate");
+        require(tradeOutcome.userDeltaDestToken == reportedDestAmount, "network returned wrong amount");
+        require(tradeOutcome.userDeltaDestToken <= maxDestAmount, "actual dest amount exceeds maxDestAmount");
+        require(tradeOutcome.actualRate >= minConversionRate, "rate below minConversionRate");
 
         emit ExecuteTrade(msg.sender, src, dest, tradeOutcome.userDeltaSrcToken, tradeOutcome.userDeltaDestToken,
             platformWallet, platformFeeBps);
@@ -291,7 +291,7 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
 
     function setHintHandler(IKyberHint _hintHandler) public {
         onlyAdmin();
-        require(_hintHandler != IKyberHint(0), "Hint handler 0");
+        require(_hintHandler != IKyberHint(0), "hintHandler 0");
         emit HintHandlerSet(_hintHandler);
 
         hintHandler = _hintHandler;
@@ -338,8 +338,8 @@ contract KyberNetworkProxy is IKyberNetworkProxy, ISimpleKyberProxy, Withdrawabl
         destTokenBalanceAfter = getBalance(dest, destAddress);
 
         //protect from underflow
-        require(destTokenBalanceAfter > balanceBefore.destTok, "Wrong amount in destination address");
-        require(balanceBefore.srcTok > srcTokenBalanceAfter, "Wrong amount in source address");
+        require(destTokenBalanceAfter > balanceBefore.destTok, "wrong amount in destination address");
+        require(balanceBefore.srcTok > srcTokenBalanceAfter, "wrong amount in source address");
 
         outcome.userDeltaSrcToken = balanceBefore.srcTok - srcTokenBalanceAfter;
         outcome.userDeltaDestToken = destTokenBalanceAfter - balanceBefore.destTok;

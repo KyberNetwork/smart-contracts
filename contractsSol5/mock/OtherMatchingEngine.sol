@@ -11,14 +11,11 @@ contract OtherMatchingEngine is KyberMatchingEngine {
     // return false instead
     function addReserve(bytes32 reserveId, ReserveType resType) external returns (bool) {
         onlyNetwork();
-        if ((resType == ReserveType.NONE) || (uint(resType) >= uint(ReserveType.LAST))) {
-            return false;
-        }
-        if (feePayingPerType == 0xffffffff) {
-            return false;
-        }
+        require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
+        require(feePayingPerType != 0xffffffff, "Fee paying not set");
+
         reserveType[reserveId] = uint(resType);
-        return true;
+        return false;
     }
 
     function removeReserve(bytes32 reserveId) external returns (bool) {

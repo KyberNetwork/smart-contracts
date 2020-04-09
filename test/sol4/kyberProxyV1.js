@@ -321,22 +321,22 @@ contract('KyberProxyV1', function(accounts) {
                 expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(srcToken.address, ethAddress, srcQty);
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for T2E");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for T2E");
 
                 info = [ethSrcQty, networkFeeBps, platformFee];
                 expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for E2T");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for E2T");
 
                 info = [srcQty, networkFeeBps, platformFee];
                 expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(srcToken.address, destToken.address, srcQty);
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for T2T");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for T2T");
             });
 
             it("should get expected rate for T2E, E2T & T2T", async() => {
@@ -345,22 +345,22 @@ contract('KyberProxyV1', function(accounts) {
                 expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, ethDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(srcToken.address, ethAddress, srcQty.add(new BN(2).pow(new BN(255))));
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for T2E");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2E");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for T2E");
 
                 info = [ethSrcQty, networkFeeBps, platformFee];
                 expectedResult = await matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, ethDecimals, destDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(ethAddress, destToken.address, ethSrcQty.add(new BN(2).pow(new BN(255))));
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for E2T");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for E2T");
 
                 info = [srcQty, networkFeeBps, platformFee];
                 expectedResult = await matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, emptyHint);
                 expectedResult = await nwHelper.unpackRatesAndAmounts(info, srcDecimals, destDecimals, expectedResult);
                 actualResult = await networkProxyV1.getExpectedRate(srcToken.address, destToken.address, srcQty.add(new BN(2).pow(new BN(255))));
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
-                Helper.assertEqual(expectedResult.rateAfterNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for T2T");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
+                Helper.assertEqual(expectedResult.rateWithNetworkFee.mul(new BN(97)).div(new BN(100)), actualResult.slippageRate, "slippage rate with network fee != actual rate for T2T");
             });
 
             it("should perform a E2T tradeWithHint (backwards compatible, different hint types) and check balances change as expected", async() => {

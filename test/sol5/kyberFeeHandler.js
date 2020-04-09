@@ -6,7 +6,7 @@ const BadDAO = artifacts.require("MaliciousDAO.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const BurnKncSanityRate = artifacts.require("MockChainLinkSanityRate.sol");
 const BadFeeHandler = artifacts.require("MaliciousFeeHandler.sol");
-const MockContractCallBurnKNC = artifacts.require("MockContractCallBurnKNC.sol");
+const MockContractCallBurnKnc = artifacts.require("MockContractCallBurnKnc.sol");
 const Token = artifacts.require("Token.sol");
 const BadToken = artifacts.require("TestTokenNotReturn.sol");
 const Proxy = artifacts.require("SimpleKyberProxy.sol");
@@ -213,7 +213,7 @@ contract('KyberFeeHandler', function(accounts) {
             });
         });
         
-        it("KNCBurned", async() => {
+        it("KncBurned", async() => {
             let networkFeeBps = new BN(25);
             let sendVal = oneEth.mul(new BN(30));
             let burnPerCall = await feeHandler.weiToBurn();
@@ -228,11 +228,11 @@ contract('KyberFeeHandler', function(accounts) {
                     rebateWallets, rebateBpsPerWallet  
                 );
 
-            let txResult = await feeHandler.burnKNC();
+            let txResult = await feeHandler.burnKnc();
             let expectedEthtoKncRate = (await proxy.getExpectedRate(ethAddress, knc.address, burnPerCall)).expectedRate;
 
-            expectEvent(txResult, "KNCBurned", {
-                KNCTWei: (burnPerCall.sub(burnPerCall.mul(networkFeeBps).div(BPS))).mul(expectedEthtoKncRate).div(precisionUnits),
+            expectEvent(txResult, "KncBurned", {
+                kncTWei: (burnPerCall.sub(burnPerCall.mul(networkFeeBps).div(BPS))).mul(expectedEthtoKncRate).div(precisionUnits),
                 amountWei: burnPerCall
             });
         });
@@ -278,35 +278,35 @@ contract('KyberFeeHandler', function(accounts) {
         it("daoSetter 0", async() => {
             await expectRevert(
                 FeeHandler.new(zeroAddress, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter),
-                "FeeHandler: daoSetter 0"
+                "daoSetter 0"
             );
         });
 
         it("proxy 0", async() => {
             await expectRevert(
                 FeeHandler.new(daoSetter, zeroAddress, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter),
-                "FeeHandler: KyberNetworkProxy 0"
+                "KyberNetworkProxy 0"
             );
         });
 
         it("network 0", async() => {
             await expectRevert(
                 FeeHandler.new(daoSetter, proxy.address, zeroAddress, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter),
-                "FeeHandler: KyberNetwork 0"
+                "KyberNetwork 0"
             );
         });
 
-        it("KNC 0", async() => {
+        it("knc 0", async() => {
             await expectRevert(
                 FeeHandler.new(daoSetter, proxy.address, kyberNetwork, zeroAddress, BURN_BLOCK_INTERVAL, burnConfigSetter),
-                "FeeHandler: KNC 0"
+                "knc 0"
             );
         });
 
         it("burnBlockInterval 0", async() => {
             await expectRevert(
                 FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, zeroBN, burnConfigSetter),
-                "FeeHandler: _burnBlockInterval 0"
+                "_burnBlockInterval 0"
             );
         });
 
@@ -395,7 +395,7 @@ contract('KyberFeeHandler', function(accounts) {
             await badDAO.setMockBRR(zeroBN, zeroBN, zeroBN);
             await expectRevert(
                 feeHandler.getBRR(),
-                "Bad BRR values"
+                "bad BRR values"
             );
         });
 
@@ -453,7 +453,7 @@ contract('KyberFeeHandler', function(accounts) {
             let platformWallet = accounts[1];
             await expectRevert(
                 feeHandler.handleFees([], [], platformWallet, oneEth, {from: user, value: oneEth}),
-                "Only Kyber"
+                "only Kyber"
             );
         });
 
@@ -463,19 +463,15 @@ contract('KyberFeeHandler', function(accounts) {
 
             await expectRevert(
                 feeHandler.claimStakerReward(user, oneEth, currentEpoch, {from: user}),
-                "Only DAO"
+                "only DAO"
             );
         });
 
         it("reverts if non-DAO setter tries to set DAO contract", async() => {
-            feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
-            await expectRevert.unspecified(
-                feeHandler.setDaoContract(mockDAO.address, {from: user})
+            await expectRevert(
+                feeHandler.setDaoContract(mockDAO.address, {from: user}),
+                "only daoSetter"
             );
-            // await expectRevert(
-            //     feeHandler.setDaoContract(mockDAO.address, {from: user}),
-            //     "only DAO setter"
-            // );
         });
     });
 
@@ -636,7 +632,7 @@ contract('KyberFeeHandler', function(accounts) {
     
                 await expectRevert(
                     feeHandler.claimReserveRebate(rebateWallet.address),
-                    "Transfer rebates failed."
+                    "rebate transfer failed"
                 );
             });
 
@@ -652,7 +648,7 @@ contract('KyberFeeHandler', function(accounts) {
                 await feeHandler.setTotalPayoutBalance(zeroBN);
                 await expectRevert(
                     feeHandler.claimReserveRebate(rebateWallets[0]),
-                    "amount too high"
+                    "rebate amount too high"
                 );
             });
         });
@@ -780,7 +776,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await expectRevert(
                     mockDAO.claimStakerReward(user, claim, currentEpoch), // full reward
-                    "paid per epoch high"
+                    "reward paid per epoch too high"
                 );
             });
 
@@ -810,7 +806,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await expectRevert(
                     mockDAO.claimStakerReward(user, claim, currentEpoch), // full reward
-                    "paid per epoch high"
+                    "reward paid per epoch too high"
                 );
             });
 
@@ -826,7 +822,7 @@ contract('KyberFeeHandler', function(accounts) {
                 
                 await expectRevert(
                     mockDAO.claimStakerReward(user, claim, currentEpoch), // full reward
-                    "percentage high"
+                    "percentage too high"
                 );
             });
 
@@ -841,7 +837,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let claim = precisionUnits.div(new BN(3));
                 await expectRevert(
                     mockDAO.claimStakerReward(badUser.address, claim, currentEpoch),
-                    "Transfer staker rewards failed."
+                    "staker rewards transfer failed"
                 );
             });
 
@@ -864,7 +860,7 @@ contract('KyberFeeHandler', function(accounts) {
                 await feeHandler.setDaoContract(user, {from: daoSetter});
                 await expectRevert(
                     feeHandler.claimStakerReward(user, claim, currentEpoch, {from: user}),
-                    "Amount underflow"
+                    "staker reward too high"
                 );
             });
         });
@@ -980,7 +976,7 @@ contract('KyberFeeHandler', function(accounts) {
                 
                 await expectRevert(
                     feeHandler.claimPlatformFee(platformWallet.address),
-                    "Transfer fee failed."
+                    "platform fee transfer failed"
                 ); 
             });
 
@@ -997,7 +993,7 @@ contract('KyberFeeHandler', function(accounts) {
                 await feeHandler.setTotalPayoutBalance(zeroBN);
                 await expectRevert(
                     feeHandler.claimPlatformFee(platformWallet),
-                    "amount too high"
+                    "platform fee amount too high"
                 );
             });
         });
@@ -1014,7 +1010,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 let feeHandlerBalance = await Helper.getBalancePromise(feeHandler.address);
 
-                await feeHandler.burnKNC();
+                await feeHandler.burnKnc();
                 let feeHandlerBalanceAfter = await Helper.getBalancePromise(feeHandler.address);
                 let expectedBalanceAfter = feeHandlerBalance.sub(burnPerCall);
 
@@ -1033,7 +1029,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let feeHandlerBalance = await Helper.getBalancePromise(feeHandler.address);
                 const expectedBurn = feeHandlerBalance.sub(totalPayout0);
     
-                await feeHandler.burnKNC();
+                await feeHandler.burnKnc();
                 let feeHandlerBalanceAfter = await Helper.getBalancePromise(feeHandler.address);
                 let expectedBalanceAfter = feeHandlerBalance.sub(expectedBurn);
     
@@ -1060,7 +1056,7 @@ contract('KyberFeeHandler', function(accounts) {
                 // expect to burn only weiToBurn
                 const expectedBurn = newWeiToBurn;
 
-                await feeHandler.burnKNC();
+                await feeHandler.burnKnc();
 
                 let feeHandlerBalanceAfter = await Helper.getBalancePromise(feeHandler.address);
                 let expectedBalanceAfter = feeHandlerBalance.sub(expectedBurn);
@@ -1087,7 +1083,7 @@ contract('KyberFeeHandler', function(accounts) {
                 // expect to burn all
                 const expectedBurn = maxBurn;
 
-                await feeHandler.burnKNC();
+                await feeHandler.burnKnc();
 
                 let feeHandlerBalanceAfter = await Helper.getBalancePromise(feeHandler.address);
                 let expectedBalanceAfter = feeHandlerBalance.sub(expectedBurn);
@@ -1103,7 +1099,7 @@ contract('KyberFeeHandler', function(accounts) {
                         rebateWallets, rebateBpsPerWallet  
                     );
     
-                await feeHandler.burnKNC();
+                await feeHandler.burnKnc();
                 let lastBurnBlock = new BN(await web3.eth.getBlockNumber());
                 let nextBurnBlock = lastBurnBlock.add(blockInterval);
                 // console.log("next burn block " + nextBurnBlock); 
@@ -1111,13 +1107,13 @@ contract('KyberFeeHandler', function(accounts) {
                 let currentBlock = await web3.eth.getBlockNumber();
                 while (nextBurnBlock > currentBlock) {
                     await expectRevert(
-                        feeHandler.burnKNC(),
-                        "Wait more block to burn"
+                        feeHandler.burnKnc(),
+                        "wait more blocks to burn"
                     );
                     currentBlock = await web3.eth.getBlockNumber();
                     // log("block:" + currentBlock)
                 }
-                await feeHandler.burnKNC();
+                await feeHandler.burnKnc();
             });
 
             it("reverts if contract has insufficient ETH for burning", async() => {
@@ -1134,7 +1130,7 @@ contract('KyberFeeHandler', function(accounts) {
                 await feeHandler.withdrawEther(feeHandlerBalance.sub(burnPerCall.add(new BN(1))), user);
                 
                 await expectRevert(
-                    feeHandler.burnKNC(),
+                    feeHandler.burnKnc(),
                     "contract balance too low"
                 );
             });
@@ -1150,7 +1146,7 @@ contract('KyberFeeHandler', function(accounts) {
                 //ETH-KNC RATE > MAX_RATE
                 await proxy.setPairRate(ethAddress, knc.address, MAX_RATE.add(new BN(1)));
                 await expectRevert(
-                    feeHandler.burnKNC(),
+                    feeHandler.burnKnc(),
                     "ethToKnc rate out of bounds"
                 );
             });
@@ -1166,7 +1162,7 @@ contract('KyberFeeHandler', function(accounts) {
                 //ETH-KNC RATE = 0
                 await proxy.setPairRate(ethAddress, knc.address, 0);
                 await expectRevert(
-                    feeHandler.burnKNC(),
+                    feeHandler.burnKnc(),
                     "ethToKnc rate is 0"
                 );
             });
@@ -1185,7 +1181,7 @@ contract('KyberFeeHandler', function(accounts) {
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
-                    feeHandler.burnKNC(),
+                    feeHandler.burnKnc(),
                     "no sanity rate contract"
                 );
             });
@@ -1207,7 +1203,7 @@ contract('KyberFeeHandler', function(accounts) {
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
-                    feeHandler.burnKNC(),
+                    feeHandler.burnKnc(),
                     "sanity rate is 0"
                 );
             });
@@ -1229,7 +1225,7 @@ contract('KyberFeeHandler', function(accounts) {
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
-                    feeHandler.burnKNC(),
+                    feeHandler.burnKnc(),
                     "sanity rate out of bounds"
                 );
             });
@@ -1257,8 +1253,8 @@ contract('KyberFeeHandler', function(accounts) {
                 await sanityRate.setLatestKncToEthRate(precisionUnits.mul(precisionUnits).div(ethToKncRate));
 
                 await expectRevert(
-                    feeHandler.burnKNC(),
-                    "Kyber Eth To KNC rate too low"
+                    feeHandler.burnKnc(),
+                    "Kyber eth to knc rate too low"
                 );
             });
 
@@ -1278,10 +1274,10 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
 
-                let contract = await MockContractCallBurnKNC.new(feeHandler.address);
+                let contract = await MockContractCallBurnKnc.new(feeHandler.address);
                 await expectRevert(
-                    contract.callBurnKNC(),
-                    "Only none contract"
+                    contract.callBurnKnc(),
+                    "only non-contract"
                 )
             });
 
@@ -1300,7 +1296,7 @@ contract('KyberFeeHandler', function(accounts) {
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
 
                 await expectRevert(
-                    feeHandler.burnKNC(),
+                    feeHandler.burnKnc(),
                     "sanity rate is 0x0, burning is blocked"
                 )
             });
@@ -1326,8 +1322,8 @@ contract('KyberFeeHandler', function(accounts) {
                     {from: kyberNetwork, value: sendVal})
                 
                 await expectRevert(
-                    feeHandler.burnKNC(),
-                    "KNC burn failed"
+                    feeHandler.burnKnc(),
+                    "knc burn failed"
                 );
             });
 

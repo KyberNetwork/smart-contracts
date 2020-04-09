@@ -311,13 +311,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     /// @param platformFeeBps Percentage of trade to be allocated as platform fee. Ex: 10000 = 100%, 100 = 1%
     /// @param hint defines which reserves should be used for this trade
     /// @return returns 3 different rates
-    /// @param rateNoFees rate excluding network and platform fees
-    /// @param rateAfterNetworkFee rate excluding network fee, but includes platform fee
-    /// @param rateAfterAllFees rate after accounting for both network and platform fees
+    /// @param rateWithoutFees rate excluding network and platform fees
+    /// @param rateWithNetworkFee rate excluding network fee, but includes platform fee
+    /// @param rateWithAllFees rate after accounting for both network and platform fees
     function getExpectedRateWithHintAndFee(IERC20 src, IERC20 dest, uint srcQty, uint platformFeeBps,
         bytes calldata hint)
         external view
-        returns (uint rateNoFees, uint rateAfterNetworkFee, uint rateAfterAllFees)
+        returns (uint rateWithoutFees, uint rateWithNetworkFee, uint rateWithAllFees)
     {
         if (src == dest) return (0, 0, 0);
 
@@ -336,12 +336,12 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         tData.networkFeeBps = getNetworkFee();
 
         uint destAmount;
-        (destAmount, rateAfterNetworkFee) = calcRatesAndAmounts(tData, hint);
+        (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
 
-        rateNoFees = calcRateFromQty(tData.input.srcAmount, tData.destAmountWithoutFees, tData.tokenToEth.decimals,
+        rateWithoutFees = calcRateFromQty(tData.input.srcAmount, tData.destAmountWithoutFees, tData.tokenToEth.decimals,
             tData.ethToToken.decimals);
 
-        rateAfterAllFees = calcRateFromQty(tData.input.srcAmount, destAmount, tData.tokenToEth.decimals,
+        rateWithAllFees = calcRateFromQty(tData.input.srcAmount, destAmount, tData.tokenToEth.decimals,
             tData.ethToToken.decimals);
     }
 
@@ -525,7 +525,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     ///     Some reserve types don't require users to pay the network fee
     /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * B
     /// @param destAmountWithoutFees Twei amount of dest tokens, without network and platform fee
-    /// @param rateAfterNetworkFee src -> dest token rate, after accounting for only network fee
+    /// @param rateWithNetworkFee src -> dest token rate, after accounting for only network fee
     struct TradeData {
 
         TradeInput input;
@@ -543,7 +543,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         uint feeAccountedBps; // what part of this trade is fee paying. for token to token - up to 200%
 
         uint destAmountWithoutFees;
-        uint rateAfterNetworkFee;
+        uint rateWithNetworkFee;
     }
 
     /// @notice
@@ -554,7 +554,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     /// @param tData main trade data object for trade info to be stored
     /// @param hint which reserves should be used for the trade
     function calcRatesAndAmounts(TradeData memory tData, bytes memory hint)
-        internal view returns(uint destAmount, uint rateAfterNetworkFee)
+        internal view returns(uint destAmount, uint rateWithNetworkFee)
     {
         // token to eth. find best reserve match and calculate wei amount
         /////////////////////////////////////////////////////////////////
@@ -587,7 +587,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
         tData.destAmountWithoutFees = calcDstQty(tData.tradeWei, ETH_DECIMALS, tData.ethToToken.decimals, e2tRate);
 
-        rateAfterNetworkFee = calcRateFromQty(tData.input.srcAmount, destAmountWithNetworkFee,
+        rateWithNetworkFee = calcRateFromQty(tData.input.srcAmount, destAmountWithNetworkFee,
             tData.tokenToEth.decimals, tData.ethToToken.decimals);
     }
 
@@ -610,7 +610,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
         // get reserve list from matching engine.
         (tradingReserves.ids, tradingReserves.splitsBps, tradingReserves.isFeeAccounted, processWithRate) =
-            matchingEngine.getReserveList(
+            matchingEngine.getTradingReserves(
                 src,
                 dest,
                 (tData.input.src != ETH_TOKEN_ADDRESS) && (tData.input.dest != ETH_TOKEN_ADDRESS),
@@ -790,15 +790,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
         uint index;
 
-        // ethToToken
-        index = populateRebateWalletList(
-            rebateWallets,
-            rebatePercentBps,
-            tData.ethToToken,
-            index,
-            tData.feeAccountedBps
-        );
-
         // tokenToEth
         populateRebateWalletList(
             rebateWallets,
@@ -807,21 +798,30 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
             index,
             tData.feeAccountedBps
         );
+
+        // ethToToken
+        index = populateRebateWalletList(
+            rebateWallets,
+            rebatePercentBps,
+            tData.ethToToken,
+            index,
+            tData.feeAccountedBps
+        );
     }
 
     function populateRebateWalletList(
         address[] memory rebateWallets,
         uint[] memory rebatePercentBps,
-        TradingReserves memory resList,
+        TradingReserves memory tradingReserves,
         uint index,
         uint feeAccountedBps
     ) internal view returns(uint) {
         uint _index = index;
 
-        for(uint i = 0; i < resList.isFeeAccounted.length; i++) {
-            if (resList.isFeeAccounted[i]) {
-                rebateWallets[_index] = reserveRebateWallet[address(resList.addresses[i])];
-                rebatePercentBps[_index] = resList.splitsBps[i] * BPS / feeAccountedBps;
+        for(uint i = 0; i < tradingReserves.isFeeAccounted.length; i++) {
+            if (tradingReserves.isFeeAccounted[i]) {
+                rebateWallets[_index] = reserveRebateWallet[address(tradingReserves.addresses[i])];
+                rebatePercentBps[_index] = tradingReserves.splitsBps[i] * BPS / feeAccountedBps;
                 _index++;
             }
         }
@@ -838,17 +838,17 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
         uint destAmountSoFar;
         for (uint i = 0; i < tradingReserves.srcAmounts.length; i++) {
-            uint currentSrcAmt = tradingReserves.srcAmounts[i];
+            uint currentSrcAmount = tradingReserves.srcAmounts[i];
             uint destAmountSplit = i == (tradingReserves.srcAmounts.length - 1) ?
                 (destAmount - destAmountSoFar) :
-                destAmount * currentSrcAmt * tradingReserves.rates[i] / totalWeightedDestAmount;
+                destAmount * currentSrcAmount * tradingReserves.rates[i] / totalWeightedDestAmount;
             destAmountSoFar += destAmountSplit;
 
-            uint newSrcAmt = calcSrcQty(destAmountSplit, srcDecimals, destDecimals, tradingReserves.rates[i]);
-            require(newSrcAmt <= currentSrcAmt, "new src amount is high");
-            tradingReserves.srcAmounts[i] = newSrcAmt;
+            uint newSrcAmount = calcSrcQty(destAmountSplit, srcDecimals, destDecimals, tradingReserves.rates[i]);
+            require(newSrcAmount <= currentSrcAmount, "new src amt is high");
+            tradingReserves.srcAmounts[i] = newSrcAmount;
 
-            srcAmount += newSrcAmt;
+            srcAmount += newSrcAmount;
         }
     }
 
@@ -882,7 +882,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         require(actualSrcAmount <= tData.input.srcAmount, "actualSrcAmt > given srcAmt");
     }
 
-    event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint dstAmount,
+    event KyberTrade(address indexed trader, IERC20 src, IERC20 dest, uint srcAmount, uint destAmount,
         address destAddress, uint ethWeiValue, uint networkFeeWei, uint customPlatformFeeWei,
         bytes32[] t2eIds, bytes32[] e2tIds, bytes hint);
 
@@ -900,12 +900,12 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
         require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
 
-        uint rateAfterNetworkFee;
-        (destAmount, rateAfterNetworkFee) = calcRatesAndAmounts(tData, hint);
+        uint rateWithNetworkFee;
+        (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
 
-        require(rateAfterNetworkFee > 0, "0 rate");
-        require(rateAfterNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(rateAfterNetworkFee >= tData.input.minConversionRate, "rate < min Rate");
+        require(rateWithNetworkFee > 0, "0 rate");
+        require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
+        require(rateWithNetworkFee >= tData.input.minConversionRate, "rate < min rate");
 
         uint actualSrcAmount;
 
@@ -944,7 +944,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
             src: tData.input.src,
             dest: tData.input.dest,
             srcAmount: actualSrcAmount,
-            dstAmount: destAmount,
+            destAmount: destAmount,
             destAddress: tData.input.destAddress,
             ethWeiValue: tData.tradeWei,
             networkFeeWei: tData.networkFeeWei,
@@ -1002,15 +1002,15 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
             return true;
         }
 
-        TradingReserves memory reservesData = (src == ETH_TOKEN_ADDRESS) ? tData.ethToToken : tData.tokenToEth;
+        TradingReserves memory tradingReserves = (src == ETH_TOKEN_ADDRESS) ? tData.ethToToken : tData.tokenToEth;
         uint callValue;
 
-        for(uint i = 0; i < reservesData.addresses.length; i++) {
-            callValue = (src == ETH_TOKEN_ADDRESS) ? reservesData.srcAmounts[i] : 0;
+        for(uint i = 0; i < tradingReserves.addresses.length; i++) {
+            callValue = (src == ETH_TOKEN_ADDRESS) ? tradingReserves.srcAmounts[i] : 0;
 
             // reserve sends tokens/eth to network. network sends it to destination
-            require(reservesData.addresses[i].trade.value(callValue)(src, reservesData.srcAmounts[i], dest, address(this),
-                        reservesData.rates[i], true));
+            require(tradingReserves.addresses[i].trade.value(callValue)(src, tradingReserves.srcAmounts[i], dest, address(this),
+                        tradingReserves.rates[i], true));
         }
 
         if (destAddress != address(this)) {
