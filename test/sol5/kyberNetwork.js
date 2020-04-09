@@ -1739,7 +1739,7 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint, { value: new BN(1) }),
-                "big Eth qty"
+                "Eth not 0"
             );
         });
 
@@ -1750,7 +1750,7 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint),
-                "srcTok low"
+                "no tokens"
             );
         });
     });
@@ -1895,7 +1895,7 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert(
                 tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, MAX_RATE, platformWallet, platformFeeBps, emptyHint),
-                "rate < minConvRate"
+                "rate < min Rate"
             );
         });
     });
