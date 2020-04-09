@@ -22,7 +22,7 @@ import "./IKyberStorage.sol";
 */
 contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, WithdrawableNoModifiers {
     uint            public negligibleRateDiffBps = 5; // 1 bps is 0.01%
-    IKyberNetwork   public networkContract;
+    IKyberNetwork   public kyberNetwork;
     IKyberStorage   public kyberStorage;
 
     mapping(bytes32=>uint) internal reserveType;           //type from enum ReserveType
@@ -34,7 +34,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     { /* empty body */ }
 
     function onlyNetwork() internal view {
-        require(msg.sender == address(networkContract), "only network");
+        require(msg.sender == address(kyberNetwork), "only network");
     }
 
     function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool) {
@@ -44,12 +44,12 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return true;
     }
 
-    event NetworkContractUpdated(IKyberNetwork newNetwork);
-    function setNetworkContract(IKyberNetwork _networkContract) external {
+    event KyberNetworkUpdated(IKyberNetwork newNetwork);
+    function setNetworkContract(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
-        require(_networkContract != IKyberNetwork(0), "network 0");
-        emit NetworkContractUpdated(_networkContract);
-        networkContract = _networkContract;
+        require(_kyberNetwork != IKyberNetwork(0), "network 0");
+        emit KyberNetworkUpdated(_kyberNetwork);
+        kyberNetwork = _kyberNetwork;
     }
 
     event KyberStorageUpdated(IKyberStorage newStorage);

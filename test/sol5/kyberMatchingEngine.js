@@ -107,7 +107,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
         it("should have admin set network contract", async() => {
             await matchingEngine.setNetworkContract(network, {from: admin});
-            let result = await matchingEngine.networkContract();
+            let result = await matchingEngine.kyberNetwork();
             Helper.assertEqual(network, result, "network not set by admin");
         });
 
@@ -224,7 +224,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
         it("shoud test set network event", async() => {
             txResult = await matchingEngine.setNetworkContract(network, {from: admin});
-            expectEvent(txResult, "NetworkContractUpdated", {
+            expectEvent(txResult, "KyberNetworkUpdated", {
                 newNetwork: network
             });
         });

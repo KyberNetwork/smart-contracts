@@ -108,7 +108,7 @@ contract('KyberStorage', function(accounts) {
 
         it("should have admin set network contract", async() => {
             await kyberStorage.setNetworkContract(network, {from: admin});
-            let result = await kyberStorage.network();
+            let result = await kyberStorage.kyberNetwork();
             Helper.assertEqual(network, result, "network not set by admin");
         });
 
@@ -193,7 +193,7 @@ contract('KyberStorage', function(accounts) {
         it("shoud test set network event", async() => {
             txResult = await kyberStorage.setNetworkContract(network, {from: admin});
             expectEvent(txResult, "KyberNetworkUpdated", {
-                network: network
+                newNetwork: network
             });
         });
     });

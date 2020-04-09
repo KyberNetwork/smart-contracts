@@ -76,7 +76,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
             src: tData.input.src,
             dest: tData.input.dest,
             srcAmount: actualSrcAmount,
-            dstAmount: destAmount,
+            destAmount: destAmount,
             destAddress: tData.input.destAddress,
             ethWeiValue: tData.tradeWei,
             networkFeeWei: tData.networkFeeWei,

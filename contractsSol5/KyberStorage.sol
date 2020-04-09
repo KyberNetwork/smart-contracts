@@ -26,22 +26,22 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     mapping(address => bytes32[]) internal reservesPerTokenSrc; // reserves supporting token to eth
     mapping(address => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
 
-    IKyberNetwork public network;
+    IKyberNetwork public kyberNetwork;
 
     function onlyNetwork() internal view {
-        require(msg.sender == address(network), "only network");
+        require(msg.sender == address(kyberNetwork), "only network");
     }
 
     constructor(address _admin) public PermissionGroupsNoModifiers(_admin) {}
 
-    event KyberNetworkUpdated(IKyberNetwork network);
+    event KyberNetworkUpdated(IKyberNetwork newNetwork);
 
-    function setNetworkContract(IKyberNetwork _network) external {
+    function setNetworkContract(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
-        require(_network != IKyberNetwork(0), "network 0");
-        oldNetworks.push(network);
-        network = _network;
-        emit KyberNetworkUpdated(_network);
+        require(_kyberNetwork != IKyberNetwork(0), "network 0");
+        emit KyberNetworkUpdated(_kyberNetwork);
+        oldNetworks.push(kyberNetwork);
+        kyberNetwork = _kyberNetwork;
     }
 
     function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
