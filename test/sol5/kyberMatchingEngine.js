@@ -107,7 +107,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
         it("should have admin set network contract", async() => {
             await matchingEngine.setNetworkContract(network, {from: admin});
-            let result = await matchingEngine.networkContract();
+            let result = await matchingEngine.kyberNetwork();
             Helper.assertEqual(network, result, "network not set by admin");
         });
 
@@ -224,7 +224,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
         it("shoud test set network event", async() => {
             txResult = await matchingEngine.setNetworkContract(network, {from: admin});
-            expectEvent(txResult, "NetworkContractUpdated", {
+            expectEvent(txResult, "KyberNetworkUpdated", {
                 newNetwork: network
             });
         });
@@ -733,7 +733,7 @@ contract('KyberMatchingEngine', function(accounts) {
             let info;
         });
 
-        describe("4 mock reserves, all feePaying by default", async() => {
+        describe("4 mock reserves, all feeAccounting by default", async() => {
             before("setup reserves", async() => {
                 //init 4 mock reserves
                 let result = await nwHelper.setupReserves(network, [srcToken, destToken], 4,0,0,0, accounts, admin, operator);
@@ -1391,7 +1391,7 @@ contract('KyberMatchingEngine', function(accounts) {
                     await matchingEngine.setFeePayingPerReserveType(false, false, false, false, false, false, {from: admin});
                 });
 
-                after("reset to feePaying", async() => {
+                after("reset to feeAccounting", async() => {
                     await matchingEngine.setFeePayingPerReserveType(true, true, true, true, true, true, {from: admin});
                 });
 

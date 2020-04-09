@@ -41,7 +41,7 @@ interface IKyberMatchingEngine {
     function getReserveDetailsById(bytes32 reserveId) external view
         returns(address reserveAddress, ReserveType resType, bool isFeePaying);
 
-    function getReserveList(IERC20 src, IERC20 dest, bool isTokenToToken, bytes calldata hint)
+    function getTradingReserves(IERC20 src, IERC20 dest, bool isTokenToToken, bytes calldata hint)
         external view
         returns(
             bytes32[] memory reserveIds,

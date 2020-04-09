@@ -142,7 +142,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, 0, emptyHint);
                 let proxyRate = await networkProxy.getExpectedRate(tokenAdd, ethAddress, srcQty);
                 Helper.assertEqual(proxyRate.worstRate, proxyRate.expectedRate.mul(new BN(97)).div(new BN(100)));
-                Helper.assertEqual(networkRate.rateAfterNetworkFee, proxyRate.expectedRate, 
+                Helper.assertEqual(networkRate.rateWithNetworkFee, proxyRate.expectedRate, 
                     "expected rate network not equal rate proxy");
             });
             
@@ -152,7 +152,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, 0, emptyHint)
                 let proxyRate = await networkProxy.getExpectedRate(ethAddress, tokenAdd, srcQty);
                 Helper.assertEqual(proxyRate.worstRate, proxyRate.expectedRate.mul(new BN(97)).div(new BN(100)));
-                Helper.assertEqual(networkRate.rateAfterNetworkFee, proxyRate.expectedRate, 
+                Helper.assertEqual(networkRate.rateWithNetworkFee, proxyRate.expectedRate, 
                     "expected rate network not equal rate proxy");
             });
             
@@ -163,7 +163,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, 0, emptyHint);
                 let proxyRate = await networkProxy.getExpectedRate(srcAdd, destAdd, srcQty);
                 Helper.assertEqual(proxyRate.worstRate, proxyRate.expectedRate.mul(new BN(97)).div(new BN(100)));
-                Helper.assertEqual(networkRate.rateAfterNetworkFee, proxyRate.expectedRate, 
+                Helper.assertEqual(networkRate.rateWithNetworkFee, proxyRate.expectedRate, 
                     "expected rate network not equal rate proxy");
             });
         });
@@ -176,7 +176,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i++])));
                     let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(ethAddress, tokenAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                 }
             });
@@ -189,7 +189,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i--;
                 }
@@ -204,7 +204,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
                     let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i++;
                 }
@@ -219,7 +219,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i--;
                 }
@@ -234,7 +234,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i--;
                 }
@@ -250,7 +250,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
                     let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i++;
                 }
@@ -265,7 +265,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i--;
                 }
@@ -280,7 +280,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i--;
                 }
@@ -296,7 +296,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
                     let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i++;
                 }
@@ -311,7 +311,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i--;
                 }
@@ -326,7 +326,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i--;
                 }
@@ -342,7 +342,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
                     let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateAfterAllFees, proxyRate, 
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
                         "expected rate network not equal rate proxy, %d", i);                
                     i++;
                 }
@@ -365,7 +365,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, tokenAdd, ethAddress, srcQty);
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, 0, hint);
                     let proxyRate = await networkProxy.getPriceDataNoFees(tokenAdd, ethAddress, srcQty, hint);
-                    Helper.assertEqual(networkRate.rateNoFees, proxyRate, "expected rate network not equal rate proxy");
+                    Helper.assertEqual(networkRate.rateWithoutFees, proxyRate, "expected rate network not equal rate proxy");
                 });
 
                 it(`check for e2t, ${typeStr[i]} hint.`, async() => {
@@ -376,7 +376,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, tokenAdd, ethAddress, srcQty);
                     let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, 0, hint)
                     let proxyRate = await networkProxy.getPriceDataNoFees(ethAddress, tokenAdd, srcQty, hint);
-                    Helper.assertEqual(networkRate.rateNoFees, proxyRate, "expected rate network not equal rate proxy");     
+                    Helper.assertEqual(networkRate.rateWithoutFees, proxyRate, "expected rate network not equal rate proxy");     
                 });
 
                 it(`check for t2t, ${typeStr[i]} hint.`, async() => {
@@ -388,7 +388,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, srcAdd, destAdd, srcQty);
                     let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, 0, hint)
                     let proxyRate = await networkProxy.getPriceDataNoFees(srcAdd, destAdd, srcQty, hint);
-                    Helper.assertEqual(networkRate.rateNoFees, proxyRate, "expected rate network not equal rate proxy");     
+                    Helper.assertEqual(networkRate.rateWithoutFees, proxyRate, "expected rate network not equal rate proxy");     
                 });
             }
         });

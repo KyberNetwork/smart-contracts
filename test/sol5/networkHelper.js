@@ -526,9 +526,9 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
         networkFeeWei: zeroBN,
         platformFeeWei: zeroBN,
         actualDestAmount: zeroBN,
-        rateNoFees: zeroBN,
-        rateAfterNetworkFee: zeroBN,
-        rateAfterAllFees: zeroBN,
+        rateWithoutFees: zeroBN,
+        rateWithNetworkFee: zeroBN,
+        rateWithAllFees: zeroBN,
     };
 
     let reserves;
@@ -543,7 +543,7 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
     let totalFeePayingReservesBps = zeroBN;
 
     if (srcToken != ethAddress) {
-        reserves = await matchingEngine.getReserveList(
+        reserves = await matchingEngine.getTradingReserves(
             srcToken,
             ethAddress,
             (srcToken != ethAddress) && (destToken != ethAddress),
@@ -601,7 +601,7 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
         feeAccountedBps = [];
         indexes = [];
 
-        reserves = await matchingEngine.getReserveList(
+        reserves = await matchingEngine.getTradingReserves(
             ethAddress,
             destToken,
             (srcToken != ethAddress) && (destToken != ethAddress),
@@ -659,17 +659,17 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
     destAmountWithNetworkFee = Helper.calcDstQty(result.tradeWei.sub(result.networkFeeWei), ethDecimals, destDecimals, e2tRate);
     destAmountWithoutFees = Helper.calcDstQty(result.tradeWei, ethDecimals, destDecimals, e2tRate);
 
-    result.rateNoFees = Helper.calcRateFromQty(srcQty, destAmountWithoutFees, srcDecimals, destDecimals);
-    result.rateAfterNetworkFee = Helper.calcRateFromQty(srcQty, destAmountWithNetworkFee, srcDecimals, destDecimals);
-    result.rateAfterAllFees = Helper.calcRateFromQty(srcQty, actualDestAmount, srcDecimals, destDecimals);
+    result.rateWithoutFees = Helper.calcRateFromQty(srcQty, destAmountWithoutFees, srcDecimals, destDecimals);
+    result.rateWithNetworkFee = Helper.calcRateFromQty(srcQty, destAmountWithNetworkFee, srcDecimals, destDecimals);
+    result.rateWithAllFees = Helper.calcRateFromQty(srcQty, actualDestAmount, srcDecimals, destDecimals);
     return result;
 }
 
 module.exports.assertRatesEqual = assertRatesEqual;
 function assertRatesEqual(expectedRates, actualRates) {
-    assertEqual(expectedRates.rateNoFees, actualRates.rateNoFees, "rate no fees not equal");
-    assertEqual(expectedRates.rateAfterNetworkFee, actualRates.rateAfterNetworkFee, "rate after network fees not equal");
-    assertEqual(expectedRates.rateAfterAllFees, actualRates.rateAfterAllFees, "rate after all fees not equal");
+    assertEqual(expectedRates.rateWithoutFees, actualRates.rateWithoutFees, "rate no fees not equal");
+    assertEqual(expectedRates.rateWithNetworkFee, actualRates.rateWithNetworkFee, "rate after network fees not equal");
+    assertEqual(expectedRates.rateWithAllFees, actualRates.rateWithAllFees, "rate after all fees not equal");
 }
 
 module.exports.getReserveBalances = getReserveBalances;

@@ -90,7 +90,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     IKyberDAO public kyberDAO;
     IKyberNetworkProxy public networkProxy;
     address public kyberNetwork;
-    IERC20 public KNC;
+    IERC20 public knc;
 
     uint public burnBlockInterval = 15;
     uint public lastBurnBlock;
@@ -123,13 +123,13 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         require(address(_daoSetter) != address(0), "daoSetter 0");
         require(address(_networkProxy) != address(0), "KyberNetworkProxy 0");
         require(address(_kyberNetwork) != address(0), "KyberNetwork 0");
-        require(address(_knc) != address(0), "KNC 0");
+        require(address(_knc) != address(0), "knc 0");
         require(_burnBlockInterval != 0, "_burnBlockInterval 0");
 
         daoSetter = _daoSetter;
         networkProxy = _networkProxy;
         kyberNetwork = _kyberNetwork;
-        KNC = _knc;
+        knc = _knc;
         burnBlockInterval = _burnBlockInterval;
 
         //start with epoch 0
@@ -336,12 +336,12 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         emit BurnConfigSet(_sanityRate, _weiToBurn);
     }
 
-    event KNCBurned(uint KNCTWei, uint amountWei);
+    event KncBurned(uint kncTWei, uint amountWei);
 
     /// @dev Burn knc. Burn amount limited. Forces block delay between burn calls.
     /// @dev only none contract can call this function
     /// @return amount of KNC burned
-    function burnKNC() public onlyNonContract returns(uint) {
+    function burnKnc() public onlyNonContract returns(uint) {
         // check if current block > last burn block number + num block interval
         require(block.number > lastBurnBlock + burnBlockInterval, "wait more blocks to burn");
 
@@ -357,15 +357,15 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         srcQty = srcQty > weiToBurn ? weiToBurn : srcQty;
 
         // Get rate
-        uint kyberEthKncRate = networkProxy.getExpectedRateAfterFee(ETH_TOKEN_ADDRESS, KNC, srcQty, 0, "");
+        uint kyberEthKncRate = networkProxy.getExpectedRateAfterFee(ETH_TOKEN_ADDRESS, knc, srcQty, 0, "");
 
-        require(validateEthToKncRateToBurn(kyberEthKncRate), "Kyber KNC rate invalid");
+        require(validateEthToKncRateToBurn(kyberEthKncRate), "Kyber knc rate invalid");
 
         // Buy some KNC and burn
         uint destQty = networkProxy.tradeWithHintAndFee.value(srcQty)(
             ETH_TOKEN_ADDRESS,
             srcQty,
-            KNC,
+            knc,
             address(uint160(address(this))), // Convert this address into address payable
             MAX_QTY,
             kyberEthKncRate,
@@ -374,9 +374,9 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             "" // hint
         );
 
-        require(IBurnableToken(address(KNC)).burn(destQty), "KNC burn failed");
+        require(IBurnableToken(address(knc)).burn(destQty), "knc burn failed");
 
-        emit KNCBurned(destQty, srcQty);
+        emit KncBurned(destQty, srcQty);
         return destQty;
     }
 
@@ -482,7 +482,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         uint sanityEthToKncRate = PRECISION.mul(PRECISION).div(kncToEthRate);
 
         // rate shouldn't be 10% lower than sanity rate
-        require(rateEthToKnc.mul(BPS) >= sanityEthToKncRate.mul(BPS.sub(SANITY_RATE_DIFF_BPS)), "Kyber Eth To KNC rate too low");
+        require(rateEthToKnc.mul(BPS) >= sanityEthToKncRate.mul(BPS.sub(SANITY_RATE_DIFF_BPS)), "Kyber eth to knc rate too low");
 
         return true;
     }
