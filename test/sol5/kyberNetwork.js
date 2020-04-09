@@ -1608,11 +1608,13 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
-    describe.only("test verifying trade inputs", async () => {
+    describe("test verifying trade inputs", async () => {
+        let platformFee;
         before("initialise network", async () => {
             // init network
             network = await KyberNetwork.new(admin);
             storage = await KyberStorage.new(admin);
+            platformFee = platformFeeBps;
             // // set proxy same as network
             // proxyForFeeHandler = network;
 
