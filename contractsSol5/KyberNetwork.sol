@@ -454,9 +454,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         external
         view
         returns (
-            IKyberFeeHandler feeHandlerAddresses,
-            IKyberDAO daoAddresses,
-            IKyberMatchingEngine matchingEngineAddresses,
+            IKyberFeeHandler feeHandlerAddress,
+            IKyberDAO daoAddress,
+            IKyberMatchingEngine matchingEngineAddress,
             IKyberStorage storageAddress,
             IGasHelper gasHelperAddress,
             IKyberNetworkProxy[] memory proxyAddresses
