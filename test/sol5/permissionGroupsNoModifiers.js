@@ -69,14 +69,14 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
         it("should revert request admin change for non-admin", async() => {
             await expectRevert(
                 permissionsInst.transferAdmin(user, {from: user}),
-                "Only admin"
+                "only admin"
             );
         });
     
         it("should revert request admin change quickly for non-admin", async() => {
             await expectRevert(
                 permissionsInst.transferAdminQuickly(secondAdmin, {from: secondAdmin}),
-                "Only admin"
+                "only admin"
             );
         })
     
@@ -92,7 +92,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
             Helper.assertEqual(await permissionsInst.admin(), secondAdmin, "failed to transfer admin");
             await expectRevert(
                 permissionsInst.transferAdminQuickly(secondAdmin, {from: mainAdmin}),
-                "Only admin"
+                "only admin"
             );
     
             //and transfer back to mainAdmin
@@ -100,21 +100,21 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
             Helper.assertEqual(await permissionsInst.admin(), mainAdmin, "failed to transfer admin");
             await expectRevert(
                 permissionsInst.transferAdminQuickly(mainAdmin, {from: secondAdmin}),
-                "Only admin"
+                "only admin"
             );
         });
     
         it("should revert for transferring admin to zeroAddress", async() => {
             await expectRevert(
                 permissionsInst.transferAdmin(zeroAddress, {from: mainAdmin}),
-                "New admin 0"
+                "new admin 0"
             );
         });
     
         it("should revert for transferring admin quickly to zeroAddress", async() => {
             await expectRevert(
                 permissionsInst.transferAdminQuickly(zeroAddress, {from: mainAdmin}),
-                "Admin 0"
+                "admin 0"
             );
         });
     
@@ -141,7 +141,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
         it("should revert for zeroAddress in constructor", async() => {
             await expectRevert(
                 Permission.new(zeroAddress, {from: mainAdmin}),
-                "Admin 0"
+                "admin 0"
             );
         });
     });
@@ -150,7 +150,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
         it("should revert adding operator for non admin", async() => {
             await expectRevert(
                 permissionsInst.addOperator(operator, {from: secondAdmin}),
-                "Only admin"
+                "only admin"
             );
         });
 
@@ -178,7 +178,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
             await permissionsInst.addOperator(operator, {from: mainAdmin});
             await expectRevert(
                 permissionsInst.setRate(newRate, {from: accounts[6]}),
-                "Only operator"
+                "only operator"
             );
 
             let rate = await permissionsInst.rate();
@@ -196,7 +196,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
         it("should revert removing non-existent operator", async() => {
             await expectRevert(
                 permissionsInst.removeOperator(operator, {from: mainAdmin}),
-                "Not operator"
+                "not operator"
             );
         });
 
@@ -204,7 +204,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
             await permissionsInst.addOperator(operator, {from: mainAdmin});
             await expectRevert(
                 permissionsInst.removeOperator(operator, {from: secondAdmin}),
-                "Only admin"
+                "only admin"
             );
         });
 
@@ -227,7 +227,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
             }
             await expectRevert(
                 permissionsInst.addOperator(operator, {from: mainAdmin}),
-                "Max operators"
+                "max operators"
             );
         });
 
@@ -253,7 +253,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
         it("should revert adding alerter for non admin", async() => {
             await expectRevert(
                 permissionsInst.addAlerter(user, {from: secondAdmin}),
-                "Only admin"
+                "only admin"
             );
         });
 
@@ -271,7 +271,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
             await permissionsInst.addAlerter(alerter, {from: mainAdmin});
             await expectRevert(
                 permissionsInst.addAlerter(alerter, {from: mainAdmin}),
-                "Alerter exists"
+                "alerter exists"
             );
         });
 
@@ -286,7 +286,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
     
             await expectRevert(
                 permissionsInst.stopTrade({from: user}),
-                "Only alerter"
+                "only alerter"
             );
         });
 
@@ -303,7 +303,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
         it("should revert removing non-existent alerter", async() => {
             await expectRevert(
                 permissionsInst.removeAlerter(alerter, {from: mainAdmin}),
-                "Not alerter"
+                "not alerter"
             );
         });
 
@@ -311,7 +311,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
             await permissionsInst.addAlerter(alerter, {from: mainAdmin});
             await expectRevert(
                 permissionsInst.removeAlerter(alerter, {from: secondAdmin}),
-                "Only admin"
+                "only admin"
             );
         });
 
@@ -334,7 +334,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
             }
             await expectRevert(
                 permissionsInst.addAlerter(alerter, {from: mainAdmin}),
-                "Max alerters"
+                "max alerters"
             );
         });
 
