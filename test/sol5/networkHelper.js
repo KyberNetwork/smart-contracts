@@ -511,13 +511,18 @@ function randomSelectReserves(tradeType, reserves, splits) {
 }
 
 module.exports.getAndCalcRates = getAndCalcRates;
-async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destToken, srcQty,
+async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcToken, destToken, srcQty,
     srcDecimals, destDecimals,
-    networkFeeBps, platformFeeBps, hint) {
+    networkFeeBps, platformFeeBps, hint) 
+{
 
     let result = {
         t2eIds: [],
+        t2eAddresses: [],
+        t2eRates: [],
         e2tIds: [],
+        e2tAddresses: [],
+        e2tRates: [],
         t2eSrcAmts: [],
         e2tSrcAmts: [],
         t2eDestAmts: [],
@@ -534,10 +539,10 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
     let reserves;
     let reserveInstance;
     let blockNum = new BN(await web3.eth.getBlockNumber());
-    let rates = [];
     let feeAccountedBps = [];
     let indexes = [];
     let tmpAmts = [];
+    let tmpRates = [];
     let dstQty;
     let actualDestAmount = zeroBN;
     let totalFeePayingReservesBps = zeroBN;
@@ -553,7 +558,7 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
         for (let i = 0; i < reserves.reserveIds.length; i++) {
             result.t2eSrcAmts[i] = srcQty.mul(reserves.splitValuesBps[i]).div(BPS);
             reserveInstance = reserveInstances[reserves.reserveIds[i]].instance;
-            rates[i] = await reserveInstance.getConversionRate(srcToken, ethAddress, result.t2eSrcAmts[i], blockNum);
+            result.t2eRates[i] = await reserveInstance.getConversionRate(srcToken, ethAddress, result.t2eSrcAmts[i], blockNum);
             if (reserves.isFeeAccounted[i]) {
                 feeAccountedBps.push(networkFeeBps);
             } else {
@@ -571,14 +576,16 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
                 ethAddress,
                 result.t2eSrcAmts,
                 feeAccountedBps,
-                rates
+                result.t2eRates
             );
         }
 
         for (let i = 0; i < indexes.length; i++) {
             result.t2eIds.push(reserves.reserveIds[indexes[i]]);
             tmpAmts.push(result.t2eSrcAmts[indexes[i]]);
-            dstQty = Helper.calcDstQty(result.t2eSrcAmts[indexes[i]], srcDecimals, ethDecimals, rates[indexes[i]]);
+            tmpRates.push(result.t2eRates[indexes[i]]);
+            dstQty = Helper.calcDstQty(result.t2eSrcAmts[indexes[i]], srcDecimals, ethDecimals, 
+                result.t2eRates[indexes[i]]);
             result.t2eDestAmts.push(dstQty);
             result.tradeWei = result.tradeWei.add(dstQty);
             if(reserves.isFeeAccounted[indexes[i]]) {
@@ -586,6 +593,9 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
             }
         };
         result.t2eSrcAmts = tmpAmts;
+        result.t2eRates = tmpRates;
+
+        result.t2eAddresses = await storage.convertReserveIdsToAddresses(result.t2eIds);
     } else {
         result.tradeWei = srcQty;
     }
@@ -597,7 +607,7 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
 
     if (destToken != ethAddress) {
         tmpAmts = [];
-        rates = [];
+        tmpRates = [];
         feeAccountedBps = [];
         indexes = [];
 
@@ -617,7 +627,7 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
 
             result.e2tSrcAmts[i] = result.e2tSrcAmts[i].mul(reserves.splitValuesBps[i]).div(BPS);
             reserveInstance = reserveInstances[reserves.reserveIds[i]].instance;
-            rates[i] = await reserveInstance.getConversionRate(ethAddress, destToken, result.e2tSrcAmts[i], blockNum);
+            result.e2tRates[i] = await reserveInstance.getConversionRate(ethAddress, destToken, result.e2tSrcAmts[i], blockNum);
             feeAccountedBps.push(zeroBN);
         }
 
@@ -629,22 +639,26 @@ async function getAndCalcRates(matchingEngine, reserveInstances, srcToken, destT
             indexes = await matchingEngine.doMatch(
                 ethAddress,
                 destToken,
-                result.e2tSrcAmts[i],
+                result.e2tSrcAmts,
                 feeAccountedBps,
-                rates
+                result.e2tRates
             );
         }
 
         for (let i = 0; i < indexes.length; i++) {
             result.e2tIds.push(reserves.reserveIds[indexes[i]]);
             tmpAmts.push(result.e2tSrcAmts[indexes[i]]);
-            dstQty = Helper.calcDstQty(result.e2tSrcAmts[indexes[i]], ethDecimals, destDecimals, rates[indexes[i]]);
+            tmpRates.push(result.e2tRates[indexes[i]]);
+            dstQty = Helper.calcDstQty(result.e2tSrcAmts[indexes[i]], ethDecimals, destDecimals, result.e2tRates[indexes[i]]);
             result.e2tDestAmts.push(dstQty);
             result.actualDestAmount = result.actualDestAmount.add(dstQty);
             if(reserves.isFeeAccounted[indexes[i]]) {
                 totalFeePayingReservesBps = totalFeePayingReservesBps.add(reserves.splitValuesBps[i]);
             }
         }
+
+        result.e2tAddresses = await storage.convertReserveIdsToAddresses(result.e2tIds);
+
         result.e2tSrcAmts = tmpAmts;
     } else {
         result.actualDestAmount = actualSrcWei;
@@ -680,7 +694,8 @@ async function getReserveBalances(srcToken, destToken, ratesAmts) {
         'e2tEth': [], //expect ETH balance to increase
         'e2tToken': [] //expect dest token balance to decrease
     }
-    for (let i=0; i< ratesAmts.t2eAddresses.length; i++) {
+
+    for (let i = 0; i < ratesAmts.t2eAddresses.length; i++) {
         let reserveAddress = ratesAmts.t2eAddresses[i];
         let reserveBalance = await getBalancePromise(reserveAddress);
         reserveBalances.t2eEth.push(reserveBalance);

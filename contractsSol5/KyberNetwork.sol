@@ -129,6 +129,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         onlyOperator();
         require(kyberStorage.addReserve(reserve, reserveId));
         require(matchingEngine.addReserve(reserveId, reserveType));
+        require(rebateWallet != address(0));
 
         reserveIdToAddress[reserveId] = reserve;
 
