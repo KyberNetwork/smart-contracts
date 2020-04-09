@@ -12,20 +12,20 @@ contract PermissionGroupsNoModifiers {
     uint constant internal MAX_GROUP_SIZE = 50;
 
     constructor(address _admin) public {
-        require(_admin != address(0), "Admin 0");
+        require(_admin != address(0), "admin 0");
         admin = _admin;
     }
 
     function onlyAdmin() internal view {
-        require(msg.sender == admin, "Only admin");
+        require(msg.sender == admin, "only admin");
     }
 
     function onlyOperator() internal view {
-        require(operators[msg.sender], "Only operator");
+        require(operators[msg.sender], "only operator");
     }
 
     function onlyAlerter() internal view {
-        require(alerters[msg.sender], "Only alerter");
+        require(alerters[msg.sender], "only alerter");
     }
 
     function getOperators () external view returns(address[] memory) {
@@ -44,7 +44,7 @@ contract PermissionGroupsNoModifiers {
      */
     function transferAdmin(address newAdmin) public {
         onlyAdmin();
-        require(newAdmin != address(0), "New admin 0");
+        require(newAdmin != address(0), "new admin 0");
         emit TransferAdminPending(newAdmin);
         pendingAdmin = newAdmin;
     }
@@ -55,7 +55,7 @@ contract PermissionGroupsNoModifiers {
      */
     function transferAdminQuickly(address newAdmin) public {
         onlyAdmin();
-        require(newAdmin != address(0), "Admin 0");
+        require(newAdmin != address(0), "admin 0");
         emit TransferAdminPending(newAdmin);
         emit AdminClaimed(newAdmin, admin);
         admin = newAdmin;
@@ -77,8 +77,8 @@ contract PermissionGroupsNoModifiers {
 
     function addAlerter(address newAlerter) public {
         onlyAdmin();
-        require(!alerters[newAlerter], "Alerter exists"); // prevent duplicates.
-        require(alertersGroup.length < MAX_GROUP_SIZE, "Max alerters");
+        require(!alerters[newAlerter], "alerter exists"); // prevent duplicates.
+        require(alertersGroup.length < MAX_GROUP_SIZE, "max alerters");
 
         emit AlerterAdded(newAlerter, true);
         alerters[newAlerter] = true;
@@ -87,7 +87,7 @@ contract PermissionGroupsNoModifiers {
 
     function removeAlerter (address alerter) public {
         onlyAdmin();
-        require(alerters[alerter], "Not alerter");
+        require(alerters[alerter], "not alerter");
         alerters[alerter] = false;
 
         for (uint i = 0; i < alertersGroup.length; ++i) {
@@ -104,8 +104,8 @@ contract PermissionGroupsNoModifiers {
 
     function addOperator(address newOperator) public {
         onlyAdmin();
-        require(!operators[newOperator], "Operator exists"); // prevent duplicates.
-        require(operatorsGroup.length < MAX_GROUP_SIZE, "Max operators");
+        require(!operators[newOperator], "operator exists"); // prevent duplicates.
+        require(operatorsGroup.length < MAX_GROUP_SIZE, "max operators");
 
         emit OperatorAdded(newOperator, true);
         operators[newOperator] = true;
@@ -114,7 +114,7 @@ contract PermissionGroupsNoModifiers {
 
     function removeOperator (address operator) public {
         onlyAdmin();
-        require(operators[operator], "Not operator");
+        require(operators[operator], "not operator");
         operators[operator] = false;
 
         for (uint i = 0; i < operatorsGroup.length; ++i) {

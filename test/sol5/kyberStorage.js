@@ -97,12 +97,12 @@ contract('KyberStorage', function(accounts) {
         it("should not have unauthorized personnel set network contract", async() => {
             await expectRevert(
                 kyberStorage.setNetworkContract(network, {from: user}),
-                "Only admin"
+                "only admin"
             );
 
             await expectRevert(
                 kyberStorage.setNetworkContract(network, {from: operator}),
-                "Only admin"
+                "only admin"
             );
         });
 

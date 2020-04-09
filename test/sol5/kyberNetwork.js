@@ -174,7 +174,7 @@ contract('KyberNetwork', function(accounts) {
         it("test only admin can add proxies", async() => {
             await expectRevert(
                 tempNetwork.addKyberProxy(proxy1, {from: operator}),
-                "Only admin"
+                "only admin"
             );
         });
 
