@@ -503,7 +503,11 @@ contract('KyberFeeHandler', function(accounts) {
                 {from: kyberNetwork, value: sendVal});
 
             let expectedTotalReward = sendVal.mul(currentRewardBps).div(BPS);
-            let expectedTotalRebate = sendVal.mul(currentRebateBps).div(BPS);
+            let expectedRebate = sendVal.mul(currentRebateBps).div(BPS);
+            let expectedTotalRebate = new BN(0);
+            for(let i = 0; i < rebateBpsPerWallet.length; i++) {
+                expectedTotalRebate.iadd((new BN(rebateBpsPerWallet[i])).mul(expectedRebate).div(BPS));
+            }
 
             let expectedTotalPayOut = expectedTotalReward.add(expectedTotalRebate);
             let totalPayOutBalance = await feeHandler.totalPayoutBalance();
@@ -514,7 +518,11 @@ contract('KyberFeeHandler', function(accounts) {
                 {from: kyberNetwork, value: sendVal});
 
             expectedTotalReward = expectedTotalReward.add(sendVal.mul(currentRewardBps).div(BPS));
-            expectedTotalRebate = expectedTotalRebate.add(sendVal.mul(currentRebateBps).div(BPS));
+            expectedRebate = sendVal.mul(currentRebateBps).div(BPS);
+
+            for(let i = 0; i < rebateBpsPerWallet.length; i++) {
+                expectedTotalRebate.iadd((new BN(rebateBpsPerWallet[i])).mul(expectedRebate).div(BPS));
+            }
 
             expectedTotalPayOut = expectedTotalReward.add(expectedTotalRebate);
             totalPayOutBalance = await feeHandler.totalPayoutBalance();
@@ -640,7 +648,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
                 {from: kyberNetwork, value: sendVal});
-                
+
                 await feeHandler.setTotalPayoutBalance(zeroBN);
                 await expectRevert(
                     feeHandler.claimReserveRebate(rebateWallets[0]),

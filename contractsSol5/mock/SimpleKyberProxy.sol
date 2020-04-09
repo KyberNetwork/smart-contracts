@@ -90,7 +90,7 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
         maxDestAmount;
         
         require(rate > 0);
-        require(rate > minConversionRate);
+        require(rate >= minConversionRate);
     
         destAmount = srcAmount * rate / PRECISION;
         
