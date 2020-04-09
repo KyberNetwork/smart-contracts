@@ -845,10 +845,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
             destAmountSoFar += destAmountSplit;
 
             uint newSrcAmt = calcSrcQty(destAmountSplit, srcDecimals, destDecimals, tradingReserves.rates[i]);
-            tradingReserves.srcAmounts[i] = newSrcAmt;
             require(newSrcAmt <= currentSrcAmt, "new src amount is high");
+            tradingReserves.srcAmounts[i] = newSrcAmt;
 
-            srcAmount += tradingReserves.srcAmounts[i];
+            srcAmount += newSrcAmt;
         }
     }
 
