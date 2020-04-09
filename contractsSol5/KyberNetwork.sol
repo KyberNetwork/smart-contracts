@@ -905,7 +905,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
         require(rateAfterNetworkFee > 0, "0 rate");
         require(rateAfterNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(rateAfterNetworkFee >= tData.input.minConversionRate, "rate < min Rate");
+        require(rateAfterNetworkFee >= tData.input.minConversionRate, "rate < min rate");
 
         uint actualSrcAmount;
 
