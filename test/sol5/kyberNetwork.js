@@ -1919,7 +1919,7 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert(
                 tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, MAX_RATE, platformWallet, platformFeeBps, emptyHint),
-                "rate < min Rate"
+                "rate < min rate"
             );
         });
     });

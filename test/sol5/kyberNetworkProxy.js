@@ -711,7 +711,7 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         it("test set hint handler to zero address", async () => {
-            await expectRevert(networkProxy.setHintHandler(zeroAddress, { from: admin }), "Hint handler 0");
+            await expectRevert(networkProxy.setHintHandler(zeroAddress, { from: admin }), "hintHandler 0");
         });
     });
     
@@ -865,7 +865,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     zeroAddress,
                     { from: taker }
-                ), "Kyber network returned wrong amount"
+                ), "network returned wrong amount"
             );
             // change the amount and see trade success
             await networkProxy.trade(
@@ -904,7 +904,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     zeroAddress,
                     { from: taker }
-                ), "Wrong amount in source address"
+                ), "wrong amount in source address"
             );
             // change the amount and see trade success
             await networkProxy.trade(
@@ -947,7 +947,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     destAddress,
                     { from: taker }
-                ), "Wrong amount in destination address"
+                ), "wrong amount in destination address"
             );
         });
 
@@ -975,7 +975,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     zeroAddress,
                     { from: taker }
-                ), "Destination amount bigger then max destination amount"
+                ), "actual dest amount exceeds maxDestAmount"
             );
             // change the amount and see trade success
             await networkProxy.trade(
@@ -1010,7 +1010,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     zeroAddress,
                     { from: taker }
-                ), "rate < minRate"
+                ), "rate below minConversionRate"
             );
         });
 

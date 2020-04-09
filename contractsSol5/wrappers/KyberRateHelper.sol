@@ -21,8 +21,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
 
     function setContracts(IKyberMatchingEngine _matchingEngine, IKyberDAO _kyberDAO) public {
         onlyAdmin();
-        require(_matchingEngine != IKyberMatchingEngine(0), "missing addr");
-        require(_kyberDAO != IKyberDAO(0), "missing addr");
+        require(_matchingEngine != IKyberMatchingEngine(0), "matching engine 0");
+        require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
 
         if (matchingEngine != _matchingEngine) {
             matchingEngine = _matchingEngine;
