@@ -907,22 +907,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         require(rateAfterNetworkFee < MAX_RATE, "rate > MAX_RATE");
         require(rateAfterNetworkFee >= tData.input.minConversionRate, "rate < min Rate");
 
-        if (gasHelper != IGasHelper(0)) {
-            (bool success, ) = address(gasHelper).call(
-                abi.encodeWithSignature(
-                    "freeGas(address,address,address,uint256,bytes32[],bytes32[])",
-                    tData.input.platformWallet,
-                    tData.input.src,
-                    tData.input.dest,
-                    tData.tradeWei,
-                    tData.tokenToEth.ids,
-                    tData.ethToToken.ids
-                )
-            );
-            // remove compilation warning
-            success;
-        }
-
         uint actualSrcAmount;
 
         if (destAmount > tData.input.maxDestAmount) {
@@ -969,6 +953,22 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
             e2tIds: tData.ethToToken.ids,
             hint: hint
         });
+
+        if (gasHelper != IGasHelper(0)) {
+            (bool success, ) = address(gasHelper).call(
+                abi.encodeWithSignature(
+                    "freeGas(address,address,address,uint256,bytes32[],bytes32[])",
+                    tData.input.platformWallet,
+                    tData.input.src,
+                    tData.input.dest,
+                    tData.tradeWei,
+                    tData.tokenToEth.ids,
+                    tData.ethToToken.ids
+                )
+            );
+            // remove compilation warning
+            success;
+        }
 
         return (destAmount);
     }
