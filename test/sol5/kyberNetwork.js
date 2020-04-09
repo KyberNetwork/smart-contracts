@@ -174,7 +174,7 @@ contract('KyberNetwork', function(accounts) {
         it("test only admin can add proxies", async() => {
             await expectRevert(
                 tempNetwork.addKyberProxy(proxy1, {from: operator}),
-                "Only admin"
+                "only admin"
             );
         });
 
@@ -1753,7 +1753,7 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint, { value: new BN(0) }),
-                "bad Eth qty"
+                "bad eth qty"
             );
         });
 
@@ -1761,7 +1761,7 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint, { value: new BN(1) }),
-                "Eth not 0"
+                "eth not 0"
             );
         });
 
@@ -1917,7 +1917,7 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert(
                 tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, MAX_RATE, platformWallet, platformFeeBps, emptyHint),
-                "rate < min Rate"
+                "rate < min rate"
             );
         });
     });

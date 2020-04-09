@@ -96,12 +96,12 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should not have unauthorized personnel set network contract", async() => {
             await expectRevert(
                 matchingEngine.setNetworkContract(network, {from: user}),
-                "Only admin"
+                "only admin"
             );
 
             await expectRevert(
                 matchingEngine.setNetworkContract(network, {from: operator}),
-                "Only admin"
+                "only admin"
             );
         });
 
@@ -114,12 +114,12 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should not have unauthorized personnel set fee paying data", async() => {
             await expectRevert(
                 matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: operator}),
-                "Only admin"
+                "only admin"
             );
 
             await expectRevert(
                 matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: network}),
-                "Only admin"
+                "only admin"
             );
         });
 
@@ -130,17 +130,17 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should not have unauthorized personnel set negligble rate diff bps", async() => {
             await expectRevert(
                 matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: user}),
-                "Only network"
+                "only network"
             );
 
             await expectRevert(
                 matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: operator}),
-                "Only network"
+                "only network"
             );
 
             await expectRevert(
                 matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: admin}),
-                "Only network"
+                "only network"
             );
         });
 
@@ -153,17 +153,17 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should not have unauthorized personnel set storage", async() => {
             await expectRevert(
                 matchingEngine.setKyberStorage(storage.address, {from: user}),
-                "Only network"
+                "only network"
             );
 
             await expectRevert(
                 matchingEngine.setKyberStorage(storage.address, {from: operator}),
-                "Only network"
+                "only network"
             );
 
             await expectRevert(
                 matchingEngine.setKyberStorage(storage.address, {from: admin}),
-                "Only network"
+                "only network"
             );
         });
 
@@ -176,17 +176,17 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should not have unauthorized personnel add reserve", async() => {
             await expectRevert(
                 matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: user}),
-                "Only network"
+                "only network"
             );
 
             await expectRevert(
                 matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: operator}),
-                "Only network"
+                "only network"
             );
 
             await expectRevert(
                 matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: admin}),
-                "Only network"
+                "only network"
             );
         });
 
@@ -198,17 +198,17 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should not have unauthorized personnel remove reserve", async() => {
             await expectRevert(
                 matchingEngine.removeReserve(reserve.reserveId, {from: user}),
-                "Only network"
+                "only network"
             );
 
             await expectRevert(
                 matchingEngine.removeReserve(reserve.reserveId, {from: operator}),
-                "Only network"
+                "only network"
             );
 
             await expectRevert(
                 matchingEngine.removeReserve(reserve.reserveId, {from: admin}),
-                "Only network"
+                "only network"
             );
         });
 
@@ -247,7 +247,7 @@ contract('KyberMatchingEngine', function(accounts) {
             await matchingEngine.setNetworkContract(network, {from: admin});
             await expectRevert(
                 matchingEngine.setNegligbleRateDiffBps(BPS.add(new BN(1)), {from: network}),
-                "rateDiffBps > BPS"
+                "rateDiffBps exceed BPS"
             );
         });
 
@@ -285,21 +285,21 @@ contract('KyberMatchingEngine', function(accounts) {
             it("should revert for NONE reserve type", async() => {
                 await expectRevert(
                     matchingEngine.addReserve(reserve.address, reserve.reserveId, 0, {from: network}),
-                    "bad type"
+                    "bad reserve type"
                 );
             });
     
             it("should revert for LAST reserve type", async() => {
                 await expectRevert(
                     matchingEngine.addReserve(reserve.address, reserve.reserveId, 0, {from: network}),
-                    "bad type"
+                    "bad reserve type"
                 );
             });
     
             it("should revert for valid reserve because fee paying data not set", async() => {
                 await expectRevert(
                     matchingEngine.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
-                    "Fee paying not set"
+                    "fee paying data not set"
                 );
             });    
         });
@@ -1572,7 +1572,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
                     await expectRevert(
                         matchingEngine.calcRatesAndAmounts(srcToken.address, ethAddress, srcDecimals, ethDecimals, info, hint),
-                        "MASK_OUT_TOO_LONG"
+                        "mask out exceeds available reserves"
                     );
                 });
 
@@ -1591,7 +1591,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
                     await expectRevert(
                         matchingEngine.calcRatesAndAmounts(ethAddress, destToken.address, ethDecimals, destDecimals, info, hint),
-                        "MASK_OUT_TOO_LONG"
+                        "mask out exceeds available reserves"
                     );
                 });
 
@@ -1612,7 +1612,7 @@ contract('KyberMatchingEngine', function(accounts) {
                     
                     await expectRevert(
                         matchingEngine.calcRatesAndAmounts(srcToken.address, destToken.address, srcDecimals, destDecimals, info, hint),
-                        "MASK_OUT_TOO_LONG"
+                        "mask out exceeds available reserves"
                     );
                 });
             });

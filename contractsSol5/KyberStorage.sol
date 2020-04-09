@@ -29,7 +29,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     IKyberNetwork public network;
 
     function onlyNetwork() internal view {
-        require(msg.sender == address(network), "ONLY_NETWORK");
+        require(msg.sender == address(network), "only network");
     }
 
     constructor(address _admin) public PermissionGroupsNoModifiers(_admin) {}
@@ -133,13 +133,13 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
                 break;
             }
         }
-        require(reserveIndex != 2**255, "reserve ?");
+        require(reserveIndex != 2**255, "reserve not found");
         reserves[reserveIndex] = reserves[reserves.length - 1];
         reserves.pop();
         // remove reserve from mapping to address
         require(
             reserveAddressToId[reserve] != bytes32(0),
-            "reserve -> 0 reserveId"
+            "reserve's existing reserveId is 0"
         );
         reserveId = reserveAddressToId[reserve];
 
@@ -278,7 +278,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         returns (bool)
     {
         onlyNetwork();
-        require(kyberProxyArray.length < max_approved_proxies, "Max proxies");
+        require(kyberProxyArray.length < max_approved_proxies, "max proxies limit reached");
 
         kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
 

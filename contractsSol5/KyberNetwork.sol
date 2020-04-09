@@ -905,7 +905,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
         require(rateAfterNetworkFee > 0, "0 rate");
         require(rateAfterNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(rateAfterNetworkFee >= tData.input.minConversionRate, "rate < min Rate");
+        require(rateAfterNetworkFee >= tData.input.minConversionRate, "rate < min rate");
 
         uint actualSrcAmount;
 
@@ -1056,9 +1056,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         require(input.platformFeeBps + networkFeeBps + networkFeeBps < BPS, "fees high");
 
         if (input.src == ETH_TOKEN_ADDRESS) {
-            require(msg.value == input.srcAmount, "bad Eth qty");
+            require(msg.value == input.srcAmount, "bad eth qty");
         } else {
-            require(msg.value == 0, "Eth not 0");
+            require(msg.value == 0, "eth not 0");
             //funds should have been moved to this contract already.
             require(input.src.balanceOf(address(this)) >= input.srcAmount, "no tokens");
         }

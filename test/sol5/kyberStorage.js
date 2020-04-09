@@ -97,12 +97,12 @@ contract('KyberStorage', function(accounts) {
         it("should not have unauthorized personnel set network contract", async() => {
             await expectRevert(
                 kyberStorage.setNetworkContract(network, {from: user}),
-                "Only admin"
+                "only admin"
             );
 
             await expectRevert(
                 kyberStorage.setNetworkContract(network, {from: operator}),
-                "Only admin"
+                "only admin"
             );
         });
 
@@ -115,17 +115,17 @@ contract('KyberStorage', function(accounts) {
         it("should not have unauthorized personnel add reserve", async() => {
             await expectRevert(
                 kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: user}),
-                "ONLY_NETWORK"
+                "only network"
             );
 
             await expectRevert(
                 kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: operator}),
-                "ONLY_NETWORK"
+                "only network"
             );
 
             await expectRevert(
                 kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: admin}),
-                "ONLY_NETWORK"
+                "only network"
             );
         });
 
@@ -141,17 +141,17 @@ contract('KyberStorage', function(accounts) {
         it("should not have unauthorized personnel list token pair for reserve", async() => {
             await expectRevert(
                 kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: user}),
-                "ONLY_NETWORK"
+                "only network"
             );
 
             await expectRevert(
                 kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator}),
-                "ONLY_NETWORK"
+                "only network"
             );
 
             await expectRevert(
                 kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: admin}),
-                "ONLY_NETWORK"
+                "only network"
             );
         });
 
@@ -166,17 +166,17 @@ contract('KyberStorage', function(accounts) {
         it("should not have unauthorized personnel remove reserve", async() => {
             await expectRevert(
                 kyberStorage.removeReserve(reserve.address, new BN(0), {from: user}),
-                "ONLY_NETWORK"
+                "only network"
             );
 
             await expectRevert(
                 kyberStorage.removeReserve(reserve.address, new BN(0), {from: operator}),
-                "ONLY_NETWORK"
+                "only network"
             );
 
             await expectRevert(
                 kyberStorage.removeReserve(reserve.address, new BN(0), {from: admin}),
-                "ONLY_NETWORK"
+                "only network"
             );
         });
 
@@ -227,14 +227,14 @@ contract('KyberStorage', function(accounts) {
 
             await expectRevert(
                 kyberStorage.addKyberProxy(proxy3, maxProxies, {from: network}),
-                "Max proxies"
+                "max proxies limit reached"
             );
         });
 
         it("test only admin can add proxies", async() => {
             await expectRevert(
                 kyberStorage.addKyberProxy(proxy1, new BN(100), {from: accounts[0]}),
-                "ONLY_NETWORK"
+                "only network"
             );
         });
     });
@@ -331,7 +331,7 @@ contract('KyberStorage', function(accounts) {
         it("should revert when removing non-reserve", async() => {
             await expectRevert(
                 kyberStorage.removeReserve(user, new BN(0), {from : network}),
-                "reserve ?"
+                "reserve not found"
            );
         });
 
