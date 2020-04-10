@@ -1252,81 +1252,84 @@ contract('KyberNetwork', function(accounts) {
                 };
             };
 
+            let maxDestAmounts = [3, 10];
             for (tradeType of tradeTypesArray) {
-                let hintType = tradeType;
-                it(`should perform a T2E trade (${tradeStr[hintType]}, with small maxDestAmount) and check balances change as expected`, async() => {
-                    let platformFeeBps = new BN(10);
-                    let actualSrcQty = new BN(0);
-                    let maxDestAmt = new BN(3); // 3 weis
-                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                for (maxDestAmount of maxDestAmounts) {
+                    let hintType = tradeType;
+                    it(`should perform a T2E trade (${tradeStr[hintType]}, with small maxDestAmount) and check balances change as expected`, async() => {
+                        let platformFeeBps = new BN(10);
+                        let actualSrcQty = new BN(0);
+                        let maxDestAmt = new BN(maxDestAmount);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
 
-                    expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                        srcToken.address, ethAddress, srcQty,
-                        srcDecimals, ethDecimals,
-                        networkFeeBps, platformFeeBps, hint);
+                        expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                            srcToken.address, ethAddress, srcQty,
+                            srcDecimals, ethDecimals,
+                            networkFeeBps, platformFeeBps, hint);
 
-                    await srcToken.transfer(network.address, srcQty);
-                    let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, ethAddress, expectedResult);
-                    let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, ethAddress, taker, network.address);
-                    info = [srcQty, networkFeeBps, platformFeeBps];
-                    [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, ethAddress, expectedResult, info, maxDestAmt);
+                        await srcToken.transfer(network.address, srcQty);
+                        let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, ethAddress, expectedResult);
+                        let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, ethAddress, taker, network.address);
+                        info = [srcQty, networkFeeBps, platformFeeBps];
+                        [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, ethAddress, expectedResult, info, maxDestAmt);
 
-                    let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
-                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
-                    console.log(`token -> ETH (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
-                    await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, actualSrcQty,
-                        initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
-                });
+                        let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                        console.log(`token -> ETH (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+                        await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, actualSrcQty,
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+                    });
 
-                it(`should perform a E2T trade (${tradeStr[hintType]}, with small maxDestAmount) and check balances change as expected`, async() => {
-                    let platformFeeBps = new BN(50);
-                    let actualSrcQty = new BN(0);
-                    let maxDestAmt = new BN(3); // 3 tweis
+                    it(`should perform a E2T trade (${tradeStr[hintType]}, with small maxDestAmount) and check balances change as expected`, async() => {
+                        let platformFeeBps = new BN(50);
+                        let actualSrcQty = new BN(0);
+                        let maxDestAmt = new BN(maxDestAmount);
 
-                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
-                    info = [ethSrcQty, networkFeeBps, platformFeeBps];
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
 
-                    expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                        ethAddress, destToken.address, ethSrcQty,
-                        ethDecimals, destDecimals,
-                        networkFeeBps, platformFeeBps, hint);
+                        expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                            ethAddress, destToken.address, ethSrcQty,
+                            ethDecimals, destDecimals,
+                            networkFeeBps, platformFeeBps, hint);
 
-                    let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
-                    let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
-                    [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(ethAddress, destToken, expectedResult, info, maxDestAmt);
+                        let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
+                        let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
+                        [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(ethAddress, destToken, expectedResult, info, maxDestAmt);
 
-                    let txResult = await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
-                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {value: ethSrcQty});
-                    console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+                        let txResult = await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {value: ethSrcQty});
+                        console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
 
-                    await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, actualSrcQty,
-                        initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
-                });
+                        await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, actualSrcQty,
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
+                    });
 
-                it(`should perform a T2T trade (${tradeStr[hintType]}, with small maxDestAmount) and check balances change as expected`, async() => {
-                    let platformFeeBps = new BN(50);
-                    let actualSrcQty = new BN(0);
-                    let maxDestAmt = new BN(3); // 3 tweis
-                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                    it(`should perform a T2T trade (${tradeStr[hintType]}, with small maxDestAmount) and check balances change as expected`, async() => {
+                        let platformFeeBps = new BN(50);
+                        let actualSrcQty = new BN(0);
+                        let maxDestAmt = new BN(maxDestAmount);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
 
-                    expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                        srcToken.address, destToken.address, srcQty,
-                        srcDecimals, destDecimals,
-                        networkFeeBps, platformFeeBps, hint);
+                        expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                            srcToken.address, destToken.address, srcQty,
+                            srcDecimals, destDecimals,
+                            networkFeeBps, platformFeeBps, hint);
 
-                    await srcToken.transfer(network.address, srcQty);
-                    let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, destToken, expectedResult);
-                    let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, destToken, taker, network.address);
-                    info = [srcQty, networkFeeBps, platformFeeBps];
-                    [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, destToken, expectedResult, info, maxDestAmt);
+                        await srcToken.transfer(network.address, srcQty);
+                        let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, destToken, expectedResult);
+                        let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, destToken, taker, network.address);
+                        info = [srcQty, networkFeeBps, platformFeeBps];
+                        [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, destToken, expectedResult, info, maxDestAmt);
 
-                    let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, destToken.address, taker,
-                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
-                    console.log(`token -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+                        let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, destToken.address, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                        console.log(`token -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
 
-                    await nwHelper.compareBalancesAfterTrade(srcToken, destToken, actualSrcQty,
-                        initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
-                });
+                        await nwHelper.compareBalancesAfterTrade(srcToken, destToken, actualSrcQty,
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+                    });
+                };
             };
         });
 

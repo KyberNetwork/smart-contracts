@@ -57,7 +57,7 @@ async function setupReserves
 
     let i;
     let ethSenderIndex = 1;
-    let ethInit = (new BN(10)).pow(new BN(19)).mul(new BN(12));
+    let ethInit = (new BN(10)).pow(new BN(19)).mul(new BN(20));
     
     // setup mock reserves
     //////////////////////
