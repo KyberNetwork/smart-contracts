@@ -594,7 +594,6 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
         };
         result.t2eSrcAmts = tmpAmts;
         result.t2eRates = tmpRates;
-
         result.t2eAddresses = await storage.convertReserveIdsToAddresses(result.t2eIds);
     } else {
         result.tradeWei = srcQty;
@@ -658,7 +657,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
         }
 
         result.e2tAddresses = await storage.convertReserveIdsToAddresses(result.e2tIds);
-
+        result.e2tRates = tmpRates;
         result.e2tSrcAmts = tmpAmts;
     } else {
         result.actualDestAmount = actualSrcWei;
@@ -675,7 +674,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
 
     result.rateWithoutFees = Helper.calcRateFromQty(srcQty, destAmountWithoutFees, srcDecimals, destDecimals);
     result.rateWithNetworkFee = Helper.calcRateFromQty(srcQty, destAmountWithNetworkFee, srcDecimals, destDecimals);
-    result.rateWithAllFees = Helper.calcRateFromQty(srcQty, actualDestAmount, srcDecimals, destDecimals);
+    result.rateWithAllFees = Helper.calcRateFromQty(srcQty, result.actualDestAmount, srcDecimals, destDecimals);
     return result;
 }
 
