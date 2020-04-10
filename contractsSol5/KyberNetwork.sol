@@ -129,6 +129,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         onlyOperator();
         require(kyberStorage.addReserve(reserve, reserveId));
         require(matchingEngine.addReserve(reserveId, reserveType));
+        require(rebateWallet != address(0));
 
         reserveIdToAddress[reserveId] = reserve;
 
@@ -791,7 +792,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         uint index;
 
         // tokenToEth
-        populateRebateWalletList(
+        index = populateRebateWalletList(
             rebateWallets,
             rebatePercentBps,
             tData.tokenToEth,
@@ -800,7 +801,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         );
 
         // ethToToken
-        index = populateRebateWalletList(
+        populateRebateWalletList(
             rebateWallets,
             rebatePercentBps,
             tData.ethToToken,
@@ -1010,7 +1011,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
             // reserve sends tokens/eth to network. network sends it to destination
             require(tradingReserves.addresses[i].trade.value(callValue)(src, tradingReserves.srcAmounts[i], dest, address(this),
-                        tradingReserves.rates[i], true));
+                        tradingReserves.rates[i], true), "trade failed");
         }
 
         if (destAddress != address(this)) {
