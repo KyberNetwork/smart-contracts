@@ -127,8 +127,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         external returns(bool)
     {
         onlyOperator();
-        require(kyberStorage.addReserve(reserve, reserveId));
-        require(matchingEngine.addReserve(reserveId, reserveType));
+        require(kyberStorage.addReserve(reserve, reserveId), "storage adds reserve failed");
+        require(matchingEngine.addReserve(reserveId, reserveType), "engine adds reserve failed");
         require(rebateWallet != address(0));
 
         reserveIdToAddress[reserveId] = reserve;
