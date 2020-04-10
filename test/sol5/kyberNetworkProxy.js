@@ -104,7 +104,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //init tokens
         for (let i = 0; i < numTokens; i++) {
-            tokenDecimals[i] = new BN(15).add(new BN(i));
+            tokenDecimals[i] = new BN(12).add(new BN(i));
             token = await TestToken.new("test" + i, "tst" + i, tokenDecimals[i]);
             tokens[i] = token;
         }
@@ -799,6 +799,16 @@ contract('KyberNetworkProxy', function(accounts) {
     });
     
     describe("test simple swap API", async () => {
+        let tmpNetwork;
+        before("init network with APR reserve", async () => {
+            // set up generousNetwork
+            tmpNetwork = await KyberNetwork.new(admin);
+            await nwHelper.setupNetwork(tmpNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
+            let result = await nwHelper.setupReserves(tmpNetwork, tokens, 0, 0, 0, 5, accounts, admin, operator);
+            await nwHelper.addReservesToNetwork(tmpNetwork, result.reserveInstances, tokens, operator);
+            await networkProxy.setKyberNetwork(tmpNetwork.address, { from: admin });
+        });
+
         it("swapEtherToToken", async () => {
             let destToken = tokens[1];
             let initialTakerBalance = await destToken.balanceOf(taker);
@@ -808,8 +818,8 @@ contract('KyberNetworkProxy', function(accounts) {
             await destToken.approve(networkProxy.address, srcQty, { from: taker });
             await networkProxy.swapEtherToToken(tokenAdd, proxyRate.expectedRate, { from: taker, value: srcQty });
             let dstQty = Helper.calcDstQty(srcQty, ethDecimals, tokenDecimals[1], proxyRate.expectedRate);
-            let expectedBalance = new BN(initialTakerBalance).add(dstQty);
-            await Helper.assertSameTokenBalance(taker, destToken, expectedBalance);
+            let actualDstQty = (await destToken.balanceOf(taker)).sub(initialTakerBalance);
+            Helper.assertApproximate(dstQty, actualDstQty);
         });
 
         it("swapTokenToEther", async () => {
@@ -865,6 +875,10 @@ contract('KyberNetworkProxy', function(accounts) {
             let actualDstQty = actualBalance.sub(initialTakerBalance);
             await Helper.assertApproximate(dstQty, actualDstQty, "wrong balance");
 
+        });
+
+        after("clean up & set reference back to network", async () => {
+            await networkProxy.setKyberNetwork(network.address, { from: admin });
         });
     });    
 

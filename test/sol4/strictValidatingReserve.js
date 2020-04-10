@@ -1,8 +1,7 @@
 const TestToken = artifacts.require('TestToken.sol');
 const StrictValidatingReserve = artifacts.require('StrictValidatingReserve.sol');
-const KyberReserve = artifacts.require('KyberReserve.sol');
 const LiquidityConversionRates = artifacts.require('LiquidityConversionRates.sol');
-const Bank = artifacts.require('Bank.sol');
+const TempBank = artifacts.require('TempBank.sol');
 
 const BN = web3.utils.BN;
 const {expectRevert} = require('@openzeppelin/test-helpers');
@@ -58,8 +57,9 @@ contract('StrictValidatingReserve', function (accounts) {
 		walletForToken = accounts[3];
 		token = await TestToken.new('test', 'tst', new BN(tokenDecimals));
 		liqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
-		bank = await Bank.new();
-		reserve = await StrictValidatingReserve.new(network, liqConvRatesInst.address, admin, bank.address);
+		bank = await TempBank.new();
+		reserve = await StrictValidatingReserve.new(network, liqConvRatesInst.address, admin);
+		reserve.setBank(bank.address);
 		await liqConvRatesInst.setLiquidityParams(
 			rInFp,
 			pMinInFp,
