@@ -2,7 +2,6 @@ const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const MockDao = artifacts.require("MockDAO.sol");
 const MockGasHelper = artifacts.require("MockGasHelper.sol");
-const MockMatchingEngineManipulateRate = artifacts.require("MockMatchingEngineManipulateRate.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
@@ -593,23 +592,13 @@ contract('KyberNetwork', function(accounts) {
             );
         });
 
-        it("add reserve sucess", async function(){
+        it("add reserve reverts", async function(){
             let anyWallet = taker;
             let reserveID =  nwHelper.genReserveID(MOCK_ID, mockReserve.address);
-
-            console.log("mock reserve", mockReserve.address);
-            console.log("reserve ID", reserveID)
-            console.log("any wallet", anyWallet)
-            let txResult = await tempNetwork.addReserve(mockReserve.address, reserveID, ReserveType.FPR, anyWallet, {from: operator});
-            txResult.logs[0].args[1] = txResult.logs[0].args['1'].substring(0,18);
-            txResult.logs[0].args['reserveId'] = txResult.logs[0].args['reserveId'].substring(0,18);
-            expectEvent(txResult, 'AddReserveToNetwork', {
-                reserve: mockReserve.address,
-                reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
-                reserveType: new BN(ReserveType.FPR),
-                rebateWallet: taker,
-                add: true
-            });
+            await expectRevert(
+                tempNetwork.addReserve(mockReserve.address, reserveID, ReserveType.FPR, anyWallet, {from: operator}),
+                "engine adds reserve failed"
+            )
         });
 
         it("remove reserve revert", async function(){
@@ -1035,8 +1024,8 @@ contract('KyberNetwork', function(accounts) {
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
 
                     expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                        srcToken.address, destToken.address, srcQty,
-                        srcDecimals, destDecimals,
+                        srcToken.address, ethAddress, srcQty,
+                        srcDecimals, ethDecimals,
                         networkFeeBps, zeroBN, hint);
 
                     await srcToken.transfer(network.address, srcQty);
@@ -1055,8 +1044,8 @@ contract('KyberNetwork', function(accounts) {
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
 
                     expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                        srcToken.address, destToken.address, ethSrcQty,
-                        srcDecimals, destDecimals,
+                        ethAddress, destToken.address, ethSrcQty,
+                        ethDecimals, destDecimals,
                         networkFeeBps, zeroBN, hint);
     
                     let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
@@ -1119,8 +1108,8 @@ contract('KyberNetwork', function(accounts) {
                         hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
                         
                         expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                            srcToken.address, ethAddress, srcQty,
-                            srcDecimals, ethDecimals,
+                            ethAddress, destToken.address, ethSrcQty,
+                            ethDecimals, destDecimals,
                             networkFeeBps, zeroBN, hint);
 
                         let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
@@ -1138,8 +1127,8 @@ contract('KyberNetwork', function(accounts) {
                         hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
                         
                         expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                            srcToken.address, ethAddress, srcQty,
-                            srcDecimals, ethDecimals,
+                            srcToken.address, destToken.address, srcQty,
+                            srcDecimals, destDecimals,
                             networkFeeBps, zeroBN, hint);
 
                         await srcToken.transfer(network.address, srcQty);

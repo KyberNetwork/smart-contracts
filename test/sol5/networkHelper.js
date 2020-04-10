@@ -589,7 +589,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             result.t2eDestAmts.push(dstQty);
             result.tradeWei = result.tradeWei.add(dstQty);
             if(reserves.isFeeAccounted[indexes[i]]) {
-                totalFeePayingReservesBps = totalFeePayingReservesBps.add(reserves.splitValuesBps[i]);
+                totalFeePayingReservesBps = totalFeePayingReservesBps.add(reserves.splitValuesBps[indexes[i]]);
             }
         };
         result.t2eSrcAmts = tmpAmts;
@@ -653,7 +653,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             result.e2tDestAmts.push(dstQty);
             result.actualDestAmount = result.actualDestAmount.add(dstQty);
             if(reserves.isFeeAccounted[indexes[i]]) {
-                totalFeePayingReservesBps = totalFeePayingReservesBps.add(reserves.splitValuesBps[i]);
+                totalFeePayingReservesBps = totalFeePayingReservesBps.add(reserves.splitValuesBps[indexes[i]]);
             }
         }
 
@@ -736,7 +736,6 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
     let reserveAddress;
     let expectedDestChange;
     let splitAmount;
-    let amountSoFar = zeroBN;
     let srcDecimals = (srcToken == ethAddress) ? ethDecimals : await srcToken.decimals();
     let destDecimals = (destToken == ethAddress) ? ethDecimals : await destToken.decimals();
     networkAdd = (networkAdd == undefined) ? taker : networkAdd;
@@ -753,9 +752,7 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
         //Reserves: plus split dest amt (srcToken), minus split src amt based on rate (ETH)
         for (let i=0; i<ratesAmts.t2eAddresses.length; i++) {
             reserveAddress = ratesAmts.t2eAddresses[i];
-            splitAmount = (i == ratesAmts.t2eAddresses.length - 1) ?
-                (srcQty.sub(amountSoFar)) : ratesAmts.t2eSplits[i].mul(srcQty).div(BPS);
-            amountSoFar = amountSoFar.add(splitAmount);
+            splitAmount = ratesAmts.t2eSrcAmts[i];
             //plus split amount (token)
             expectedReserveBalance = initialReserveBalances.t2eToken[i].add(splitAmount);
             await Helper.assertSameTokenBalance(reserveAddress, srcToken, expectedReserveBalance);
@@ -778,10 +775,7 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
         //Reserves: Minus expectedDestAmtAfterAllFees (ETH), Plus destAmtAfterNetworkFees (token)
         for (let i=0; i<ratesAmts.e2tAddresses.length; i++) {
             reserveAddress = ratesAmts.e2tAddresses[i];
-            splitAmount = (i == ratesAmts.e2tAddresses.length - 1) ?
-                ratesAmts.tradeWei.sub(ratesAmts.networkFeeWei).sub(ratesAmts.platformFeeWei).sub(amountSoFar) :
-                ratesAmts.e2tSplits[i].mul(ratesAmts.tradeWei.sub(ratesAmts.networkFeeWei).sub(ratesAmts.platformFeeWei)).div(BPS);
-            amountSoFar = amountSoFar.add(splitAmount);
+            splitAmount = ratesAmts.e2tSrcAmts[i];
             //plus split amount (ETH)
             expectedReserveBalance = initialReserveBalances.e2tEth[i].add(splitAmount);
             await Helper.assertSameEtherBalance(reserveAddress, expectedReserveBalance);
@@ -800,9 +794,7 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
         //Reserves: plus split dest amt (srcToken), minus split src amt based on rate (ETH)
         for (let i=0; i<ratesAmts.t2eAddresses.length; i++) {
             reserveAddress = ratesAmts.t2eAddresses[i];
-            splitAmount = (i == ratesAmts.t2eAddresses.length - 1) ?
-                (srcQty.sub(amountSoFar)) : ratesAmts.t2eSplits[i].mul(srcQty).div(BPS);
-            amountSoFar = amountSoFar.add(splitAmount);
+            splitAmount = ratesAmts.t2eSrcAmts[i];
             //plus split amount (token)
             expectedReserveBalance = initialReserveBalances.t2eToken[i].add(splitAmount);
             await Helper.assertSameTokenBalance(reserveAddress, srcToken, expectedReserveBalance);
@@ -819,16 +811,10 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
             }
         }
 
-        //reset amountSoFar
-        amountSoFar = zeroBN;
-
         //e2tReserves: minus split expectedDestAmtAfterAllFee (ETH), plus split dest amt (destToken)
         for (let i=0; i<ratesAmts.e2tAddresses.length; i++) {
             reserveAddress = ratesAmts.e2tAddresses[i];
-            splitAmount = (i == ratesAmts.e2tAddresses.length - 1) ?
-                ratesAmts.tradeWei.sub(ratesAmts.networkFeeWei).sub(ratesAmts.platformFeeWei).sub(amountSoFar) :
-                ratesAmts.e2tSplits[i].mul(ratesAmts.tradeWei.sub(ratesAmts.networkFeeWei).sub(ratesAmts.platformFeeWei)).div(BPS);
-            amountSoFar = amountSoFar.add(splitAmount);
+            splitAmount = ratesAmts.e2tSrcAmts[i];
             //plus split amount (ETH)
             expectedReserveBalance = initialReserveBalances.e2tEth[i].add(splitAmount);
             await Helper.assertSameEtherBalance(reserveAddress, expectedReserveBalance);
@@ -851,22 +837,22 @@ async function calcParamsFromMaxDestAmt(srcToken, destToken, unpackedOutput, inf
         unpackedOutput.actualDestAmount = maxDestAmt;
         // E2T side
         if (destToken != ethAddress) {
-            tradeWeiAfterFees = calcTradeSrcAmount(ethDecimals, await destToken.decimals(), maxDestAmt,
-                unpackedOutput.e2tRates, unpackedOutput.e2tSplits);
+            [tradeWeiAfterFees, unpackedOutput.e2tSrcAmts] = calcTradeSrcAmount(ethDecimals, await destToken.decimals(), maxDestAmt,
+                unpackedOutput.e2tRates, unpackedOutput.e2tSrcAmts);
         } else {
             tradeWeiAfterFees = maxDestAmt;
         }
 
         unpackedOutput.tradeWei = tradeWeiAfterFees.mul(BPS).mul(BPS).div(
-            (BPS.mul(BPS)).sub(networkFeeBps.mul(unpackedOutput.feePayingReservesBps)).sub(platformFeeBps.mul(BPS))
+            (BPS.mul(BPS)).sub(networkFeeBps.mul(new BN(unpackedOutput.feePayingReservesBps))).sub(platformFeeBps.mul(BPS))
         );
-        unpackedOutput.networkFeeWei = unpackedOutput.tradeWei.mul(networkFeeBps).div(BPS).mul(unpackedOutput.feePayingReservesBps).div(BPS);
+        unpackedOutput.networkFeeWei = unpackedOutput.tradeWei.mul(networkFeeBps).div(BPS).mul(new BN(unpackedOutput.feePayingReservesBps)).div(BPS);
         unpackedOutput.platformFeeWei = unpackedOutput.tradeWei.mul(platformFeeBps).div(BPS);
 
         // T2E side
         if (srcToken != ethAddress) {
-            actualSrcAmt = calcTradeSrcAmount(await srcToken.decimals(), ethDecimals, unpackedOutput.tradeWei,
-                unpackedOutput.t2eRates, unpackedOutput.t2eSplits);
+            [actualSrcAmt, unpackedOutput.t2eSrcAmts] = calcTradeSrcAmount(await srcToken.decimals(), ethDecimals, unpackedOutput.tradeWei,
+                unpackedOutput.t2eRates, unpackedOutput.t2eSrcAmts);
         } else {
             actualSrcAmt = unpackedOutput.tradeWei;
         }
@@ -875,14 +861,22 @@ async function calcParamsFromMaxDestAmt(srcToken, destToken, unpackedOutput, inf
     return [unpackedOutput, actualSrcAmt];
 }
 
-function calcTradeSrcAmount(srcDecimals, destDecimals, destAmt, rates, splits) {
-    let srcAmt = zeroBN;
-    let amtSoFar = zeroBN;
-    let destAmtSplit = zeroBN;
-    for (let i = 0; i < rates.length; i++) {
-        destAmtSplit = i == (splits.length - 1) ? (destAmt.sub(amtSoFar)) : splits[i].mul(destAmt).div(BPS);
-        amtSoFar = amtSoFar.add(destAmtSplit);
-        srcAmt = srcAmt.add(Helper.calcSrcQty(destAmtSplit, srcDecimals, destDecimals, rates[i]));
+function calcTradeSrcAmount(srcDecimals, destDecimals, destAmt, rates, srcAmounts) {
+    let weightedDestAmount = new BN(0);
+    for(let i = 0; i < rates.length; i++) {
+        weightedDestAmount = weightedDestAmount.add(srcAmounts[i].mul(rates[i]));
     }
-    return srcAmt;
+    let srcAmount = new BN(0);
+    let destAmountSoFar = new BN(0);
+    let newSrcAmounts = [];
+    for(let i = 0; i < rates.length; i++) {
+        let destAmountSplit = (i == rates.length - 1) ? (new BN(destAmt).sub(destAmountSoFar)) :
+            new BN(destAmt).mul(srcAmounts[i]).mul(rates[i]).div(weightedDestAmount);
+        destAmountSoFar = destAmountSoFar.add(destAmountSplit);
+        let srcAmt = Helper.calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
+        newSrcAmounts.push(srcAmt);
+        srcAmount = srcAmount.add(srcAmt);
+    }
+
+    return [srcAmount, newSrcAmounts];
 }
