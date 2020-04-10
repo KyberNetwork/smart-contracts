@@ -1,13 +1,14 @@
-const TestToken = artifacts.require('TestToken.sol')
-const StrictValidatingReserve = artifacts.require('StrictValidatingReserve.sol')
-const KyberReserve = artifacts.require('KyberReserve.sol')
-const LiquidityConversionRates = artifacts.require('LiquidityConversionRates.sol')
+const TestToken = artifacts.require('TestToken.sol');
+const StrictValidatingReserve = artifacts.require('StrictValidatingReserve.sol');
+const KyberReserve = artifacts.require('KyberReserve.sol');
+const LiquidityConversionRates = artifacts.require('LiquidityConversionRates.sol');
+const Bank = artifacts.require('Bank.sol');
 
-const BN = web3.utils.BN
-const {expectRevert} = require('@openzeppelin/test-helpers')
+const BN = web3.utils.BN;
+const {expectRevert} = require('@openzeppelin/test-helpers');
 
-const {precisionUnits, ethAddress, ethDecimals, zeroAddress, emptyHint} = require('../helper.js')
-let Helper = require('../helper.js')
+const {precisionUnits, ethAddress, ethDecimals, zeroAddress, emptyHint} = require('../helper.js');
+const Helper = require('../helper.js');
 
 const r = 0.0069315
 const p0 = 0.0001 // 1m tokens = 100 eth
@@ -52,12 +53,13 @@ let walletForToken
 
 contract('StrictValidatingReserve', function (accounts) {
 	before('one time init', async () => {
-		admin = accounts[1]
-		network = accounts[2]
-		walletForToken = accounts[3]
-		token = await TestToken.new('test', 'tst', new BN(tokenDecimals))
-		liqConvRatesInst = await LiquidityConversionRates.new(admin, token.address)
-		reserve = await StrictValidatingReserve.new(network, liqConvRatesInst.address, admin)
+		admin = accounts[1];
+		network = accounts[2];
+		walletForToken = accounts[3];
+		token = await TestToken.new('test', 'tst', new BN(tokenDecimals));
+		liqConvRatesInst = await LiquidityConversionRates.new(admin, token.address);
+		bank = await Bank.new();
+		reserve = await StrictValidatingReserve.new(network, liqConvRatesInst.address, admin, bank.address);
 		await liqConvRatesInst.setLiquidityParams(
 			rInFp,
 			pMinInFp,
@@ -96,10 +98,12 @@ contract('StrictValidatingReserve', function (accounts) {
 		})
 
 		it('test e2t trade execute successful with rate from getConversionRate', async () => {
+			let beforeBalance = await Helper.getBalancePromise(reserve.address);
 			let buyRate = await liqConvRatesInst.getRate(token.address, currentblock, true, srcBuyQty);
 			let reserveRate = await reserve.getConversionRate(ethAddress, token.address, srcBuyQty, currentblock);
 			Helper.assertEqual(reserveRate, buyRate, "rate missmatch");
 			await reserve.trade(ethAddress,  srcBuyQty, token.address, zeroAddress, reserveRate, true, {from: network, value: srcBuyQty});
+			Helper.assertEqual(beforeBalance.add(srcBuyQty), await Helper.getBalancePromise(reserve.address));
 		});
 
 		it('test t2e trade revert with higher rate from getConversionRate', async () => {

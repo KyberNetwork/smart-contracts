@@ -272,6 +272,33 @@ async function setupFprPricing (tokens, numImbalanceSteps, numQtySteps, tokensPe
     return pricing;
 }
 
+module.exports.setupAprReserve = setupAprReserve;
+async function setupAprReserve (network, token, ethSender, pricingAdd, ethInit, admin, operator) {
+    let reserve;
+
+    //setup reserve
+    reserve = await Reserve.new(network.address, pricingAdd, admin);
+    await reserve.addOperator(operator, {from: admin});
+    await reserve.addAlerter(operator, {from: admin});
+        
+    //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
+    await Helper.sendEtherWithPromise(ethSender, reserve.address, ethInit);
+        
+    //reserve related setup
+    await reserve.approveWithdrawAddress(token.address, ethSender, true, {from: admin});
+        
+    let initialTokenAmount = new BN(200000).mul(new BN(10).pow(new BN(await token.decimals())));
+    await token.transfer(reserve.address, initialTokenAmount);
+    await Helper.assertSameTokenBalance(reserve.address, token, initialTokenAmount);
+    
+    return reserve;
+}
+
+module.exports.setupAprPricing = setupAprPricing;
+async function setupAprPricing (tokens, tokensPerEther, ethersPerToken, admin, operator) {
+
+}
+
 module.exports.addReservesToNetwork = addReservesToNetwork;
 async function addReservesToNetwork(networkInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
