@@ -595,9 +595,8 @@ contract('KyberNetwork', function(accounts) {
         it("add reserve reverts", async function(){
             let anyWallet = taker;
             let reserveID =  nwHelper.genReserveID(MOCK_ID, mockReserve.address);
-            await expectRevert(
-                tempNetwork.addReserve(mockReserve.address, reserveID, ReserveType.FPR, anyWallet, {from: operator}),
-                "engine adds reserve failed"
+            await expectRevert.unspecified(
+                tempNetwork.addReserve(mockReserve.address, reserveID, ReserveType.FPR, anyWallet, {from: operator})
             )
         });
 
