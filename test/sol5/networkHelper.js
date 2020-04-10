@@ -534,6 +534,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
         rateWithoutFees: zeroBN,
         rateWithNetworkFee: zeroBN,
         rateWithAllFees: zeroBN,
+        feePayingReservesBps: zeroBN,
     };
 
     let reserves;
@@ -589,7 +590,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             result.t2eDestAmts.push(dstQty);
             result.tradeWei = result.tradeWei.add(dstQty);
             if(reserves.isFeeAccounted[indexes[i]]) {
-                totalFeePayingReservesBps = totalFeePayingReservesBps.add(reserves.splitValuesBps[indexes[i]]);
+                result.feePayingReservesBps = result.feePayingReservesBps.add(reserves.splitValuesBps[indexes[i]]);
             }
         };
         result.t2eSrcAmts = tmpAmts;
@@ -600,7 +601,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
     }
 
     if (result.tradeWei.eq(zeroBN)) return result;
-    result.networkFeeWei = result.tradeWei.mul(networkFeeBps).div(BPS).mul(totalFeePayingReservesBps).div(BPS);
+    result.networkFeeWei = result.tradeWei.mul(networkFeeBps).div(BPS).mul(result.feePayingReservesBps).div(BPS);
     result.platformFeeWei = result.tradeWei.mul(platformFeeBps).div(BPS);
     let actualSrcWei = result.tradeWei.sub(result.networkFeeWei).sub(result.platformFeeWei);
 
@@ -652,7 +653,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             result.e2tDestAmts.push(dstQty);
             result.actualDestAmount = result.actualDestAmount.add(dstQty);
             if(reserves.isFeeAccounted[indexes[i]]) {
-                totalFeePayingReservesBps = totalFeePayingReservesBps.add(reserves.splitValuesBps[indexes[i]]);
+                result.feePayingReservesBps = result.feePayingReservesBps.add(reserves.splitValuesBps[indexes[i]]);
             }
         }
 
@@ -664,7 +665,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
     }
 
     if (result.actualDestAmount.eq(zeroBN)) return result;
-    result.networkFeeWei = result.tradeWei.mul(networkFeeBps).div(BPS).mul(totalFeePayingReservesBps).div(BPS);
+    result.networkFeeWei = result.tradeWei.mul(networkFeeBps).div(BPS).mul(result.feePayingReservesBps).div(BPS);
     result.platformFeeWei = result.tradeWei.mul(platformFeeBps).div(BPS);
     actualSrcWei = result.tradeWei.sub(result.networkFeeWei).sub(result.platformFeeWei);
 
@@ -849,9 +850,9 @@ async function calcParamsFromMaxDestAmt(srcToken, destToken, unpackedOutput, inf
         }
 
         unpackedOutput.tradeWei = tradeWeiAfterFees.mul(BPS).mul(BPS).div(
-            (BPS.mul(BPS)).sub(networkFeeBps.mul(new BN(unpackedOutput.feePayingReservesBps))).sub(platformFeeBps.mul(BPS))
+            (BPS.mul(BPS)).sub(networkFeeBps.mul(unpackedOutput.feePayingReservesBps)).sub(platformFeeBps.mul(BPS))
         );
-        unpackedOutput.networkFeeWei = unpackedOutput.tradeWei.mul(networkFeeBps).div(BPS).mul(new BN(unpackedOutput.feePayingReservesBps)).div(BPS);
+        unpackedOutput.networkFeeWei = unpackedOutput.tradeWei.mul(networkFeeBps).div(BPS).mul(unpackedOutput.feePayingReservesBps).div(BPS);
         unpackedOutput.platformFeeWei = unpackedOutput.tradeWei.mul(platformFeeBps).div(BPS);
 
         // T2E side
@@ -874,8 +875,8 @@ function calcTradeSrcAmount(srcDecimals, destDecimals, destAmt, rates, srcAmount
     let srcAmount = new BN(0);
     let destAmountSoFar = new BN(0);
     let newSrcAmounts = [];
-    for(let i = 0; i < rates.length; i++) {
-        let destAmountSplit = (i == rates.length - 1) ? (new BN(destAmt).sub(destAmountSoFar)) :
+    for(let i = 0; i < srcAmounts.length; i++) {
+        let destAmountSplit = (i == srcAmounts.length - 1) ? (new BN(destAmt).sub(destAmountSoFar)) :
             new BN(destAmt).mul(srcAmounts[i]).mul(rates[i]).div(weightedDestAmount);
         destAmountSoFar = destAmountSoFar.add(destAmountSplit);
         let srcAmt = Helper.calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
