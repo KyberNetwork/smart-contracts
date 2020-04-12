@@ -169,7 +169,7 @@ contract('PermissionGroupsNoModifiers', function(accounts) {
             await permissionsInst.addOperator(operator, {from: mainAdmin});
             await expectRevert(
                 permissionsInst.addOperator(operator, {from: mainAdmin}),
-                "Operator exists"
+                "operator exists"
             );
         });
 
