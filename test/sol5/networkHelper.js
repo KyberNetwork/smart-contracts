@@ -149,7 +149,11 @@ async function setupNetwork
     const matchingEngine = await MatchingEngine.new(admin);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
     await matchingEngine.setKyberStorage(storage.address, {from : admin});
+<<<<<<< HEAD
     await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+=======
+    await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+>>>>>>> 015af4c826749f06b1d7afd155c9a7ad0e9387ab
     let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
     await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
     // set DAO contract
