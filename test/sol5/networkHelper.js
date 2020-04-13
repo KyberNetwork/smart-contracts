@@ -57,7 +57,7 @@ async function setupReserves
 
     let i;
     let ethSenderIndex = 1;
-    let ethInit = (new BN(10)).pow(new BN(19)).mul(new BN(8)); 
+    let ethInit = (new BN(10)).pow(new BN(19)).mul(new BN(20));
     
     // setup mock reserves
     //////////////////////
@@ -96,7 +96,7 @@ async function setupReserves
             token = tokens[j];
             //set rates and send tokens
             await reserve.setRate(token.address, tokensPerEther, ethersPerToken);
-            let initialTokenAmount = new BN(200000).mul(new BN(10).pow(new BN(await token.decimals())));
+            let initialTokenAmount = new BN(2000000).mul(new BN(10).pow(new BN(await token.decimals())));
             await token.transfer(reserve.address, initialTokenAmount);
             await Helper.assertSameTokenBalance(reserve.address, token, initialTokenAmount);
         }
@@ -839,7 +839,7 @@ async function calcParamsFromMaxDestAmt(srcToken, destToken, unpackedOutput, inf
     let platformFeeBps = info[2];
     let tradeWeiAfterFees;
 
-    if (unpackedOutput.actualDestAmount.gte(maxDestAmt)) {
+    if (unpackedOutput.actualDestAmount.gt(maxDestAmt)) {
         unpackedOutput.actualDestAmount = maxDestAmt;
         // E2T side
         if (destToken != ethAddress) {
