@@ -8,7 +8,7 @@ import "../KyberNetwork.sol";
 /// @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
 contract GenerousKyberNetwork is KyberNetwork {
 
-    constructor(address _admin) public KyberNetwork(_admin) { }
+    constructor(address _admin, IKyberStorage _kyberStorage) public KyberNetwork(_admin, _kyberStorage) { }
 
     event GenerousTrade(int which, int more, IERC20 token);
     /* solhint-disable function-max-lines */

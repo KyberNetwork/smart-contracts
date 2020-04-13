@@ -54,7 +54,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
     event KyberStorageUpdated(IKyberStorage newStorage);
     function setKyberStorage(IKyberStorage _kyberStorage) external returns (bool) {
-        onlyNetwork();
+        onlyAdmin();
         emit KyberStorageUpdated(_kyberStorage);
         kyberStorage = _kyberStorage;
         return true;

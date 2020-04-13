@@ -140,16 +140,18 @@ async function setupReserves
 
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
-    (network, networkProxyAddress, KNCAddress, DAOAddress, admin, operator) {
+    (NetworkArtifact, networkProxyAddress, KNCAddress, DAOAddress, admin, operator) {
+    const storage =  await KyberStorage.new(admin);
+    const network = await NetworkArtifact.new(admin, storage.address);
+    await storage.setNetworkContract(network.address, {from: admin});
     await network.addOperator(operator, { from: admin });
     //init matchingEngine, feeHandler
     const matchingEngine = await MatchingEngine.new(admin);
-    const storage =  await KyberStorage.new(admin);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
-    await storage.setNetworkContract(network.address, {from: admin});
+    await matchingEngine.setKyberStorage(storage.address, {from : admin});
     await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
     let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
-    await network.setContracts(feeHandler.address, matchingEngine.address, storage.address, zeroAddress, { from: admin });
+    await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
     // set DAO contract
     await network.setDAOContract(DAOAddress, { from: admin });
     // point proxy to network
@@ -157,6 +159,7 @@ async function setupNetwork
     //set params, enable network
     await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
     await network.setEnable(true, { from: admin });
+    return network;
 } 
 
 module.exports.setupFprReserve = setupFprReserve;

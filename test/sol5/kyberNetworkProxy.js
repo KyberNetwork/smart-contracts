@@ -81,8 +81,10 @@ contract('KyberNetworkProxy', function(accounts) {
         DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
         await DAO.setNetworkFeeBps(networkFeeBps);
 
-        //deploy network
-        network = await KyberNetwork.new(admin);
+        //deploy storage and network
+        storage = await KyberStorage.new(admin);
+        network = await KyberNetwork.new(admin, storage.address);
+        await storage.setNetworkContract(network.address, {from: admin});
 
         // init proxy
         networkProxy = await KyberNetworkProxy.new(admin);
@@ -90,14 +92,11 @@ contract('KyberNetworkProxy', function(accounts) {
         //init matchingEngine
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
+        await matchingEngine.setKyberStorage(storage.address, {from: admin});
         await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
         await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
-
-        //init storage
-        storage = await KyberStorage.new(admin);
-        await storage.setNetworkContract(network.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -121,7 +120,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //setup network
         ///////////////
-        await network.setContracts(feeHandler.address, matchingEngine.address, storage.address, zeroAddress, {from: admin});
+        await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
         await network.addKyberProxy(networkProxy.address, {from: admin});
         await network.addOperator(operator, {from: admin});
         await network.setDAOContract(DAO.address, {from: admin});
@@ -487,8 +486,10 @@ contract('KyberNetworkProxy', function(accounts) {
             let mockDAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
             await mockDAO.setNetworkFeeBps(networkFeeBps);
 
-            //deploy network
-            mockNetwork = await KyberNetwork.new(admin);
+            //deploy storage and network
+            tempStorage = await KyberStorage.new(admin);
+            mockNetwork = await KyberNetwork.new(admin, tempStorage.address);
+            await tempStorage.setNetworkContract(mockNetwork.address, {from: admin});
 
             // init proxy
             mockProxy = await KyberNetworkProxy.new(admin);
@@ -496,14 +497,11 @@ contract('KyberNetworkProxy', function(accounts) {
             //init matchingEngine
             mockMatchingEngine = await MatchingEngine.new(admin);
             await mockMatchingEngine.setNetworkContract(mockNetwork.address, {from: admin});
+            await mockMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
             await mockMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
 
             mockRateHelper = await RateHelper.new(admin);
             await mockRateHelper.setContracts(mockMatchingEngine.address, mockDAO.address, {from: admin});
-
-            //init storage
-            tempStorage = await KyberStorage.new(admin);
-            await tempStorage.setNetworkContract(mockNetwork.address, {from: admin});
 
             // setup proxy
             await mockProxy.setKyberNetwork(mockNetwork.address, {from: admin});
@@ -525,7 +523,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
             //setup network
             ///////////////
-            await mockNetwork.setContracts(tempFeeHandler.address, mockMatchingEngine.address, tempStorage.address, zeroAddress, {from: admin});
+            await mockNetwork.setContracts(tempFeeHandler.address, mockMatchingEngine.address, zeroAddress, {from: admin});
             
             await mockNetwork.addKyberProxy(mockProxy.address, {from: admin});
             await mockNetwork.addOperator(operator, {from: admin});
@@ -668,7 +666,8 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         it("KyberNetworkSet", async () => {
-            let newNetWork = await KyberNetwork.new(admin);
+            let tempStorage = await KyberStorage.new(admin);
+            let newNetWork = await KyberNetwork.new(admin, tempStorage.address);
             let txResult = await networkProxy.setKyberNetwork(newNetWork.address, { from: admin });
             await expectEvent(txResult, "KyberNetworkSet", {
                 newNetwork: newNetWork.address, oldNetwork: network.address,
@@ -791,18 +790,15 @@ contract('KyberNetworkProxy', function(accounts) {
         let maliciousNetwork;
         before("init 'generous' network and 'malicious' network", async () => {
             // set up generousNetwork
-            generousNetwork = await GenerousNetwork.new(admin);
-            await nwHelper.setupNetwork(generousNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
+            generousNetwork = await nwHelper.setupNetwork(GenerousNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
             let result = await nwHelper.setupReserves(generousNetwork, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToNetwork(generousNetwork, result.reserveInstances, tokens, operator);
             // set up maliciousNetwork
-            maliciousNetwork = await MaliciousNetwork.new(admin);
-            await nwHelper.setupNetwork(maliciousNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
+            maliciousNetwork = await nwHelper.setupNetwork(MaliciousNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
             result = await nwHelper.setupReserves(maliciousNetwork, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToNetwork(maliciousNetwork, result.reserveInstances, tokens, operator);
             // set up generousNetwork2
-            generousNetwork2 = await GenerousNetwork2.new(admin);
-            await nwHelper.setupNetwork(generousNetwork2, networkProxy.address, KNC.address, DAO.address, admin, operator);
+            generousNetwork2 = await nwHelper.setupNetwork(GenerousNetwork2, networkProxy.address, KNC.address, DAO.address, admin, operator);
             result = await nwHelper.setupReserves(generousNetwork2, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToNetwork(generousNetwork2, result.reserveInstances, tokens, operator);
         });

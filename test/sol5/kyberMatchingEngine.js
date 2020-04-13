@@ -158,22 +158,22 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should not have unauthorized personnel set storage", async() => {
             await expectRevert(
                 matchingEngine.setKyberStorage(storage.address, {from: user}),
-                "only network"
+                "only admin"
             );
 
             await expectRevert(
                 matchingEngine.setKyberStorage(storage.address, {from: operator}),
-                "only network"
+                "only admin"
             );
 
             await expectRevert(
-                matchingEngine.setKyberStorage(storage.address, {from: admin}),
-                "only network"
+                matchingEngine.setKyberStorage(storage.address, {from: network}),
+                "only admin"
             );
         });
 
         it("should have network set storage contract", async() => {
-            await matchingEngine.setKyberStorage(storage.address, {from: network});
+            await matchingEngine.setKyberStorage(storage.address, {from: admin});
             let result = await matchingEngine.kyberStorage();
             Helper.assertEqual(storage.address, result, "storage not set by admin");
         });
@@ -236,7 +236,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
         it("should test set storage event", async() => {
             await matchingEngine.setNetworkContract(network, {from: admin});
-            txResult = await matchingEngine.setKyberStorage(storage.address, {from: network});
+            txResult = await matchingEngine.setKyberStorage(storage.address, {from: admin});
             expectEvent(txResult, "KyberStorageUpdated", {
                 newStorage: storage.address
             });
@@ -325,7 +325,7 @@ contract('KyberMatchingEngine', function(accounts) {
             storage = await KyberStorage.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
-            await matchingEngine.setKyberStorage(storage.address, {from: network});
+            await matchingEngine.setKyberStorage(storage.address, {from: admin});
             await storage.setNetworkContract(network, {from: admin});
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, accounts[9], {from: admin});
@@ -380,7 +380,7 @@ contract('KyberMatchingEngine', function(accounts) {
             storage = await KyberStorage.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
-            await matchingEngine.setKyberStorage(storage.address, {from: network});
+            await matchingEngine.setKyberStorage(storage.address, {from: admin});
             await storage.setNetworkContract(network, {from: admin});
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, accounts[9], {from: admin});
@@ -588,7 +588,7 @@ contract('KyberMatchingEngine', function(accounts) {
             storage = await KyberStorage.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
-            await matchingEngine.setKyberStorage(storage.address, {from: network});
+            await matchingEngine.setKyberStorage(storage.address, {from: admin});
             await storage.setNetworkContract(network, {from: admin});
 
             //init 2 tokens
@@ -644,7 +644,7 @@ contract('KyberMatchingEngine', function(accounts) {
             storage = await KyberStorage.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
-            await matchingEngine.setKyberStorage(storage.address, {from: network});
+            await matchingEngine.setKyberStorage(storage.address, {from: admin});
             await storage.setNetworkContract(network, {from: admin});
 
             //init 2 tokens
