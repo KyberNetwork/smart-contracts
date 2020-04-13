@@ -880,6 +880,10 @@ function calcTradeSrcAmount(srcDecimals, destDecimals, destAmt, rates, srcAmount
             new BN(destAmt).mul(srcAmounts[i]).mul(rates[i]).div(weightedDestAmount);
         destAmountSoFar = destAmountSoFar.add(destAmountSplit);
         let srcAmt = Helper.calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
+        if (srcAmt.gt(srcAmounts[i])) {
+            srcAmt = srcAmounts[i];
+            console.log("new src amount is higher than current src amount");
+        }
         newSrcAmounts.push(srcAmt);
         srcAmount = srcAmount.add(srcAmt);
     }

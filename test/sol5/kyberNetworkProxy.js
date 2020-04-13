@@ -132,6 +132,10 @@ contract('KyberNetworkProxy', function(accounts) {
         //set params, enable network
         await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
         await network.setEnable(true, {from: admin});
+
+        //get and cache data from DAO
+        await network.getAndUpdateNetworkFee();
+        await feeHandler.getBRR();
     });
 
     describe("test get rates - compare proxy rate to netwrk returned rates", async() => {
@@ -395,8 +399,8 @@ contract('KyberNetworkProxy', function(accounts) {
     });
 
     describe("test trades - report gas", async() => {
-        let tradeType = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE];
-        let typeStr = ['MASK_IN', 'MASK_OUT', 'SPLIT', 'NO HINT'];
+        let tradeType = [SPLIT_HINTTYPE, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE];
+        let typeStr = ['SPLIT', 'NO HINT', 'MASK_IN', 'MASK_OUT'];
 
         for(let i = 0; i < tradeType.length; i++) {
             let type = tradeType[i];
