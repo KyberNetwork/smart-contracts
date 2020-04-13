@@ -52,17 +52,11 @@ contract MockDAO is IKyberDAO, Utils4 {
         feeBps = _feeBps;
     }
 
-    function getLatestNetworkFeeData() 
-        external 
-        view 
-        returns(uint256, uint256) {
+    function getLatestNetworkFeeData() external view returns(uint, uint) {
         return (feeBps, expiryTimestamp);
     }
 
-    function getLatestNetworkFeeDataWithCache() 
-        external 
-        returns(uint256, uint256) 
-    {
+    function getLatestNetworkFeeDataWithCache() external returns(uint, uint) {
         data++;
         return (feeBps, expiryTimestamp);
     }
