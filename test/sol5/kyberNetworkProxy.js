@@ -45,7 +45,7 @@ let platformWallet;
 let rewardInBPS = new BN(7000);
 let rebateInBPS = new BN(2000);
 let epoch = new BN(3);
-let expiryBlockNumber;
+let expiryTimestamp;
 
 //fee hanlder related
 let KNC;
@@ -77,8 +77,8 @@ contract('KyberNetworkProxy', function(accounts) {
         destAddress = accounts[7];
 
         //DAO related init.
-        expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
-        DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+        expiryTimestamp = new BN(await Helper.getCurrentBlockTime() + 1000000);
+        DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
         await DAO.setNetworkFeeBps(networkFeeBps);
 
         //deploy storage and network
@@ -566,8 +566,8 @@ contract('KyberNetworkProxy', function(accounts) {
 
         before("Setup contracts with tokens with no return values", async() => {    
             //DAO related init.
-            let expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
-            let mockDAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+            let expiryTimestamp = new BN(await web3.eth.getBlockNumber() + 150);
+            let mockDAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
             await mockDAO.setNetworkFeeBps(networkFeeBps);
 
             //deploy storage and network

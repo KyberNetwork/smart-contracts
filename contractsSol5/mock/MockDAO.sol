@@ -10,29 +10,28 @@ contract MockDAO is IKyberDAO, Utils4 {
     uint public rewardInBPS;
     uint public rebateInBPS;
     uint public epoch;
-    uint public expiryBlockNumber;
+    uint public expiryTimestamp;
     uint public feeBps;
-    uint public epochPeriod = 10;
-    uint public startBlock;
+    uint public epochPeriod = 160;
+    uint public startTimestamp;
     uint data;
     mapping(uint => bool) public shouldBurnRewardEpoch;
 
-    constructor(uint _rewardInBPS, uint _rebateInBPS, uint _epoch, uint _expiryBlockNumber) public {
+    constructor(uint _rewardInBPS, uint _rebateInBPS, uint _epoch, uint _expiryTimestamp) public {
         rewardInBPS = _rewardInBPS;
         rebateInBPS = _rebateInBPS;
         epoch = _epoch;
-        expiryBlockNumber = _expiryBlockNumber;
-        startBlock = block.number;
-
+        expiryTimestamp = _expiryTimestamp;
+        startTimestamp = now;
     }
 
     function setFeeHandler(IKyberFeeHandler _handler) public {
         feeHandler = _handler;
     }
 
-    function setMockEpochAndExpiryBlock(uint _epoch, uint _expiryBlockNumber) public {
+    function setMockEpochAndExpiryBlock(uint _epoch, uint _expiryTimestamp) public {
         epoch = _epoch;
-        expiryBlockNumber = _expiryBlockNumber;
+        expiryTimestamp = _expiryTimestamp;
     }
 
     function setMockBRR(uint _rewardInBPS, uint _rebateInBPS) public {
@@ -45,16 +44,16 @@ contract MockDAO is IKyberDAO, Utils4 {
     }
 
     function getLatestNetworkFeeData() external view returns(uint, uint) {
-        return (feeBps, expiryBlockNumber);
+        return (feeBps, expiryTimestamp);
     }
 
-    function getLatestNetworkFeeDataWithCache() external returns(uint feeInBps, uint expiryBlock) {
+    function getLatestNetworkFeeDataWithCache() external returns(uint, uint) {
         data++;
-        return (feeBps, expiryBlockNumber);
+        return (feeBps, expiryTimestamp);
     }
 
     function getLatestBRRData() external returns(uint, uint, uint, uint, uint) {
-        return (BPS - rewardInBPS - rebateInBPS, rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+        return (BPS - rewardInBPS - rebateInBPS, rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
     }
 
     function claimStakerReward(address staker, uint percentageInPrecision, uint forEpoch) 
@@ -63,12 +62,12 @@ contract MockDAO is IKyberDAO, Utils4 {
         return feeHandler.claimStakerReward(staker, percentageInPrecision, forEpoch);
     }
 
-    function EPOCH_PERIOD_BLOCKS() external view returns(uint) {
+    function EPOCH_PERIOD_SECONDS() external view returns(uint) {
         return epochPeriod;
     }
 
-    function FIRST_EPOCH_START_BLOCK() external view returns(uint) {
-        return startBlock;
+    function FIRST_EPOCH_START_TIMESTAMP() external view returns(uint) {
+        return startTimestamp;
     }
 
     function handleWithdrawal(address staker, uint reduceAmount) external returns(bool) {
@@ -88,7 +87,7 @@ contract MockDAO is IKyberDAO, Utils4 {
 
     function advanceEpoch() public {
         epoch++;
-        expiryBlockNumber = block.number + epochPeriod;
+        expiryTimestamp = now + epochPeriod;
     }
 
     function vote(uint campID, uint option) external {
