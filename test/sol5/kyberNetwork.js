@@ -1239,8 +1239,6 @@ contract('KyberNetwork', function(accounts) {
                         let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, destToken, taker, network.address);
                         info = [srcQty, networkFeeBps, platformFeeBps];
                         [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, destToken, expectedResult, info, maxDestAmt);
-                        console.log("actual src amount: " + actualSrcQty.toString(10));
-                        console.log("src amount: " + srcQty.toString(10));
 
                         let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, destToken.address, taker,
                             maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
