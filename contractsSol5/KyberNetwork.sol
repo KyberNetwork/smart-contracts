@@ -55,8 +55,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         uint16 feeBps;
     }
 
-    constructor(address _admin) public WithdrawableNoModifiers(_admin) {
+    constructor(address _admin, IKyberStorage _kyberStorage) public WithdrawableNoModifiers(_admin) {
         updateNetworkFee(block.number, DEFAULT_NETWORK_FEE_BPS);
+        kyberStorage = _kyberStorage;
     }
 
     event EtherReceival(address indexed sender, uint amount);
@@ -203,12 +204,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
     event FeeHandlerUpdated(IKyberFeeHandler newHandler);
     event MatchingEngineUpdated(IKyberMatchingEngine matchingEngine);
-    event KyberStorageUpdated(IKyberStorage newStorage);
     event GasHelperUpdated(IGasHelper gasHelper);
 
     function setContracts(IKyberFeeHandler _feeHandler,
         IKyberMatchingEngine _matchingEngine,
-        IKyberStorage _kyberStorage,
         IGasHelper _gasHelper
     )
         external
@@ -216,13 +215,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         onlyAdmin();
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
         require(_matchingEngine != IKyberMatchingEngine(0), "matchingEngine 0");
-        require(_kyberStorage != IKyberStorage(0), "storage 0");
-
-        if (kyberStorage != _kyberStorage) {
-            kyberStorage = _kyberStorage;
-            require(_matchingEngine.setKyberStorage(_kyberStorage));
-            emit KyberStorageUpdated(_kyberStorage);
-        }
 
         if (feeHandler != _feeHandler) {
             feeHandler = _feeHandler;

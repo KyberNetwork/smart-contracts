@@ -5,7 +5,7 @@ import "../KyberNetwork.sol";
 // override some of original KyberNetwork contract
 contract MockNetwork is KyberNetwork {
 
-    constructor(address _admin) public KyberNetwork(_admin)
+    constructor(address _admin, IKyberStorage _kyberStorage) public KyberNetwork(_admin, _kyberStorage)
         {}
 
     //over ride some functions to reduce contract size.
@@ -50,7 +50,6 @@ contract MockNetwork is KyberNetwork {
     // allow set zero contract
     function setContracts(IKyberFeeHandler _feeHandler,
         IKyberMatchingEngine _matchingEngine,
-        IKyberStorage _storage,
         IGasHelper _gasHelper
     )
         external
@@ -63,11 +62,6 @@ contract MockNetwork is KyberNetwork {
         if (matchingEngine != _matchingEngine) {
             matchingEngine = _matchingEngine;
             emit MatchingEngineUpdated(_matchingEngine);
-        }
-
-        if (kyberStorage != _storage) {
-            kyberStorage = _storage;
-            emit KyberStorageUpdated(_storage);
         }
 
         if ((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
