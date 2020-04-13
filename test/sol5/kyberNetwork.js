@@ -329,7 +329,7 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
-            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
@@ -378,7 +378,7 @@ contract('KyberNetwork', function(accounts) {
 
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init feeHandler
             proxyForFeeHandler = tempNetwork;
@@ -529,7 +529,7 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
-            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
@@ -566,7 +566,7 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
-            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
@@ -644,7 +644,7 @@ contract('KyberNetwork', function(accounts) {
             matchingEngine = await MatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             // init rateHelper
             rateHelper = await RateHelper.new(admin);
@@ -1507,7 +1507,7 @@ contract('KyberNetwork', function(accounts) {
             matchingEngine = await MatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network.address, { from: admin });
             await matchingEngine.setKyberStorage(storage.address, { from: admin});
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
 
             // init gas helper
             gasHelperAdd = await MockGasHelper.new(platformWallet);
@@ -1724,7 +1724,7 @@ contract('KyberNetwork', function(accounts) {
             
             // init matchingEngine
             matchingEngine = await MatchingEngine.new(admin);
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
             await matchingEngine.setNetworkContract(tempNetwork.address, { from: admin });
             await matchingEngine.setKyberStorage(tempStorage.address, { from: admin });
 

@@ -88,7 +88,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         //init matchingEngine
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
-        await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+        await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
         await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
