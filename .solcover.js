@@ -14,7 +14,7 @@ function moveFiles(config) {
                 console.log(`Moving ` + file);
             });
         })
-    }) 
+    })
 }
 
 function removeV4ArtifactsDir(config) {
@@ -25,7 +25,7 @@ function removeV4ArtifactsDir(config) {
 
 module.exports = {
     providerOptions: {
-        "default_balance_ether": 5000
+        "default_balance_ether": 50000
     },
     istanbulReporter: ['html','json'],
     onCompileComplete: moveFiles,
