@@ -6,7 +6,6 @@ import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
 import "./utils/PermissionGroupsNoModifiers.sol";
 
-
 /**
  *   @title KyberStorage contract
  *   Receives call from KyberNetwork for:
@@ -25,6 +24,9 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     mapping(address => bytes32) internal reserveAddressToId;
     mapping(address => bytes32[]) internal reservesPerTokenSrc; // reserves supporting token to eth
     mapping(address => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
+
+    uint256 internal feeAccountedPerType = 0xffffffff;
+    mapping(bytes32 => uint256) internal reserveType; //type from enum ReserveType
 
     IKyberNetwork public kyberNetwork;
 
@@ -95,13 +97,24 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return (kyberDAO, feeHandler, matchingEngine);
     }
 
-    function addReserve(address reserve, bytes32 reserveId)
-        external
-        returns (bool)
-    {
+    function addReserve(
+        address reserve,
+        bytes32 reserveId,
+        ReserveType resType
+    ) external returns (bool) {
         onlyNetwork();
         require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
+        require(
+            (resType != ReserveType.NONE) &&
+                (uint256(resType) < uint256(ReserveType.LAST)),
+            "bad reserve type"
+        );
+        require(
+            feeAccountedPerType != 0xffffffff,
+            "fee accounted data not set"
+        );
+
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
         } else {
@@ -114,6 +127,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
         reserves.push(IKyberReserve(reserve));
         reserveAddressToId[reserve] = reserveId;
+        reserveType[reserveId] = uint256(resType);
 
         return true;
     }
@@ -146,6 +160,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         );
         reserveIdToAddresses[reserveId][0] = address(0);
         reserveAddressToId[reserve] = bytes32(0);
+
+        reserveType[reserveId] = uint256(ReserveType.NONE);
 
         return reserveId;
     }
@@ -318,5 +334,68 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     function isKyberProxyAdded() external view returns (bool) {
         return (kyberProxyArray.length > 0);
+    }
+
+    function setFeeAccountedPerReserveType(
+        bool fpr,
+        bool apr,
+        bool bridge,
+        bool utility,
+        bool custom,
+        bool orderbook
+    ) external {
+        onlyAdmin();
+        uint256 feeAccountedData;
+
+        if (apr) feeAccountedData |= 1 << uint256(ReserveType.APR);
+        if (fpr) feeAccountedData |= 1 << uint256(ReserveType.FPR);
+        if (bridge) feeAccountedData |= 1 << uint256(ReserveType.BRIDGE);
+        if (utility) feeAccountedData |= 1 << uint256(ReserveType.UTILITY);
+        if (custom) feeAccountedData |= 1 << uint256(ReserveType.CUSTOM);
+        if (orderbook) feeAccountedData |= 1 << uint256(ReserveType.ORDERBOOK);
+
+        feeAccountedPerType = feeAccountedData;
+    }
+
+    function getReserveDetailsById(bytes32 reserveId)
+        external
+        view
+        returns (
+            address reserveAddress,
+            ReserveType resType,
+            bool isFeeAccounted
+        )
+    {
+        reserveAddress = reserveIdToAddresses[reserveId][0];
+        resType = ReserveType(reserveType[reserveId]);
+        isFeeAccounted =
+            (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
+    }
+
+    function getReserveDetailsByAddress(address reserve)
+        external
+        view
+        returns (bytes32 reserveId, ReserveType resType, bool isFeeAccounted)
+    {
+        reserveId = reserveAddressToId[reserve];
+        resType = ReserveType(reserveType[reserveId]);
+        isFeeAccounted =
+            (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
+    }
+
+    function getIsFeeAccountedReserves(bytes32[] calldata reserveIds)
+        external
+        view
+        returns (bool[] memory feeAccountedArr)
+    {
+        feeAccountedArr = new bool[](reserveIds.length);
+
+        uint256 feeAccountedData = feeAccountedPerType;
+
+        for (uint256 i = 0; i < reserveIds.length; i++) {
+            feeAccountedArr[i] = (feeAccountedData &
+                (1 << reserveType[reserveIds[i]]) >
+                0);
+        }
     }
 }

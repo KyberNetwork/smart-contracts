@@ -4,9 +4,10 @@ import "./IKyberFeeHandler.sol";
 import "./IKyberDAO.sol";
 import "./IKyberNetworkProxy.sol";
 
-
 /// @title KyberStorage interface
 contract IKyberStorage {
+    enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
+
     function setContracts(
         IKyberFeeHandler _feeHandler,
         address _matchingEngine
@@ -14,9 +15,11 @@ contract IKyberStorage {
 
     function setDAOContract(IKyberDAO _kyberDAO) external returns (bool);
 
-    function addReserve(address reserve, bytes32 reserveId)
-        external
-        returns (bool);
+    function addReserve(
+        address reserve,
+        bytes32 reserveId,
+        ReserveType resType
+    ) external returns (bool);
 
     function removeReserve(address reserve, uint256 startIndex)
         external
@@ -72,4 +75,23 @@ contract IKyberStorage {
         external
         view
         returns (IKyberNetworkProxy[] memory);
+
+    function getReserveDetailsByAddress(address reserve)
+        external
+        view
+        returns (bytes32 reserveId, ReserveType resType, bool isFeeAccounted);
+
+    function getReserveDetailsById(bytes32 reserveId)
+        external
+        view
+        returns (
+            address reserveAddress,
+            ReserveType resType,
+            bool isFeeAccounted
+        );
+
+    function getIsFeeAccountedReserves(bytes32[] calldata reserveIds)
+        external
+        view
+        returns (bool[] memory feeAccountedArr);
 }
