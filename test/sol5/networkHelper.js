@@ -676,9 +676,11 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
     destAmountWithNetworkFee = Helper.calcDstQty(result.tradeWei.sub(result.networkFeeWei), ethDecimals, destDecimals, e2tRate);
     destAmountWithoutFees = Helper.calcDstQty(result.tradeWei, ethDecimals, destDecimals, e2tRate);
 
-    result.rateWithoutFees = Helper.calcRateFromQty(srcQty, destAmountWithoutFees, srcDecimals, destDecimals);
     result.rateWithNetworkFee = Helper.calcRateFromQty(srcQty, destAmountWithNetworkFee, srcDecimals, destDecimals);
     result.rateWithAllFees = Helper.calcRateFromQty(srcQty, result.actualDestAmount, srcDecimals, destDecimals);
+    result.rateWithoutFees = result.rateWithNetworkFee.mul(BPS).div(
+        BPS.sub(networkFeeBps.mul(result.feePayingReservesBps).div(BPS))
+    );
     return result;
 }
 

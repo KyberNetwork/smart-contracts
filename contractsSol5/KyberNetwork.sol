@@ -334,7 +334,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         rateWithAllFees = calcRateFromQty(tData.input.srcAmount, destAmount, tData.tokenToEth.decimals,
             tData.ethToToken.decimals);
 
-        rateWithoutFees = rateWithNetworkFee * BPS / (BPS - tData.networkFeeBps);
+        rateWithoutFees = rateWithNetworkFee * BPS / (BPS - tData.networkFeeBps * tData.feeAccountedBps / BPS);
     }
 
     //backward compatible
