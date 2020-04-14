@@ -551,7 +551,6 @@ async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, n
 
     if(srcAdd != ethAddress) {
         reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, srcAdd, qty, true);
-        // reserveCandidates = reserveCandidates.filter(reserve => !reserve.rate.eq(new BN(0)));
         hintedReservest2e = applyHintToReserves(hintType, reserveCandidates, numReserves);
         if(destAdd == ethAddress) {
             return (await matchingEngine.buildTokenToEthHint(
@@ -561,7 +560,6 @@ async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, n
     
     if(destAdd != ethAddress) {
         reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, destAdd, qty, false);
-        // reserveCandidates = reserveCandidates.filter(reserve => !reserve.rate.eq(new BN(0)));
         hintedReservese2t = applyHintToReserves(hintType, reserveCandidates, numReserves);
 
         if(srcAdd == ethAddress) {
