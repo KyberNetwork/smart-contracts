@@ -393,6 +393,8 @@ contract('KyberNetworkProxy', function(accounts) {
         });
     });
 
+    // making some trades to init data for contracts so the gas report will be more accurate
+    // e.g Network/FeeHandler will get and store networkFee/Brr data from DAO
     describe("test loop trades before gas report", async() => {
         for (let i = 0; i < numTokens; i++) {
             let fee = 10;
