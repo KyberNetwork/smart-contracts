@@ -128,9 +128,11 @@ contract('KyberHintHandler', function(accounts) {
                 t2eOpcode = INVALID_HINT_TYPE;
                 t2eSplits = [];
 
-                await expectRevert.unspecified(
-                    hintHandler.buildTokenToEthHint(t2eOpcode, t2eReserves, t2eSplits)                        
-                );
+                try {
+                    await hintHandler.buildTokenToEthHint(t2eOpcode, t2eReserves, t2eSplits);
+                } catch(e) {
+                    assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                }
             });
         });
 
@@ -209,9 +211,11 @@ contract('KyberHintHandler', function(accounts) {
                 e2tOpcode = INVALID_HINT_TYPE;
                 e2tSplits = [];
 
-                await expectRevert.unspecified(
-                    hintHandler.buildEthToTokenHint(e2tOpcode, e2tReserves, e2tSplits)
-                );
+                try {
+                    await hintHandler.buildEthToTokenHint(e2tOpcode, e2tReserves, e2tSplits);
+                } catch(e) {
+                    assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                }
             });
         });
 
@@ -382,12 +386,14 @@ contract('KyberHintHandler', function(accounts) {
                     e2tOpcode = INVALID_HINT_TYPE; // trade type does not exist
                     e2tSplits = (tradeType == 'SPLIT') ? BPS_SPLIT : [];
             
-                    await expectRevert.unspecified(
-                        hintHandler.buildTokenToTokenHint(
+                    try {
+                        await hintHandler.buildTokenToTokenHint(
                             t2eOpcode, t2eReserves, t2eSplits,
                             e2tOpcode, e2tReserves, e2tSplits
-                        )
-                    );
+                        );
+                    } catch(e) {
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
 
                 Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
@@ -428,12 +434,14 @@ contract('KyberHintHandler', function(accounts) {
                     e2tOpcode = TRADE_TYPES[tradeType];
                     e2tSplits = (tradeType == 'SPLIT') ? BPS_SPLIT : [];
             
-                    await expectRevert.unspecified(
-                        hintHandler.buildTokenToTokenHint(
-                            t2eOpcode, t2eReserves, t2eSplits,
-                            e2tOpcode, e2tReserves, e2tSplits
-                        )
-                    );
+                    try {
+                        await hintHandler.buildTokenToTokenHint(
+                                t2eOpcode, t2eReserves, t2eSplits,
+                                e2tOpcode, e2tReserves, e2tSplits
+                            );
+                    } catch(e) {
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
             });
         });
@@ -605,9 +613,11 @@ contract('KyberHintHandler', function(accounts) {
 
                 const hint = buildHint(t2eOpcode, t2eReserves, t2eSplits);
                 
-                await expectRevert.unspecified(
-                    hintHandler.parseTokenToEthHint(hint)
-                );
+                try {
+                    await hintHandler.parseTokenToEthHint(hint);
+                } catch(e) {
+                    assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                }
             });
         });
 
@@ -687,9 +697,11 @@ contract('KyberHintHandler', function(accounts) {
 
                 const hint = buildHint(e2tOpcode, e2tReserves, e2tSplits);
                 
-                await expectRevert.unspecified(
-                    hintHandler.parseEthToTokenHint(hint)
-                );
+                try {
+                    await hintHandler.parseEthToTokenHint(hint);
+                } catch(e) {
+                    assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                }
             });
         });
 
@@ -919,9 +931,11 @@ contract('KyberHintHandler', function(accounts) {
                         e2tSplits,
                     );
 
-                    await expectRevert.unspecified(
-                        hintHandler.parseTokenToTokenHint(hint)
-                    );
+                    try {
+                        await hintHandler.parseTokenToTokenHint(hint);
+                    } catch(e) {
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
             });
 
@@ -968,9 +982,11 @@ contract('KyberHintHandler', function(accounts) {
                         e2tSplits,
                     );
                     
-                    await expectRevert.unspecified(
-                        hintHandler.parseTokenToTokenHint(hint)
-                    );
+                    try {
+                        await hintHandler.parseTokenToTokenHint(hint);
+                    } catch(e) {
+                        assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+                    }
                 });
             });
         });
