@@ -393,19 +393,14 @@ contract KyberNetwork is
         uint256 destAmount;
         (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
 
-        rateWithoutFees = calcRateFromQty(
-            tData.input.srcAmount,
-            tData.destAmountWithoutFees,
-            tData.tokenToEth.decimals,
-            tData.ethToToken.decimals
-        );
-
         rateWithAllFees = calcRateFromQty(
             tData.input.srcAmount,
             destAmount,
             tData.tokenToEth.decimals,
             tData.ethToToken.decimals
         );
+
+        rateWithoutFees = rateWithNetworkFee * BPS / (BPS - tData.networkFeeBps * tData.feeAccountedBps / BPS);
     }
 
     //backward compatible
@@ -598,7 +593,6 @@ contract KyberNetwork is
     /// @param numFeeAccountedReserves No. of reserves that are accounted for network fees
     ///     Some reserve types don't require users to pay the network fee
     /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * B
-    /// @param destAmountWithoutFees Twei amount of dest tokens, without network and platform fee
     /// @param rateWithNetworkFee src -> dest token rate, after accounting for only network fee
     struct TradeData {
         TradeInput input;
@@ -610,7 +604,6 @@ contract KyberNetwork is
         uint256 networkFeeBps;
         uint256 numFeeAccountedReserves;
         uint256 feeAccountedBps; // what part of this trade is fee paying. for token to token - up to 200%
-        uint256 destAmountWithoutFees;
         uint256 rateWithNetworkFee;
     }
 
@@ -689,13 +682,6 @@ contract KyberNetwork is
 
         uint256 destAmountWithNetworkFee = calcDstQty(
             tData.tradeWei - tData.networkFeeWei,
-            ETH_DECIMALS,
-            tData.ethToToken.decimals,
-            e2tRate
-        );
-
-        tData.destAmountWithoutFees = calcDstQty(
-            tData.tradeWei,
             ETH_DECIMALS,
             tData.ethToToken.decimals,
             e2tRate

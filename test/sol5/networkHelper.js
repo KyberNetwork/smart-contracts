@@ -7,6 +7,9 @@ const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
+const LiquidityConversionRates = artifacts.require("LiquidityConversionRates.sol");
+const StrictValidatingReserve = artifacts.require("StrictValidatingReserve.sol"); 
+const TempBank = artifacts.require("TempBank.sol");
 
 require("chai")
     .use(require("chai-as-promised"))
@@ -134,6 +137,36 @@ async function setupReserves
 
         result.reserveIdToRebateWallet[reserveId] = rebateWallet;
     }
+
+    for (i = 0; i < numApr; i++) {
+        p0 = 1 / ((i + 1) * 10);
+        let token = tokens[i % tokens.length];
+        let pricing = await setupAprPricing(token, p0, admin, operator);
+        let reserve = await setupAprReserve(network, token, accounts[ethSenderIndex++], pricing.address, ethInit, admin, operator);
+        await pricing.setReserveAddress(reserve.address, {from: admin});
+        let reserveId = (genReserveID(FPR_ID, reserve.address)).toLowerCase();
+        let rebateWallet;
+        if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
+            rebateWallet = zeroAddress;
+        } else {
+            rebateWallet = rebateWallets[i];
+        }
+
+        result.reserveInstances[reserveId] = {
+            'address': reserve.address,
+            'instance': reserve,
+            'reserveId': reserveId,
+            'onChainType': ReserveType.FPR,
+            'rate': new BN(0),
+            'type': type_apr,
+            'pricing': pricing.address,
+            'rebateWallet': rebateWallet
+        }
+        result.reserveIdToRebateWallet[reserveId] = rebateWallet;
+    }
+
+
+
     //TODO: implement logic for other reserve types
     return result;
 }
@@ -269,6 +302,77 @@ async function setupFprPricing (tokens, numImbalanceSteps, numQtySteps, tokensPe
     Helper.assertEqual(indices.length, buys.length, "bad buys array size");
 
     await pricing.setCompactData(buys, sells, block, indices, {from: operator});
+    return pricing;
+}
+
+module.exports.setupAprReserve = setupAprReserve;
+async function setupAprReserve (network, token, ethSender, pricingAdd, ethInit, admin, operator) {
+    //setup reserve
+    let bank = await TempBank.new();
+    let reserve = await StrictValidatingReserve.new(network.address, pricingAdd, admin);
+    await reserve.setBank(bank.address);
+    await reserve.addOperator(operator, {from: admin});
+    await reserve.addAlerter(operator, {from: admin});
+        
+    //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
+    await Helper.sendEtherWithPromise(ethSender, reserve.address, ethInit);
+    await Helper.assertSameEtherBalance(reserve.address, ethInit);
+    //reserve related setup
+    await reserve.approveWithdrawAddress(token.address, ethSender, true, {from: admin});
+        
+    let initialTokenAmount = new BN(200000).mul(new BN(10).pow(new BN(await token.decimals())));
+    await token.transfer(reserve.address, initialTokenAmount);
+    await Helper.assertSameTokenBalance(reserve.address, token, initialTokenAmount);
+    
+    return reserve;
+}
+
+const r = 0.0069315;
+let feePercent = 0.25;
+const maxCapBuyInEth = 100;
+const maxCapSellInEth = 100;
+const pMinRatio = 0.1;
+const pMaxRatio = 10.0;
+const maxAllowance = new BN(2).pow(new BN(255));
+
+//default value
+const precision = new BN(10).pow(new BN(18));
+const formulaPrecisionBits = 40;
+const formulaPrecision = new BN(2).pow(new BN(formulaPrecisionBits));
+const ethPrecission = new BN(10).pow(new BN(ethDecimals));
+
+module.exports.setupAprPricing = setupAprPricing;
+async function setupAprPricing(token, p0, admin, operator) {
+    let pricing = await LiquidityConversionRates.new(admin, token.address);
+    await pricing.addOperator(operator, {from: admin});
+    await pricing.addAlerter(operator, {from: admin});
+
+    let tokenDecimals = await token.decimals();
+    const tokenPrecision = new BN(10).pow(new BN(tokenDecimals));
+
+    const baseNumber = 10 ** 9
+    const pMin = p0 * pMinRatio
+    const pMax = p0 * pMaxRatio
+
+    const feeInBps = feePercent * 100;
+    const rInFp = new BN(r * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+    const pMinInFp = new BN(pMin * baseNumber).mul(formulaPrecision).div(new BN(baseNumber));
+    let maxCapBuyInWei = new BN(maxCapBuyInEth).mul(precision);
+    let maxCapSellInWei = new BN(maxCapSellInEth).mul(precision);
+    const maxSellRateInPrecision = new BN(pMax * baseNumber).mul(precision).div(new BN(baseNumber));
+    const minSellRateInPrecision = new BN(pMin * baseNumber).mul(precision).div(new BN(baseNumber));
+
+    await pricing.setLiquidityParams(
+        rInFp,
+        pMinInFp,
+        formulaPrecisionBits,
+        maxCapBuyInWei,
+        maxCapSellInWei,
+        feeInBps,
+        maxSellRateInPrecision,
+        minSellRateInPrecision,
+        {from: admin}
+    );
     return pricing;
 }
 
@@ -676,9 +780,11 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
     destAmountWithNetworkFee = Helper.calcDstQty(result.tradeWei.sub(result.networkFeeWei), ethDecimals, destDecimals, e2tRate);
     destAmountWithoutFees = Helper.calcDstQty(result.tradeWei, ethDecimals, destDecimals, e2tRate);
 
-    result.rateWithoutFees = Helper.calcRateFromQty(srcQty, destAmountWithoutFees, srcDecimals, destDecimals);
     result.rateWithNetworkFee = Helper.calcRateFromQty(srcQty, destAmountWithNetworkFee, srcDecimals, destDecimals);
     result.rateWithAllFees = Helper.calcRateFromQty(srcQty, result.actualDestAmount, srcDecimals, destDecimals);
+    result.rateWithoutFees = result.rateWithNetworkFee.mul(BPS).div(
+        BPS.sub(networkFeeBps.mul(result.feePayingReservesBps).div(BPS))
+    );
     return result;
 }
 
