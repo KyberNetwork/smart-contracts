@@ -84,7 +84,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         address reserve;
 
         A.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
-        (buyReserves, ,isFeeAccounted, ) = matchingEngine.getTradingReserves(ETH_TOKEN_ADDRESS, token, false, "");
+        (buyReserves, , ) = matchingEngine.getTradingReserves(ETH_TOKEN_ADDRESS, token, false, "");
+        isFeeAccounted = kyberStorage.getIsFeeAccountedReserves(buyReserves);
         buyRates = new uint[](buyReserves.length);
 
         for (uint i = 0; i < buyReserves.length; i++) {
@@ -111,7 +112,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         address reserve;
 
         A.srcAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
-        (sellReserves, ,isFeeAccounted, ) = matchingEngine.getTradingReserves(token, ETH_TOKEN_ADDRESS, false, "");
+        (sellReserves, , ) = matchingEngine.getTradingReserves(token, ETH_TOKEN_ADDRESS, false, "");
+        isFeeAccounted = kyberStorage.getIsFeeAccountedReserves(sellReserves);
         sellRates = new uint[](sellReserves.length);
 
         for (uint i = 0; i < sellReserves.length; i++) {

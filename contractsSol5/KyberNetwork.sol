@@ -713,7 +713,6 @@ contract KyberNetwork is
         (
             tradingReserves.ids,
             tradingReserves.splitsBps,
-            tradingReserves.isFeeAccounted,
             processWithRate
         ) = matchingEngine.getTradingReserves(
             src,
@@ -722,6 +721,7 @@ contract KyberNetwork is
                 (tData.input.dest != ETH_TOKEN_ADDRESS),
             hint
         );
+        tradingReserves.isFeeAccounted = kyberStorage.getIsFeeAccountedReserves(tradingReserves.ids);
 
         require(
             tradingReserves.ids.length == tradingReserves.splitsBps.length,

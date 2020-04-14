@@ -28,7 +28,6 @@ interface IKyberMatchingEngine {
         returns (
             bytes32[] memory reserveIds,
             uint256[] memory splitValuesBps,
-            bool[] memory isFeeAccounted,
             ProcessWithRate processWithRate
         );
 

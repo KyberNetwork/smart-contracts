@@ -662,12 +662,13 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             (srcToken != ethAddress) && (destToken != ethAddress),
             hint
             );
+        isFeeAccounted = await storage.getIsFeeAccountedReserves(reserves.reserveIds);
 
         for (let i = 0; i < reserves.reserveIds.length; i++) {
             result.t2eSrcAmts[i] = srcQty.mul(reserves.splitValuesBps[i]).div(BPS);
             reserveInstance = reserveInstances[reserves.reserveIds[i]].instance;
             result.t2eRates[i] = await reserveInstance.getConversionRate(srcToken, ethAddress, result.t2eSrcAmts[i], blockNum);
-            if (reserves.isFeeAccounted[i]) {
+            if (isFeeAccounted[i]) {
                 feeAccountedBps.push(networkFeeBps);
             } else {
                 feeAccountedBps.push(zeroBN);
@@ -696,7 +697,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
                 result.t2eRates[indexes[i]]);
             result.t2eDestAmts.push(dstQty);
             result.tradeWei = result.tradeWei.add(dstQty);
-            if(reserves.isFeeAccounted[indexes[i]]) {
+            if(isFeeAccounted[indexes[i]]) {
                 result.feePayingReservesBps = result.feePayingReservesBps.add(reserves.splitValuesBps[indexes[i]]);
             }
         };
@@ -724,9 +725,10 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             (srcToken != ethAddress) && (destToken != ethAddress),
             hint
             );
+        isFeeAccounted = await storage.getIsFeeAccountedReserves(reserves.reserveIds);
 
         for (let i = 0; i < reserves.reserveIds.length; i++) {
-            if (reserves.isFeeAccounted[i]) {
+            if (isFeeAccounted[i]) {
                 result.e2tSrcAmts[i] = actualSrcWei.sub((result.tradeWei.mul(networkFeeBps).div(BPS)));
             } else {
                 result.e2tSrcAmts[i] = actualSrcWei;
@@ -759,7 +761,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             dstQty = Helper.calcDstQty(result.e2tSrcAmts[indexes[i]], ethDecimals, destDecimals, result.e2tRates[indexes[i]]);
             result.e2tDestAmts.push(dstQty);
             result.actualDestAmount = result.actualDestAmount.add(dstQty);
-            if(reserves.isFeeAccounted[indexes[i]]) {
+            if(isFeeAccounted[indexes[i]]) {
                 result.feePayingReservesBps = result.feePayingReservesBps.add(reserves.splitValuesBps[indexes[i]]);
             }
         }

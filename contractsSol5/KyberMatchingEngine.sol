@@ -86,7 +86,6 @@ contract KyberMatchingEngine is
         returns (
             bytes32[] memory reserveIds,
             uint256[] memory splitValuesBps,
-            bool[] memory isFeeAccounted,
             ProcessWithRate processWithRate
         )
     {
@@ -97,16 +96,8 @@ contract KyberMatchingEngine is
                 : kyberStorage.getReservesPerTokenDest(address(dest));
 
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
-            isFeeAccounted = kyberStorage.getIsFeeAccountedReserves(
-                reserveIds
-            );
             processWithRate = ProcessWithRate.Required;
-            return (
-                reserveIds,
-                splitValuesBps,
-                isFeeAccounted,
-                processWithRate
-            );
+            return (reserveIds, splitValuesBps, processWithRate);
         }
 
         TradeType tradeType;
@@ -133,7 +124,6 @@ contract KyberMatchingEngine is
             return (
                 new bytes32[](0),
                 new uint256[](0),
-                new bool[](0),
                 ProcessWithRate.NotRequired
             );
 
@@ -149,7 +139,6 @@ contract KyberMatchingEngine is
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         }
 
-        isFeeAccounted = kyberStorage.getIsFeeAccountedReserves(reserveIds);
         processWithRate = (tradeType == TradeType.Split)
             ? ProcessWithRate.NotRequired
             : ProcessWithRate.Required;
