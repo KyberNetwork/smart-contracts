@@ -786,16 +786,25 @@ contract('KyberNetwork', function(accounts) {
             };
         });
 
-        describe("test getExpectedRate functions with 3 mock reserves, valid rates", async() => {
+        describe("test getExpectedRate functions with rate validating reserves, valid rates", async() => {
             before("setup, add and list reserves", async() => {
                 //init reserves
-                let result = await nwHelper.setupReserves(network, tokens, 3, 0, 0, 0, accounts, admin, operator);
+                let result = await nwHelper.setupReserves(network, tokens.slice(0,3), 0, 0, 0, 9, accounts, admin, operator);
 
                 reserveInstances = result.reserveInstances;
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                let j = 0;
+                for (const [key, value] of Object.entries(reserveInstances)) {
+                    reserve = value;
+                    console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
+                    let rebateWallet = (reserve.rebateWallet == zeroAddress || reserve.rebateWallet == undefined) 
+                        ? reserve.address : reserve.rebateWallet;
+                    await network.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
+                    await network.listPairForReserve(reserve.address, tokens[j%3].address, true, true, true, {from: operator});
+                    j++;
+                }
             });
 
             after("unlist and remove reserve", async() => {
@@ -875,9 +884,8 @@ contract('KyberNetwork', function(accounts) {
                         networkFeeBps, zeroBN, emptyHint);
                     actualResult = await network.getExpectedRate(ethAddress, destToken.address, ethSrcQty);
                     Helper.assertEqual(expectedResult.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
-
                     expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                        srcToken.address, destToken.address, ethSrcQty,
+                        srcToken.address, destToken.address, srcQty,
                         srcDecimals, destDecimals,
                         networkFeeBps, zeroBN, emptyHint);
                     actualResult = await network.getExpectedRate(srcToken.address, destToken.address, srcQty);
