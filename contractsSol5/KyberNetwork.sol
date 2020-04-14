@@ -516,7 +516,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     /// @param numFeeAccountedReserves No. of reserves that are accounted for network fees
     ///     Some reserve types don't require users to pay the network fee
     /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * B
-    /// @param destAmountWithoutFees Twei amount of dest tokens, without network and platform fee
     /// @param rateWithNetworkFee src -> dest token rate, after accounting for only network fee
     struct TradeData {
 
