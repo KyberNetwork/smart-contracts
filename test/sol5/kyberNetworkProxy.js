@@ -131,10 +131,6 @@ contract('KyberNetworkProxy', function(accounts) {
         //set params, enable network
         await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
         await network.setEnable(true, {from: admin});
-
-        //get and cache data from DAO
-        await network.getAndUpdateNetworkFee();
-        await feeHandler.getBRR();
     });
 
     describe("test get rates - compare proxy rate to netwrk returned rates", async() => {
@@ -397,6 +393,22 @@ contract('KyberNetworkProxy', function(accounts) {
         });
     });
 
+    // making some trades to init data for contracts so the gas report will be more accurate
+    // e.g Network/FeeHandler will get and store networkFee/Brr data from DAO
+    describe("test loop trades before gas report", async() => {
+        for (let i = 0; i < numTokens; i++) {
+            let fee = 10;
+            let srcQty = (new BN((i + 1) * 500)).mul(new BN(10).pow(new BN(tokenDecimals[i])));
+            let destTokenId = (i + 1) % numTokens;
+            it("should perform trades", async() => {
+                await tokens[i].transfer(taker, srcQty);
+                await tokens[i].approve(networkProxy.address, srcQty, {from: taker});
+                await networkProxy.tradeWithHintAndFee(tokens[i].address, srcQty, tokens[destTokenId].address, taker,
+                    maxDestAmt, 0, platformWallet, fee, '0x', {from: taker});
+            });
+        }
+    });
+
     describe("test trades - report gas", async() => {
         let tradeType = [SPLIT_HINTTYPE, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE];
         let typeStr = ['SPLIT', 'NO HINT', 'MASK_IN', 'MASK_OUT'];
@@ -415,12 +427,12 @@ contract('KyberNetworkProxy', function(accounts) {
 
                 //log("testing - numRes: " + numResForTest + " type: " + str + " fee: " + fee);
                 let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, tokenAdd, ethAddress, srcQty);
-                
+
                 await token.transfer(taker, srcQty);
-                await token.approve(networkProxy.address, srcQty, {from: taker});   
+                await token.approve(networkProxy.address, srcQty, {from: taker});
                 let rate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, hint);
-                
-                let txResult = await networkProxy.tradeWithHintAndFee(tokenAdd, srcQty, ethAddress, taker, 
+
+                let txResult = await networkProxy.tradeWithHintAndFee(tokenAdd, srcQty, ethAddress, taker,
                     maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker});
                 console.log(`t2e: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + ` num reserves: ` + numResForTest);
             });
@@ -430,11 +442,11 @@ contract('KyberNetworkProxy', function(accounts) {
                 let tokenAdd = tokens[tokenId].address;
                 let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
                 const numResForTest = getNumReservesForType(type);
-                
+
                 let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, ethAddress, tokenAdd, srcQty);
-                
+
                 let rate = await networkProxy.getExpectedRateAfterFee(ethAddress, tokenAdd, srcQty, fee, hint);
-                let txResult = await networkProxy.tradeWithHintAndFee(ethAddress, srcQty, tokenAdd, taker, 
+                let txResult = await networkProxy.tradeWithHintAndFee(ethAddress, srcQty, tokenAdd, taker,
                     maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker, value: srcQty});
                 console.log(`e2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
             });
@@ -446,13 +458,13 @@ contract('KyberNetworkProxy', function(accounts) {
                 let srcToken = tokens[tokenId];
                 let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
                 const numResForTest = getNumReservesForType(type);
-                
+
                 let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, srcAdd, destAdd, srcQty);
                 let rate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, hint);
-                
+
                 await srcToken.transfer(taker, srcQty);
                 await srcToken.approve(networkProxy.address, srcQty, {from: taker});   
-                let txResult = await networkProxy.tradeWithHintAndFee(srcAdd, srcQty, destAdd, taker, 
+                let txResult = await networkProxy.tradeWithHintAndFee(srcAdd, srcQty, destAdd, taker,
                     maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker});
                 console.log(`t2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
             });
