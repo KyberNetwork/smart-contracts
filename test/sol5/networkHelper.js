@@ -144,7 +144,6 @@ async function setupReserves
         let pricing = await setupAprPricing(token, p0, admin, operator);
         let reserve = await setupAprReserve(network, token, accounts[ethSenderIndex++], pricing.address, ethInit, admin, operator);
         await pricing.setReserveAddress(reserve.address, {from: admin});
-
         let reserveId = (genReserveID(FPR_ID, reserve.address)).toLowerCase();
         let rebateWallet;
         if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
@@ -317,7 +316,7 @@ async function setupAprReserve (network, token, ethSender, pricingAdd, ethInit, 
         
     //set reserve balance. 10**18 wei ether + per token 10**18 wei ether value according to base rate.
     await Helper.sendEtherWithPromise(ethSender, reserve.address, ethInit);
-        
+    await Helper.assertSameEtherBalance(reserve.address, ethInit);
     //reserve related setup
     await reserve.approveWithdrawAddress(token.address, ethSender, true, {from: admin});
         
@@ -332,8 +331,8 @@ const r = 0.0069315;
 let feePercent = 0.25;
 const maxCapBuyInEth = 100;
 const maxCapSellInEth = 100;
-const pMinRatio = 0.5;
-const pMaxRatio = 2.0;
+const pMinRatio = 0.1;
+const pMaxRatio = 10.0;
 const maxAllowance = new BN(2).pow(new BN(255));
 
 //default value
@@ -344,7 +343,6 @@ const ethPrecission = new BN(10).pow(new BN(ethDecimals));
 
 module.exports.setupAprPricing = setupAprPricing;
 async function setupAprPricing(token, p0, admin, operator) {
-    console.log(token.address);
     let pricing = await LiquidityConversionRates.new(admin, token.address);
     await pricing.addOperator(operator, {from: admin});
     await pricing.addAlerter(operator, {from: admin});
@@ -553,6 +551,7 @@ async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, n
 
     if(srcAdd != ethAddress) {
         reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, srcAdd, qty, true);
+        // reserveCandidates = reserveCandidates.filter(reserve => !reserve.rate.eq(new BN(0)));
         hintedReservest2e = applyHintToReserves(hintType, reserveCandidates, numReserves);
         if(destAdd == ethAddress) {
             return (await matchingEngine.buildTokenToEthHint(
@@ -562,6 +561,7 @@ async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, n
     
     if(destAdd != ethAddress) {
         reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, destAdd, qty, false);
+        // reserveCandidates = reserveCandidates.filter(reserve => !reserve.rate.eq(new BN(0)));
         hintedReservese2t = applyHintToReserves(hintType, reserveCandidates, numReserves);
 
         if(srcAdd == ethAddress) {
