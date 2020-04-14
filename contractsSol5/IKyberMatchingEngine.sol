@@ -53,7 +53,7 @@ interface IKyberMatchingEngine {
         IERC20 src,
         IERC20 dest,
         uint[] calldata srcAmounts,
-        uint[] calldata feeAccountedBps, // 0 for no fee. networkFeeBps when has fee
+        uint[] calldata feeAccountedBpsDest,
         uint[] calldata rates
         ) external view
         returns(uint[] memory reserveIndexes);

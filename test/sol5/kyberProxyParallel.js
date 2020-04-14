@@ -5,6 +5,7 @@ const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const NetworkProxyV1 = artifacts.require("KyberProxyV1.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const KyberStorage = artifacts.require("KyberStorage.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -28,6 +29,7 @@ let networkFeeBps = new BN(20);
 let admin;
 let networkProxy;
 let networkProxyV1;
+let networkStorage;
 let network;
 let DAO;
 let feeHandler;
@@ -76,8 +78,13 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
         await DAO.setNetworkFeeBps(networkFeeBps);
 
+        // init storage
+        networkStorage = await KyberStorage.new(admin);
+
         //deploy network
-        network = await KyberNetwork.new(admin);
+        network = await KyberNetwork.new(admin, networkStorage.address);
+        await networkStorage.setNetworkContract(network.address, {from:admin});
+
 
         // init proxy
         networkProxy = await KyberNetworkProxy.new(admin);
@@ -88,6 +95,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         //init matchingEngine
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
+        await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
         await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
@@ -222,7 +230,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
                     let proxyRate1 = await networkProxyV1.getExpectedRate(srcToken.address, destToken.address, srcQty);
                     if (fee == 0) {
                         // should same rates when fee is 0
-                        Helper.assertEqual(proxyRate1.expectedRate, proxyRate,
+                        Helper.assertApproximate(proxyRate1.expectedRate, proxyRate,
                             "expected rate proxy v1 not equal rate proxy");
                     } else {
                         // rate from proxy1 should be greater than rate from new proxy with platformFee

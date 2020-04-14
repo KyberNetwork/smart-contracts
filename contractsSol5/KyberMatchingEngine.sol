@@ -17,7 +17,7 @@ import "./IKyberStorage.sol";
 *
 *       getTradingReserves() will parse hint to find if user wants specific reserves
 *
-*       doMatch() will return the index of the best rate, having accounted for fees
+*       doMatch() will return the index of the best reserve, having accounted for fees
 *
 */
 contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, WithdrawableNoModifiers {
@@ -113,11 +113,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @param isTokenToToken whether the trade is T2T
     /// @param hint user-specified reserves for this trade
     /// @return returns ids, split values, feeAccounted info and whether more processing is necessary
-    /// @param reserveIds Array of reserve IDs for the trade, each being 32 bytes. 1st byte is reserve type
-    /// @param splitValuesBps Array of split values (in basis points) for the trade.
-    /// Will be BPS for non-split trades, specified bps encoded in hint for splits
-    /// @param isFeeAccounted Boolean array of isFeeAccounted for each corresponding reserve ID
-    /// @param processWithRate Enum ProcessWithRate, whether extra processing is required or not
+    /// @return reserveIds Array of reserve IDs for the trade, each being 32 bytes. 1st byte is reserve type
+    /// @return splitValuesBps Array of split values (in basis points) for the trade.
+    /// @return isFeeAccounted Boolean array of isFeeAccounted for each corresponding reserve ID
+    /// @return processWithRate Enum ProcessWithRate, whether extra processing is required or not
     function getTradingReserves(IERC20 src, IERC20 dest, bool isTokenToToken, bytes calldata hint)
         external
         view
@@ -226,18 +225,18 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint numRelevantReserves;
     }
 
-    /// @dev Returns the index(es) of the best rate from the rates array for the t2e or e2t side
+    /// @dev Returns the indexes of the best rate from the rates array for the t2e or e2t side
     /// @param src source token (not needed)
     /// @param dest destination token (not needed)
     /// @param srcAmounts array of srcAmounts for each rate provided
-    /// @param feeAccountedBps Fees charged in BPS, to be deducted from calculated destAmount
+    /// @param feeAccountedBpsDest Fees charged in BPS, to be deducted from calculated destAmount
     /// @param rates rates provided by reserves
     /// @return Return an array of the indexes most suited for the trade
     function doMatch(
         IERC20 src,
         IERC20 dest,
         uint[] calldata srcAmounts,
-        uint[] calldata feeAccountedBps, // 0 for no fee, networkFeeBps when has fee
+        uint[] calldata feeAccountedBpsDest, // 0 for no fee, networkFeeBps when has fee
         uint[] calldata rates
     ) external view
     returns (
@@ -263,7 +262,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint destAmount;
 
         for (uint i = 0; i < rates.length; i++) {
-            destAmount = srcAmounts[i] * rates[i] * (BPS - feeAccountedBps[i]) / BPS;
+            destAmount = srcAmounts[i] * rates[i] * (BPS - feeAccountedBpsDest[i]) / BPS;
             if (destAmount > bestReserve.destAmount) {
                 //best rate is highest rate
                 bestReserve.destAmount = destAmount;
