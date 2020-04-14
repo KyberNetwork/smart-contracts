@@ -44,10 +44,10 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         kyberNetwork = _kyberNetwork;
     }
 
-    function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
-        external
-        returns (bool)
-    {
+    function setContracts(
+        IKyberFeeHandler _feeHandler,
+        address _matchingEngine
+    ) external returns (bool) {
         onlyNetwork();
         IKyberMatchingEngine newMatchingEngine = IKyberMatchingEngine(
             _matchingEngine
@@ -69,10 +69,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return true;
     }
 
-    function setDAOContract(IKyberDAO _kyberDAO)
-        external
-        returns (bool)
-    {
+    function setDAOContract(IKyberDAO _kyberDAO) external returns (bool) {
         onlyNetwork();
         if (kyberDAO.length > 0) {
             kyberDAO.push(kyberDAO[0]);
@@ -121,13 +118,13 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return true;
     }
 
-    function removeReserve(address reserve, uint startIndex)
+    function removeReserve(address reserve, uint256 startIndex)
         external
         returns (bytes32 reserveId)
     {
         onlyNetwork();
-        uint reserveIndex = 2**255;
-        for (uint i = startIndex; i < reserves.length; i++) {
+        uint256 reserveIndex = 2**255;
+        for (uint256 i = startIndex; i < reserves.length; i++) {
             if (reserves[i] == IKyberReserve(reserve)) {
                 reserveIndex = i;
                 break;
@@ -185,7 +182,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         bool isTokenToEth,
         bool add
     ) internal {
-        uint i;
+        uint256 i;
         bytes32[] storage reserveArr = reservesPerTokenDest[address(token)];
 
         if (isTokenToEth) {
@@ -240,7 +237,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         returns (bytes32[] memory reserveIds)
     {
         reserveIds = new bytes32[](reserveAddresses.length);
-        for (uint i = 0; i < reserveAddresses.length; i++) {
+        for (uint256 i = 0; i < reserveAddresses.length; i++) {
             reserveIds[i] = reserveAddressToId[reserveAddresses[i]];
         }
     }
@@ -251,7 +248,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         returns (address[] memory reserveAddresses)
     {
         reserveAddresses = new address[](reserveIds.length);
-        for (uint i = 0; i < reserveIds.length; i++) {
+        for (uint256 i = 0; i < reserveIds.length; i++) {
             reserveAddresses[i] = reserveIdToAddresses[reserveIds[i]][0];
         }
     }
@@ -273,34 +270,36 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     }
 
     /// @dev no. of KyberNetworkProxies are capped
-    function addKyberProxy(address networkProxy, uint max_approved_proxies)
+    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
         external
         returns (bool)
     {
         onlyNetwork();
-        require(kyberProxyArray.length < max_approved_proxies, "max proxies limit reached");
+        require(
+            kyberProxyArray.length < max_approved_proxies,
+            "max proxies limit reached"
+        );
 
         kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
 
         return true;
     }
 
-    function removeKyberProxy(address networkProxy)
-        external
-        returns (bool)
-    {
+    // prettier-ignore
+    function removeKyberProxy(address networkProxy) external returns (bool) {
         onlyNetwork();
-        uint proxyIndex = 2**255;
+        uint256 proxyIndex = 2**255;
 
-        for (uint i = 0; i < kyberProxyArray.length; i++) {
+        for (uint256 i = 0; i < kyberProxyArray.length; i++) {
             if (kyberProxyArray[i] == IKyberNetworkProxy(networkProxy)) {
                 proxyIndex = i;
                 break;
             }
         }
 
-        kyberProxyArray[proxyIndex] = kyberProxyArray[kyberProxyArray.length -
-            1];
+        kyberProxyArray[proxyIndex] = kyberProxyArray[
+            kyberProxyArray.length - 1
+        ];
         kyberProxyArray.pop();
 
         return true;
