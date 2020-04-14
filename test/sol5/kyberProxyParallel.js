@@ -96,10 +96,10 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
-        await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+        await networkStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
+        await rateHelper.setContracts(matchingEngine.address, DAO.address, networkStorage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
