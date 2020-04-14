@@ -920,13 +920,13 @@ contract KyberNetwork is
         }
     }
 
+    // prettier-ignore
     /// @notice calculates platform fee and reserve rebate percentages for the trade.
     ///             Transfers ETH and rebate wallet data to feeHandler
     function handleFees(TradeData memory tData) internal returns (bool) {
         //no need to handle fees if no fee paying reserves
-        if (
-            (tData.numFeeAccountedReserves == 0) && (tData.platformFeeWei == 0)
-        ) return true;
+        if ((tData.numFeeAccountedReserves == 0) && (tData.platformFeeWei == 0))
+            return true;
 
         // Updates reserve eligibility and rebate percentages
         (
@@ -1223,6 +1223,7 @@ contract KyberNetwork is
 
     /* solhint-enable function-max-lines */
 
+    // prettier-ignore
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev do one trade with a reserve
     /// @param src Source token
@@ -1242,9 +1243,7 @@ contract KyberNetwork is
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
             if (destAddress != (address(this))) {
-                (bool success, ) = destAddress.call.value(expectedDestAmount)(
-                    ""
-                );
+                (bool success, ) = destAddress.call.value(expectedDestAmount)("");
                 require(success, "send dest qty failed");
             }
             return true;
@@ -1282,6 +1281,7 @@ contract KyberNetwork is
         return true;
     }
 
+    // prettier-ignore
     /// @notice If user maxDestAmount < actual dest amount, actualSrcAmount will be < srcAmount.
     /// Calculate the change, and send it back to the user
     function handleChange(
@@ -1293,9 +1293,7 @@ contract KyberNetwork is
         if (requiredSrcAmount < srcAmount) {
             //if there is "change" send back to trader
             if (src == ETH_TOKEN_ADDRESS) {
-                (bool success, ) = trader.call.value(
-                    srcAmount - requiredSrcAmount
-                )("");
+                (bool success, ) = trader.call.value(srcAmount - requiredSrcAmount)("");
                 require(success, "Send change failed");
             } else {
                 src.safeTransfer(trader, (srcAmount - requiredSrcAmount));
