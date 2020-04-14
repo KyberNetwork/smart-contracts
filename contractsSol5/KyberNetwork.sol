@@ -1037,9 +1037,9 @@ contract KyberNetwork is
                 destDecimals,
                 tradingReserves.rates[i]
             );
-            require(newSrcAmount <= currentSrcAmount, "new src amt is high");
-            tradingReserves.srcAmounts[i] = newSrcAmount;
+            newSrcAmount = minOf(newSrcAmount, currentSrcAmount);
 
+            tradingReserves.srcAmounts[i] = newSrcAmount;
             srcAmount += newSrcAmount;
         }
     }

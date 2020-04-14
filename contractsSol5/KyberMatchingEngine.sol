@@ -9,16 +9,16 @@ import "./IKyberStorage.sol";
 
 /*
  *   @title Kyber matching engine contract
- *   Receives call from KyberNetwork for:
- *       - adding reserves
- *       - listing tokens
- *       - get rate
+ *   The contract provides the following actions:
+ *       - return list of reserves for a trade (getTradingReserves)
+ *       - stores fee accounted data for reserve types
+ *       - return details about a reserve (address / id, type, isFeeAccounted)
+ *       - finding the best rate (doMatch)
  *
- *       For get Rate calls matching engine will:
- *           - parse hint to find if user wants specific reserves
- *           - search best reserve rate if required
- *           - calclutate trade amounts
- *           - return all data to kyber Network
+ *       getTradingReserves() will parse hint to find if user wants specific reserves
+ *
+ *       doMatch() will return the index of the best reserve, having accounted for fees
+ *
  */
 contract KyberMatchingEngine is
     KyberHintHandler,
@@ -31,7 +31,7 @@ contract KyberMatchingEngine is
 
     mapping(bytes32 => uint256) internal reserveType; //type from enum ReserveType
 
-    uint256 internal feePayingPerType = 0xffffffff;
+    uint256 internal feeAccountedPerType = 0xffffffff;
 
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /* empty body */
@@ -82,7 +82,10 @@ contract KyberMatchingEngine is
                 (uint256(resType) < uint256(ReserveType.LAST)),
             "bad reserve type"
         );
-        require(feePayingPerType != 0xffffffff, "fee paying data not set");
+        require(
+            feeAccountedPerType != 0xffffffff,
+            "fee accounted data not set"
+        );
 
         reserveType[reserveId] = uint256(resType);
         return true;
@@ -94,7 +97,7 @@ contract KyberMatchingEngine is
         return true;
     }
 
-    function setFeePayingPerReserveType(
+    function setFeeAccountedPerReserveType(
         bool fpr,
         bool apr,
         bool bridge,
@@ -103,16 +106,16 @@ contract KyberMatchingEngine is
         bool orderbook
     ) external {
         onlyAdmin();
-        uint256 feePayingData;
+        uint256 feeAccountedData;
 
-        if (apr) feePayingData |= 1 << uint256(ReserveType.APR);
-        if (fpr) feePayingData |= 1 << uint256(ReserveType.FPR);
-        if (bridge) feePayingData |= 1 << uint256(ReserveType.BRIDGE);
-        if (utility) feePayingData |= 1 << uint256(ReserveType.UTILITY);
-        if (custom) feePayingData |= 1 << uint256(ReserveType.CUSTOM);
-        if (orderbook) feePayingData |= 1 << uint256(ReserveType.ORDERBOOK);
+        if (apr) feeAccountedData |= 1 << uint256(ReserveType.APR);
+        if (fpr) feeAccountedData |= 1 << uint256(ReserveType.FPR);
+        if (bridge) feeAccountedData |= 1 << uint256(ReserveType.BRIDGE);
+        if (utility) feeAccountedData |= 1 << uint256(ReserveType.UTILITY);
+        if (custom) feeAccountedData |= 1 << uint256(ReserveType.CUSTOM);
+        if (orderbook) feeAccountedData |= 1 << uint256(ReserveType.ORDERBOOK);
 
-        feePayingPerType = feePayingData;
+        feeAccountedPerType = feeAccountedData;
     }
 
     function getReserveDetailsByAddress(address reserve)
@@ -121,12 +124,13 @@ contract KyberMatchingEngine is
         returns (
             bytes32 reserveId,
             ReserveType resType,
-            bool isFeePaying
+            bool isFeeAccounted
         )
     {
         reserveId = kyberStorage.convertReserveAddresstoId(reserve);
         resType = ReserveType(reserveType[reserveId]);
-        isFeePaying = (feePayingPerType & (1 << reserveType[reserveId])) > 0;
+        isFeeAccounted =
+            (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
     }
 
     function getReserveDetailsById(bytes32 reserveId)
@@ -135,14 +139,25 @@ contract KyberMatchingEngine is
         returns (
             address reserveAddress,
             ReserveType resType,
-            bool isFeePaying
+            bool isFeeAccounted
         )
     {
         reserveAddress = kyberStorage.convertReserveIdToAddress(reserveId);
         resType = ReserveType(reserveType[reserveId]);
-        isFeePaying = (feePayingPerType & (1 << reserveType[reserveId])) > 0;
+        isFeeAccounted =
+            (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
     }
 
+    /// @dev Returns trading reserves info for a trade
+    /// @param src source token
+    /// @param dest destination token
+    /// @param isTokenToToken whether the trade is T2T
+    /// @param hint user-specified reserves for this trade
+    /// @return returns ids, split values, feeAccounted info and whether more processing is necessary
+    /// @return reserveIds Array of reserve IDs for the trade, each being 32 bytes. 1st byte is reserve type
+    /// @return splitValuesBps Array of split values (in basis points) for the trade.
+    /// @return isFeeAccounted Boolean array of isFeeAccounted for each corresponding reserve ID
+    /// @return processWithRate Enum ProcessWithRate, whether extra processing is required or not
     function getTradingReserves(
         IERC20 src,
         IERC20 dest,
@@ -165,7 +180,7 @@ contract KyberMatchingEngine is
                 : kyberStorage.getReservesPerTokenDest(address(dest));
 
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
-            isFeeAccounted = getIsFeeAccountingReserves(reserveIds);
+            isFeeAccounted = getIsFeeAccountedReserves(reserveIds);
             processWithRate = ProcessWithRate.Required;
             return (
                 reserveIds,
@@ -215,7 +230,7 @@ contract KyberMatchingEngine is
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         }
 
-        isFeeAccounted = getIsFeeAccountingReserves(reserveIds);
+        isFeeAccounted = getIsFeeAccountedReserves(reserveIds);
         processWithRate = (tradeType == TradeType.Split)
             ? ProcessWithRate.NotRequired
             : ProcessWithRate.Required;
@@ -266,17 +281,18 @@ contract KyberMatchingEngine is
     }
 
     // prettier-ignore
-    /// @dev Returns the index of the best rate from the rates array for T2E side
+    /// @dev Returns the indexes of the best rate from the rates array for the t2e or e2t side
     /// @param src source token (not needed)
-    /// @param dest destination token not needed)
+    /// @param dest destination token (not needed)
     /// @param srcAmounts array of srcAmounts for each rate provided
-    /// @param feeAccountedBps Fees charged in BPS, to be deducted from calculated destAmount
+    /// @param feeAccountedBpsDest Fees charged in BPS, to be deducted from calculated destAmount
     /// @param rates rates provided by reserves
+    /// @return Return an array of the indexes most suited for the trade
     function doMatch(
         IERC20 src,
         IERC20 dest,
         uint256[] calldata srcAmounts,
-        uint256[] calldata feeAccountedBps, // 0 for no fee. networkFeeBps when has fee
+        uint256[] calldata feeAccountedBpsDest, // 0 for no fee, networkFeeBps when has fee
         uint256[] calldata rates
     ) external view returns (uint256[] memory reserveIndexes) {
         src;
@@ -299,7 +315,7 @@ contract KyberMatchingEngine is
 
         for (uint256 i = 0; i < rates.length; i++) {
             destAmount =
-                (srcAmounts[i] * rates[i] * (BPS - feeAccountedBps[i])) /
+                (srcAmounts[i] * rates[i] * (BPS - feeAccountedBpsDest[i])) /
                 BPS;
             if (destAmount > bestReserve.destAmount) {
                 //best rate is highest rate
@@ -332,7 +348,8 @@ contract KyberMatchingEngine is
         if (bestReserve.numRelevantReserves > 1) {
             //when encountering small rate diff from bestRate. draw from relevant reserves
             bestReserve.index = reserveCandidates[
-                uint256(blockhash(block.number - 1)) % bestReserve.numRelevantReserves
+                uint256(blockhash(block.number - 1)) %
+                bestReserve.numRelevantReserves
             ];
         } else {
             bestReserve.index = reserveCandidates[0];
@@ -353,18 +370,19 @@ contract KyberMatchingEngine is
     }
 
     // prettier-ignore
-    function getIsFeeAccountingReserves(bytes32[] memory reserveIds)
+    function getIsFeeAccountedReserves(bytes32[] memory reserveIds)
         internal
         view
-        returns (bool[] memory feePayingArr)
+        returns (bool[] memory feeAccountedArr)
     {
-        feePayingArr = new bool[](reserveIds.length);
+        feeAccountedArr = new bool[](reserveIds.length);
 
-        uint256 feePayingData = feePayingPerType;
+        uint256 feeAccountedData = feeAccountedPerType;
 
         for (uint256 i = 0; i < reserveIds.length; i++) {
-            feePayingArr[i] = (
-                feePayingData & (1 << reserveType[reserveIds[i]]) > 0
+            feeAccountedArr[i] = (
+                feeAccountedData &
+                (1 << reserveType[reserveIds[i]]) > 0
             );
         }
     }

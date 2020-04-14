@@ -8,11 +8,7 @@ import "./IKyberStorage.sol";
 interface IKyberMatchingEngine {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
 
-    enum ProcessWithRate {
-        NotRequired,
-        Required
-        /* any other process type? */
-    }
+    enum ProcessWithRate {NotRequired, Required}
 
     function getNegligibleRateDiffBps() external view returns (uint256);
 
@@ -36,7 +32,7 @@ interface IKyberMatchingEngine {
         returns (
             bytes32 reserveId,
             ReserveType resType,
-            bool isFeePaying
+            bool isFeeAccounted
         );
 
     function getReserveDetailsById(bytes32 reserveId)
@@ -45,7 +41,7 @@ interface IKyberMatchingEngine {
         returns (
             address reserveAddress,
             ReserveType resType,
-            bool isFeePaying
+            bool isFeeAccounted
         );
 
     function getTradingReserves(
@@ -67,7 +63,7 @@ interface IKyberMatchingEngine {
         IERC20 src,
         IERC20 dest,
         uint256[] calldata srcAmounts,
-        uint256[] calldata feeAccountedBps, // 0 for no fee. networkFeeBps when has fee
+        uint256[] calldata feeAccountedBpsDest,
         uint256[] calldata rates
     ) external view returns (uint256[] memory reserveIndexes);
 }

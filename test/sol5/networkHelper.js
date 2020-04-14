@@ -149,7 +149,7 @@ async function setupNetwork
     const matchingEngine = await MatchingEngine.new(admin);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
     await matchingEngine.setKyberStorage(storage.address, {from : admin});
-    await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+    await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
     let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
     await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
     // set DAO contract
@@ -883,6 +883,10 @@ function calcTradeSrcAmount(srcDecimals, destDecimals, destAmt, rates, srcAmount
             new BN(destAmt).mul(srcAmounts[i]).mul(rates[i]).div(weightedDestAmount);
         destAmountSoFar = destAmountSoFar.add(destAmountSplit);
         let srcAmt = Helper.calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
+        if (srcAmt.gt(srcAmounts[i])) {
+            srcAmt = srcAmounts[i];
+            console.log("new src amount is higher than current src amount");
+        }
         newSrcAmounts.push(srcAmt);
         srcAmount = srcAmount.add(srcAmt);
     }

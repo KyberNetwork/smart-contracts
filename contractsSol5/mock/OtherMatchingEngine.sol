@@ -11,8 +11,8 @@ contract OtherMatchingEngine is KyberMatchingEngine {
     // return false instead
     function addReserve(bytes32 reserveId, ReserveType resType) external returns (bool) {
         onlyNetwork();
-        require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad type");
-        require(feePayingPerType != 0xffffffff, "Fee paying not set");
+        require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad reserve type");
+        require(feeAccountedPerType != 0xffffffff, "fee accounting data not set");
 
         reserveType[reserveId] = uint(resType);
         return false;
