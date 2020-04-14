@@ -104,8 +104,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         //init matchingEngine
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
-        await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
         await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
+        await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
         await rateHelper.setContracts(matchingEngine.address, daoContract.address, {from: admin});

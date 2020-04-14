@@ -22,7 +22,6 @@ interface IKyberMatchingEngine {
     enum ProcessWithRate {
         NotRequired,
         Required
-        /* any other process type? */
     }
 
     function getNegligibleRateDiffBps() external view returns (uint);
@@ -36,10 +35,10 @@ interface IKyberMatchingEngine {
     function removeReserve(bytes32 reserveId) external returns (bool);
 
     function getReserveDetailsByAddress(address reserve) external view
-        returns(bytes32 reserveId, ReserveType resType, bool isFeePaying);
+        returns(bytes32 reserveId, ReserveType resType, bool isFeeAccounted);
 
     function getReserveDetailsById(bytes32 reserveId) external view
-        returns(address reserveAddress, ReserveType resType, bool isFeePaying);
+        returns(address reserveAddress, ReserveType resType, bool isFeeAccounted);
 
     function getTradingReserves(IERC20 src, IERC20 dest, bool isTokenToToken, bytes calldata hint)
         external view
@@ -54,7 +53,7 @@ interface IKyberMatchingEngine {
         IERC20 src,
         IERC20 dest,
         uint[] calldata srcAmounts,
-        uint[] calldata feeAccountedBps, // 0 for no fee. networkFeeBps when has fee
+        uint[] calldata feeAccountedBpsDest,
         uint[] calldata rates
         ) external view
         returns(uint[] memory reserveIndexes);
