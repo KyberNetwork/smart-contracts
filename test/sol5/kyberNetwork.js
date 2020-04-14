@@ -99,12 +99,6 @@ contract('KyberNetwork', function(accounts) {
         DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
         await DAO.setNetworkFeeBps(networkFeeBps);
 
-        //init network
-        network = await KyberNetwork.new(admin);
-
-        // set proxy same as network
-        proxyForFeeHandler = network;
-
         //init tokens
         for (let i = 0; i < numTokens; i++) {
             tokenDecimals[i] = new BN(15).add(new BN(i));
@@ -149,15 +143,14 @@ contract('KyberNetwork', function(accounts) {
         let tempMatchingEngine3;
 
         beforeEach("create new network", async() =>{
-            tempNetwork = await KyberNetwork.new(admin);
             tempStorage = await KyberStorage.new(admin);
-
+            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             tempMatchingEngine = await MatchingEngine.new(admin);
 
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempNetwork.setContracts(handler3, tempMatchingEngine.address, tempStorage.address,
-                zeroAddress, {from: admin});
+            await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
+            await tempNetwork.setContracts(handler3, tempMatchingEngine.address, zeroAddress, {from: admin});
         })
 
         it("test can add max two proxies", async() => {
@@ -277,28 +270,23 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("add a few matchingEngine + feeHandler contracts, see event + updated in getter.", async() => {
-            tempStorage2 = await KyberStorage.new(admin);
             tempMatchingEngine1 = await MatchingEngine.new(admin);
-            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempStorage2.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine1.setNetworkContract(tempNetwork.address, {from: admin});
-            let txResult = await tempNetwork.setContracts(handler1, tempMatchingEngine1.address, tempStorage2.address, zeroAddress, {from: admin});
+            let txResult = await tempNetwork.setContracts(handler1, tempMatchingEngine1.address, zeroAddress, {from: admin});
             expectEvent(txResult, 'MatchingEngineUpdated', {
                 matchingEngine : tempMatchingEngine1.address
             });
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler : handler1
             });
-            expectEvent(txResult, 'KyberStorageUpdated', {
-                newStorage : tempStorage2.address
-            });
+
             let contracts = await tempNetwork.getContracts();
             Helper.assertEqual(contracts.feeHandlerAddress, handler1);
             Helper.assertEqual(contracts.matchingEngineAddress, tempMatchingEngine1.address);
 
             tempMatchingEngine2 = await MatchingEngine.new(admin);
             await tempMatchingEngine2.setNetworkContract(tempNetwork.address, {from: admin});
-            txResult = await tempNetwork.setContracts(handler1, tempMatchingEngine2.address, tempStorage.address, zeroAddress, {from: admin});
+            txResult = await tempNetwork.setContracts(handler1, tempMatchingEngine2.address, zeroAddress, {from: admin});
             expectEvent(txResult, 'MatchingEngineUpdated', {
                 matchingEngine : tempMatchingEngine2.address
             });
@@ -306,7 +294,7 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(contracts.feeHandlerAddress, handler1);
             Helper.assertEqual(contracts.matchingEngineAddress, tempMatchingEngine2.address);
 
-            txResult = await tempNetwork.setContracts(handler2, tempMatchingEngine2.address, tempStorage.address, zeroAddress, {from: admin});
+            txResult = await tempNetwork.setContracts(handler2, tempMatchingEngine2.address, zeroAddress, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler : handler2
             });
@@ -316,7 +304,7 @@ contract('KyberNetwork', function(accounts) {
 
             tempMatchingEngine3 = await MatchingEngine.new(admin);
             await tempMatchingEngine3.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempNetwork.setContracts(handler3, tempMatchingEngine3.address, tempStorage.address, zeroAddress, {from: admin});
+            await tempNetwork.setContracts(handler3, tempMatchingEngine3.address, zeroAddress, {from: admin});
             contracts = await tempNetwork.getContracts();
             Helper.assertEqual(contracts.feeHandlerAddress, handler3);
             Helper.assertEqual(contracts.matchingEngineAddress, tempMatchingEngine3.address);
@@ -334,30 +322,33 @@ contract('KyberNetwork', function(accounts) {
             gasHelperAdd = accounts[9];
         })
         beforeEach("global setup", async function(){
-            tempNetwork = await KyberNetwork.new(admin);
             tempStorage = await KyberStorage.new(admin);
-            await tempStorage.setNetworkContract(network.address, {from: admin});
+            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
+            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
 
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
+            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
+            proxyForFeeHandler = tempNetwork;
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
         });
 
         it("set empty fee handler contract", async function(){
             await expectRevert(
-                tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, tempStorage.address, gasHelperAdd, {from: admin}),
+                tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, gasHelperAdd, {from: admin}),
                 "feeHandler 0"
             );
         });
 
         it("set empty matching engine contract", async function(){
             await expectRevert(
-                tempNetwork.setContracts(feeHandler.address, zeroAddress, tempStorage.address, gasHelperAdd, {from: admin}),
+                tempNetwork.setContracts(feeHandler.address, zeroAddress, gasHelperAdd, {from: admin}),
                 "matchingEngine 0"
             );
         });
@@ -379,18 +370,20 @@ contract('KyberNetwork', function(accounts) {
         let rateHelper;
 
         before("setup contracts ", async() => {
-            tempNetwork = await KyberNetwork.new(admin);
             tempStorage = await KyberStorage.new(admin);
+            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
             tempMatchingEngine = await MatchingEngine.new(admin);
             mockReserve = await MockReserve.new();
 
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+
             //init feeHandler
+            proxyForFeeHandler = tempNetwork;
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
         });
@@ -408,7 +401,7 @@ contract('KyberNetwork', function(accounts) {
         it("Set contracts", async() => {
             gasHelperAdd = accounts[9];
 
-            let txResult = await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, tempStorage.address, gasHelperAdd, {from: admin});
+            let txResult = await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
             expectEvent(txResult, 'FeeHandlerUpdated', {
                 newHandler: feeHandler.address
             });
@@ -525,58 +518,63 @@ contract('KyberNetwork', function(accounts) {
         let tempStorage;
 
         before("global setup", async function(){
-            tempNetwork = await MockNetwork.new(admin);
-            tempMatchingEngine = await MatchingEngine.new(admin);
             tempStorage = await KyberStorage.new(admin);
+            tempNetwork = await MockNetwork.new(admin, tempStorage.address);
+            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
+            tempMatchingEngine = await MatchingEngine.new(admin);
 
             mockReserve = await MockReserve.new();
             gasHelperAdd = accounts[9];
 
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
-            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
+            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
+            proxyForFeeHandler = tempNetwork;
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
         });
 
         it("set enable without feeHandler", async function(){
-            await tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, tempStorage.address, gasHelperAdd, {from: admin});
+            await tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, gasHelperAdd, {from: admin});
             await expectRevert(tempNetwork.setEnable(true, {from: admin}),  "feeHandler 0");
         });
 
         it("set enable without matching engine", async function(){
-            await tempNetwork.setContracts(feeHandler.address, zeroAddress, tempStorage.address, gasHelperAdd, {from: admin});
+            await tempNetwork.setContracts(feeHandler.address, zeroAddress, gasHelperAdd, {from: admin});
             await expectRevert(tempNetwork.setEnable(true, {from: admin}), "matchingEngine 0");
         });
 
         it("set enable without proxy contract", async function(){
-            await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, tempStorage.address, gasHelperAdd, {from: admin});
+            await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
             await expectRevert(tempNetwork.setEnable(true, {from: admin}), "proxy 0");
         });
     });
 
     describe("test adding and removing reserves with fault matching engine", async() => {
         beforeEach("global setup ", async() => {
-            tempNetwork = await KyberNetwork.new(admin);
             tempStorage = await KyberStorage.new(admin);
+            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
             tempMatchingEngine = await OtherMatchingEngine.new(admin);
             mockReserve = await MockReserve.new();
 
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempMatchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
+            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
+            proxyForFeeHandler = tempNetwork;
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
-            await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, tempStorage.address, gasHelperAdd, {from: admin});
+            await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
         });
 
         it("add reserve none type revert", async function(){
@@ -630,11 +628,9 @@ contract('KyberNetwork', function(accounts) {
             DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
             await DAO.setNetworkFeeBps(networkFeeBps);
 
-            // init network
-            network = await KyberNetwork.new(admin);
-
-            // init storage
+            // init storage and network
             storage = await KyberStorage.new(admin);
+            network = await KyberNetwork.new(admin, storage.address);
             await storage.setNetworkContract(network.address, {from: admin});
 
             // set proxy same as network
@@ -647,7 +643,8 @@ contract('KyberNetwork', function(accounts) {
             // init matchingEngine
             matchingEngine = await MatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+            await matchingEngine.setKyberStorage(storage.address, {from: admin});
+            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             // init rateHelper
             rateHelper = await RateHelper.new(admin);
@@ -658,7 +655,7 @@ contract('KyberNetwork', function(accounts) {
             gasHelperAdd = await MockGasHelper.new(platformWallet);
 
             // setup network
-            await network.setContracts(feeHandler.address, matchingEngine.address, storage.address,
+            await network.setContracts(feeHandler.address, matchingEngine.address,
                 gasHelperAdd.address, {from: admin});
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
@@ -1167,82 +1164,193 @@ contract('KyberNetwork', function(accounts) {
                 });
             }
 
+            let reducedAmounts = [0, 3];
             for (tradeType of tradeTypesArray) {
-                let hintType = tradeType;
-                it(`should perform a T2E trade (${tradeStr[hintType]}, with maxDestAmount) and check balances change as expected`, async() => {
-                    let platformFeeBps = new BN(50);
-                    let actualSrcQty = new BN(0);
-                    let maxDestAmt = (new BN(1).mul(new BN(10).pow(ethDecimals))).div(new BN(3));
-                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
-                    
-                    expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                        srcToken.address, ethAddress, srcQty,
-                        srcDecimals, ethDecimals,
-                        networkFeeBps, platformFeeBps, hint);
+                for (reduceAmt of reducedAmounts) {
+                    let hintType = tradeType;
+                    it(`should perform a T2E trade (${tradeStr[hintType]}, with maxDestAmount = actualDestAmount - ${reduceAmt}) and check balances change as expected`, async() => {
+                        let platformFeeBps = new BN(50);
+                        let actualSrcQty = new BN(0);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
 
-                    await srcToken.transfer(network.address, srcQty);
-                    let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, ethAddress, expectedResult);
-                    let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, ethAddress, taker, network.address);
-                    info = [srcQty, networkFeeBps, platformFeeBps];
-                    [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, ethAddress, expectedResult, info, maxDestAmt);
+                        expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                            srcToken.address, ethAddress, srcQty,
+                            srcDecimals, ethDecimals,
+                            networkFeeBps, platformFeeBps, hint);
 
-                    let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
-                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
-                    console.log(`token -> ETH (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
-                    await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, actualSrcQty,
-                        initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
-                });
+                        let maxDestAmt = expectedResult.actualDestAmount.sub(new BN(reduceAmt));
 
-                it(`should perform a E2T trade (${tradeStr[hintType]}, with maxDestAmount) and check balances change as expected`, async() => {
-                    let platformFeeBps = new BN(50);
-                    let actualSrcQty = new BN(0);
-                    let maxDestAmt = (new BN(20).mul(new BN(10).pow(destDecimals))).div(new BN(3));
+                        await srcToken.transfer(network.address, srcQty);
+                        let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, ethAddress, expectedResult);
+                        let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, ethAddress, taker, network.address);
+                        info = [srcQty, networkFeeBps, platformFeeBps];
+                        [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, ethAddress, expectedResult, info, maxDestAmt);
 
-                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
-                    info = [ethSrcQty, networkFeeBps, platformFeeBps];
+                        let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                        console.log(`token -> ETH (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+                        await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, actualSrcQty,
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+                    });
 
-                    expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                        srcToken.address, ethAddress, ethSrcQty,
-                        srcDecimals, ethDecimals,
-                        networkFeeBps, platformFeeBps, hint);
+                    it(`should perform a E2T trade (${tradeStr[hintType]}, with maxDestAmount = actualDestAmount - ${reduceAmt}) and check balances change as expected`, async() => {
+                        let platformFeeBps = new BN(50);
+                        let actualSrcQty = new BN(0);
 
-                    let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
-                    let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
-                    [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(ethAddress, destToken, expectedResult, info, maxDestAmt);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
 
-                    let txResult = await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
-                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {value: ethSrcQty});
-                    console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+                        expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                            ethAddress, destToken.address, ethSrcQty,
+                            ethDecimals, destDecimals,
+                            networkFeeBps, platformFeeBps, hint);
 
-                    await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, actualSrcQty,
-                        initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
-                });
+                        let maxDestAmt = expectedResult.actualDestAmount.sub(new BN(reduceAmt));
 
-                it(`should perform a T2T trade (${tradeStr[hintType]}, with maxDestAmount) and check balances change as expected`, async() => {
-                    let platformFeeBps = new BN(50);
-                    let actualSrcQty = new BN(0);
-                    let maxDestAmt = (new BN(20).mul(new BN(10).pow(destDecimals))).div(new BN(3));
-                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+                        let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
+                        let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
+                        [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(ethAddress, destToken, expectedResult, info, maxDestAmt);
 
-                    expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
-                        srcToken.address, destToken.address, srcQty,
-                        srcDecimals, destDecimals,
-                        networkFeeBps, platformFeeBps, hint);
+                        let txResult = await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {value: ethSrcQty});
+                        console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
 
-                    await srcToken.transfer(network.address, srcQty);
-                    let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, destToken, expectedResult);
-                    let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, destToken, taker, network.address);
-                    info = [srcQty, networkFeeBps, platformFeeBps];
-                    [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, destToken, expectedResult, info, maxDestAmt);
+                        await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, actualSrcQty,
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
+                    });
 
-                    let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, destToken.address, taker,
-                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
-                    console.log(`token -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+                    it(`should perform a T2T trade (${tradeStr[hintType]}, with maxDestAmount = actualDestAmount - ${reduceAmt}) and check balances change as expected`, async() => {
+                        let platformFeeBps = new BN(50);
+                        let actualSrcQty = new BN(0);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
 
-                    await nwHelper.compareBalancesAfterTrade(srcToken, destToken, actualSrcQty,
-                        initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
-                });
+                        expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                            srcToken.address, destToken.address, srcQty,
+                            srcDecimals, destDecimals,
+                            networkFeeBps, platformFeeBps, hint);
+
+                        let maxDestAmt = expectedResult.actualDestAmount.sub(new BN(reduceAmt));
+
+                        await srcToken.transfer(network.address, srcQty);
+                        let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, destToken, expectedResult);
+                        let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, destToken, taker, network.address);
+                        info = [srcQty, networkFeeBps, platformFeeBps];
+                        [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, destToken, expectedResult, info, maxDestAmt);
+
+                        let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, destToken.address, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                        console.log(`token -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+
+                        await nwHelper.compareBalancesAfterTrade(srcToken, destToken, actualSrcQty,
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+                    });
+                };
             };
+
+            let maxDestAmounts = [3, 10];
+            for (tradeType of tradeTypesArray) {
+                for (maxDestAmount of maxDestAmounts) {
+                    let hintType = tradeType;
+                    it(`should perform a T2E trade (${tradeStr[hintType]}, with small maxDestAmount) and check balances change as expected`, async() => {
+                        let platformFeeBps = new BN(10);
+                        let actualSrcQty = new BN(0);
+                        let maxDestAmt = new BN(maxDestAmount);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+
+                        expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                            srcToken.address, ethAddress, srcQty,
+                            srcDecimals, ethDecimals,
+                            networkFeeBps, platformFeeBps, hint);
+
+                        await srcToken.transfer(network.address, srcQty);
+                        let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, ethAddress, expectedResult);
+                        let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, ethAddress, taker, network.address);
+                        info = [srcQty, networkFeeBps, platformFeeBps];
+                        [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, ethAddress, expectedResult, info, maxDestAmt);
+
+                        let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                        console.log(`token -> ETH (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+                        await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, actualSrcQty,
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+                    });
+
+                    it(`should perform a E2T trade (${tradeStr[hintType]}, with small maxDestAmount) and check balances change as expected`, async() => {
+                        let platformFeeBps = new BN(50);
+                        let actualSrcQty = new BN(0);
+                        let maxDestAmt = new BN(maxDestAmount);
+
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+                        info = [ethSrcQty, networkFeeBps, platformFeeBps];
+
+                        expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                            ethAddress, destToken.address, ethSrcQty,
+                            ethDecimals, destDecimals,
+                            networkFeeBps, platformFeeBps, hint);
+
+                        let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
+                        let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
+                        [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(ethAddress, destToken, expectedResult, info, maxDestAmt);
+
+                        let txResult = await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {value: ethSrcQty});
+                        console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+
+                        await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, actualSrcQty,
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
+                    });
+
+                    it(`should perform a T2T trade (${tradeStr[hintType]}, with small maxDestAmount) and check balances change as expected`, async() => {
+                        let platformFeeBps = new BN(50);
+                        let actualSrcQty = new BN(0);
+                        let maxDestAmt = new BN(maxDestAmount);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+
+                        expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                            srcToken.address, destToken.address, srcQty,
+                            srcDecimals, destDecimals,
+                            networkFeeBps, platformFeeBps, hint);
+
+                        await srcToken.transfer(network.address, srcQty);
+                        let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, destToken, expectedResult);
+                        let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, destToken, taker, network.address);
+                        info = [srcQty, networkFeeBps, platformFeeBps];
+                        [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, destToken, expectedResult, info, maxDestAmt);
+
+                        let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, destToken.address, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                        console.log(`token -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+
+                        await nwHelper.compareBalancesAfterTrade(srcToken, destToken, actualSrcQty,
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+                    });
+                };
+            };
+
+            it(`Test maxDestAmount, new src amount is greater than current src amount`, async() => {
+                let platformFeeBps = new BN(10);
+                let actualSrcQty = new BN(0);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+
+                expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                    srcToken.address, ethAddress, srcQty,
+                    srcDecimals, ethDecimals,
+                    networkFeeBps, platformFeeBps, hint);
+
+                let maxDestAmt = expectedResult.actualDestAmount.sub(new BN(2));
+
+                await srcToken.transfer(network.address, srcQty);
+                let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, ethAddress, expectedResult);
+                let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, ethAddress, taker, network.address);
+                info = [srcQty, networkFeeBps, platformFeeBps];
+                [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, ethAddress, expectedResult, info, maxDestAmt);
+
+                let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
+                    maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                console.log(`token -> ETH (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+                await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, actualSrcQty,
+                    initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+            });
         });
 
         describe("test gas helper", async() => {
@@ -1284,8 +1392,8 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("test encode decode network fee data with mock setter getter", async() => {
-            let tempNetwork = await MockNetwork.new(admin);
-            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, storage.address,
+            let tempNetwork = await MockNetwork.new(admin, storage.address);
+            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address,
                 zeroAddress, {from: admin});
 
             let networkData = await tempNetwork.getNetworkData();
@@ -1307,10 +1415,10 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("test revert with high networkFee", async () => {
-            let tempNetwork = await MockNetwork.new(admin);
             let tempStorage = await KyberStorage.new(admin);
+            let tempNetwork = await MockNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, tempStorage.address,
+            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address,
                 zeroAddress, { from: admin });
 
             let DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
@@ -1409,29 +1517,27 @@ contract('KyberNetwork', function(accounts) {
         
         before("initialise network", async () => {
             // init network
-            network = await KyberNetwork.new(admin);
             storage = await KyberStorage.new(admin);
-            // // set proxy same as network
-            // proxyForFeeHandler = network;
+            network = await KyberNetwork.new(admin, storage.address);
+            await storage.setNetworkContract(network.address, {from: admin});
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            proxyForFeeHandler = network;
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
 
             // init matchingEngine
             matchingEngine = await MatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network.address, { from: admin });
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+            await matchingEngine.setKyberStorage(storage.address, { from: admin});
+            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
 
-            // init storage
-            await storage.setNetworkContract(network.address, {from: admin});
-
-            // // init gas helper
+            // init gas helper
             gasHelperAdd = await MockGasHelper.new(platformWallet);
 
             // setup network
             await network.addOperator(operator, { from: admin });
-            await network.setContracts(feeHandler.address, matchingEngine.address, storage.address, gasHelperAdd.address, { from: admin });
+            await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, { from: admin });
             await network.addKyberProxy(networkProxy, { from: admin });
             await network.setDAOContract(DAO.address, { from: admin });
 
@@ -1579,12 +1685,12 @@ contract('KyberNetwork', function(accounts) {
         let tempMatchingEngine;
 
         beforeEach("setup", async function(){
-            tempNetwork = await MockNetwork.new(admin);
             tempStorage = await KyberStorage.new(admin);
+            tempNetwork = await MockNetwork.new(admin, tempStorage.address);
+            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
             tempMatchingEngine = await MatchingEngine.new(admin);
 
-            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, tempStorage.address,
+            await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address,
                 zeroAddress, { from: admin });
         });
 
@@ -1632,21 +1738,21 @@ contract('KyberNetwork', function(accounts) {
     describe("test trade", async function(){
         before("global setup", async function () {
 
-            tempTokens = []
+            tempTokens = [];
 
-            tempNetwork = await KyberNetwork.new(admin); //init reserves
-
-            //storage
+            // init storage and network
             tempStorage = await KyberStorage.new(admin);
+            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
-
+            
             // init matchingEngine
             matchingEngine = await MatchingEngine.new(admin);
-            await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
             await matchingEngine.setNetworkContract(tempNetwork.address, { from: admin });
+            await matchingEngine.setKyberStorage(tempStorage.address, { from: admin });
 
             // setup network
-            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, tempStorage.address, zeroAddress, { from: admin });
+            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
             await tempNetwork.addOperator(operator, { from: admin });
             await tempNetwork.addKyberProxy(networkProxy, { from: admin });
 
@@ -1658,6 +1764,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            proxyForFeeHandler = tempNetwork;
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
 
 
@@ -1720,7 +1827,7 @@ contract('KyberNetwork', function(accounts) {
 
     describe("test handle change edge case", async function(){
         before("setup", async function(){
-            tempNetwork = await MockNetwork.new(admin);
+            tempNetwork = await MockNetwork.new(admin, storage.address);
         });
 
         it("test srcAmount equal to require srcAmount", async function(){

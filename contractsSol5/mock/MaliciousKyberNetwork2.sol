@@ -9,7 +9,7 @@ contract MaliciousKyberNetwork2 is KyberNetwork {
 
     uint public myFeeWei = 10;
 
-    constructor(address _admin) public KyberNetwork(_admin) { }
+    constructor(address _admin, IKyberStorage _kyberStorage) public KyberNetwork(_admin, _kyberStorage) { }
 
     function setMyFeeWei(uint fee) public {
         myFeeWei = fee;

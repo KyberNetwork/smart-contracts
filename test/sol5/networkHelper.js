@@ -57,7 +57,7 @@ async function setupReserves
 
     let i;
     let ethSenderIndex = 1;
-    let ethInit = (new BN(10)).pow(new BN(19)).mul(new BN(8)); 
+    let ethInit = (new BN(10)).pow(new BN(19)).mul(new BN(20));
     
     // setup mock reserves
     //////////////////////
@@ -96,7 +96,7 @@ async function setupReserves
             token = tokens[j];
             //set rates and send tokens
             await reserve.setRate(token.address, tokensPerEther, ethersPerToken);
-            let initialTokenAmount = new BN(200000).mul(new BN(10).pow(new BN(await token.decimals())));
+            let initialTokenAmount = new BN(2000000).mul(new BN(10).pow(new BN(await token.decimals())));
             await token.transfer(reserve.address, initialTokenAmount);
             await Helper.assertSameTokenBalance(reserve.address, token, initialTokenAmount);
         }
@@ -140,16 +140,18 @@ async function setupReserves
 
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
-    (network, networkProxyAddress, KNCAddress, DAOAddress, admin, operator) {
+    (NetworkArtifact, networkProxyAddress, KNCAddress, DAOAddress, admin, operator) {
+    const storage =  await KyberStorage.new(admin);
+    const network = await NetworkArtifact.new(admin, storage.address);
+    await storage.setNetworkContract(network.address, {from: admin});
     await network.addOperator(operator, { from: admin });
     //init matchingEngine, feeHandler
     const matchingEngine = await MatchingEngine.new(admin);
-    const storage =  await KyberStorage.new(admin);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
-    await storage.setNetworkContract(network.address, {from: admin});
-    await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, { from: admin });
+    await matchingEngine.setKyberStorage(storage.address, {from : admin});
+    await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
     let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
-    await network.setContracts(feeHandler.address, matchingEngine.address, storage.address, zeroAddress, { from: admin });
+    await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
     // set DAO contract
     await network.setDAOContract(DAOAddress, { from: admin });
     // point proxy to network
@@ -157,6 +159,7 @@ async function setupNetwork
     //set params, enable network
     await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
     await network.setEnable(true, { from: admin });
+    return network;
 } 
 
 module.exports.setupFprReserve = setupFprReserve;
@@ -839,7 +842,7 @@ async function calcParamsFromMaxDestAmt(srcToken, destToken, unpackedOutput, inf
     let platformFeeBps = info[2];
     let tradeWeiAfterFees;
 
-    if (unpackedOutput.actualDestAmount.gte(maxDestAmt)) {
+    if (unpackedOutput.actualDestAmount.gt(maxDestAmt)) {
         unpackedOutput.actualDestAmount = maxDestAmt;
         // E2T side
         if (destToken != ethAddress) {
@@ -880,6 +883,10 @@ function calcTradeSrcAmount(srcDecimals, destDecimals, destAmt, rates, srcAmount
             new BN(destAmt).mul(srcAmounts[i]).mul(rates[i]).div(weightedDestAmount);
         destAmountSoFar = destAmountSoFar.add(destAmountSplit);
         let srcAmt = Helper.calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
+        if (srcAmt.gt(srcAmounts[i])) {
+            srcAmt = srcAmounts[i];
+            console.log("new src amount is higher than current src amount");
+        }
         newSrcAmounts.push(srcAmt);
         srcAmount = srcAmount.add(srcAmt);
     }

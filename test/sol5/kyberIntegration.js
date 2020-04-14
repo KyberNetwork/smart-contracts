@@ -4,6 +4,7 @@ const StakingContract = artifacts.require("KyberStaking.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
+const KyberStorage = artifacts.require("KyberStorage.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const Helper = require("../helper.js");
@@ -21,6 +22,7 @@ const negligibleRateDiffBps = new BN(10); //0.01%
 let admin;
 let networkProxy;
 let network;
+let networkStorage;
 let feeHandler;
 let matchingEngine;
 let operator;
@@ -81,8 +83,10 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         //init KNC
         KNC = await TestToken.new("kyber network crystal", "KNC", 18);
 
+        networkStorage = await KyberStorage.new(admin);
         //deploy network
-        network = await KyberNetwork.new(admin);
+        network = await KyberNetwork.new(admin, networkStorage.address);
+        await networkStorage.setNetworkContract(network.address, {from: admin});
 
         // init proxy
         networkProxy = await KyberNetworkProxy.new(admin);
@@ -100,7 +104,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         //init matchingEngine
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
-        await matchingEngine.setFeePayingPerReserveType(true, true, true, false, true, true, {from: admin});
+        await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
+        await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
         await rateHelper.setContracts(matchingEngine.address, daoContract.address, {from: admin});

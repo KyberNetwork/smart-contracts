@@ -8,13 +8,13 @@ contract MaliciousMatchingEngine is KyberMatchingEngine {
         KyberMatchingEngine(_admin)
     { /* empty body */ }
 
-    function getIsFeeAccountingReserves(bytes8[] memory reserveIds) internal view
-        returns(bool[] memory feePayingArr)
+    function getIsFeeAccountedReserves(bytes8[] memory reserveIds) internal view
+        returns(bool[] memory feeAccountedArr)
     {
-        feePayingArr = new bool[](reserveIds.length);
+        feeAccountedArr = new bool[](reserveIds.length);
 
         for (uint i = 0; i < reserveIds.length; i++) {
-            feePayingArr[i] = (feePayingPerType & (1 << reserveType[reserveIds[i]])) > 0;
+            feeAccountedArr[i] = (feeAccountedPerType & (1 << reserveType[reserveIds[i]])) > 0;
         }
     }
 }

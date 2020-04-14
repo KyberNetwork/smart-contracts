@@ -5,7 +5,7 @@ import "../utils/zeppelin/SafeERC20.sol";
 import "../IKyberNetworkProxy.sol";
 
 contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
-    
+
     using SafeERC20 for IERC20;
 
     mapping(bytes32=>uint) public pairRate; //rate in precision units. i.e. if rate is 10**18 its same as 1:1
@@ -18,7 +18,7 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
     }
 
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty) public view
-        returns (uint expectedRate, uint worstRate) 
+        returns (uint expectedRate, uint worstRate)
     {
         srcQty;
         expectedRate = pairRate[keccak256(abi.encodePacked(src, dest))];
@@ -29,7 +29,7 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
         uint minConversionRate, address walletId, bytes calldata hint) external payable returns(uint)
     {
         hint;
-        return trade(src, srcAmount, dest, address(uint160(address(destAddress))), maxDestAmount, minConversionRate, 
+        return trade(src, srcAmount, dest, address(uint160(address(destAddress))), maxDestAmount, minConversionRate,
             address(uint160(address(walletId))));
     }
 
@@ -37,7 +37,7 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
     // will be used only to trade token to Ether,
     // will work only when set pair worked.
     function trade(IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress, uint maxDestAmount,
-        uint minConversionRate, address payable platformWallet) 
+        uint minConversionRate, address payable platformWallet)
         public payable returns(uint)
     {
         return tradeWithHintAndFee(src, srcAmount, dest, destAddress, maxDestAmount, minConversionRate,
@@ -45,7 +45,7 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
     }
 
     // new APIs
-    function getExpectedRateAfterFee(IERC20 src, IERC20 dest, uint srcQty, uint customFeeBps, bytes calldata hint) 
+    function getExpectedRateAfterFee(IERC20 src, IERC20 dest, uint srcQty, uint customFeeBps, bytes calldata hint)
         external view
         returns (uint expectedRate)
     {
@@ -55,19 +55,19 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
         expectedRate = pairRate[keccak256(abi.encodePacked(src, dest))];
         expectedRate = expectedRate * (BPS - customFeeBps) / BPS;
     }
-        
-    function getPriceDataNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint) 
-        external view 
+
+    function getPriceDataNoFees(IERC20 src, IERC20 dest, uint srcQty, bytes calldata hint)
+        external view
         returns (uint rateNoFee)
     {
         srcQty;
         hint;
         rateNoFee = pairRate[keccak256(abi.encodePacked(src, dest))];
     }
-    
+
     function tradeWithHintAndFee(IERC20 src, uint srcAmount, IERC20 dest, address payable destAddress, uint maxDestAmount,
-        uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes memory hint) 
-        public payable 
+        uint minConversionRate, address payable platformWallet, uint platformFeeBps, bytes memory hint)
+        public payable
         returns(uint destAmount)
     {
         uint networkFeeWei;
@@ -88,19 +88,12 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
         platformWallet;
         hint;
         maxDestAmount;
-        
+
         require(rate > 0);
         require(rate >= minConversionRate);
-    
-        destAmount = srcAmount * rate / PRECISION;
-        
-        //todo: handle max dest amount
-        // if (destAmount > maxDestAmount) {
-        //     destAmount = maxDestAmount;
-        //     actualSrcAmount = maxDestAmount * PRECISION / rate;
-        // }
 
-        
+        destAmount = srcAmount * rate / PRECISION;
+
         if (dest == ETH_TOKEN_ADDRESS) {
             networkFeeWei = destAmount * networkFeeBps / BPS;
             platformFeeWei = destAmount * platformFeeBps / BPS;
