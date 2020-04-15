@@ -179,7 +179,7 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("test can't add proxy zero address", async() => {
-            await expectRevert.unspecified(
+            await expectRevert(
                 tempNetwork.addKyberProxy(zeroAddress, {from: admin}),
                 "proxy 0"
             );
