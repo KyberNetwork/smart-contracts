@@ -2,14 +2,13 @@ pragma solidity 0.5.11;
 
 
 contract PermissionGroupsNoModifiers {
-
     address public admin;
     address public pendingAdmin;
-    mapping(address=>bool) internal operators;
-    mapping(address=>bool) internal alerters;
+    mapping(address => bool) internal operators;
+    mapping(address => bool) internal alerters;
     address[] internal operatorsGroup;
     address[] internal alertersGroup;
-    uint constant internal MAX_GROUP_SIZE = 50;
+    uint256 internal constant MAX_GROUP_SIZE = 50;
 
     constructor(address _admin) public {
         require(_admin != address(0), "admin 0");
@@ -28,11 +27,11 @@ contract PermissionGroupsNoModifiers {
         require(alerters[msg.sender], "only alerter");
     }
 
-    function getOperators () external view returns(address[] memory) {
+    function getOperators() external view returns (address[] memory) {
         return operatorsGroup;
     }
 
-    function getAlerters () external view returns(address[] memory) {
+    function getAlerters() external view returns (address[] memory) {
         return alertersGroup;
     }
 
@@ -61,7 +60,7 @@ contract PermissionGroupsNoModifiers {
         admin = newAdmin;
     }
 
-    event AdminClaimed( address newAdmin, address previousAdmin);
+    event AdminClaimed(address newAdmin, address previousAdmin);
 
     /**
      * @dev Allows the pendingAdmin address to finalize the change admin process.
@@ -73,7 +72,7 @@ contract PermissionGroupsNoModifiers {
         pendingAdmin = address(0);
     }
 
-    event AlerterAdded (address newAlerter, bool isAdd);
+    event AlerterAdded(address newAlerter, bool isAdd);
 
     function addAlerter(address newAlerter) public {
         onlyAdmin();
@@ -85,12 +84,12 @@ contract PermissionGroupsNoModifiers {
         alertersGroup.push(newAlerter);
     }
 
-    function removeAlerter (address alerter) public {
+    function removeAlerter(address alerter) public {
         onlyAdmin();
         require(alerters[alerter], "not alerter");
         alerters[alerter] = false;
 
-        for (uint i = 0; i < alertersGroup.length; ++i) {
+        for (uint256 i = 0; i < alertersGroup.length; ++i) {
             if (alertersGroup[i] == alerter) {
                 alertersGroup[i] = alertersGroup[alertersGroup.length - 1];
                 alertersGroup.pop();
@@ -112,12 +111,12 @@ contract PermissionGroupsNoModifiers {
         operatorsGroup.push(newOperator);
     }
 
-    function removeOperator (address operator) public {
+    function removeOperator(address operator) public {
         onlyAdmin();
         require(operators[operator], "not operator");
         operators[operator] = false;
 
-        for (uint i = 0; i < operatorsGroup.length; ++i) {
+        for (uint256 i = 0; i < operatorsGroup.length; ++i) {
             if (operatorsGroup[i] == operator) {
                 operatorsGroup[i] = operatorsGroup[operatorsGroup.length - 1];
                 operatorsGroup.pop();

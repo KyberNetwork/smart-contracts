@@ -1,12 +1,13 @@
 pragma solidity 0.5.11;
 
 import "../IERC20.sol";
-import "@nomiclabs/buidler/console.sol";
 
 
-/// @title Kyber utility file
-/// mostly shared constants and rate calculation helpers
-/// inherited by most of kyber contracts
+/**
+ * @title Kyber utility file
+ * mostly shared constants and rate calculation helpers
+ * inherited by most of kyber contracts
+ */
 contract Utils4 {
     IERC20 internal constant ETH_TOKEN_ADDRESS = IERC20(
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
