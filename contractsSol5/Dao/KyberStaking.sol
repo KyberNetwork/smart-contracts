@@ -169,7 +169,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         initDataIfNeeded(staker, curEpoch);
         // by right at here stake[curEpoch + 1][staker] should be equal stakerLatestData[staker].stake
-        require(stakerPerEpochData[curEpoch + 1][staker].stake >= amount, "withdraw: next epoch staked amt < withdrawal amount");
+        assert(stakerPerEpochData[curEpoch + 1][staker].stake >= amount);
 
         stakerPerEpochData[curEpoch + 1][staker].stake = stakerPerEpochData[curEpoch + 1][staker].stake.sub(amount);
         stakerLatestData[staker].stake = stakerLatestData[staker].stake.sub(amount);

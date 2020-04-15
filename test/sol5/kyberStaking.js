@@ -2645,9 +2645,8 @@ contract('KyberStaking', function(accounts) {
       // reduce next epoch stake, so withdraw will check and revert
       await stakingContract.setEpochStake(victor, 1, mulPrecision(100));
 
-      await expectRevert(
-        stakingContract.withdraw(mulPrecision(200), {from: victor}),
-        "withdraw: next epoch staked amt < withdrawal amount"
+      await expectRevert.unspecified(
+        stakingContract.withdraw(mulPrecision(200), {from: victor})
       )
     });
 
