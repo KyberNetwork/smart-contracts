@@ -6,77 +6,92 @@ import "../../utils/Withdrawable2.sol";
 import "../../utils/Utils4.sol";
 import "./mock/IOtc.sol";
 
+
 contract IWeth is IERC20 {
     function deposit() public payable;
-    function withdraw(uint) public;
+
+    function withdraw(uint256) public;
 }
 
-contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
 
+contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
     // constants
-    uint constant internal INVALID_ID = uint(-1);
-    uint constant internal POW_2_32 = 2 ** 32;
-    uint constant internal POW_2_96 = 2 ** 96;
-    uint constant internal BPS = 10000; // 10^4
+    uint256 internal constant INVALID_ID = uint256(-1);
+    uint256 internal constant POW_2_32 = 2**32;
+    uint256 internal constant POW_2_96 = 2**96;
+    uint256 internal constant BPS = 10000; // 10^4
 
     // values
     address public kyberNetwork;
     bool public tradeEnabled;
-    uint public feeBps;
+    uint256 public feeBps;
 
     IOtc public otc;
-    IWeth public wethToken;// = IWeth(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IWeth public wethToken; // = IWeth(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     mapping(address => bool) public isTokenListed;
     // 1 bit: isInternalInventoryEnabled, 95 bits: min token, 96 bits: max token, 32 bits: premiumBps, 32 bits: minSpreadBps;
-    mapping(address => uint) internal internalInventoryData;
+    mapping(address => uint256) internal internalInventoryData;
     // basicData contains compact data of min eth support, max traverse and max takes
     // min eth support (first 192 bits) + max traverse (32 bits) + max takes (32 bits) = 256 bits
-    mapping(address => uint) internal tokenBasicData;
+    mapping(address => uint256) internal tokenBasicData;
     // factorData contains compact data of factors to compute max traverse, max takes, and min take order size
     // 6 params, each 32 bits (6 * 32 = 192 bits)
-    mapping(address => uint) internal tokenFactorData;
+    mapping(address => uint256) internal tokenFactorData;
 
     struct BasicDataConfig {
-        uint minETHSupport;
-        uint maxTraverse;
-        uint maxTakes;
+        uint256 minETHSupport;
+        uint256 maxTraverse;
+        uint256 maxTakes;
     }
 
     struct FactorDataConfig {
-        uint maxTraverseX;
-        uint maxTraverseY;
-        uint maxTakeX;
-        uint maxTakeY;
-        uint minOrderSizeX;
-        uint minOrderSizeY;
+        uint256 maxTraverseX;
+        uint256 maxTraverseY;
+        uint256 maxTakeX;
+        uint256 maxTakeY;
+        uint256 minOrderSizeX;
+        uint256 minOrderSizeY;
     }
 
     struct InternalInventoryData {
         bool isEnabled;
-        uint minTokenBal;
-        uint maxTokenBal;
-        uint premiumBps;
-        uint minSpreadBps;
+        uint256 minTokenBal;
+        uint256 maxTokenBal;
+        uint256 premiumBps;
+        uint256 minSpreadBps;
     }
 
     struct OfferData {
-        uint payAmount;
-        uint buyAmount;
-        uint id;
+        uint256 payAmount;
+        uint256 buyAmount;
+        uint256 id;
     }
 
-    constructor(address _kyberNetwork, uint _feeBps, address _otc, address _weth, address _admin) 
-        public Withdrawable2(_admin)
-    {
-        require(_kyberNetwork != address(0), "constructor: kyberNetwork's address is missing");
+    constructor(
+        address _kyberNetwork,
+        uint256 _feeBps,
+        address _otc,
+        address _weth,
+        address _admin
+    ) public Withdrawable2(_admin) {
+        require(
+            _kyberNetwork != address(0),
+            "constructor: kyberNetwork's address is missing"
+        );
         require(_otc != address(0), "constructor: otc's address is missing");
         require(_weth != address(0), "constructor: weth's address is missing");
         require(_feeBps < BPS, "constructor: fee >= bps");
-        
+
         wethToken = IWeth(_weth);
-        require(getDecimals(wethToken) == MAX_DECIMALS, "constructor: wethToken's decimals is not MAX_DECIMALS");
-        require(wethToken.approve(_otc, 2**255), "constructor: failed to approve otc (wethToken)");
+        require(
+            getDecimals(wethToken) == MAX_DECIMALS,
+            "constructor: wethToken's decimals is not MAX_DECIMALS"
+        );
+        require(
+            wethToken.approve(_otc, 2**255),
+            "constructor: failed to approve otc (wethToken)"
+        );
 
         kyberNetwork = _kyberNetwork;
         otc = IOtc(_otc);
@@ -95,52 +110,86 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
           0 - use eth2dai
           1 - use internal inventory
     */
-    function getConversionRate(IERC20 src, IERC20 dest, uint srcQty, uint) public view returns(uint) {
-        if (!tradeEnabled) { return 0; }
-        if (srcQty == 0) { return 0; }
+    function getConversionRate(
+        IERC20 src,
+        IERC20 dest,
+        uint256 srcQty,
+        uint256
+    ) public view returns (uint256) {
+        if (!tradeEnabled) {
+            return 0;
+        }
+        if (srcQty == 0) {
+            return 0;
+        }
         // check if token's listed
         IERC20 token = src == ETH_TOKEN_ADDRESS ? dest : src;
-        if (!isTokenListed[address(token)]) { return 0; }
+        if (!isTokenListed[address(token)]) {
+            return 0;
+        }
 
         OfferData memory bid;
         OfferData memory ask;
         (bid, ask) = getFirstBidAndAskOrders(token);
 
         // if token is src, need to check for valid spread
-        if (token == src && !checkValidSpread(bid, ask, false, 0)) { return 0; }
+        if (token == src && !checkValidSpread(bid, ask, false, 0)) {
+            return 0;
+        }
 
-        uint destQty;
+        uint256 destQty;
         OfferData[] memory offers;
 
         if (src == ETH_TOKEN_ADDRESS) {
-            (destQty, offers) = findBestOffers(dest, wethToken, srcQty, bid, ask);
+            (destQty, offers) = findBestOffers(
+                dest,
+                wethToken,
+                srcQty,
+                bid,
+                ask
+            );
         } else {
-            (destQty, offers) = findBestOffers(wethToken, src, srcQty, bid, ask);
+            (destQty, offers) = findBestOffers(
+                wethToken,
+                src,
+                srcQty,
+                bid,
+                ask
+            );
         }
 
-        if (offers.length == 0 || destQty == 0) { return 0; } // no offer or destQty == 0, return 0 for rate
+        if (offers.length == 0 || destQty == 0) {
+            return 0;
+        } // no offer or destQty == 0, return 0 for rate
 
-        uint rate = calcRateFromQty(srcQty, destQty, MAX_DECIMALS, MAX_DECIMALS);
+        uint256 rate = calcRateFromQty(
+            srcQty,
+            destQty,
+            MAX_DECIMALS,
+            MAX_DECIMALS
+        );
 
         bool useInternalInventory;
-        uint premiumBps;
+        uint256 premiumBps;
 
         if (src == ETH_TOKEN_ADDRESS) {
-            (useInternalInventory, premiumBps) = shouldUseInternalInventory(dest,
-                                                                            destQty,
-                                                                            srcQty,
-                                                                            true,
-                                                                            bid,
-                                                                            ask
-                                                                            );
+            (useInternalInventory, premiumBps) = shouldUseInternalInventory(
+                dest,
+                destQty,
+                srcQty,
+                true,
+                bid,
+                ask
+            );
         } else {
-            (useInternalInventory, premiumBps) = shouldUseInternalInventory(src,
-                                                                            srcQty,
-                                                                            destQty,
-                                                                            false,
-                                                                            bid,
-                                                                            ask
-                                                                            );
+            (useInternalInventory, premiumBps) = shouldUseInternalInventory(
+                src,
+                srcQty,
+                destQty,
+                false,
+                bid,
+                ask
+            );
         }
 
         if (useInternalInventory) {
@@ -155,51 +204,79 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
     event TradeExecute(
         address indexed origin,
         address src,
-        uint srcAmount,
+        uint256 srcAmount,
         address destToken,
-        uint destAmount,
+        uint256 destAmount,
         address payable destAddress
     );
 
     function trade(
         IERC20 srcToken,
-        uint srcAmount,
+        uint256 srcAmount,
         IERC20 destToken,
         address payable destAddress,
-        uint conversionRate,
+        uint256 conversionRate,
         bool validate
-    )
-        public
-        payable
-        returns(bool)
-    {
+    ) public payable returns (bool) {
         require(tradeEnabled, "trade: tradeEnabled is false");
-        require(msg.sender == kyberNetwork, "trade: not call from kyberNetwork's contract");
-        require(srcToken == ETH_TOKEN_ADDRESS || destToken == ETH_TOKEN_ADDRESS, "trade: srcToken or destToken must be ETH");
+        require(
+            msg.sender == kyberNetwork,
+            "trade: not call from kyberNetwork's contract"
+        );
+        require(
+            srcToken == ETH_TOKEN_ADDRESS || destToken == ETH_TOKEN_ADDRESS,
+            "trade: srcToken or destToken must be ETH"
+        );
 
         IERC20 token = srcToken == ETH_TOKEN_ADDRESS ? destToken : srcToken;
         require(isTokenListed[address(token)], "trade: token is not listed");
 
-        require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate), "trade: doTrade returns false");
+        require(
+            doTrade(
+                srcToken,
+                srcAmount,
+                destToken,
+                destAddress,
+                conversionRate,
+                validate
+            ),
+            "trade: doTrade returns false"
+        );
         return true;
     }
 
     event TokenConfigDataSet(
-        IERC20 token, uint maxTraverse, uint traveseFactorX, uint traveseFactorY,
-        uint maxTake, uint takeFactorX, uint takeFactorY,
-        uint minSizeFactorX, uint minSizeFactorY, uint minETHSupport
+        IERC20 token,
+        uint256 maxTraverse,
+        uint256 traveseFactorX,
+        uint256 traveseFactorY,
+        uint256 maxTake,
+        uint256 takeFactorX,
+        uint256 takeFactorY,
+        uint256 minSizeFactorX,
+        uint256 minSizeFactorY,
+        uint256 minETHSupport
     );
 
     function setTokenConfigData(
-        IERC20 token, uint maxTraverse, uint traveseFactorX, uint traveseFactorY,
-        uint maxTake, uint takeFactorX, uint takeFactorY,
-        uint minSizeFactorX, uint minSizeFactorY, uint minETHSupport
-    )
-        public onlyAdmin
-    {
+        IERC20 token,
+        uint256 maxTraverse,
+        uint256 traveseFactorX,
+        uint256 traveseFactorY,
+        uint256 maxTake,
+        uint256 takeFactorX,
+        uint256 takeFactorY,
+        uint256 minSizeFactorX,
+        uint256 minSizeFactorY,
+        uint256 minETHSupport
+    ) public onlyAdmin {
         address tokenAddr = address(token);
         require(isTokenListed[tokenAddr]);
-        tokenBasicData[tokenAddr] = encodeTokenBasicData(minETHSupport, maxTraverse, maxTake);
+        tokenBasicData[tokenAddr] = encodeTokenBasicData(
+            minETHSupport,
+            maxTraverse,
+            maxTake
+        );
         tokenFactorData[tokenAddr] = encodeFactorData(
             traveseFactorX,
             traveseFactorY,
@@ -209,22 +286,29 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
             minSizeFactorY
         );
         emit TokenConfigDataSet(
-            token, maxTraverse, traveseFactorX, takeFactorY,
-            maxTake, takeFactorX, takeFactorY,
-            minSizeFactorX, minSizeFactorY, minETHSupport
+            token,
+            maxTraverse,
+            traveseFactorX,
+            takeFactorY,
+            maxTake,
+            takeFactorX,
+            takeFactorY,
+            minSizeFactorX,
+            minSizeFactorY,
+            minETHSupport
         );
     }
 
     event TradeEnabled(bool enable);
 
-    function enableTrade() public onlyAdmin returns(bool) {
+    function enableTrade() public onlyAdmin returns (bool) {
         tradeEnabled = true;
         emit TradeEnabled(true);
 
         return true;
     }
 
-    function disableTrade() public onlyAlerter returns(bool) {
+    function disableTrade() public onlyAlerter returns (bool) {
         tradeEnabled = false;
         emit TradeEnabled(false);
 
@@ -233,43 +317,84 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
 
     event ContractsSet(address kyberNetwork, address otc);
 
-    function setContracts(address _kyberNetwork, address _otc) public onlyAdmin {
-        require(_kyberNetwork != address(0), "setContracts: kyberNetwork's address is missing");
+    function setContracts(address _kyberNetwork, address _otc)
+        public
+        onlyAdmin
+    {
+        require(
+            _kyberNetwork != address(0),
+            "setContracts: kyberNetwork's address is missing"
+        );
         require(_otc != address(0), "setContracts: otc's address is missing");
 
         kyberNetwork = _kyberNetwork;
 
         if (_otc != address(otc)) {
             // new otc address
-            require(wethToken.approve(address(otc), 0), "setContracts: failed to reset allowance for old otc (wethToken)");
+            require(
+                wethToken.approve(address(otc), 0),
+                "setContracts: failed to reset allowance for old otc (wethToken)"
+            );
             otc = IOtc(_otc);
-            require(wethToken.approve(_otc, 2**255), "setContracts: failed to approve otc (wethToken)");
+            require(
+                wethToken.approve(_otc, 2**255),
+                "setContracts: failed to approve otc (wethToken)"
+            );
         }
 
         emit ContractsSet(_kyberNetwork, _otc);
     }
 
-    event InternalInventoryDataSet(uint minToken, uint maxToken, uint pricePremiumBps, uint minSpreadBps);
+    event InternalInventoryDataSet(
+        uint256 minToken,
+        uint256 maxToken,
+        uint256 pricePremiumBps,
+        uint256 minSpreadBps
+    );
 
     function setInternalInventoryData(
         IERC20 token,
         bool isEnabled,
-        uint minToken,
-        uint maxToken,
-        uint pricePremiumBps,
-        uint minSpreadBps
-    )
-        public onlyAdmin
-    {
-        require(isTokenListed[address(token)], "setInternalInventoryData: token is not listed");
-        require(minToken < POW_2_96/2, "setInternalInventoryData: minToken > 2**95");
-        require(maxToken < POW_2_96, "setInternalInventoryData: maxToken > 2**96");
-        require(pricePremiumBps < POW_2_32, "setInternalInventoryData: pricePremiumBps > 2**32");
-        require(minSpreadBps < POW_2_32, "setInternalInventoryData: minSpreadBps > 2**32");
+        uint256 minToken,
+        uint256 maxToken,
+        uint256 pricePremiumBps,
+        uint256 minSpreadBps
+    ) public onlyAdmin {
+        require(
+            isTokenListed[address(token)],
+            "setInternalInventoryData: token is not listed"
+        );
+        require(
+            minToken < POW_2_96 / 2,
+            "setInternalInventoryData: minToken > 2**95"
+        );
+        require(
+            maxToken < POW_2_96,
+            "setInternalInventoryData: maxToken > 2**96"
+        );
+        require(
+            pricePremiumBps < POW_2_32,
+            "setInternalInventoryData: pricePremiumBps > 2**32"
+        );
+        require(
+            minSpreadBps < POW_2_32,
+            "setInternalInventoryData: minSpreadBps > 2**32"
+        );
 
-        internalInventoryData[address(token)] = encodeInternalInventoryData(isEnabled, minToken, maxToken, pricePremiumBps, minSpreadBps);
+        internalInventoryData[address(token)] = encodeInternalInventoryData(
+            isEnabled,
+            minToken,
+            maxToken,
+            pricePremiumBps,
+            minSpreadBps
+        );
 
-        emit InternalInventoryDataSet(minToken, maxToken, pricePremiumBps, minSpreadBps);
+        emit InternalInventoryDataSet(
+            minToken,
+            maxToken,
+            pricePremiumBps,
+            minSpreadBps
+        );
     }
 
     event TokenListed(IERC20 token);
@@ -277,10 +402,19 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
     function listToken(IERC20 token) public onlyAdmin {
         address tokenAddr = address(token);
 
-        require(tokenAddr != address(0), "listToken: token's address is missing");
+        require(
+            tokenAddr != address(0),
+            "listToken: token's address is missing"
+        );
         require(!isTokenListed[tokenAddr], "listToken: token's alr listed");
-        require(getDecimals(token) == MAX_DECIMALS, "listToken: token's decimals is not MAX_DECIMALS");
-        require(token.approve(address(otc), 2**255), "listToken: approve token otc failed");
+        require(
+            getDecimals(token) == MAX_DECIMALS,
+            "listToken: token's decimals is not MAX_DECIMALS"
+        );
+        require(
+            token.approve(address(otc), 2**255),
+            "listToken: approve token otc failed"
+        );
 
         isTokenListed[tokenAddr] = true;
 
@@ -293,7 +427,10 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
         address tokenAddr = address(token);
 
         require(isTokenListed[tokenAddr], "delistToken: token is not listed");
-        require(token.approve(address(otc), 0), "delistToken: reset approve token failed");
+        require(
+            token.approve(address(otc), 0),
+            "delistToken: reset approve token failed"
+        );
 
         delete isTokenListed[tokenAddr];
         delete internalInventoryData[tokenAddr];
@@ -303,24 +440,33 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
         emit TokenDelisted(token);
     }
 
-    event FeeBpsSet(uint feeBps);
+    event FeeBpsSet(uint256 feeBps);
 
-    function setFeeBps(uint _feeBps) public onlyAdmin {
+    function setFeeBps(uint256 _feeBps) public onlyAdmin {
         require(_feeBps < BPS, "setFeeBps: feeBps >= bps");
 
         feeBps = _feeBps;
         emit FeeBpsSet(feeBps);
     }
 
-    function showBestOffers(IERC20 token, bool isEthToToken, uint srcAmountToken)
-        public view
-        returns(uint destAmount, uint destAmountToken, uint[] memory offerIds) 
+    function showBestOffers(
+        IERC20 token,
+        bool isEthToToken,
+        uint256 srcAmountToken
+    )
+        public
+        view
+        returns (
+            uint256 destAmount,
+            uint256 destAmountToken,
+            uint256[] memory offerIds
+        )
     {
         if (srcAmountToken == 0) {
             // return 0
             destAmount = 0;
             destAmountToken = 0;
-            offerIds = new uint[](0);
+            offerIds = new uint256[](0);
             return (destAmount, destAmountToken, offerIds);
         }
 
@@ -332,42 +478,83 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
         OfferData memory ask;
         (bid, ask) = getFirstBidAndAskOrders(token);
 
-        (destAmount, offers) = findBestOffers(dstToken, srcToken, (srcAmountToken * 10 ** 18), bid, ask);
+        (destAmount, offers) = findBestOffers(
+            dstToken,
+            srcToken,
+            (srcAmountToken * 10**18),
+            bid,
+            ask
+        );
 
-        destAmountToken = destAmount / 10 ** 18;
+        destAmountToken = destAmount / 10**18;
 
-        uint i;
+        uint256 i;
         for (i; i < offers.length; i++) {
             if (offers[i].id == 0) {
                 break;
             }
         }
 
-        offerIds = new uint[](i);
+        offerIds = new uint256[](i);
         for (i = 0; i < offerIds.length; i++) {
             offerIds[i] = offers[i].id;
         }
     }
 
     function getTokenBasicDataPub(IERC20 token)
-        public view
-        returns (uint minETHSupport, uint maxTraverse, uint maxTakes)
+        public
+        view
+        returns (
+            uint256 minETHSupport,
+            uint256 maxTraverse,
+            uint256 maxTakes
+        )
     {
-        (minETHSupport, maxTraverse, maxTakes) = decodeTokenBasicData(tokenBasicData[address(token)]);
+        (minETHSupport, maxTraverse, maxTakes) = decodeTokenBasicData(
+            tokenBasicData[address(token)]
+        );
     }
 
     function getFactorDataPub(IERC20 token)
-        public view
-        returns (uint maxTraverseX, uint maxTraverseY, uint maxTakeX, uint maxTakeY, uint minOrderSizeX, uint minOrderSizeY)
+        public
+        view
+        returns (
+            uint256 maxTraverseX,
+            uint256 maxTraverseY,
+            uint256 maxTakeX,
+            uint256 maxTakeY,
+            uint256 minOrderSizeX,
+            uint256 minOrderSizeY
+        )
     {
-        (maxTraverseX, maxTraverseY, maxTakeX, maxTakeY, minOrderSizeX, minOrderSizeY) = decodeFactorData(tokenFactorData[address(token)]);
+        (
+            maxTraverseX,
+            maxTraverseY,
+            maxTakeX,
+            maxTakeY,
+            minOrderSizeX,
+            minOrderSizeY
+        ) = decodeFactorData(tokenFactorData[address(token)]);
     }
 
     function getInternalInventoryDataPub(IERC20 token)
-        public view
-        returns(bool isEnabled, uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
+        public
+        view
+        returns (
+            bool isEnabled,
+            uint256 minTokenBal,
+            uint256 maxTokenBal,
+            uint256 premiumBps,
+            uint256 minSpreadBps
+        )
     {
-        (isEnabled, minTokenBal, maxTokenBal, premiumBps, minSpreadBps) = decodeInternalInventoryData(internalInventoryData[address(token)]);
+        (
+            isEnabled,
+            minTokenBal,
+            maxTokenBal,
+            premiumBps,
+            minSpreadBps
+        ) = decodeInternalInventoryData(internalInventoryData[address(token)]);
     }
 
     /// @dev do a trade
@@ -378,28 +565,37 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
     /// @return true iff trade is successful
     function doTrade(
         IERC20 srcToken,
-        uint srcAmount,
+        uint256 srcAmount,
         IERC20 destToken,
         address payable destAddress,
-        uint conversionRate,
+        uint256 conversionRate,
         bool validate
-    )
-        internal
-        returns(bool)
-    {
+    ) internal returns (bool) {
         // can skip validation if done at kyber network level
         if (validate) {
             require(conversionRate > 0, "doTrade: conversionRate is 0");
-            if (srcToken == ETH_TOKEN_ADDRESS)
-                require(msg.value == srcAmount, "doTrade: msg.value != srcAmount");
-            else
+            if (srcToken == ETH_TOKEN_ADDRESS) {
+                require(
+                    msg.value == srcAmount,
+                    "doTrade: msg.value != srcAmount"
+                );
+            } else {
                 require(msg.value == 0, "doTrade: msg.value must be 0");
+            }
         }
 
-        uint userExpectedDestAmount = calcDstQty(srcAmount, MAX_DECIMALS, MAX_DECIMALS, conversionRate);
-        require(userExpectedDestAmount > 0, "doTrade: userExpectedDestAmount == 0"); // sanity check
+        uint256 userExpectedDestAmount = calcDstQty(
+            srcAmount,
+            MAX_DECIMALS,
+            MAX_DECIMALS,
+            conversionRate
+        );
+        require(
+            userExpectedDestAmount > 0,
+            "doTrade: userExpectedDestAmount == 0"
+        ); // sanity check
 
-        uint actualDestAmount;
+        uint256 actualDestAmount;
 
         // using hint to check if we should use our internal inventory
         bool useInternalInventory = conversionRate % 2 == 1;
@@ -408,110 +604,195 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
             // taking from internal inventory and return
             if (srcToken == ETH_TOKEN_ADDRESS) {
                 // transfer back only requested dest amount.
-                require(destToken.transfer(destAddress, userExpectedDestAmount), "doTrade: (useInternalInventory) can not transfer back token");
+                require(
+                    destToken.transfer(destAddress, userExpectedDestAmount),
+                    "doTrade: (useInternalInventory) can not transfer back token"
+                );
             } else {
                 // collect src token
-                require(srcToken.transferFrom(msg.sender, address(this), srcAmount), "doTrade: (useInternalInventory) can not collect src token");
+                require(
+                    srcToken.transferFrom(
+                        msg.sender,
+                        address(this),
+                        srcAmount
+                    ),
+                    "doTrade: (useInternalInventory) can not collect src token"
+                );
                 // transfer back only requested dest amount.
                 destAddress.transfer(userExpectedDestAmount);
             }
 
-            emit TradeExecute(msg.sender, address(srcToken), srcAmount, address(destToken), userExpectedDestAmount, destAddress);
+            emit TradeExecute(
+                msg.sender,
+                address(srcToken),
+                srcAmount,
+                address(destToken),
+                userExpectedDestAmount,
+                destAddress
+            );
             return true;
         }
 
         OfferData memory bid;
         OfferData memory ask;
-        (bid, ask) = getFirstBidAndAskOrders(srcToken == ETH_TOKEN_ADDRESS ? destToken : srcToken);
+        (bid, ask) = getFirstBidAndAskOrders(
+            srcToken == ETH_TOKEN_ADDRESS ? destToken : srcToken
+        );
 
         // get offers to take
         OfferData[] memory offers;
         if (srcToken == ETH_TOKEN_ADDRESS) {
-            (actualDestAmount, offers) = findBestOffers(destToken, wethToken, srcAmount, bid, ask);
+            (actualDestAmount, offers) = findBestOffers(
+                destToken,
+                wethToken,
+                srcAmount,
+                bid,
+                ask
+            );
         } else {
-            (actualDestAmount, offers) = findBestOffers(wethToken, srcToken, srcAmount, bid, ask);
+            (actualDestAmount, offers) = findBestOffers(
+                wethToken,
+                srcToken,
+                srcAmount,
+                bid,
+                ask
+            );
         }
 
-        require(actualDestAmount >= userExpectedDestAmount, "doTrade: actualDestAmount is less than userExpectedDestAmount");
+        require(
+            actualDestAmount >= userExpectedDestAmount,
+            "doTrade: actualDestAmount is less than userExpectedDestAmount"
+        );
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             wethToken.deposit.value(msg.value)();
-            actualDestAmount = takeMatchingOrders(destToken, srcAmount, offers);
-            require(actualDestAmount >= userExpectedDestAmount, "doTrade: actualDestAmount is less than userExpectedDestAmount, eth to token");
+            actualDestAmount = takeMatchingOrders(
+                destToken,
+                srcAmount,
+                offers
+            );
+            require(
+                actualDestAmount >= userExpectedDestAmount,
+                "doTrade: actualDestAmount is less than userExpectedDestAmount, eth to token"
+            );
             // transfer back only requested dest amount
-            require(destToken.transfer(destAddress, userExpectedDestAmount), "doTrade: can not transfer back requested token");
+            require(
+                destToken.transfer(destAddress, userExpectedDestAmount),
+                "doTrade: can not transfer back requested token"
+            );
         } else {
             // collect src tokens
-            require(srcToken.transferFrom(msg.sender, address(this), srcAmount), "doTrade: can not collect src token");
-            actualDestAmount = takeMatchingOrders(wethToken, srcAmount, offers);
-            require(actualDestAmount >= userExpectedDestAmount, "doTrade: actualDestAmount is less than userExpectedDestAmount, token to eth");
+            require(
+                srcToken.transferFrom(msg.sender, address(this), srcAmount),
+                "doTrade: can not collect src token"
+            );
+            actualDestAmount = takeMatchingOrders(
+                wethToken,
+                srcAmount,
+                offers
+            );
+            require(
+                actualDestAmount >= userExpectedDestAmount,
+                "doTrade: actualDestAmount is less than userExpectedDestAmount, token to eth"
+            );
             wethToken.withdraw(actualDestAmount);
             // transfer back only requested dest amount.
             destAddress.transfer(userExpectedDestAmount);
         }
 
-        emit TradeExecute(msg.sender, address(srcToken), srcAmount, address(destToken), userExpectedDestAmount, destAddress);
+        emit TradeExecute(
+            msg.sender,
+            address(srcToken),
+            srcAmount,
+            address(destToken),
+            userExpectedDestAmount,
+            destAddress
+        );
         return true;
     }
 
-    function takeMatchingOrders(IERC20 destToken, uint srcAmount, OfferData[] memory offers)
-        internal
-        returns(uint actualDestAmount)
-    {
-        require(destToken != ETH_TOKEN_ADDRESS, "takeMatchingOrders: destToken is ETH");
+    function takeMatchingOrders(
+        IERC20 destToken,
+        uint256 srcAmount,
+        OfferData[] memory offers
+    ) internal returns (uint256 actualDestAmount) {
+        require(
+            destToken != ETH_TOKEN_ADDRESS,
+            "takeMatchingOrders: destToken is ETH"
+        );
 
-        uint lastReserveBalance = destToken.balanceOf(address(this));
-        uint remainingSrcAmount = srcAmount;
+        uint256 lastReserveBalance = destToken.balanceOf(address(this));
+        uint256 remainingSrcAmount = srcAmount;
 
-        for (uint i = 0; i < offers.length; i++) {
-            if (offers[i].id == 0 || remainingSrcAmount == 0) { break; }
+        for (uint256 i = 0; i < offers.length; i++) {
+            if (offers[i].id == 0 || remainingSrcAmount == 0) {
+                break;
+            }
 
-            uint payAmount = minOf(remainingSrcAmount, offers[i].payAmount);
-            uint buyAmount = payAmount * offers[i].buyAmount / offers[i].payAmount;
+            uint256 payAmount = minOf(remainingSrcAmount, offers[i].payAmount);
+            uint256 buyAmount = (payAmount * offers[i].buyAmount) /
+                offers[i].payAmount;
 
             otc.take(bytes32(offers[i].id), uint128(buyAmount));
             remainingSrcAmount -= payAmount;
         }
 
         // must use all amount
-        require(remainingSrcAmount == 0, "takeMatchingOrders: did not take all src amount");
+        require(
+            remainingSrcAmount == 0,
+            "takeMatchingOrders: did not take all src amount"
+        );
 
-        uint newReserveBalance = destToken.balanceOf(address(this));
+        uint256 newReserveBalance = destToken.balanceOf(address(this));
 
-        require(newReserveBalance > lastReserveBalance, "takeMatchingOrders: newReserveBalance <= lastReserveBalance");
+        require(
+            newReserveBalance > lastReserveBalance,
+            "takeMatchingOrders: newReserveBalance <= lastReserveBalance"
+        );
 
         actualDestAmount = newReserveBalance - lastReserveBalance;
     }
 
     function shouldUseInternalInventory(
         IERC20 token,
-        uint tokenVal,
-        uint ethVal,
+        uint256 tokenVal,
+        uint256 ethVal,
         bool ethToToken,
         OfferData memory bid,
         OfferData memory ask
-    )
-        internal view
-        returns(bool shouldUse, uint premiumBps)
-    {
+    ) internal view returns (bool shouldUse, uint256 premiumBps) {
         shouldUse = false;
         premiumBps = 0;
 
-        if (tokenVal > MAX_QTY) { return (shouldUse, premiumBps); }
+        if (tokenVal > MAX_QTY) {
+            return (shouldUse, premiumBps);
+        }
 
-        InternalInventoryData memory inventoryData = getInternalInventoryData(token);
-        if (!inventoryData.isEnabled) { return (shouldUse, premiumBps); }
+        InternalInventoryData memory inventoryData = getInternalInventoryData(
+            token
+        );
+        if (!inventoryData.isEnabled) {
+            return (shouldUse, premiumBps);
+        }
 
         premiumBps = inventoryData.premiumBps;
 
-        uint tokenBalance = token.balanceOf(address(this));
+        uint256 tokenBalance = token.balanceOf(address(this));
 
         if (ethToToken) {
-            if (tokenBalance < tokenVal) { return (shouldUse, premiumBps); }
-            if (tokenBalance - tokenVal < inventoryData.minTokenBal) { return (shouldUse, premiumBps); }
+            if (tokenBalance < tokenVal) {
+                return (shouldUse, premiumBps);
+            }
+            if (tokenBalance - tokenVal < inventoryData.minTokenBal) {
+                return (shouldUse, premiumBps);
+            }
         } else {
-            if (address(this).balance < ethVal) { return (shouldUse, premiumBps); }
-            if (tokenBalance + tokenVal > inventoryData.maxTokenBal) { return (shouldUse, premiumBps); }
+            if (address(this).balance < ethVal) {
+                return (shouldUse, premiumBps);
+            }
+            if (tokenBalance + tokenVal > inventoryData.maxTokenBal) {
+                return (shouldUse, premiumBps);
+            }
         }
 
         if (!checkValidSpread(bid, ask, true, inventoryData.minSpreadBps)) {
@@ -522,46 +803,54 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
     }
 
     function applyInternalInventoryHintToRate(
-        uint rate,
+        uint256 rate,
         bool useInternalInventory
-    )
-        internal pure
-        returns(uint)
-    {
-        return rate % 2 == (useInternalInventory ? 1 : 0)
-            ? rate
-            : rate - 1;
+    ) internal pure returns (uint256) {
+        return rate % 2 == (useInternalInventory ? 1 : 0) ? rate : rate - 1;
     }
 
-    function valueAfterReducingFee(uint val) internal view returns(uint) {
+    function valueAfterReducingFee(uint256 val)
+        internal
+        view
+        returns (uint256)
+    {
         require(val <= MAX_QTY, "valueAfterReducingFee: val > MAX_QTY");
         return ((BPS - feeBps) * val) / BPS;
     }
 
-    function valueAfterAddingPremium(uint val, uint premium) internal pure returns(uint) {
+    function valueAfterAddingPremium(uint256 val, uint256 premium)
+        internal
+        pure
+        returns (uint256)
+    {
         require(val <= MAX_QTY, "valueAfterAddingPremium: val > MAX_QTY");
-        return val * (BPS + premium) / BPS;
+        return (val * (BPS + premium)) / BPS;
     }
 
     function findBestOffers(
         IERC20 dstToken,
         IERC20 srcToken,
-        uint srcAmount,
+        uint256 srcAmount,
         OfferData memory bid,
         OfferData memory ask
     )
-        internal view
-        returns(uint totalDestAmount, OfferData[] memory offers)
+        internal
+        view
+        returns (uint256 totalDestAmount, OfferData[] memory offers)
     {
-        uint remainingSrcAmount = srcAmount;
-        uint maxOrdersToTake;
-        uint maxTraversedOrders;
-        uint minPayAmount;
-        uint numTakenOffer = 0;
+        uint256 remainingSrcAmount = srcAmount;
+        uint256 maxOrdersToTake;
+        uint256 maxTraversedOrders;
+        uint256 minPayAmount;
+        uint256 numTakenOffer = 0;
         totalDestAmount = 0;
         IERC20 token = srcToken == wethToken ? dstToken : srcToken;
 
-        (maxOrdersToTake, maxTraversedOrders, minPayAmount) = calcOfferLimitsFromFactorData(
+        (
+            maxOrdersToTake,
+            maxTraversedOrders,
+            minPayAmount
+        ) = calcOfferLimitsFromFactorData(
             token,
             (srcToken == wethToken),
             bid,
@@ -578,15 +867,20 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
 
         // otc's terminology is of offer maker, so their sellGem is our (the taker's) dest token.
         // if we don't have best offers, get them.
-        if ((srcToken == wethToken && bid.id == 0) || (dstToken == wethToken && ask.id == 0)) {
+        if (
+            (srcToken == wethToken && bid.id == 0) ||
+            (dstToken == wethToken && ask.id == 0)
+        ) {
             offers[0].id = otc.getBestOffer(dstToken, srcToken);
             // assuming pay amount is taker pay amount. (in otc it is used differently)
-            (offers[0].buyAmount, , offers[0].payAmount, ) = otc.getOffer(offers[0].id);
+            (offers[0].buyAmount, , offers[0].payAmount, ) = otc.getOffer(
+                offers[0].id
+            );
         } else {
             offers[0] = srcToken == wethToken ? bid : ask;
         }
 
-        uint thisOffer;
+        uint256 thisOffer;
 
         OfferData memory biggestSkippedOffer = OfferData(0, 0, 0);
 
@@ -597,47 +891,69 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
             // biggestSkippedOffer should have better rate than current offer
             if (biggestSkippedOffer.payAmount >= remainingSrcAmount) {
                 offers[numTakenOffer].id = biggestSkippedOffer.id;
-                offers[numTakenOffer].buyAmount = remainingSrcAmount * biggestSkippedOffer.buyAmount / biggestSkippedOffer.payAmount;
+                offers[numTakenOffer].buyAmount =
+                    (remainingSrcAmount * biggestSkippedOffer.buyAmount) /
+                    biggestSkippedOffer.payAmount;
                 offers[numTakenOffer].payAmount = remainingSrcAmount;
                 totalDestAmount += offers[numTakenOffer].buyAmount;
                 ++numTakenOffer;
                 remainingSrcAmount = 0;
                 break;
             } else if (offers[numTakenOffer].payAmount >= remainingSrcAmount) {
-                offers[numTakenOffer].buyAmount = remainingSrcAmount * offers[numTakenOffer].buyAmount / offers[numTakenOffer].payAmount;
+                offers[numTakenOffer].buyAmount =
+                    (remainingSrcAmount * offers[numTakenOffer].buyAmount) /
+                    offers[numTakenOffer].payAmount;
                 offers[numTakenOffer].payAmount = remainingSrcAmount;
                 totalDestAmount += offers[numTakenOffer].buyAmount;
                 ++numTakenOffer;
                 remainingSrcAmount = 0;
                 break;
-            } else if ((maxOrdersToTake - numTakenOffer) > 1
-                        && offers[numTakenOffer].payAmount >= minPayAmount) {
+            } else if (
+                (maxOrdersToTake - numTakenOffer) > 1 &&
+                offers[numTakenOffer].payAmount >= minPayAmount
+            ) {
                 totalDestAmount += offers[numTakenOffer].buyAmount;
                 remainingSrcAmount -= offers[numTakenOffer].payAmount;
                 ++numTakenOffer;
-            } else if (offers[numTakenOffer].payAmount > biggestSkippedOffer.payAmount) {
-                biggestSkippedOffer.payAmount = offers[numTakenOffer].payAmount;
-                biggestSkippedOffer.buyAmount = offers[numTakenOffer].buyAmount;
+            } else if (
+                offers[numTakenOffer].payAmount > biggestSkippedOffer.payAmount
+            ) {
+                biggestSkippedOffer.payAmount = offers[numTakenOffer]
+                    .payAmount;
+                biggestSkippedOffer.buyAmount = offers[numTakenOffer]
+                    .buyAmount;
                 biggestSkippedOffer.id = offers[numTakenOffer].id;
             }
 
             offers[numTakenOffer].id = otc.getWorseOffer(offers[thisOffer].id);
-            (offers[numTakenOffer].buyAmount, , offers[numTakenOffer].payAmount, ) = otc.getOffer(offers[numTakenOffer].id);
+            (
+                offers[numTakenOffer].buyAmount,
+                ,
+                offers[numTakenOffer].payAmount,
+
+            ) = otc.getOffer(offers[numTakenOffer].id);
         }
 
         if (remainingSrcAmount > 0) totalDestAmount = 0;
         if (totalDestAmount == 0) offers = new OfferData[](0);
     }
 
+    // prettier-ignore
     // returns max takes, max traverse, min order size to take using config factor data
     function calcOfferLimitsFromFactorData(
         IERC20 token,
         bool isEthToToken,
         OfferData memory bid,
-        OfferData memory ask, uint srcAmount
+        OfferData memory ask,
+        uint256 srcAmount
     )
-        internal view
-        returns(uint maxTakes, uint maxTraverse, uint minPayAmount)
+        internal
+        view
+        returns (
+            uint256 maxTakes,
+            uint256 maxTraverse,
+            uint256 minPayAmount
+        )
     {
         if (!isEthToToken && (ask.id == 0 || bid.id == 0)) {
             // need to compute equivalent eth amount but no ask and bid offers are available
@@ -647,16 +963,22 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
             return (maxTakes, maxTraverse, minPayAmount);
         }
 
-        uint order0Pay = 0;
-        uint order0Buy = 0;
+        uint256 order0Pay = 0;
+        uint256 order0Buy = 0;
 
         if (!isEthToToken) {
             // only need to use median when token -> eth trade
             order0Pay = ask.payAmount;
-            order0Buy = (ask.buyAmount + ask.payAmount * bid.payAmount / bid.buyAmount) / 2;
+            order0Buy =
+                (ask.buyAmount +
+                    (ask.payAmount * bid.payAmount) /
+                    bid.buyAmount
+                ) / 2;
         }
 
-        uint ethOrderSize = isEthToToken ? srcAmount : srcAmount * order0Buy / order0Pay;
+        uint256 ethOrderSize = isEthToToken
+            ? srcAmount
+            : (srcAmount * order0Buy) / order0Pay;
 
         BasicDataConfig memory basicData = getTokenBasicData(token);
 
@@ -669,82 +991,141 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
 
         FactorDataConfig memory factorData = getFactorData(token);
 
-        uint tokenFactorBPS = 100000; // 10^5
+        uint256 tokenFactorBPS = 100000; // 10^5
 
-        maxTraverse = (factorData.maxTraverseX * ethOrderSize / PRECISION + factorData.maxTraverseY) / tokenFactorBPS;
+        maxTraverse =
+            ((factorData.maxTraverseX * ethOrderSize) /
+                PRECISION +
+                factorData.maxTraverseY) / tokenFactorBPS;
         maxTraverse = minOf(maxTraverse, basicData.maxTraverse);
 
-        maxTakes = (factorData.maxTakeX * ethOrderSize / PRECISION + factorData.maxTakeY) / tokenFactorBPS;
+        maxTakes =
+            ((factorData.maxTakeX * ethOrderSize) /
+                PRECISION +
+                factorData.maxTakeY) / tokenFactorBPS;
         maxTakes = minOf(maxTakes, basicData.maxTakes);
 
-        uint minETHAmount = (factorData.minOrderSizeX * ethOrderSize + factorData.minOrderSizeY * PRECISION) / tokenFactorBPS;
+        uint256 minETHAmount =
+            (factorData.minOrderSizeX *
+                ethOrderSize +
+                factorData.minOrderSizeY *
+                PRECISION) / tokenFactorBPS;
 
         // translate min amount to pay token
-        minPayAmount = isEthToToken ? minETHAmount : minETHAmount * order0Pay / order0Buy;
+        minPayAmount = isEthToToken
+            ? minETHAmount
+            : (minETHAmount * order0Pay) / order0Buy;
     }
 
     // bid: buy WETH, ask: sell WETH (their base token is DAI)
     function getFirstBidAndAskOrders(IERC20 token)
-        internal view
-        returns(OfferData memory bid, OfferData memory ask)
+        internal
+        view
+        returns (OfferData memory bid, OfferData memory ask)
     {
         // getting first bid offer (buy WETH)
-        (bid.id, bid.payAmount, bid.buyAmount) = getFirstOffer(token, wethToken);
+        (bid.id, bid.payAmount, bid.buyAmount) = getFirstOffer(
+            token,
+            wethToken
+        );
         // getting first ask offer (sell WETH)
-        (ask.id, ask.payAmount, ask.buyAmount) = getFirstOffer(wethToken, token);
+        (ask.id, ask.payAmount, ask.buyAmount) = getFirstOffer(
+            wethToken,
+            token
+        );
     }
 
     function getFirstOffer(IERC20 offerSellGem, IERC20 offerBuyGem)
-        internal view
-        returns(uint offerId, uint offerPayAmount, uint offerBuyAmount)
+        internal
+        view
+        returns (
+            uint256 offerId,
+            uint256 offerPayAmount,
+            uint256 offerBuyAmount
+        )
     {
         offerId = otc.getBestOffer(offerSellGem, offerBuyGem);
         (offerBuyAmount, , offerPayAmount, ) = otc.getOffer(offerId);
     }
 
-    function checkValidSpread(OfferData memory bid, OfferData memory ask, bool isCheckingMinSpread, uint minSpreadBps)
-        internal pure
-        returns(bool)
-    {
+    function checkValidSpread(
+        OfferData memory bid,
+        OfferData memory ask,
+        bool isCheckingMinSpread,
+        uint256 minSpreadBps
+    ) internal pure returns (bool) {
         // if no bid or ask order, consider as invalid spread?
-        if (bid.id == 0 || ask.id == 0 || bid.buyAmount > MAX_QTY || bid.payAmount > MAX_QTY || ask.buyAmount > MAX_QTY || ask.payAmount > MAX_QTY) {
+        if (
+            bid.id == 0 ||
+            ask.id == 0 ||
+            bid.buyAmount > MAX_QTY ||
+            bid.payAmount > MAX_QTY ||
+            ask.buyAmount > MAX_QTY ||
+            ask.payAmount > MAX_QTY
+        ) {
             return false;
         }
 
-        uint x1 = ask.payAmount * bid.payAmount;
-        uint x2 = ask.buyAmount * bid.buyAmount;
+        uint256 x1 = ask.payAmount * bid.payAmount;
+        uint256 x2 = ask.buyAmount * bid.buyAmount;
 
         // must check sellRate > buyRate
-        if (x1 <= x2) { return false; }
+        if (x1 <= x2) {
+            return false;
+        }
 
         // if no need to check for min spread, return true here
-        if (!isCheckingMinSpread) { return true; }
+        if (!isCheckingMinSpread) {
+            return true;
+        }
 
         // spread should be bigger than minSpreadBps
-        if (BPS * (x1 - x2) <= x2 * minSpreadBps) { return false; }
+        if (BPS * (x1 - x2) <= x2 * minSpreadBps) {
+            return false;
+        }
 
         return true;
     }
 
     function getTokenBasicData(IERC20 token)
-        internal view
-        returns(BasicDataConfig memory data)
+        internal
+        view
+        returns (BasicDataConfig memory data)
     {
-        (data.minETHSupport, data.maxTraverse, data.maxTakes) = decodeTokenBasicData(tokenBasicData[address(token)]);
+        (
+            data.minETHSupport,
+            data.maxTraverse,
+            data.maxTakes
+        ) = decodeTokenBasicData(tokenBasicData[address(token)]);
     }
 
     function getFactorData(IERC20 token)
-        internal view
-        returns(FactorDataConfig memory data)
+        internal
+        view
+        returns (FactorDataConfig memory data)
     {
-        (data.maxTraverseX, data.maxTraverseY, data.maxTakeX, data.maxTakeY, data.minOrderSizeX, data.minOrderSizeY) = decodeFactorData(tokenFactorData[address(token)]);
+        (
+            data.maxTraverseX,
+            data.maxTraverseY,
+            data.maxTakeX,
+            data.maxTakeY,
+            data.minOrderSizeX,
+            data.minOrderSizeY
+        ) = decodeFactorData(tokenFactorData[address(token)]);
     }
 
     function getInternalInventoryData(IERC20 token)
-        internal view
-        returns(InternalInventoryData memory data)
+        internal
+        view
+        returns (InternalInventoryData memory data)
     {
-        (bool isEnabled, uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps) = decodeInternalInventoryData(internalInventoryData[address(token)]);
+        (
+            bool isEnabled,
+            uint256 minTokenBal,
+            uint256 maxTokenBal,
+            uint256 premiumBps,
+            uint256 minSpreadBps
+        ) = decodeInternalInventoryData(internalInventoryData[address(token)]);
         data.isEnabled = isEnabled;
         data.minTokenBal = minTokenBal;
         data.maxTokenBal = maxTokenBal;
@@ -752,63 +1133,125 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
         data.minSpreadBps = minSpreadBps;
     }
 
-    function encodeInternalInventoryData(bool isEnabled, uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
-        internal pure
-        returns(uint data)
-    {
-        require(minSpreadBps < POW_2_32, "encodeInternalInventoryData: minSpreadBps is too big");
-        require(premiumBps < POW_2_32, "encodeInternalInventoryData: premiumBps is too big");
-        require(maxTokenBal < POW_2_96, "encodeInternalInventoryData: maxTokenBal is too big");
-        require(minTokenBal < POW_2_96, "encodeInternalInventoryData: minTokenBal is too big");
+    function encodeInternalInventoryData(
+        bool isEnabled,
+        uint256 minTokenBal,
+        uint256 maxTokenBal,
+        uint256 premiumBps,
+        uint256 minSpreadBps
+    ) internal pure returns (uint256 data) {
+        require(
+            minSpreadBps < POW_2_32,
+            "encodeInternalInventoryData: minSpreadBps is too big"
+        );
+        require(
+            premiumBps < POW_2_32,
+            "encodeInternalInventoryData: premiumBps is too big"
+        );
+        require(
+            maxTokenBal < POW_2_96,
+            "encodeInternalInventoryData: maxTokenBal is too big"
+        );
+        require(
+            minTokenBal < POW_2_96,
+            "encodeInternalInventoryData: minTokenBal is too big"
+        );
         data = minSpreadBps & (POW_2_32 - 1);
         data |= (premiumBps & (POW_2_32 - 1)) * POW_2_32;
         data |= (maxTokenBal & (POW_2_96 - 1)) * POW_2_32 * POW_2_32;
-        data |= (minTokenBal & (POW_2_96 / 2 - 1)) * POW_2_96 * POW_2_32 * POW_2_32;
-        data |= (isEnabled ? 1 : 0) * (POW_2_96 / 2) * POW_2_96 * POW_2_32 * POW_2_32;
+        data |=
+            (minTokenBal & (POW_2_96 / 2 - 1)) *
+            POW_2_96 *
+            POW_2_32 *
+            POW_2_32;
+        data |=
+            (isEnabled ? 1 : 0) *
+            (POW_2_96 / 2) *
+            POW_2_96 *
+            POW_2_32 *
+            POW_2_32;
     }
 
-    function decodeInternalInventoryData(uint data)
-        internal pure
-        returns(bool isEnabled, uint minTokenBal, uint maxTokenBal, uint premiumBps, uint minSpreadBps)
+    // prettier-ignore
+    function decodeInternalInventoryData(uint256 data)
+        internal
+        pure
+        returns (
+            bool isEnabled,
+            uint256 minTokenBal,
+            uint256 maxTokenBal,
+            uint256 premiumBps,
+            uint256 minSpreadBps
+        )
     {
         minSpreadBps = data & (POW_2_32 - 1);
         premiumBps = (data / POW_2_32) & (POW_2_32 - 1);
         maxTokenBal = (data / (POW_2_32 * POW_2_32)) & (POW_2_96 - 1);
-        minTokenBal = (data / (POW_2_96 * POW_2_32 * POW_2_32)) & (POW_2_96 / 2 - 1);
-        isEnabled = (data / ((POW_2_96 / 2) * POW_2_96 * POW_2_32 * POW_2_32)) % 2 == 0 ? false : true;
+        minTokenBal =
+            (data / (POW_2_96 * POW_2_32 * POW_2_32)) &
+            (POW_2_96 / 2 - 1);
+        isEnabled = 
+            (data / ((POW_2_96 / 2) * POW_2_96 * POW_2_32 * POW_2_32)) % 2 == 0
+            ? false
+            : true;
     }
 
-    function encodeTokenBasicData(uint ethSize, uint maxTraverse, uint maxTakes)
-        internal pure
-        returns(uint data)
-    {
-        require(maxTakes < POW_2_32, "encodeTokenBasicData: maxTakes is too big");
-        require(maxTraverse < POW_2_32, "encodeTokenBasicData: maxTraverse is too big");
-        require(ethSize < POW_2_96, "encodeTokenBasicData: ethSize is too big");
+    function encodeTokenBasicData(
+        uint256 ethSize,
+        uint256 maxTraverse,
+        uint256 maxTakes
+    ) internal pure returns (uint256 data) {
+        require(
+            maxTakes < POW_2_32,
+            "encodeTokenBasicData: maxTakes is too big"
+        );
+        require(
+            maxTraverse < POW_2_32,
+            "encodeTokenBasicData: maxTraverse is too big"
+        );
+        require(
+            ethSize < POW_2_96,
+            "encodeTokenBasicData: ethSize is too big"
+        );
         data = maxTakes & (POW_2_32 - 1);
         data |= (maxTraverse & (POW_2_32 - 1)) * POW_2_32;
         data |= (ethSize & (POW_2_96 * POW_2_96 - 1)) * POW_2_32 * POW_2_32;
     }
 
-    function decodeTokenBasicData(uint data)
-        internal pure
-        returns(uint ethSize, uint maxTraverse, uint maxTakes)
+    function decodeTokenBasicData(uint256 data)
+        internal
+        pure
+        returns (
+            uint256 ethSize,
+            uint256 maxTraverse,
+            uint256 maxTakes
+        )
     {
         maxTakes = data & (POW_2_32 - 1);
         maxTraverse = (data / POW_2_32) & (POW_2_32 - 1);
         ethSize = (data / (POW_2_32 * POW_2_32)) & (POW_2_96 * POW_2_96 - 1);
     }
 
-    function encodeFactorData(uint traverseX, uint traverseY, uint takeX, uint takeY, uint minSizeX, uint minSizeY)
-        internal pure
-        returns(uint data)
-    {
+    function encodeFactorData(
+        uint256 traverseX,
+        uint256 traverseY,
+        uint256 takeX,
+        uint256 takeY,
+        uint256 minSizeX,
+        uint256 minSizeY
+    ) internal pure returns (uint256 data) {
         require(minSizeY < POW_2_32, "encodeFactorData: minSizeY is too big");
         require(minSizeX < POW_2_32, "encodeFactorData: minSizeX is too big");
         require(takeY < POW_2_32, "encodeFactorData: takeY is too big");
         require(takeX < POW_2_32, "encodeFactorData: takeX is too big");
-        require(traverseY < POW_2_32, "encodeFactorData: traverseY is too big");
-        require(traverseX < POW_2_32, "encodeFactorData: traverseX is too big");
+        require(
+            traverseY < POW_2_32,
+            "encodeFactorData: traverseY is too big"
+        );
+        require(
+            traverseX < POW_2_32,
+            "encodeFactorData: traverseX is too big"
+        );
         data = (minSizeY & (POW_2_32 - 1));
         data |= (minSizeX & (POW_2_32 - 1)) * POW_2_32;
         data |= (takeY & (POW_2_32 - 1)) * POW_2_32 * POW_2_32;
@@ -817,9 +1260,17 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
         data |= (traverseX & (POW_2_32 - 1)) * POW_2_96 * POW_2_32 * POW_2_32;
     }
 
-    function decodeFactorData(uint data)
-        internal pure
-        returns(uint traverseX, uint traverseY, uint takeX, uint takeY, uint minSizeX, uint minSizeY)
+    function decodeFactorData(uint256 data)
+        internal
+        pure
+        returns (
+            uint256 traverseX,
+            uint256 traverseY,
+            uint256 takeX,
+            uint256 takeY,
+            uint256 minSizeX,
+            uint256 minSizeY
+        )
     {
         minSizeY = data & (POW_2_32 - 1);
         minSizeX = (data / POW_2_32) & (POW_2_32 - 1);
