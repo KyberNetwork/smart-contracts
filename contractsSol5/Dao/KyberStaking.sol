@@ -19,15 +19,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         address delegatedAddress;
     }
 
-    // amount KNC staked of an address for each epoch
-    mapping(uint => mapping(address => uint)) internal stake;
-
-    // amount of KNC that other people has delegated to an address at each epoch
-    mapping(uint => mapping(address => uint)) internal delegatedStake;
-
-    // delegated address of an address at each epoch
-    mapping(uint => mapping(address => address)) internal delegatedAddress;
-
     // staker data per epoch
     mapping(uint => mapping(address => StakerData)) internal stakerPerEpochData;
     // latest data of a staker, including stake, delegated stake, delegated address
