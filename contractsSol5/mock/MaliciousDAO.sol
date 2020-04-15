@@ -10,8 +10,8 @@ contract MaliciousDAO is MockDAO {
         uint256 _rewardInBPS,
         uint256 _rebateInBPS,
         uint256 _epoch,
-        uint256 _expiryBlockNumber
-    ) public MockDAO(_rewardInBPS, _rebateInBPS, _epoch, _expiryBlockNumber) {}
+        uint256 _expiryTimestamp
+    ) public MockDAO(_rewardInBPS, _rebateInBPS, _epoch, _expiryTimestamp) {}
 
     function setMockBRR(
         uint256 _burnInBPS,
@@ -33,6 +33,6 @@ contract MaliciousDAO is MockDAO {
             uint256
         )
     {
-        return (burnInBPS, rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+        return (burnInBPS, rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
     }
 }

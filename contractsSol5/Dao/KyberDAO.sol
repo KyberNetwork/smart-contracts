@@ -81,8 +81,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     uint public constant MAX_EPOCH_CAMPS = 10;
     // max number of options for each campaign
     uint public MAX_CAMP_OPTIONS = 8;
-    // minimum blocks duration for a campaign
-    uint public MIN_CAMP_DURATION_BLOCKS = 21600; // around 4 days
+    // minimum duration in seconds for a campaign
+    uint public MIN_CAMP_DURATION_SECONDS = 345600; // around 4 days
 
     IERC20 public kncToken;
     IKyberStaking public staking;
@@ -99,8 +99,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     struct Campaign {
         CampaignType campType;
         uint campID;
-        uint startBlock;
-        uint endBlock;
+        uint startTimestamp;
+        uint endTimestamp;
         uint totalKNCSupply;        // total KNC supply at the time campaign was created
         FormulaData formulaData;    // formula params for concluding campaign result
         bytes link;                 // link to KIP, explaination of options, etc.
@@ -139,13 +139,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     mapping(uint => uint) public brrCampaign;
 
     constructor(
-        uint _epochPeriod, uint _startBlock,
+        uint _epochPeriod, uint _startTimestamp,
         address _staking, address _feeHandler, address _knc,
         uint _defaultNetworkFeeBps, uint _defaultRewardBps, uint _defaultRebateBps,
         address _campaignCreator
     ) public CampPermissionGroups(_campaignCreator) {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
-        require(_startBlock >= block.number, "ctor: start in the past");
+        require(_startTimestamp >= now, "ctor: start in the past");
         require(_staking != address(0), "ctor: staking is missing");
         require(_feeHandler != address(0), "ctor: feeHandler is missing");
         require(_knc != address(0), "ctor: knc token is missing");
@@ -154,11 +154,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(_defaultNetworkFeeBps < BPS / 2, "ctor: network fee high");
 
         staking = IKyberStaking(_staking);
-        require(staking.EPOCH_PERIOD_BLOCKS() == _epochPeriod, "ctor: diff epoch period");
-        require(staking.FIRST_EPOCH_START_BLOCK() == _startBlock, "ctor: diff start block");
+        require(staking.EPOCH_PERIOD_SECONDS() == _epochPeriod, "ctor: diff epoch period");
+        require(staking.FIRST_EPOCH_START_TIMESTAMP() == _startTimestamp, "ctor: diff start timestamp");
 
-        EPOCH_PERIOD_BLOCKS = _epochPeriod;
-        FIRST_EPOCH_START_BLOCK = _startBlock;
+        EPOCH_PERIOD_SECONDS = _epochPeriod;
+        FIRST_EPOCH_START_TIMESTAMP = _startTimestamp;
         feeHandler = IFeeHandler(_feeHandler);
         kncToken = IERC20(_knc);
         latestNetworkFeeResult = _defaultNetworkFeeBps;
@@ -195,7 +195,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             uint campID = campIDs[i];
             uint votedOption = stakerVotedOption[staker][campID];
             // deduce vote count for current running campaign that this staker has voted
-            if (votedOption > 0 && campaignData[campID].endBlock >= block.number) {
+            if (votedOption > 0 && campaignData[campID].endTimestamp >= now) {
                 // user already voted for this camp and the camp is not ended
                 campOptionVotes[campID][0] = campOptionVotes[campID][0].sub(reduceAmount);
                 campOptionVotes[campID][votedOption] = campOptionVotes[campID][votedOption].sub(reduceAmount);
@@ -207,7 +207,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     event NewCampaignCreated(
         CampaignType campType, uint campID,
-        uint startBlock, uint endBlock,
+        uint startTimestamp, uint endTimestamp,
         uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] options, bytes link
     );
@@ -215,8 +215,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     /**
     * @dev create new campaign, only called by admin
     * @param campType type of campaign (network fee, brr, general)
-    * @param startBlock block to start running the campaign
-    * @param endBlock block to end this campaign
+    * @param startTimestamp timestamp to start running the campaign
+    * @param endTimestamp timestamp to end this campaign
     * @param minPercentageInPrecision min percentage (in precision) for formula to conclude campaign
     * @param cInPrecision c value (in precision) for formula to conclude campaign
     * @param tInPrecision t value (in precision) for formula to conclude campaign
@@ -224,7 +224,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @param link additional data for this campaign
     */
     function submitNewCampaign(
-        CampaignType campType, uint startBlock, uint endBlock,
+        CampaignType campType, uint startTimestamp, uint endTimestamp,
         uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] calldata options, bytes calldata link
     )
@@ -232,7 +232,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     {
         // campaign epoch could be different from current epoch
         // as we allow to create campaign of next epoch as well
-        uint campEpoch = getEpochNumber(startBlock);
+        uint campEpoch = getEpochNumber(startTimestamp);
 
         require(
             epochCampaigns[campEpoch].length < MAX_EPOCH_CAMPS,
@@ -241,7 +241,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         require(
             validateCampaignParams(
-                campType, startBlock, endBlock, campEpoch,
+                campType, startTimestamp, endTimestamp, campEpoch,
                 minPercentageInPrecision, cInPrecision, tInPrecision, options),
             "newCampaign: invalid campaign params"
         );
@@ -274,8 +274,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         campaignData[campID] = Campaign({
             campID: campID,
             campType: campType,
-            startBlock: startBlock,
-            endBlock: endBlock,
+            startTimestamp: startTimestamp,
+            endTimestamp: endTimestamp,
             totalKNCSupply: kncToken.totalSupply(),
             link: link,
             formulaData: formulaData,
@@ -286,7 +286,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         campOptionVotes[campID] = new uint[](options.length + 1);
 
         emit NewCampaignCreated(
-            campType, campID, startBlock, endBlock,
+            campType, campID, startTimestamp, endTimestamp,
             minPercentageInPrecision, cInPrecision, tInPrecision,
             options, link
         );
@@ -304,9 +304,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         Campaign storage camp = campaignData[campID];
 
-        require(camp.startBlock > block.number, "cancelCampaign: campaign alr started");
+        require(camp.startTimestamp > now, "cancelCampaign: campaign alr started");
 
-        uint epoch = getEpochNumber(camp.startBlock);
+        uint epoch = getEpochNumber(camp.startTimestamp);
 
         campExists[campID] = false;
 
@@ -395,25 +395,25 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-    * @dev get latest network fee data + expiry block number
+    * @dev get latest network fee data + expiry timestamp
     * @dev conclude network fee campaign if needed and caching latest result in DAO
     */
-    function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryBlockNumber) {
+    function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryTimestamp) {
         uint curEpoch = getCurrentEpochNumber();
 
         feeInBps = latestNetworkFeeResult;
-        // expiryBlockNumber = FIRST_EPOCH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
-        expiryBlockNumber = FIRST_EPOCH_START_BLOCK.add(curEpoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
+        // expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP + curEpoch * EPOCH_PERIOD_SECONDS - 1;
+        expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP.add(curEpoch.mul(EPOCH_PERIOD_SECONDS)).sub(1);
 
         // there is no camp for epoch 0
         if (curEpoch == 0) {
-            return (feeInBps, expiryBlockNumber);
+            return (feeInBps, expiryTimestamp);
         }
 
         uint campID = networkFeeCamp[curEpoch.sub(1)];
         if (campID == 0) {
             // don't have network fee campaign, return latest result
-            return (feeInBps, expiryBlockNumber);
+            return (feeInBps, expiryTimestamp);
         }
 
         uint winningOption;
@@ -429,16 +429,16 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-    * @dev return latest burn/reward/rebate data, also affecting epoch + expiry block number
+    * @dev return latest burn/reward/rebate data, also affecting epoch + expiry timestamp
     * @dev conclude brr campaign if needed and caching latest result in DAO
     */
     function getLatestBRRData()
         public
-        returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
+        returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryTimestamp)
     {
         epoch = getCurrentEpochNumber();
-        // expiryBlockNumber = FIRST_EPOCH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
-        expiryBlockNumber = FIRST_EPOCH_START_BLOCK.add(epoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
+        // expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP + curEpoch * EPOCH_PERIOD_SECONDS - 1;
+        expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP.add(epoch.mul(EPOCH_PERIOD_SECONDS)).sub(1);
         uint brrData = latestBrrResult;
         if (epoch > 0) {
             uint campID = brrCampaign[epoch.sub(1)];
@@ -473,15 +473,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     function getCampaignDetails(uint campID)
         external view
         returns(
-            CampaignType campType, uint startBlock, uint endBlock, uint totalKNCSupply,
+            CampaignType campType, uint startTimestamp, uint endTimestamp, uint totalKNCSupply,
             uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
             bytes memory link, uint[] memory options
         )
     {
         Campaign storage camp = campaignData[campID];
         campType = camp.campType;
-        startBlock = camp.startBlock;
-        endBlock = camp.endBlock;
+        startTimestamp = camp.startTimestamp;
+        endTimestamp = camp.endTimestamp;
         totalKNCSupply = camp.totalKNCSupply;
         minPercentageInPrecision = camp.formulaData.minPercentageInPrecision;
         cInPrecision = camp.formulaData.cInPrecision;
@@ -518,7 +518,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         Campaign storage camp = campaignData[campID];
 
         // not found or not ended yet, return 0 as winning option
-        if (camp.endBlock == 0 || camp.endBlock > block.number) { return (0, 0); }
+        if (camp.endTimestamp == 0 || camp.endTimestamp > now) { return (0, 0); }
 
         uint totalSupply = camp.totalKNCSupply;
         // something is wrong here, total KNC supply shouldn't be 0
@@ -563,20 +563,20 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-    * @dev return latest network fee with expiry block number
+    * @dev return latest network fee with expiry timestamp
     */
-    function getLatestNetworkFeeData() external view returns(uint feeInBps, uint expiryBlockNumber) {
+    function getLatestNetworkFeeData() public view returns(uint feeInBps, uint expiryTimestamp) {
         uint curEpoch = getCurrentEpochNumber();
         feeInBps = latestNetworkFeeResult;
-        // expiryBlockNumber = FIRST_EPOCH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
-        expiryBlockNumber = FIRST_EPOCH_START_BLOCK.add(curEpoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
+        // expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP + curEpoch * EPOCH_PERIOD_SECONDS - 1;
+        expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP.add(curEpoch.mul(EPOCH_PERIOD_SECONDS)).sub(1);
         if (curEpoch == 0) {
-            return (feeInBps, expiryBlockNumber);
+            return (feeInBps, expiryTimestamp);
         }
         uint campID = networkFeeCamp[curEpoch.sub(1)];
         if (campID == 0) {
             // don't have network fee campaign, return latest result
-            return (feeInBps, expiryBlockNumber);
+            return (feeInBps, expiryTimestamp);
         }
 
         uint winningOption;
@@ -584,7 +584,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         if (winningOption == 0) {
             feeInBps = latestNetworkFeeResult;
         }
-        return (feeInBps, expiryBlockNumber);
+        return (feeInBps, expiryTimestamp);
     }
 
     /**
@@ -622,12 +622,12 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @dev return latest brr data after decoded so it is easily to check from read contract
     */
     function latestBRRDataDecoded()
-        external view
-        returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryBlockNumber)
+        public view
+        returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryTimestamp)
     {
         epoch = getCurrentEpochNumber();
-        // expiryBlockNumber = FIRST_EPOCH_START_BLOCK + curEpoch * EPOCH_PERIOD_BLOCKS - 1;
-        expiryBlockNumber = FIRST_EPOCH_START_BLOCK.add(epoch.mul(EPOCH_PERIOD_BLOCKS)).sub(1);
+        // expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP + epoch * EPOCH_PERIOD_SECONDS - 1;
+        expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP.add(epoch.mul(EPOCH_PERIOD_SECONDS)).sub(1);
         uint brrData = latestBrrResult;
         if (epoch > 0) {
             uint campID = brrCampaign[epoch.sub(1)];
@@ -670,32 +670,32 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * Validate params to check if we could submit a new campaign with these params
     */
     function validateCampaignParams(
-        CampaignType campType, uint startBlock, uint endBlock, uint startEpoch,
+        CampaignType campType, uint startTimestamp, uint endTimestamp, uint startEpoch,
         uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] memory options
     )
         public view returns(bool)
     {
-        // block number <= start block < end block
+        // now <= start timestamp < end timestamp
         require(
-            startBlock >= block.number,
+            startTimestamp >= now,
             "validateParams: can't start in the past"
         );
         // camp duration must be at least min camp duration
-        // endBlock - startBlock + 1 >= MIN_CAMP_DURATION_BLOCKS,
+        // endTimestamp - startTimestamp + 1 >= MIN_CAMP_DURATION_SECONDS,
         require(
-            endBlock.add(1) >= startBlock.add(MIN_CAMP_DURATION_BLOCKS),
+            endTimestamp.add(1) >= startTimestamp.add(MIN_CAMP_DURATION_SECONDS),
             "validateParams: campaign duration is low"
         );
 
         uint currentEpoch = getCurrentEpochNumber();
-        uint endEpoch = getEpochNumber(endBlock);
-        // start + end blocks must be in the same epoch
+        uint endEpoch = getEpochNumber(endTimestamp);
+        // start timestamp and end timestamp must be in the same epoch
         require(
             startEpoch == endEpoch,
             "validateParams: start & end not same epoch"
         );
-        // start + end blocks must be in the same epoch
+
         require(
             startEpoch <= currentEpoch.add(1),
             "validateParams: only for current or next epochs"
@@ -767,8 +767,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         Campaign storage camp = campaignData[campID];
 
-        require(camp.startBlock <= block.number, "vote: campaign not started");
-        require(camp.endBlock >= block.number, "vote: campaign alr ended");
+        require(camp.startTimestamp <= now, "vote: campaign not started");
+        require(camp.endTimestamp >= now, "vote: campaign alr ended");
 
         require(option > 0, "vote: option is 0");
         require(option <= camp.options.length, "vote: option is not in range");

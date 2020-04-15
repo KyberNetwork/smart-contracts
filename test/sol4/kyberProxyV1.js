@@ -73,7 +73,7 @@ let ethSrcQty = precisionUnits;
 let rewardInBPS = new BN(7000);
 let rebateInBPS = new BN(2000);
 let epoch = new BN(3);
-let expiryBlockNumber;
+let expiryTimestamp;
 let networkFeeBps = new BN(20);
 let platformFeeBps = zeroBN;
 
@@ -129,8 +129,8 @@ contract('KyberProxyV1', function(accounts) {
 
     it("should init DAO, network, proxy", async function () {
         //DAO related init.
-        expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
-        DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+        expiryTimestamp = new BN(await Helper.getCurrentBlockTime() + 1000000);
+        DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
         await DAO.setNetworkFeeBps(networkFeeBps);
 
         //init network
@@ -1380,8 +1380,8 @@ contract('KyberProxyV1', function(accounts) {
 
     describe("MaliciousNetwork + KyberProxyV1", async () => {
         before("init smart malicious network and set all contracts and params", async () => {
-            expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
-            DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+            expiryTimestamp = new BN(await web3.eth.getBlockNumber() + 150);
+            DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
             await DAO.setNetworkFeeBps(networkFeeBps);
 
             maliciousNetwork = await MaliciousNetwork.new(admin);

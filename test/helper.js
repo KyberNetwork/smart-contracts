@@ -83,6 +83,15 @@ module.exports.getCurrentBlock = function() {
     });
 };
 
+module.exports.getCurrentBlockTime = function() {
+    return new Promise(function (fulfill, reject){
+        web3.eth.getBlock("latest", false, function(err,result){
+            if( err ) reject(err);
+            else fulfill(result.timestamp);
+        });
+    });
+}
+
 module.exports.bytesToHex = function (byteArray) {
     let strNum = toHexString(byteArray);
     let num = '0x' + strNum;
@@ -249,7 +258,7 @@ module.exports.assertSameTokenBalance = async function (accountAddress, token, e
 module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecimals) {
     let decimals;
     dstDecimals = new BN(dstDecimals);
-    
+
     if (dstDecimals.gte(new BN(srcDecimals))) {
         decimals = new BN(10).pow(new BN(dstDecimals - srcDecimals));
         return precisionUnits.mul(new BN(dstQty)).div((decimals).mul(new BN(srcQty)));
@@ -267,4 +276,117 @@ module.exports.increaseBlockNumber = async function (blocks) {
 
 module.exports.increaseBlockNumberTo = async function(newBlock) {
     await time.advanceBlockTo(newBlock);
+}
+
+module.exports.txAfterBlocks = async function(blocks, txFunc) {
+    await module.exports.increaseBlockNumber(blocks);
+    await txFunc();
+}
+
+module.exports.txAtBlock = async function(block, txFunc) {
+    await module.exports.increaseBlockNumberTo(block - 1);
+    await txFunc();
+}
+
+module.exports.increaseNextBlockTimestamp = async function(duration) {
+  currentChainTime = await module.exports.getCurrentBlockTime();
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send.bind(web3.currentProvider)(
+      {
+        jsonrpc: "2.0",
+        method: "evm_setNextBlockTimestamp",
+        params: [
+          currentChainTime + duration
+        ],
+        id: new Date().getTime(),
+      },
+      (err, res) => {
+        if (err) {
+          return reject(err);
+        }
+        console.log(`next block timestamp will be: ${currentChainTime + duration}`);
+        resolve(res);
+      },
+    );
+  });
+}
+
+module.exports.setNextBlockTimestamp = async function(timestamp) {
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send.bind(web3.currentProvider)(
+      {
+        jsonrpc: "2.0",
+        method: "evm_setNextBlockTimestamp",
+        params: [timestamp],
+        id: new Date().getTime(),
+      },
+      (err, res) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(res);
+      },
+    );
+  });
+}
+
+module.exports.txAtTime = async function(timestamp, txFunc) {
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send.bind(web3.currentProvider)(
+      {
+        jsonrpc: "2.0",
+        method: "evm_setNextBlockTimestamp",
+        params: [timestamp],
+        id: new Date().getTime(),
+      },
+      (err, res) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(txFunc());
+      },
+    );
+  });
+}
+
+module.exports.mineNewBlockAt = async function(timestamp) {
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send.bind(web3.currentProvider)(
+      {
+        jsonrpc: "2.0",
+        method: "evm_mine",
+        params: [timestamp],
+        id: new Date().getTime(),
+      },
+      (err, res) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(res);
+      },
+    );
+  });
+}
+
+module.exports.mineNewBlockAfter = async function(duration) {
+  currentChainTime = await module.exports.getCurrentBlockTime();
+  return new Promise((resolve, reject) => {
+    web3.currentProvider.send.bind(web3.currentProvider)(
+      {
+        jsonrpc: "2.0",
+        method: "evm_mine",
+        params: [
+          currentChainTime + duration
+        ],
+        id: new Date().getTime(),
+      },
+      (err, res) => {
+        if (err) {
+          return reject(err);
+        }
+        console.log(`mined new block at: ${currentChainTime + duration}`);
+        resolve(res);
+      },
+    );
+  });
 }
