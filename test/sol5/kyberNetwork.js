@@ -173,14 +173,13 @@ contract('KyberNetwork', function(accounts) {
         it("test can't add same proxy twice", async() => {
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
 
-            await expectRevert(
-                tempNetwork.addKyberProxy(proxy1, {from: admin}),
-                "proxy exists"
+            await expectRevert.unspecified(
+                tempNetwork.addKyberProxy(proxy1, {from: admin})
             );
         });
 
         it("test can't add proxy zero address", async() => {
-            await expectRevert(
+            await expectRevert.unspecified(
                 tempNetwork.addKyberProxy(zeroAddress, {from: admin}),
                 "proxy 0"
             );
@@ -337,6 +336,8 @@ contract('KyberNetwork', function(accounts) {
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, tempStorage.address, {from: admin});
+
+            await tempNetwork.setDAOContract(DAO.address, {from: admin});
         });
 
         it("set empty fee handler contract", async function(){
@@ -541,17 +542,17 @@ contract('KyberNetwork', function(accounts) {
 
         it("set enable without feeHandler", async function(){
             await tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, gasHelperAdd, {from: admin});
-            await expectRevert(tempNetwork.setEnable(true, {from: admin}),  "feeHandler 0");
+            await expectRevert.unspecified(tempNetwork.setEnable(true, {from: admin}));
         });
 
         it("set enable without matching engine", async function(){
             await tempNetwork.setContracts(feeHandler.address, zeroAddress, gasHelperAdd, {from: admin});
-            await expectRevert(tempNetwork.setEnable(true, {from: admin}), "matchingEngine 0");
+            await expectRevert.unspecified(tempNetwork.setEnable(true, {from: admin}));
         });
 
         it("set enable without proxy contract", async function(){
             await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
-            await expectRevert(tempNetwork.setEnable(true, {from: admin}), "proxy 0");
+            await expectRevert.unspecified(tempNetwork.setEnable(true, {from: admin}));
         });
     });
 
