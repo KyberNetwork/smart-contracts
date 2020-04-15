@@ -4,7 +4,6 @@ pragma solidity 0.5.11;
 /* all this file is based on code from open zepplin
  * https://github.com/OpenZeppelin/zeppelin-solidity/tree/master/contracts/token */
 
-
 /**
  * Standard ERC20 token
  *
@@ -12,31 +11,30 @@ pragma solidity 0.5.11;
  * https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
 
-
 /**
  * Math operations with safety checks
  */
 library SafeMath {
-    function mul(uint a, uint b) internal pure returns (uint) {
-        uint c = a * b;
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a * b;
         require(a == 0 || c / a == b, "mul overflow");
         return c;
     }
 
-    function div(uint a, uint b) internal pure returns (uint) {
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
         require(b > 0, "divider <= 0");
-        uint c = a / b;
-        require(a == b * c + a % b, "div failed");
+        uint256 c = a / b;
+        require(a == b * c + (a % b), "div failed");
         return c;
     }
 
-    function sub(uint a, uint b) internal pure returns (uint) {
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
         require(b <= a, "sub underflow");
         return a - b;
     }
 
-    function add(uint a, uint b) internal pure returns (uint) {
-        uint c = a + b;
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
         require(c >= a, "add overflow");
         return c;
     }
@@ -67,11 +65,15 @@ library SafeMath {
  * see https://github.com/ethereum/EIPs/issues/20
  */
 contract ERC20Basic {
-    uint public totalSupply;
-    function balanceOf(address who) external view returns (uint);
-    function transfer(address to, uint value) external returns (bool);
-    event Transfer(address indexed from, address indexed to, uint value);
+    uint256 public totalSupply;
+
+    function balanceOf(address who) external view returns (uint256);
+
+    function transfer(address to, uint256 value) external returns (bool);
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -80,11 +82,26 @@ contract ERC20Basic {
  * see https://github.com/ethereum/EIPs/issues/20
  */
 contract ERC20 is ERC20Basic {
-    function allowance(address owner, address spender) external view returns (uint);
-    function transferFrom(address from, address to, uint value) external returns (bool);
-    function approve(address spender, uint value) external returns (bool);
-    event Approval(address indexed owner, address indexed spender, uint value);
+    function allowance(address owner, address spender)
+        external
+        view
+        returns (uint256);
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 value
+    ) external returns (bool);
+
+    function approve(address spender, uint256 value) external returns (bool);
+
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -93,28 +110,32 @@ contract ERC20 is ERC20Basic {
  * Basic version of StandardToken, with no allowances
  */
 contract BasicToken is ERC20Basic {
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
-    mapping(address => uint) balances;
+    mapping(address => uint256) balances;
 
     /*
      * Fix for the ERC20 short address attack
      */
-    modifier onlyPayloadSize(uint size) {
+    modifier onlyPayloadSize(uint256 size) {
         if (msg.data.length < size + 4) {
             revert("short address");
         }
         _;
     }
 
-    function transfer(address _to, uint _value)  public onlyPayloadSize(2 * 32) returns (bool) {
+    function transfer(address _to, uint256 _value)
+        public
+        onlyPayloadSize(2 * 32)
+        returns (bool)
+    {
         balances[msg.sender] = balances[msg.sender].sub(_value);
         balances[_to] = balances[_to].add(_value);
         emit Transfer(msg.sender, _to, _value);
         return true;
     }
 
-    function balanceOf(address _owner) public view returns (uint balance) {
+    function balanceOf(address _owner) public view returns (uint256 balance) {
         return balances[_owner];
     }
 }
@@ -130,11 +151,13 @@ contract BasicToken is ERC20Basic {
  * https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
 contract StandardToken is BasicToken, ERC20 {
+    mapping(address => mapping(address => uint256)) allowed;
 
-    mapping (address => mapping (address => uint)) allowed;
-
-    function transferFrom(address _from, address _to, uint _value) public returns (bool) {
-
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _value
+    ) public returns (bool) {
         uint256 _allowance = allowed[_from][msg.sender];
 
         // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
@@ -147,16 +170,21 @@ contract StandardToken is BasicToken, ERC20 {
         return true;
     }
 
-    function approve(address _spender, uint _value) public returns (bool) {
+    function approve(address _spender, uint256 _value) public returns (bool) {
         allowed[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, _value);
         return true;
     }
 
-    function allowance(address _owner, address _spender) public view returns (uint remaining) {
+    function allowance(address _owner, address _spender)
+        public
+        view
+        returns (uint256 remaining)
+    {
         return allowed[_owner][_spender];
     }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -168,13 +196,16 @@ contract StandardToken is BasicToken, ERC20 {
  * as they wish using `transfer` and other `StandardToken` functions.
  */
 contract Token is StandardToken {
-
     string public name = "Test";
     string public symbol = "TST";
-    uint public decimals = 18;
-    uint public INITIAL_SUPPLY = 10**(50+18);
+    uint256 public decimals = 18;
+    uint256 public INITIAL_SUPPLY = 10**(50 + 18);
 
-    constructor(string memory _name, string memory _symbol, uint _decimals) public {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint256 _decimals
+    ) public {
         totalSupply = INITIAL_SUPPLY;
         balances[msg.sender] = INITIAL_SUPPLY;
         name = _name;
@@ -182,9 +213,9 @@ contract Token is StandardToken {
         decimals = _decimals;
     }
 
-    event Burn(address indexed _burner, uint _value);
+    event Burn(address indexed _burner, uint256 _value);
 
-    function burn(uint _value) public returns (bool) {
+    function burn(uint256 _value) public returns (bool) {
         balances[msg.sender] = balances[msg.sender].sub(_value);
         totalSupply = totalSupply.sub(_value);
         emit Burn(msg.sender, _value);
@@ -194,7 +225,7 @@ contract Token is StandardToken {
 
     // save some gas by making only one contract call
     function burnFrom(address _from, uint256 _value) public returns (bool) {
-        transferFrom( _from, msg.sender, _value );
+        transferFrom(_from, msg.sender, _value);
         return burn(_value);
     }
 }

@@ -4,10 +4,8 @@ import "../KyberMatchingEngine.sol";
 
 
 contract MockTradeLogic is KyberMatchingEngine {
+    mapping(address => bytes5) public reserveAddressToId;
+    mapping(bytes5 => address[]) public reserveIdToAddresses;
 
-    mapping(address=>bytes5) public reserveAddressToId;
-    mapping(bytes5=>address[]) public reserveIdToAddresses;
-
-    constructor(address _admin) public KyberMatchingEngine(_admin) 
-        {}
+    constructor(address _admin) public KyberMatchingEngine(_admin) {}
 }
