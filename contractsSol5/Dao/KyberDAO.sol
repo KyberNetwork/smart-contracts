@@ -112,6 +112,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         CampaignVoteData campaignVoteData;  // campaign vote data: total votes + vote per option
     }
 
+    struct BRRData {
+        uint rewardInBps;
+        uint rebateInBps;
+    }
+
     /* Mapping from campaign ID => data */
 
     // use to generate increasing campaign ID
@@ -131,10 +136,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     mapping(address => mapping(uint => uint)) public stakerVotedOption;
 
     /* Configuration Campaign Data */
-    uint public latestNetworkFeeResult = 25; // 0.25%
+    uint internal latestNetworkFeeResult = 25; // 0.25%
     // epoch => campaignID for network fee campaigns
     mapping(uint => uint) public networkFeeCampaigns;
-    uint public latestBrrResult = 0; // 0: 0% reward + 0% rebate
+    // latest BRR data (reward and rebate in bps)
+    BRRData internal latestBrrData;
     // epoch => campaignID for brr campaigns
     mapping(uint => uint) public brrCampaigns;
 
@@ -152,6 +158,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
         // so network fee should be less than 50%
         require(_defaultNetworkFeeBps < BPS / 2, "ctor: network fee high");
+        require(_defaultRewardBps.add(_defaultRebateBps) <= BPS, "reward plus rebate high");
 
         staking = IKyberStaking(_staking);
         require(staking.EPOCH_PERIOD_SECONDS() == _epochPeriod, "ctor: diff epoch period");
@@ -163,7 +170,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         kncToken = IERC20(_knc);
         latestNetworkFeeResult = _defaultNetworkFeeBps;
         // reward + rebate will be validated inside get func here
-        latestBrrResult = getDataFromRewardAndRebateWithValidation(_defaultRewardBps, _defaultRebateBps);
+        latestBrrData.rewardInBps = _defaultRewardBps;
+        latestBrrData.rebateInBps = _defaultRebateBps;
     }
 
     modifier onlyStakingContract {
@@ -310,7 +318,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         require(campaign.startTimestamp > now, "cancelCampaign: campaign already started");
 
-        uint epoch = getEpochNumber(campaign. startTimestamp);
+        uint epoch = getEpochNumber(campaign.startTimestamp);
 
         if (campaign.campaignType == CampaignType.NetworkFee) {
             delete networkFeeCampaigns[epoch];
@@ -416,7 +424,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryTimestamp)
     {
         (burnInBps, rewardInBps, rebateInBps, epoch, expiryTimestamp) = getLatestBRRDataDecoded();
-        latestBrrResult = getDataFromRewardAndRebateWithValidation(rewardInBps, rebateInBps);
+        latestBrrData.rewardInBps = rewardInBps;
+        latestBrrData.rebateInBps = rebateInBps;
     }
 
     /**
@@ -439,15 +448,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         )
     {
         Campaign storage campaign = campaignData[campaignID];
-        campaignType = campaign. campaignType;
-        startTimestamp = campaign. startTimestamp;
-        endTimestamp = campaign. endTimestamp;
-        totalKNCSupply = campaign. totalKNCSupply;
-        minPercentageInPrecision = campaign. formulaData.minPercentageInPrecision;
-        cInPrecision = campaign. formulaData.cInPrecision;
-        tInPrecision = campaign. formulaData.tInPrecision;
-        link = campaign. link;
-        options = campaign. options;
+        campaignType = campaign.campaignType;
+        startTimestamp = campaign.startTimestamp;
+        endTimestamp = campaign.endTimestamp;
+        totalKNCSupply = campaign.totalKNCSupply;
+        minPercentageInPrecision = campaign.formulaData.minPercentageInPrecision;
+        cInPrecision = campaign.formulaData.cInPrecision;
+        tInPrecision = campaign.formulaData.tInPrecision;
+        link = campaign.link;
+        options = campaign.options;
     }
 
     function getCampaignVoteCountData(uint campaignID) external view returns(uint[] memory voteCounts, uint totalVoteCount) {
@@ -471,9 +480,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         if (!campaign.campaignExists) { return (0, 0); } // not exist
 
         // not found or not ended yet, return 0 as winning option
-        if (campaign. endTimestamp == 0 || campaign. endTimestamp > now) { return (0, 0); }
+        if (campaign.endTimestamp == 0 || campaign.endTimestamp > now) { return (0, 0); }
 
-        uint totalSupply = campaign. totalKNCSupply;
+        uint totalSupply = campaign.totalKNCSupply;
         // something is wrong here, total KNC supply shouldn't be 0
         if (totalSupply == 0) { return (0, 0); }
 
@@ -495,10 +504,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // more than 1 options have same vote count
         if (winningOption == 0) { return (0, 0); }
 
-        FormulaData memory formulaData = campaign. formulaData;
+        FormulaData memory formulaData = campaign.formulaData;
 
         // compute voted percentage (in precision)
-        uint votedPercentage = totalVotes.mul(PRECISION).div(campaign. totalKNCSupply);
+        uint votedPercentage = totalVotes.mul(PRECISION).div(campaign.totalKNCSupply);
 
         // total voted percentage is below min acceptable percentage, no winning option
         if (formulaData.minPercentageInPrecision > votedPercentage) { return (0, 0); }
@@ -513,7 +522,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         }
 
         optionID = winningOption;
-        value = campaign. options[optionID - 1];
+        value = campaign.options[optionID - 1];
     }
 
     /**
@@ -536,6 +545,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint winningOption;
         (winningOption, feeInBps) = getCampaignWinningOptionAndValue(campaignID);
         if (winningOption == 0) {
+            // fallback to previous result
             feeInBps = latestNetworkFeeResult;
         }
         return (feeInBps, expiryTimestamp);
@@ -582,20 +592,22 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         epoch = getCurrentEpochNumber();
         // expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP + epoch * EPOCH_PERIOD_SECONDS - 1;
         expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP.add(epoch.mul(EPOCH_PERIOD_SECONDS)).sub(1);
-        uint brrData = latestBrrResult;
+        rewardInBps = latestBrrData.rewardInBps;
+        rebateInBps = latestBrrData.rebateInBps;
+
         if (epoch > 0) {
             uint campaignID = brrCampaigns[epoch.sub(1)];
             if (campaignID != 0) {
                 uint winningOption;
+                uint brrData;
                 (winningOption, brrData) = getCampaignWinningOptionAndValue(campaignID);
-                if (winningOption == 0) {
-                    // no winning option, fallback to previous result
-                    brrData = latestBrrResult;
+                if (winningOption > 0) {
+                    // has winning option, update reward and rebate value
+                    (rebateInBps, rewardInBps) = getRebateAndRewardFromData(brrData);
                 }
             }
         }
 
-        (rebateInBps, rewardInBps) = getRebateAndRewardFromData(brrData);
         burnInBps = BPS.sub(rebateInBps).sub(rewardInBps);
     }
 

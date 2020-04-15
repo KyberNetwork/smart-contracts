@@ -617,29 +617,29 @@ contract('KyberStaking', function(accounts) {
       await kncToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
 
       let tx = await stakingContract.deposit(mulPrecision(100), {from: victor});
-      logInfo("Deposit no delegation: init 2 epochs data, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Deposit no delegation: init 2 epochs data, gas used: " + tx.receipt.gasUsed);
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(startBlock)
       );
       tx = await stakingContract.deposit(mulPrecision(50), {from: victor});
-      logInfo("Deposit no delegation: init 1 epoch data, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Deposit no delegation: init 1 epoch data, gas used: " + tx.receipt.gasUsed);
       tx = await stakingContract.deposit(mulPrecision(50), {from: victor});
-      logInfo("Deposit no delegation: no init epoch data, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Deposit no delegation: no init epoch data, gas used: " + tx.receipt.gasUsed);
 
       await stakingContract.delegate(mike, {from: victor});
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(4 * epochPeriod + startBlock)
       );
       tx = await stakingContract.deposit(mulPrecision(100), {from: victor});
-      logInfo("Deposit has delegation: init 2 epochs data, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Deposit has delegation: init 2 epochs data, gas used: " + tx.receipt.gasUsed);
       await Helper.increaseNextBlockTimestamp(
         blocksToSeconds(epochPeriod)
       );
       tx = await stakingContract.deposit(mulPrecision(50), {from: victor});
-      logInfo("Deposit has delegation: init 1 epoch data, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Deposit has delegation: init 1 epoch data, gas used: " + tx.receipt.gasUsed);
       tx = await stakingContract.deposit(mulPrecision(50), {from: victor});
-      logInfo("Deposit has delegation: no init epoch data, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Deposit has delegation: no init epoch data, gas used: " + tx.receipt.gasUsed);
     });
   });
 
@@ -1128,73 +1128,73 @@ contract('KyberStaking', function(accounts) {
 
       await stakingContract.deposit(mulPrecision(300), {from: victor});
       let tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw no delegation, no DAO : no init epoch data + no penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw no delegation, no DAO : no init epoch data + no penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw no delegation, no DAO : init 1 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw no delegation, no DAO : init 1 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(4 * epochPeriod + startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw no delegation, no DAO : init 2 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw no delegation, no DAO : init 2 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await stakingContract.deposit(mulPrecision(20), {from: victor});
       tx = await stakingContract.withdraw(mulPrecision(30), {from: victor});
-      logInfo("Withdraw no delegation, no DAO : without init epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw no delegation, no DAO : without init epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await stakingContract.delegate(mike, {from: victor});
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(6 * epochPeriod + startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw has delegation, no DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw has delegation, no DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(7 * epochPeriod + startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw has delegation, no DAO: init 1 epoch data+ has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw has delegation, no DAO: init 1 epoch data+ has penalty amount, gas used: " + tx.receipt.gasUsed);
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw has delegation, no DAO: without init epoch data, has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw has delegation, no DAO: without init epoch data, has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await stakingContract.deposit(mulPrecision(20), {from: victor});
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw has delegation, no DAO: without init epoch data + no penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw has delegation, no DAO: without init epoch data + no penalty amount, gas used: " + tx.receipt.gasUsed);
 
       // Setting dao address
       await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
 
       tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw has delegation, has DAO: without init epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw has delegation, has DAO: without init epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(9 * epochPeriod + startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw has delegation, has DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw has delegation, has DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(10 * epochPeriod + startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw has delegation, has DAO: init 1 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw has delegation, has DAO: init 1 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await stakingContract.delegate(victor, {from: victor});
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(12 * epochPeriod + startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw no delegation, has DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw no delegation, has DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(13 * epochPeriod + startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw no delegation, has DAO: init 1 epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw no delegation, has DAO: init 1 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
       tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw no delegation, has DAO: no init epoch data + has penalty amount, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Withdraw no delegation, has DAO: no init epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
     });
   });
 
@@ -1699,14 +1699,14 @@ contract('KyberStaking', function(accounts) {
       await deployStakingContract(5, currentBlock + 5);
 
       let tx = await stakingContract.delegate(mike, {from: victor});
-      logInfo("Delegate no stake: init 2 epochs data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate no stake: init 2 epochs data + from self to mike, gas used: " + tx.receipt.gasUsed);
       await stakingContract.delegate(victor, {from: victor});
       // jump to epoch 1
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(startBlock)
       );
       tx = await stakingContract.delegate(mike, {from: victor});
-      logInfo("Delegate no stake: init 1 epoch data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate no stake: init 1 epoch data + from self to mike, gas used: " + tx.receipt.gasUsed);
       await stakingContract.delegate(victor, {from: victor});
       await Helper.increaseNextBlockTimestamp(
         blocksToSeconds(epochPeriod)
@@ -1714,11 +1714,11 @@ contract('KyberStaking', function(accounts) {
       // to make init 2 epochs data
       await stakingContract.delegate(victor, {from: victor});
       tx = await stakingContract.delegate(loi, {from: victor});
-      logInfo("Delegate no stake: no init epoch data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate no stake: no init epoch data + from self to mike, gas used: " + tx.receipt.gasUsed);
       tx = await stakingContract.delegate(loi, {from: victor});
-      logInfo("Delegate no stake: no init epoch data + same delegated, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate no stake: no init epoch data + same delegated, gas used: " + tx.receipt.gasUsed);
       tx = await stakingContract.delegate(loi, {from: victor});
-      logInfo("Delegate no stake: no init epoch data + back to self, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate no stake: no init epoch data + back to self, gas used: " + tx.receipt.gasUsed);
 
       await stakingContract.delegate(victor, {from: victor});
 
@@ -1731,44 +1731,44 @@ contract('KyberStaking', function(accounts) {
         blockToTimestamp(4 * epochPeriod + startBlock)
       );
       tx = await stakingContract.delegate(mike, {from: victor});
-      logInfo("Delegate has stake: init 2 epochs data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate has stake: init 2 epochs data + from self to mike, gas used: " + tx.receipt.gasUsed);
       await stakingContract.delegate(victor, {from: victor});
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(5 * epochPeriod + startBlock)
       );
       tx = await stakingContract.delegate(mike, {from: victor});
-      logInfo("Delegate has stake: init 1 epoch data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate has stake: init 1 epoch data + from self to mike, gas used: " + tx.receipt.gasUsed);
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(6 * epochPeriod + startBlock)
       );
       // to make init 2 epochs data
       await stakingContract.delegate(victor, {from: victor});
       tx = await stakingContract.delegate(loi, {from: victor});
-      logInfo("Delegate has stake: no init epoch data + from self to mike, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate has stake: no init epoch data + from self to mike, gas used: " + tx.receipt.gasUsed);
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(8 * epochPeriod + startBlock)
       );
       tx = await stakingContract.delegate(mike, {from: victor});
-      logInfo("Delegate has stake: init 2 epochs data + from mike to loi, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate has stake: init 2 epochs data + from mike to loi, gas used: " + tx.receipt.gasUsed);
       await stakingContract.delegate(victor, {from: victor});
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(9 * epochPeriod + startBlock)
       );
       tx = await stakingContract.delegate(mike, {from: victor});
-      logInfo("Delegate has stake: init 1 epoch data + from mike to loi, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate has stake: init 1 epoch data + from mike to loi, gas used: " + tx.receipt.gasUsed);
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(10 * epochPeriod + startBlock)
       );
       // to make init 2 epochs data
       await stakingContract.delegate(victor, {from: victor});
       tx = await stakingContract.delegate(loi, {from: victor});
-      logInfo("Delegate has stake: no init epoch data + from mike to loi, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate has stake: no init epoch data + from mike to loi, gas used: " + tx.receipt.gasUsed);
 
       tx = await stakingContract.delegate(loi, {from: victor});
-      logInfo("Delegate has stake: same delegated address, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate has stake: same delegated address, gas used: " + tx.receipt.gasUsed);
       tx = await stakingContract.delegate(victor, {from: victor});
-      logInfo("Delegate has stake: back to self, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Delegate has stake: back to self, gas used: " + tx.receipt.gasUsed);
     });
   });
 
@@ -2690,16 +2690,14 @@ contract('KyberStaking', function(accounts) {
 
       await stakingContract.setLatestDelegatedStake(mike, mulPrecision(200));
 
-      await expectRevert(
-        stakingContract.withdraw(mulPrecision(300), {from: victor}),
-        "withdraw: latest delegated stake is smaller than next epoch stake"
+      await expectRevert.unspecified(
+        stakingContract.withdraw(mulPrecision(300), {from: victor})
       )
 
       await stakingContract.setEpochDelegatedStake(mike, 1, mulPrecision(200));
 
-      await expectRevert(
-        stakingContract.withdraw(mulPrecision(300), {from: victor}),
-        "withdraw: delegated stake is smaller than next epoch stake"
+      await expectRevert.unspecified(
+        stakingContract.withdraw(mulPrecision(300), {from: victor})
       )
     });
 
@@ -2719,16 +2717,14 @@ contract('KyberStaking', function(accounts) {
 
       await stakingContract.setLatestDelegatedStake(mike, mulPrecision(200));
 
-      await expectRevert(
-        stakingContract.delegate(loi, {from: victor}),
-        "delegate: latest delegated stake is smaller than next epoch stake"
+      await expectRevert.unspecified(
+        stakingContract.delegate(loi, {from: victor})
       )
 
       await stakingContract.setEpochDelegatedStake(mike, 1, mulPrecision(200));
 
-      await expectRevert(
-        stakingContract.delegate(loi, {from: victor}),
-        "delegate: delegated stake is smaller than next epoch stake"
+      await expectRevert.unspecified(
+        stakingContract.delegate(loi, {from: victor})
       )
     });
   });

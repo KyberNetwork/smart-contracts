@@ -61,7 +61,7 @@ contract MockDAO is IKyberDAO, Utils4 {
         return (feeBps, expiryTimestamp);
     }
 
-    function getLatestBRRData()
+    function getLatestBRRDataWithCache()
         external
         returns (
             uint256,

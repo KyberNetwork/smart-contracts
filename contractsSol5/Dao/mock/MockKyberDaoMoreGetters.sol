@@ -26,8 +26,13 @@ contract MockKyberDaoMoreGetters is KyberDAO {
         latestNetworkFeeResult = _fee;
     }
 
-    function setLatestBrrData(uint _data) public {
-        latestBrrResult = _data;
+    function setLatestBrrData(uint reward, uint rebate) public {
+        latestBrrData.rewardInBps = reward;
+        latestBrrData.rebateInBps = rebate;
+    }
+
+    function latestBrrResult() public view returns(uint) {
+        return getDataFromRewardAndRebateWithValidation(latestBrrData.rewardInBps, latestBrrData.rebateInBps);
     }
 
     function getTotalPoints(uint epoch) public view returns(uint) {
@@ -42,7 +47,15 @@ contract MockKyberDaoMoreGetters is KyberDAO {
         return campaignData[campaignID].campaignExists;
     }
 
-    function checkLatestBrrData(uint _rewardInBps, uint _rebateInBps, uint _burnInBps, uint _epoch, uint _expiryTimestamp) public returns(bool) {
+    function checkLatestBrrData(
+        uint _rewardInBps,
+        uint _rebateInBps,
+        uint _burnInBps,
+        uint _epoch,
+        uint _expiryTimestamp
+    )
+        public returns(bool)
+    {
         (uint burn, uint reward, uint rebate, uint epoch, uint expiryTime) = getLatestBRRDataWithCache();
         require(_rewardInBps == reward, "reward bps is wrong");
         require(_rebateInBps == rebate, "rebate bps is wrong");

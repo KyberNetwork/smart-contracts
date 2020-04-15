@@ -23,7 +23,7 @@ contract MaliciousDAO is MockDAO {
         burnInBPS = _burnInBPS;
     }
 
-    function getLatestBRRData()
+    function getLatestBRRDataWithCache()
         external
         returns (
             uint256,

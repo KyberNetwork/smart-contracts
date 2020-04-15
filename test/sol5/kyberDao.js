@@ -712,7 +712,7 @@ contract('KyberDAO', function(accounts) {
           id, currentBlock + 2 * id + 5, currentBlock + 2 * id + 5 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
         );
-        gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+        gasUsed.iadd(new BN(tx.receipt.gasUsed));
         Helper.assertEqual(id + 1, await daoContract.numberCampaigns(), "number campaign is incorrect");
         Helper.assertEqual(true, await daoContract.campaignExists(id + 1), "campaign should be existed");
 
@@ -832,7 +832,7 @@ contract('KyberDAO', function(accounts) {
         1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
-      logInfo("Submit Campaign: First time create network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Submit Campaign: First time create network fee camp, gas used: " + tx.receipt.gasUsed);
       Helper.assertEqual(1, await daoContract.networkFeeCampaigns(1), "should have network fee camp");
 
       let txResult = await daoContract.cancelCampaign(1, {from: campCreator});
@@ -856,7 +856,7 @@ contract('KyberDAO', function(accounts) {
         1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
-      logInfo("Submit Campaign: Recreate network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Submit Campaign: Recreate network fee camp, gas used: " + tx.receipt.gasUsed);
       Helper.assertEqual(4, await daoContract.networkFeeCampaigns(1), "should have network fee camp");
     });
 
@@ -876,7 +876,7 @@ contract('KyberDAO', function(accounts) {
         2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
-      logInfo("Submit Campaign: First time create brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Submit Campaign: First time create brr camp, gas used: " + tx.receipt.gasUsed);
       Helper.assertEqual(1, await daoContract.brrCampaigns(1), "should have brr camp");
 
       await daoContract.cancelCampaign(1, {from: campCreator});
@@ -897,7 +897,7 @@ contract('KyberDAO', function(accounts) {
         2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
-      logInfo("Submit Campaign: Recreate brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Submit Campaign: Recreate brr camp, gas used: " + tx.receipt.gasUsed);
       Helper.assertEqual(4, await daoContract.brrCampaigns(1), "shouldn't have brr camp");
     });
 
@@ -1627,7 +1627,7 @@ contract('KyberDAO', function(accounts) {
 
         // cancel last created camp
         let tx = await daoContract.cancelCampaign(campCounts, {from: campCreator});
-        logInfo("Cancel campaign: 4 camps, cancel last one, gas used: " + tx.receipt.cumulativeGasUsed);
+        logInfo("Cancel campaign: 4 camps, cancel last one, gas used: " + tx.receipt.gasUsed);
         expectEvent(tx, 'CancelledCampaign', {
           campaignID: new BN(campCounts)
         });
@@ -1658,7 +1658,7 @@ contract('KyberDAO', function(accounts) {
 
         // cancel middle camp
         tx = await daoContract.cancelCampaign(campCounts - 3, {from: campCreator});
-        logInfo("Cancel campaign: 3 camps, cancel first one, gas used: " + tx.receipt.cumulativeGasUsed);
+        logInfo("Cancel campaign: 3 camps, cancel first one, gas used: " + tx.receipt.gasUsed);
         expectEvent(tx, 'CancelledCampaign', {
           campaignID: new BN(campCounts - 3)
         });
@@ -1735,7 +1735,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(campData.options[2], 3, "camp details should be correct");
 
       let tx = await daoContract.cancelCampaign(1, {from: campCreator});
-      logInfo("Cancel campaign: cancel network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Cancel campaign: cancel network fee camp, gas used: " + tx.receipt.gasUsed);
 
       campData = await daoContract.getCampaignDetails(1);
       Helper.assertEqual(campData.campaignType, 0, "camp details should be deleted");
@@ -1816,7 +1816,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(campData.options[2], 3, "camp details should be correct");
 
       let tx = await daoContract.cancelCampaign(1, {from: campCreator});
-      logInfo("Cancel campaign: cancel brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Cancel campaign: cancel brr camp, gas used: " + tx.receipt.gasUsed);
 
       campData = await daoContract.getCampaignDetails(1);
       Helper.assertEqual(campData.campaignType, 0, "camp details should be deleted");
@@ -2087,7 +2087,7 @@ contract('KyberDAO', function(accounts) {
 
       let gasUsed = new BN(0);
       let tx = await daoContract.vote(1, 1, {from: victor});
-      gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+      gasUsed.iadd(new BN(tx.receipt.gasUsed));
 
       let epochPoints = new BN(0).add(initVictorStake);
       let campPoints = new BN(0).add(initVictorStake);
@@ -2107,7 +2107,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
       tx = await daoContract.vote(1, 2, {from: mike});
-      gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+      gasUsed.iadd(new BN(tx.receipt.gasUsed));
 
       epochPoints.iadd(initMikeStake);
       campPoints.iadd(initMikeStake);
@@ -2127,7 +2127,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
       tx = await daoContract.vote(1, 1, {from: loi});
-      gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+      gasUsed.iadd(new BN(tx.receipt.gasUsed));
 
       logInfo("Vote: average gas used without delegation: " + gasUsed.div(new BN(3)).toString(10));
 
@@ -2279,7 +2279,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
       tx = await daoContract.vote(1, 2, {from: mike});
-      logInfo("Vote: revote different option, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Vote: revote different option, gas used: " + tx.receipt.gasUsed);
       expectEvent(tx, 'Voted', {
         staker: mike,
         epoch: new BN(1),
@@ -2307,7 +2307,7 @@ contract('KyberDAO', function(accounts) {
 
       // vote the same
       tx = await daoContract.vote(1, 2, {from: mike});
-      logInfo("Vote: revote same option, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Vote: revote same option, gas used: " + tx.receipt.gasUsed);
 
       Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
@@ -2437,7 +2437,7 @@ contract('KyberDAO', function(accounts) {
       // Check: victor has no delegated stake, has stake but already delegated to mike
       // => no data changes here
       let tx = await daoContract.vote(1, 1, {from: victor});
-      let gasUsed = new BN(tx.receipt.cumulativeGasUsed);
+      let gasUsed = new BN(tx.receipt.gasUsed);
 
       // Victor has delegated to mike, and no one delegated to him
       // So his vote wont increase points or vote counts
@@ -2459,7 +2459,7 @@ contract('KyberDAO', function(accounts) {
       // Check: mike delegated to poolMaster, victor delegated mike
       // data should change based on victor's stake here
       tx = await daoContract.vote(1, 1, {from: mike});
-      gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+      gasUsed.iadd(new BN(tx.receipt.gasUsed));
 
       logInfo("Vote: average gas used with delegation: " + gasUsed.div(new BN(2)).toString(10));
 
@@ -2731,7 +2731,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, await daoContract.getNumberVotes(poolMaster2, 1), "number votes should be correct");
 
       let tx = await daoContract.vote(1, 1, {from: poolMaster});
-      logInfo("Vote: init 1 epoch - with delegated stake, no stake, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Vote: init 1 epoch - with delegated stake, no stake, gas used: " + tx.receipt.gasUsed);
       await daoContract.vote(2, 1, {from: poolMaster});
 
       epochPoints.iadd(initMikeStake).iadd(initMikeStake);
@@ -2741,7 +2741,7 @@ contract('KyberDAO', function(accounts) {
       optionPoint21.iadd(initMikeStake);
 
       tx = await daoContract.vote(1, 2, {from: poolMaster2});
-      logInfo("Vote: init 1 epoch - with both delegated stake + stake, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Vote: init 1 epoch - with both delegated stake + stake, gas used: " + tx.receipt.gasUsed);
 
       epochPoints.iadd(initPoolMaster2Stake).iadd(initLoiStake);
       campPoints1.iadd(initPoolMaster2Stake).iadd(initLoiStake);
@@ -2841,11 +2841,11 @@ contract('KyberDAO', function(accounts) {
 
       // nothing changes since victor+loi have delegated to another
       let tx = await daoContract.vote(1, 1, {from: victor});
-      let gasUsed = new BN(tx.receipt.cumulativeGasUsed);
+      let gasUsed = new BN(tx.receipt.gasUsed);
       tx = await daoContract.vote(1, 2, {from: loi});
-      gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+      gasUsed.iadd(new BN(tx.receipt.gasUsed));
       tx = await daoContract.vote(1, 1, {from: mike});
-      gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+      gasUsed.iadd(new BN(tx.receipt.gasUsed));
       logInfo("Vote: init data for 2 epoches, average gas used: " + gasUsed.div(new BN(3)).toString(10));
 
       epochPoints.iadd(initMikeStake);
@@ -3144,21 +3144,21 @@ contract('KyberDAO', function(accounts) {
         epoch: new BN(1),
         perInPrecision: await daoContract.getStakerRewardPercentageInPrecision(mike, 1)
       });
-      gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+      gasUsed.iadd(new BN(tx.receipt.gasUsed));
       tx = await daoContract.claimReward(poolMaster, 1);
       expectEvent(tx, 'RewardClaimed', {
         staker: poolMaster,
         epoch: new BN(1),
         perInPrecision: await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1)
       });
-      gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+      gasUsed.iadd(new BN(tx.receipt.gasUsed));
       tx = await daoContract.claimReward(poolMaster2, 1);
       expectEvent(tx, 'RewardClaimed', {
         staker: poolMaster2,
         epoch: new BN(1),
         perInPrecision: await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1)
       });
-      gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
+      gasUsed.iadd(new BN(tx.receipt.gasUsed));
       logInfo("Claim reward: Average gas used: " + gasUsed.div(new BN(3)).toString(10));
 
       Helper.assertEqual(expectedMikeBal, await Helper.getBalancePromise(mike), "reward claimed is not correct");
@@ -4839,7 +4839,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
       let tx = await daoContract.getLatestNetworkFeeDataWithCache();
-      logInfo("Get Network Fee: epoch 0, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Network Fee: epoch 0, gas used: " + tx.receipt.gasUsed);
     });
 
     it("Test get network fee returns correct latest data, no campaigns", async function() {
@@ -4866,7 +4866,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(blocksToSeconds(4*epochPeriod) + daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
       let tx = await daoContract.getLatestNetworkFeeDataWithCache();
-      logInfo("Get Network Fee: epoch > 0, no fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Network Fee: epoch > 0, no fee camp, gas used: " + tx.receipt.gasUsed);
     });
 
     it("Test get network fee returns correct latest data, has camp but no fee campaign", async function() {
@@ -4971,9 +4971,9 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, data[1], "expiry timestamp is wrong for epoch 1");
 
       let tx = await daoContract.getLatestNetworkFeeDataWithCache();
-      logInfo("Get Network Fee: epoch > 0, has fee camp, no win option, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Network Fee: epoch > 0, has fee camp, no win option, gas used: " + tx.receipt.gasUsed);
       tx = await daoContract.getLatestNetworkFeeDataWithCache();
-      logInfo("Get Network Fee: epoch > 0, has fee camp, already concluded, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Network Fee: epoch > 0, has fee camp, already concluded, gas used: " + tx.receipt.gasUsed);
 
       await updateCurrentBlockAndTimestamp();
       // min per: 41%, C = 0, t = 0
@@ -5060,9 +5060,9 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(blocksToSeconds(5 * epochPeriod) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
       // conclude and save data
-      Helper.assertEqual(defaultNetworkFee, await daoContract.latestNetworkFeeResult(), "latest network fee is wrong");
+      Helper.assertEqual(32, (await daoContract.getLatestNetworkFeeData()).feeInBps, "latest network fee is wrong");
       await daoContract.getLatestNetworkFeeDataWithCache();
-      Helper.assertEqual(32, await daoContract.latestNetworkFeeResult(), "latest network fee is wrong");
+      Helper.assertEqual(32, (await daoContract.getLatestNetworkFeeData()).feeInBps, "latest network fee is wrong");
 
       await updateCurrentBlockAndTimestamp();
       // min per: 40%, C = 100%, t = 1
@@ -5094,7 +5094,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(blocksToSeconds(6 * epochPeriod) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
       tx = await daoContract.getLatestNetworkFeeDataWithCache();
-      logInfo("Get Network Fee: epoch > 0, has fee camp + win option, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Network Fee: epoch > 0, has fee camp + win option, gas used: " + tx.receipt.gasUsed);
 
       await resetSetupForKNCToken();
     });
@@ -5192,7 +5192,7 @@ contract('KyberDAO', function(accounts) {
       // make sure data is correct
       // reward - rebate - burn - epoch - expiry block
       let tx = await daoContract.getLatestBRRDataWithCache();
-      logInfo("Get Brr: epoch = 0, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Brr: epoch = 0, gas used: " + tx.receipt.gasUsed);
 
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 0, daoStartTime - 1
@@ -5201,7 +5201,7 @@ contract('KyberDAO', function(accounts) {
       rebate = 46;
       reward = 54;
       let newBrrData = getDataFromRebateAndReward(rebate, reward);
-      await daoContract.setLatestBrrData(newBrrData);
+      await daoContract.setLatestBrrData(reward, rebate);
       Helper.assertEqual(newBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
 
       await daoContract.checkLatestBrrData(
@@ -5228,7 +5228,6 @@ contract('KyberDAO', function(accounts) {
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
-      Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
       let dataDecoded = await daoContract.getLatestBRRDataDecoded();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn default is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward default is wrong");
@@ -5239,11 +5238,10 @@ contract('KyberDAO', function(accounts) {
       rebate = 46;
       reward = 54;
       let newBrrData = getDataFromRebateAndReward(rebate, reward);
-      await daoContract.setLatestBrrData(newBrrData);
+      await daoContract.setLatestBrrData(reward, rebate);
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
-      Helper.assertEqual(newBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
 
       // delay to epoch 4
       await Helper.mineNewBlockAt(blocksToSeconds(3 * epochPeriod) + daoStartTime);
@@ -5251,7 +5249,6 @@ contract('KyberDAO', function(accounts) {
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 4, blocksToSeconds(epochPeriod * 4) + daoStartTime - 1
       );
-      Helper.assertEqual(newBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
 
       dataDecoded = await daoContract.getLatestBRRDataDecoded();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn is wrong");
@@ -5300,7 +5297,7 @@ contract('KyberDAO', function(accounts) {
         reward, rebate, 10000 - rebate - reward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
       );
       let tx = await daoContract.getLatestBRRDataWithCache();
-      logInfo("Get Brr: epoch > 0, no brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Brr: epoch > 0, no brr camp, gas used: " + tx.receipt.gasUsed);
 
       Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
     });
@@ -5527,9 +5524,9 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(5, await daoContract.brrCampaigns(5), "should have brr camp");
 
       tx = await daoContract.getLatestBRRDataWithCache();
-      logInfo("Get Brr: epoch > 0, has brr camp + win option, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Brr: epoch > 0, has brr camp + win option, gas used: " + tx.receipt.gasUsed);
       tx = await daoContract.getLatestBRRDataWithCache();
-      logInfo("Get Brr: epoch > 0, has brr camp, already concluded, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Brr: epoch > 0, has brr camp, already concluded, gas used: " + tx.receipt.gasUsed);
 
       Helper.assertEqual(32, await daoContract.latestBrrResult(), "brr default is wrong");
 
@@ -5668,7 +5665,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(await daoContract.feeHandler(), feeHandler.address, "Feehandler contract is wrong");
       Helper.assertEqual(await daoContract.MAX_CAMPAIGN_OPTIONS(), 8, "max camp option is wrong");
       Helper.assertEqual(await daoContract.MIN_CAMPAIGN_DURATION_SECONDS(), blocksToSeconds(minCampPeriod), "min camp period is wrong");
-      Helper.assertEqual(await daoContract.latestNetworkFeeResult(), defaultNetworkFee, "default network fee is wrong");
+      Helper.assertEqual((await daoContract.getLatestNetworkFeeData()).feeInBps, defaultNetworkFee, "default network fee is wrong");
       Helper.assertEqual(await daoContract.latestBrrResult(), defaultBrrData, "default brr data is wrong");
       Helper.assertEqual(await daoContract.campaignCreator(), campCreator, "campaignCreator is wrong");
       Helper.assertEqual(await daoContract.numberCampaigns(), 0, "number campaign is wrong");
