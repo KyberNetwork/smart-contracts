@@ -6,16 +6,16 @@ import "../utils/zeppelin/SafeMath.sol";
 contract EpochUtils {
     using SafeMath for uint;
 
-    uint public EPOCH_PERIOD_BLOCKS;
-    uint public FIRST_EPOCH_START_BLOCK;
+    uint public EPOCH_PERIOD_SECONDS;
+    uint public FIRST_EPOCH_START_TIMESTAMP;
 
     function getCurrentEpochNumber() public view returns(uint) {
-        return getEpochNumber(block.number);
+        return getEpochNumber(now);
     }
 
-    function getEpochNumber(uint blockNumber) public view returns(uint) {
-        if (blockNumber < FIRST_EPOCH_START_BLOCK || EPOCH_PERIOD_BLOCKS == 0) { return 0; }
-        // ((blockNumber - FIRST_EPOCH_START_BLOCK) / EPOCH_PERIOD_BLOCKS) + 1;
-        return ((blockNumber.sub(FIRST_EPOCH_START_BLOCK)).div(EPOCH_PERIOD_BLOCKS)).add(1);
+    function getEpochNumber(uint timestamp) public view returns(uint) {
+        if (timestamp < FIRST_EPOCH_START_TIMESTAMP || EPOCH_PERIOD_SECONDS == 0) { return 0; }
+        // ((timestamp - FIRST_EPOCH_START_TIMESTAMP) / EPOCH_PERIOD_SECONDS) + 1;
+        return ((timestamp.sub(FIRST_EPOCH_START_TIMESTAMP)).div(EPOCH_PERIOD_SECONDS)).add(1);
     }
 }

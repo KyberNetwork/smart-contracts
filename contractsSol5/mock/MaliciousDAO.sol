@@ -4,18 +4,35 @@ import "./MockDAO.sol";
 
 
 contract MaliciousDAO is MockDAO {
-    uint public burnInBPS;
+    uint256 public burnInBPS;
 
-    constructor(uint _rewardInBPS, uint _rebateInBPS, uint _epoch, uint _expiryBlockNumber) public
-        MockDAO(_rewardInBPS, _rebateInBPS, _epoch, _expiryBlockNumber) {}
+    constructor(
+        uint256 _rewardInBPS,
+        uint256 _rebateInBPS,
+        uint256 _epoch,
+        uint256 _expiryTimestamp
+    ) public MockDAO(_rewardInBPS, _rebateInBPS, _epoch, _expiryTimestamp) {}
 
-    function setMockBRR(uint _burnInBPS, uint _rewardInBPS, uint _rebateInBPS) public {
+    function setMockBRR(
+        uint256 _burnInBPS,
+        uint256 _rewardInBPS,
+        uint256 _rebateInBPS
+    ) public {
         rewardInBPS = _rewardInBPS;
         rebateInBPS = _rebateInBPS;
         burnInBPS = _burnInBPS;
     }
 
-    function getLatestBRRData() external returns(uint, uint, uint, uint, uint) {
-        return (burnInBPS, rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+    function getLatestBRRData()
+        external
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (burnInBPS, rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
     }
 }

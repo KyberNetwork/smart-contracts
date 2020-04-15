@@ -2,24 +2,23 @@ pragma solidity 0.5.11;
 
 import "../KyberNetwork.sol";
 
+
 // override some of original KyberNetwork contract
 contract MockNetwork is KyberNetwork {
-
-    constructor(address _admin, IKyberStorage _kyberStorage) public KyberNetwork(_admin, _kyberStorage)
-        {}
+    constructor(address _admin, IKyberStorage _kyberStorage)
+        public
+        KyberNetwork(_admin, _kyberStorage)
+    {}
 
     //over ride some functions to reduce contract size.
     function doReserveTrades(
         IERC20 src,
-        uint amount,
+        uint256 amount,
         IERC20 dest,
         address payable destAddress,
         TradeData memory tradeData,
-        uint expectedDestAmount
-    )
-        internal
-        returns(bool)
-    {
+        uint256 expectedDestAmount
+    ) internal returns (bool) {
         src;
         amount;
         dest;
@@ -31,29 +30,39 @@ contract MockNetwork is KyberNetwork {
         // return true;
     }
 
-    function setNetworkFeeData(uint _networkFeeBps, uint _expiryBlock) public {
+    function setNetworkFeeData(uint256 _networkFeeBps, uint256 _expiryBlock)
+        public
+    {
         updateNetworkFee(_expiryBlock, _networkFeeBps);
     }
 
-    function getNetworkFeeData() public view returns(uint _networkFeeBps, uint _expiryBlock) {
+    function getNetworkFeeData()
+        public
+        view
+        returns (uint256 _networkFeeBps, uint256 _expiryBlock)
+    {
         (_networkFeeBps, _expiryBlock) = readNetworkFeeData();
     }
 
-    function mockGetNetworkFee() public view returns(uint networkFeeBps) {
+    function mockGetNetworkFee() public view returns (uint256 networkFeeBps) {
         return getNetworkFee();
     }
 
-    function mockHandleChange (IERC20 src, uint srcAmount, uint requiredSrcAmount, address payable trader) public returns (bool){
+    function mockHandleChange(
+        IERC20 src,
+        uint256 srcAmount,
+        uint256 requiredSrcAmount,
+        address payable trader
+    ) public returns (bool) {
         return handleChange(src, srcAmount, requiredSrcAmount, trader);
     }
 
     // allow set zero contract
-    function setContracts(IKyberFeeHandler _feeHandler,
+    function setContracts(
+        IKyberFeeHandler _feeHandler,
         IKyberMatchingEngine _matchingEngine,
         IGasHelper _gasHelper
-    )
-        external
-    {
+    ) external {
         if (feeHandler != _feeHandler) {
             feeHandler = _feeHandler;
             emit FeeHandlerUpdated(_feeHandler);

@@ -16,7 +16,7 @@ const {NULL_ID, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTT
 
 //global variables
 //////////////////
-const negligibleRateDiffBps = new BN(5); //0.05% 
+const negligibleRateDiffBps = new BN(5); //0.05%
 const minConversionRate = new BN(0);
 
 let networkFeeArray = [new BN(0), new BN(250), new BN(400)];
@@ -79,10 +79,11 @@ contract('KyberMatchingEngine', function(accounts) {
         before("deploy matchingEngine and storage instance, 1 mock reserve and 1 mock token", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
             storage = await KyberStorage.new(admin);
+            await storage.setNetworkContract(network, {from:admin});
             token = await TestToken.new("test", "tst", 18);
 
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, accounts[9], {from: admin});
+            await rateHelper.setContracts(matchingEngine.address, accounts[9], storage.address, {from: admin});
 
             //init 1 mock reserve
             let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
@@ -109,22 +110,6 @@ contract('KyberMatchingEngine', function(accounts) {
             await matchingEngine.setNetworkContract(network, {from: admin});
             let result = await matchingEngine.kyberNetwork();
             Helper.assertEqual(network, result, "network not set by admin");
-        });
-
-        it("should not have unauthorized personnel set fee accounted data", async() => {
-            await expectRevert(
-                matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: operator}),
-                "only admin"
-            );
-
-            await expectRevert(
-                matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: network}),
-                "only admin"
-            );
-        });
-
-        it("should have admin set fee accounted data", async() => {
-            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
         });
 
         it("should not have unauthorized personnel set negligble rate diff bps", async() => {
@@ -178,48 +163,6 @@ contract('KyberMatchingEngine', function(accounts) {
             Helper.assertEqual(storage.address, result, "storage not set by admin");
         });
 
-        it("should not have unauthorized personnel add reserve", async() => {
-            await expectRevert(
-                matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: user}),
-                "only network"
-            );
-
-            await expectRevert(
-                matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: operator}),
-                "only network"
-            );
-
-            await expectRevert(
-                matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: admin}),
-                "only network"
-            );
-        });
-
-        it("should have network add reserve", async() => {
-            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-            await matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: network});
-        });
-
-        it("should not have unauthorized personnel remove reserve", async() => {
-            await expectRevert(
-                matchingEngine.removeReserve(reserve.reserveId, {from: user}),
-                "only network"
-            );
-
-            await expectRevert(
-                matchingEngine.removeReserve(reserve.reserveId, {from: operator}),
-                "only network"
-            );
-
-            await expectRevert(
-                matchingEngine.removeReserve(reserve.reserveId, {from: admin}),
-                "only network"
-            );
-        });
-
-        it("should have network remove reserve", async() => {
-            await matchingEngine.removeReserve(reserve.reserveId, {from: network});
-        });
     });
 
     describe("test contract event", async() => {
@@ -264,126 +207,16 @@ contract('KyberMatchingEngine', function(accounts) {
         });
     });
 
-    describe("test adding reserves", async() => {
-        before("deploy and setup matchingEngine instance & 1 mock reserve", async() => {
-            matchingEngine = await KyberMatchingEngine.new(admin);
-            await matchingEngine.setNetworkContract(network, {from: admin});
-
-            //init 1 mock reserve
-            let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
-            reserveInstances = result.reserveInstances;
-            numReserves = result.numAddedReserves * 1;
-            for (const value of Object.values(reserveInstances)) {
-                reserve = value;
-            }
-        });
-
-        describe("test cases where reserve has never been added", async() => {
-            it("should revert for NONE reserve type", async() => {
-                await expectRevert(
-                    matchingEngine.addReserve(reserve.reserveId, 0, {from: network}),
-                    "bad reserve type"
-                );
-            });
-    
-            it("should revert for LAST reserve type", async() => {
-                await expectRevert(
-                    matchingEngine.addReserve(reserve.reserveId, 7, {from: network}),
-                    "bad reserve type"
-                );
-            });
-    
-            it("should revert for valid reserve because fee accounted data not set", async() => {
-                await expectRevert(
-                    matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: network}),
-                    "fee accounted data not set"
-                );
-            });    
-        });
-
-        describe("test cases for an already added reserve", async() => {
-            before("add fee accounted type and add reserve", async() => {
-                await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-                await matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: network});
-            });
-
-            it("should be able to re-add a reserve after its removal", async() => {
-                await matchingEngine.removeReserve(reserve.address, {from: network});
-                await matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: network});
-            });
-        });
-    });
-
-    describe("test fee accounted data per reserve", async() => {
-        let token;
-        let reserveInstances;
-        let result;
-        let totalReserveTypes = 6;
-
-        before("setup matchingEngine instance reserve per each reserve type", async() => {
-            matchingEngine = await KyberMatchingEngine.new(admin);
-            storage = await KyberStorage.new(admin);
-            await matchingEngine.setNetworkContract(network, {from: admin});
-            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-            await matchingEngine.setKyberStorage(storage.address, {from: admin});
-            await storage.setNetworkContract(network, {from: admin});
-            rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, accounts[9], {from: admin});
-
-            //init token
-            token = await TestToken.new("Token", "TOK", 18);
-            
-            result = await nwHelper.setupReserves(network, [token], totalReserveTypes, 0, 0, 0, accounts, admin, operator);
-            reserveInstances = result.reserveInstances;
-            
-            //add reserves for all types.
-            let type = 1;
-            for (reserve of Object.values(reserveInstances)) {
-                await matchingEngine.addReserve(reserve.reserveId, type, {from: network});
-                await storage.addReserve(reserve.address, reserve.reserveId, {from: network});
-                type++;
-            }
-        });     
-         
-        it("get reserve details while modifying fee accounted per type. see as expected", async() => {
-            let pay = [];
-            let numCombinations = totalReserveTypes ** 2;
-            //generate different pay combinations
-            for (let i = 0; i < numCombinations; i++) {
-                pay = [];
-                let j = i;
-                for (let n = 1; j > 0; j = j >> 1, n = n * 2) {
-                    pay.push(j % 2 == 1);
-                }
-                let originalResLength = result.length;
-                //append the rest of pay array with false values
-                for (let k = 0; k < totalReserveTypes - originalResLength; k++) {
-                    pay = pay.concat([false]);
-                }
-                
-                await matchingEngine.setFeeAccountedPerReserveType(pay[0], pay[1], pay[2], pay[3], pay[4], pay[5], {from: admin});
-                let index = 0;
-                for (reserve of Object.values(reserveInstances)) {
-                    let details = await matchingEngine.getReserveDetailsByAddress(reserve.address);
-                    Helper.assertEqual(reserve.reserveId, details.reserveId)
-                    Helper.assertEqual(index + 1, details.resType)
-                    Helper.assertEqual(pay[index], details.isFeeAccounted);
-                    ++index;
-                }
-            }
-        });
-    });
- 
     describe("test RateHelper getRatesForToken", async() => {
         before("setup matchingEngine instance and 2 tokens", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
             storage = await KyberStorage.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
-            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await storage.setNetworkContract(network, {from: admin});
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, accounts[9], {from: admin});
+            await rateHelper.setContracts(matchingEngine.address, accounts[9], storage.address, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);
@@ -399,12 +232,11 @@ contract('KyberMatchingEngine', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await matchingEngine.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+                await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: network});
-                    await storage.addReserve(reserve.address, reserve.reserveId, {from: network});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                     await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
                     await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
@@ -414,7 +246,6 @@ contract('KyberMatchingEngine', function(accounts) {
                 for (reserve of Object.values(reserveInstances)) {
                     await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
                     await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
-                    await matchingEngine.removeReserve(reserve.reserveId, {from: network});
                     await storage.removeReserve(reserve.address, new BN(0), {from: network});
                 };
             });
@@ -425,7 +256,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 // 1000 tokens
                 tokenQty = new BN(1000).mul(new BN(10).pow(tokenDecimals));
             });
-    
+
             it("should get rates for token (different network fee amounts)", async() => {
                 for (networkFeeBps of networkFeeArray) {
                     actualResult = await rateHelper.getRatesForTokenWithCustomFee(token.address, ethSrcQty, tokenQty, networkFeeBps);
@@ -433,25 +264,25 @@ contract('KyberMatchingEngine', function(accounts) {
                         reserveId = actualResult.buyReserves[i];
                         reserve = reserveInstances[reserveId];
                         Helper.assertEqual(reserve.reserveId, reserveId, "reserve not found");
-        
+
                         queryQty = nwHelper.minusNetworkFees(ethSrcQty, reserve.onChainType, false, networkFeeBps);
                         expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, queryQty, 0);
                         expectedDestAmt = Helper.calcDstQty(queryQty, ethDecimals, tokenDecimals, expectedReserveRate);
                         expectedRate = Helper.calcRateFromQty(ethSrcQty, expectedDestAmt, ethDecimals, tokenDecimals);
                         Helper.assertEqual(expectedRate, actualResult.buyRates[i], "rate not equal");
                     }
-        
+
                     for (let i=0; i < actualResult.sellReserves.length; i++) {
                         reserveId = actualResult.sellReserves[i];
                         reserve = reserveInstances[reserveId];
                         Helper.assertEqual(reserve.reserveId, reserveId, "reserve not found");
-        
+
                         expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
                         expectedDestAmt = Helper.calcDstQty(tokenQty, tokenDecimals, ethDecimals, expectedReserveRate);
                         expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, reserve.onChainType, networkFeeBps);
                         expectedRate = Helper.calcRateFromQty(tokenQty, expectedDestAmt, tokenDecimals, ethDecimals);
                         Helper.assertEqual(expectedRate, actualResult.sellRates[i], "rate not equal");
-                    }  
+                    }
                 }
             });
         });
@@ -464,12 +295,11 @@ contract('KyberMatchingEngine', function(accounts) {
                 numReserves = result.numAddedReserves * 1;
 
                 //set fee accounted to false
-                await matchingEngine.setFeeAccountedPerReserveType(false, false, false, false, false, false, {from: admin});
+                await storage.setFeeAccountedPerReserveType(false, false, false, false, false, false, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: network});
-                    await storage.addReserve(reserve.address, reserve.reserveId, {from: network});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                     await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
                     await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
@@ -479,7 +309,6 @@ contract('KyberMatchingEngine', function(accounts) {
                 for (reserve of Object.values(reserveInstances)) {
                     await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
                     await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
-                    await matchingEngine.removeReserve(reserve.reserveId, {from: network});
                     await storage.removeReserve(reserve.address, new BN(0), {from: network});
                 };
             });
@@ -490,7 +319,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 // 1000 tokens
                 tokenQty = new BN(1000).mul(new BN(10).pow(tokenDecimals));
             });
-    
+
             it("should get rates for token (different network fee amounts)", async() => {
                 for (networkFeeBps of networkFeeArray) {
                     actualResult = await rateHelper.getRatesForTokenWithCustomFee(token.address, ethSrcQty, tokenQty, networkFeeBps);
@@ -498,19 +327,19 @@ contract('KyberMatchingEngine', function(accounts) {
                         reserveId = actualResult.buyReserves[i];
                         reserve = reserveInstances[reserveId];
                         Helper.assertEqual(reserve.reserveId, reserveId, "reserve not found");
-        
+
                         queryQty = nwHelper.minusNetworkFees(ethSrcQty, false, false, networkFeeBps);
                         expectedReserveRate = await reserve.instance.getConversionRate(ethAddress, token.address, queryQty, 0);
                         expectedDestAmt = Helper.calcDstQty(queryQty, ethDecimals, tokenDecimals, expectedReserveRate);
                         expectedRate = Helper.calcRateFromQty(ethSrcQty, expectedDestAmt, ethDecimals, tokenDecimals);
                         Helper.assertEqual(expectedRate, actualResult.buyRates[i], "rate not equal");
                     }
-        
+
                     for (let i=0; i < actualResult.sellReserves.length; i++) {
                         reserveId = actualResult.sellReserves[i];
                         reserve = reserveInstances[reserveId];
                         Helper.assertEqual(reserve.reserveId, reserveId, "reserve not found");
-        
+
                         expectedReserveRate = await reserve.instance.getConversionRate(token.address, ethAddress, tokenQty, 0);
                         expectedDestAmt = Helper.calcDstQty(tokenQty, tokenDecimals, ethDecimals, expectedReserveRate);
                         expectedDestAmt = nwHelper.minusNetworkFees(expectedDestAmt, false, false, networkFeeBps);
@@ -528,7 +357,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await matchingEngine.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+                await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
 
                 //set zero rates
                 for ([key, reserve] of Object.entries(reserveInstances)) {
@@ -538,8 +367,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: network});
-                    await storage.addReserve(reserve.address, reserve.reserveId, {from: network});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                     await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
                     await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
                 };
@@ -549,7 +377,6 @@ contract('KyberMatchingEngine', function(accounts) {
                 for (reserve of Object.values(reserveInstances)) {
                     await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
                     await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
-                    await matchingEngine.removeReserve(reserve.reserveId, {from: network});
                     await storage.removeReserve(reserve.address, new BN(0), {from: network});
                 };
             });
@@ -560,7 +387,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 // 1000 tokens
                 tokenQty = new BN(1000).mul(new BN(10).pow(tokenDecimals));
             });
-    
+
             it("should get rates for token (different network fee amounts)", async() => {
                 for (networkFeeBps of networkFeeArray) {
                     actualResult = await rateHelper.getRatesForTokenWithCustomFee(token.address, ethSrcQty, tokenQty, networkFeeBps);
@@ -570,7 +397,7 @@ contract('KyberMatchingEngine', function(accounts) {
                         Helper.assertEqual(reserve.reserveId, reserveId, "reserve not found");
                         Helper.assertEqual(zeroBN, actualResult.buyRates[i], "rate not zero");
                     }
-        
+
                     for (let i=0; i < actualResult.sellReserves.length; i++) {
                         reserveId = actualResult.sellReserves[i];
                         reserve = reserveInstances[reserveId];
@@ -587,8 +414,8 @@ contract('KyberMatchingEngine', function(accounts) {
             matchingEngine = await MockMatchEngine.new(admin);
             storage = await KyberStorage.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
-            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await storage.setNetworkContract(network, {from: admin});
 
             //init 2 tokens
@@ -605,12 +432,11 @@ contract('KyberMatchingEngine', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await matchingEngine.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+                await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: network});
-                    await storage.addReserve(reserve.address, reserve.reserveId, {from: network});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                 };
             });
 
@@ -627,7 +453,6 @@ contract('KyberMatchingEngine', function(accounts) {
 
             after("remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await matchingEngine.removeReserve(reserve.reserveId, {from: network});
                     await storage.removeReserve(reserve.address, new BN(0), {from: network});
                 };
             });
@@ -643,9 +468,9 @@ contract('KyberMatchingEngine', function(accounts) {
             matchingEngine = await MockMatchEngine.new(admin);
             storage = await KyberStorage.new(admin);
             await matchingEngine.setNetworkContract(network, {from: admin});
-            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
             await storage.setNetworkContract(network, {from: admin});
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);
@@ -661,12 +486,11 @@ contract('KyberMatchingEngine', function(accounts) {
                 reserveInstances = result.reserveInstances;
                 numReserves = result.numAddedReserves * 1;
 
-                await matchingEngine.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+                await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await matchingEngine.addReserve(reserve.reserveId, reserve.onChainType, {from: network});
-                    await storage.addReserve(reserve.address, reserve.reserveId, {from: network});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                 };
             });
 
@@ -686,7 +510,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
             it("should get reserve details by address", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    res = await matchingEngine.getReserveDetailsByAddress(reserve.address);
+                    res = await storage.getReserveDetailsByAddress(reserve.address);
                     Helper.assertEqual(reserve.reserveId, res.reserveId);
                     Helper.assertEqual(reserve.onChainType, res.resType);
                     Helper.assertEqual(true, res.isFeeAccounted);
@@ -695,7 +519,6 @@ contract('KyberMatchingEngine', function(accounts) {
 
             after("remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await matchingEngine.removeReserve(reserve.reserveId, {from: network});
                     await storage.removeReserve(reserve.address, new BN(0), {from: network});
                 };
             });
@@ -732,11 +555,11 @@ async function fetchReservesRatesFromRateHelper(matchingEngineInstance, rateHelp
 }
 
 async function getHintedReserves(
-    matchingEngine, reserveInstances, 
+    matchingEngine, reserveInstances,
     t2eHintType, t2eNumReserves, t2eSplits, t2eQty,
     e2tHintType, e2tNumReserves, e2tSplits, e2tQty,
-    srcAdd, destAdd) 
-{   
+    srcAdd, destAdd)
+{
     let reserveCandidates;
     let res = {
         'reservesT2E': {},
@@ -770,7 +593,7 @@ async function getHintedReserves(
         res.reservesT2E.tradeType, res.reservesT2E.reservesForHint, res.reservesT2E.splits,
         res.reservesE2T.tradeType, res.reservesE2T.reservesForHint, res.reservesE2T.splits
     );
-    
+
     return res;
 }
 
@@ -885,7 +708,7 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
         result.addresses = result.addresses.concat(zeroAddress);
         result.ids = sellReserves.map(reserve => reserve.reserveId);
         result.ids = result.ids.concat(NULL_ID);
-        result.rates = (sellSplits.length > 1) ? 
+        result.rates = (sellSplits.length > 1) ?
             result.rates.concat(sellReserves.map(reserve => reserve.rate)) :
             result.rates.concat(sellReserves.map(reserve => reserve.rateNoFee));
         result.rates = result.rates.concat(precisionUnits);
@@ -895,7 +718,7 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
     //ethToToken
     } else if (sellReserves.length == 0) {
         result.addresses = [zeroAddress];
-        result.addresses = result.addresses.concat(buyReserves.map(reserve => reserve.address)); 
+        result.addresses = result.addresses.concat(buyReserves.map(reserve => reserve.address));
         result.ids = [NULL_ID];
         result.ids = result.ids.concat(buyReserves.map(reserve => reserve.reserveId));
         result.rates = [precisionUnits];
@@ -912,7 +735,7 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
         result.addresses = result.addresses.concat(buyReserves.map(reserve => reserve.address));
         result.ids = sellReserves.map(reserve => reserve.reserveId);
         result.ids = result.ids.concat(buyReserves.map(reserve => reserve.reserveId));
-        result.rates = (sellSplits.length > 1) ? 
+        result.rates = (sellSplits.length > 1) ?
             result.rates.concat(sellReserves.map(reserve => reserve.rate)) :
             result.rates.concat(sellReserves.map(reserve => reserve.rateNoFee));
         result.rates = (buySplits.length > 1) ?

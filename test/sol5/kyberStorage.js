@@ -16,7 +16,7 @@ const {NULL_ID, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTT
 
 //global variables
 //////////////////
-const negligibleRateDiffBps = new BN(5); //0.05% 
+const negligibleRateDiffBps = new BN(5); //0.05%
 const minConversionRate = new BN(0);
 const maxProxies = new BN(2);
 
@@ -28,7 +28,6 @@ let admin;
 let operator;
 let network;
 let kyberStorage;
-let rateHelper;
 let user;
 
 //reserve data
@@ -80,10 +79,8 @@ contract('KyberStorage', function(accounts) {
         before("deploy KyberStorage instance, 1 mock reserve and 1 mock token", async() => {
             kyberStorage = await KyberStorage.new(admin);
             await kyberStorage.setNetworkContract(network, { from: admin});
+            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             token = await TestToken.new("test", "tst", 18);
-
-            rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(kyberStorage.address, accounts[9], {from: admin});
 
             //init 1 mock reserve
             let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
@@ -114,25 +111,25 @@ contract('KyberStorage', function(accounts) {
 
         it("should not have unauthorized personnel add reserve", async() => {
             await expectRevert(
-                kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: user}),
+                kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: user}),
                 "only network"
             );
 
             await expectRevert(
-                kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: operator}),
+                kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: operator}),
                 "only network"
             );
 
             await expectRevert(
-                kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: admin}),
+                kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: admin}),
                 "only network"
             );
         });
 
         it("should have network add reserve", async() => {
-            await kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: network});
+            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
             let reserveId = await kyberStorage.getReserveID(reserve.address);
-            
+
             let reserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 0);
             Helper.assertEqual(reserve.reserveId, reserveId, "wrong address to ID");
             Helper.assertEqual(reserve.address, reserveAddress, "wrong ID to address");
@@ -206,7 +203,7 @@ contract('KyberStorage', function(accounts) {
         it("should revert setting zero address for network", async() => {
             await expectRevert(
                 kyberStorage.setNetworkContract(zeroAddress, {from: admin}),
-                "network 0");    
+                "network 0");
         });
     });
 
@@ -243,6 +240,7 @@ contract('KyberStorage', function(accounts) {
         before("deploy and setup kyberStorage instance & 1 mock reserve", async() => {
             kyberStorage = await KyberStorage.new(admin);
             await kyberStorage.setNetworkContract(network, {from: admin});
+            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
             numReserves = result.numAddedReserves * 1;
@@ -255,7 +253,7 @@ contract('KyberStorage', function(accounts) {
             it("should revert for zero reserve id", async() => {
                 let zeroReserveId = "0x0";
                 await expectRevert(
-                    kyberStorage.addReserve(reserve.address, zeroReserveId, {from: network}),
+                    kyberStorage.addReserve(reserve.address, zeroReserveId, reserve.onChainType, {from: network}),
                     "reserveId = 0"
                 );
             });
@@ -263,12 +261,12 @@ contract('KyberStorage', function(accounts) {
 
         describe("test cases for an already added reserve", async() => {
             before("add reserve", async() => {
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: network});
+                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
             });
 
             it("should revert for adding an existing reserve", async() => {
                 await expectRevert(
-                    kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: network}),
+                    kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
                     "reserve has id"
                 );
             });
@@ -276,20 +274,20 @@ contract('KyberStorage', function(accounts) {
             it("should revert for a new reserve with an already taken reserve id", async() => {
                 let newReserve = await MockReserve.new();
                 await expectRevert(
-                    kyberStorage.addReserve(newReserve.address, reserve.reserveId, {from: network}),
+                    kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
                     "reserveId taken"
                 );
             });
 
             it("should be able to re-add a reserve after its removal", async() => {
                 await kyberStorage.removeReserve(reserve.address, new BN(0), {from: network});
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: network});
+                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
             });
 
             it("should be able to add a new reserve address for an existing id after removing an old one", async() => {
                 let newReserve = await MockReserve.new();
                 await kyberStorage.removeReserve(reserve.address, new BN(0), {from: network});
-                await kyberStorage.addReserve(newReserve.address, reserve.reserveId, {from: network});
+                await kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                 let actualNewReserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 0);
                 let actualOldReserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 1);
 
@@ -303,7 +301,7 @@ contract('KyberStorage', function(accounts) {
         before("deploy and setup kyberStorage instance & add 1 mock reserve, & 1 mock token", async() => {
             kyberStorage = await KyberStorage.new(admin);
             await kyberStorage.setNetworkContract(network, {from: admin});
-
+            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             //init 1 mock reserve
             let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
@@ -311,7 +309,7 @@ contract('KyberStorage', function(accounts) {
             for (const value of Object.values(reserveInstances)) {
                 reserve = value;
             }
-            await kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: network});
+            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
 
             //create token
             token = await TestToken.new("test", "tst", 18);
@@ -343,7 +341,7 @@ contract('KyberStorage', function(accounts) {
             Helper.assertEqual(reserveId, nwHelper.ZERO_RESERVE_ID, "reserve id was not reset to zero");
 
             //reset
-            await kyberStorage.addReserve(reserve.address, reserve.reserveId, {from: network});
+            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
         });
 
         it("should list T2E side only", async() => {
@@ -411,6 +409,186 @@ contract('KyberStorage', function(accounts) {
 
             result = await kyberStorage.getReservesPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
+        });
+    });
+
+
+    describe("test onlyAdmin and onlyNetwork permissions", async() => {
+        before("deploy storage instance, 1 mock reserve and 1 mock token", async() => {
+            storage = await KyberStorage.new(admin);
+            await storage.setNetworkContract(network, {from:admin});
+            token = await TestToken.new("test", "tst", 18);
+
+            //init 1 mock reserve
+            let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+            numReserves = result.numAddedReserves * 1;
+            for (const value of Object.values(reserveInstances)) {
+                reserve = value;
+            }
+        });
+
+        it("should not have unauthorized personnel set fee accounted data", async() => {
+            await expectRevert(
+                storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: operator}),
+                "only admin"
+            );
+
+            await expectRevert(
+                storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: network}),
+                "only admin"
+            );
+        });
+
+        it("should have admin set fee accounted data", async() => {
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+        });
+
+        it("should not have unauthorized personnel add reserve", async() => {
+            await expectRevert(
+                storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: user}),
+                "only network"
+            );
+
+            await expectRevert(
+                storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: operator}),
+                "only network"
+            );
+
+            await expectRevert(
+                storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: admin}),
+                "only network"
+            );
+        });
+
+        it("should have network add reserve", async() => {
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+        });
+
+        it("should not have unauthorized personnel remove reserve", async() => {
+            await expectRevert(
+                storage.removeReserve(reserve.address, 0, {from: user}),
+                "only network"
+            );
+
+            await expectRevert(
+                storage.removeReserve(reserve.address, 0, {from: operator}),
+                "only network"
+            );
+
+            await expectRevert(
+                storage.removeReserve(reserve.address, 0, {from: admin}),
+                "only network"
+            );
+        });
+
+        it("should have network remove reserve", async() => {
+            await storage.removeReserve(reserve.address, 0, {from: network});
+        });
+    });
+
+    describe("test adding reserves", async() => {
+        before("deploy and setup matchingEngine instance & 1 mock reserve", async() => {
+            tmpStorage = await KyberStorage.new(admin);
+            await tmpStorage.setNetworkContract(network, {from: admin});
+
+            //init 1 mock reserve
+            let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+            numReserves = result.numAddedReserves * 1;
+            for (const value of Object.values(reserveInstances)) {
+                reserve = value;
+            }
+        });
+
+        describe("test cases where reserve has never been added", async() => {
+            it("should revert for NONE reserve type", async() => {
+                await expectRevert(
+                    tmpStorage.addReserve(reserve.address, reserve.reserveId, 0, {from: network}),
+                    "bad reserve type"
+                );
+            });
+
+            it("should revert for LAST reserve type", async() => {
+                await expectRevert(
+                    tmpStorage.addReserve(reserve.address, reserve.reserveId, 7, {from: network}),
+                    "bad reserve type"
+                );
+            });
+
+            it("should revert for valid reserve because fee accounted data not set", async() => {
+                await expectRevert(
+                    tmpStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
+                    "fee accounted data not set"
+                );
+            });
+        });
+
+        describe("test cases for an already added reserve", async() => {
+            before("add fee accounted type and add reserve", async() => {
+                await tmpStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+                await tmpStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            });
+
+            it("should be able to re-add a reserve after its removal", async() => {
+                await tmpStorage.removeReserve(reserve.address, 0, {from: network});
+                await tmpStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            });
+        });
+    });
+
+    describe("test fee accounted data per reserve", async() => {
+        let token;
+        let reserveInstances;
+        let result;
+        let totalReserveTypes = 6;
+
+        before("setup matchingEngine instance reserve per each reserve type", async() => {
+            storage = await KyberStorage.new(admin);
+            await storage.setNetworkContract(network, {from: admin});
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+
+            //init token
+            token = await TestToken.new("Token", "TOK", 18);
+
+            result = await nwHelper.setupReserves(network, [token], totalReserveTypes, 0, 0, 0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+
+            //add reserves for all types.
+            let type = 1;
+            for (reserve of Object.values(reserveInstances)) {
+                await storage.addReserve(reserve.address, reserve.reserveId, type, {from: network});
+                type++;
+            }
+        });
+
+        it("get reserve details while modifying fee accounted per type. see as expected", async() => {
+            let pay = [];
+            let numCombinations = totalReserveTypes ** 2;
+            //generate different pay combinations
+            for (let i = 0; i < numCombinations; i++) {
+                pay = [];
+                let j = i;
+                for (let n = 1; j > 0; j = j >> 1, n = n * 2) {
+                    pay.push(j % 2 == 1);
+                }
+                let originalResLength = result.length;
+                //append the rest of pay array with false values
+                for (let k = 0; k < totalReserveTypes - originalResLength; k++) {
+                    pay = pay.concat([false]);
+                }
+
+                await storage.setFeeAccountedPerReserveType(pay[0], pay[1], pay[2], pay[3], pay[4], pay[5], {from: admin});
+                let index = 0;
+                for (reserve of Object.values(reserveInstances)) {
+                    let details = await storage.getReserveDetailsByAddress(reserve.address);
+                    Helper.assertEqual(reserve.reserveId, details.reserveId)
+                    Helper.assertEqual(index + 1, details.resType)
+                    Helper.assertEqual(pay[index], details.isFeeAccounted);
+                    ++index;
+                }
+            }
         });
     });
 });

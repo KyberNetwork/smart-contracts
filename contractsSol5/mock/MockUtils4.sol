@@ -2,6 +2,7 @@ pragma solidity 0.5.11;
 
 import "../utils/Utils4.sol";
 
+
 /// @title Kyber utils contract
 contract MockUtils4 is Utils4 {
     function mockGetEthTokenAddress() public pure returns (IERC20) {
@@ -48,7 +49,10 @@ contract MockUtils4 is Utils4 {
         return getDecimals(token);
     }
 
-    function mockCheckGetUpdateDecimals(IERC20 token) public returns (uint256) {
+    function mockCheckGetUpdateDecimals(IERC20 token)
+        public
+        returns (uint256)
+    {
         return getUpdateDecimals(token);
     }
 
@@ -98,7 +102,8 @@ contract MockUtils4 is Utils4 {
         uint256 srcDecimals,
         uint256 dstDecimals
     ) public pure returns (uint256) {
-        return calcRateFromQty(srcAmount, destAmount, srcDecimals, dstDecimals);
+        return
+            calcRateFromQty(srcAmount, destAmount, srcDecimals, dstDecimals);
     }
 
     function mockMinOf(uint256 x, uint256 y) public pure returns (uint256) {

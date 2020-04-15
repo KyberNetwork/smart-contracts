@@ -42,7 +42,7 @@ let platformWallet;
 let rewardInBPS = new BN(7000);
 let rebateInBPS = new BN(2000);
 let epoch = new BN(3);
-let expiryBlockNumber;
+let expiryTimestamp;
 
 //fee hanlder related
 let KNC;
@@ -74,8 +74,8 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         daoSetter = accounts[7];
 
         //DAO related init.
-        expiryBlockNumber = new BN(await web3.eth.getBlockNumber() + 150);
-        DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryBlockNumber);
+        expiryTimestamp = new BN(await Helper.getCurrentBlockTime() + 1000000);
+        DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
         await DAO.setNetworkFeeBps(networkFeeBps);
 
         // init storage
@@ -96,10 +96,10 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
-        await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+        await networkStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
+        await rateHelper.setContracts(matchingEngine.address, DAO.address, networkStorage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});

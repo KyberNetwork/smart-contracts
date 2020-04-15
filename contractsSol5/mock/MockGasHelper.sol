@@ -5,10 +5,9 @@ import "../IGasHelper.sol";
 
 
 contract MockGasHelper is IGasHelper {
-
     address internal _platformWallet;
 
-    constructor(address wallet) public { 
+    constructor(address wallet) public {
         _platformWallet = wallet;
     }
 
@@ -16,7 +15,7 @@ contract MockGasHelper is IGasHelper {
         address platformWallet,
         IERC20 src,
         IERC20 dest,
-        uint tradeWei, 
+        uint256 tradeWei,
         bytes32[] calldata t2eReserveIds,
         bytes32[] calldata e2tReserveIds
     ) external {
