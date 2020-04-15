@@ -329,14 +329,14 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
-            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             proxyForFeeHandler = tempNetwork;
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
+            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, tempStorage.address, {from: admin});
         });
 
         it("set empty fee handler contract", async function(){
@@ -378,14 +378,14 @@ contract('KyberNetwork', function(accounts) {
 
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init feeHandler
             proxyForFeeHandler = tempNetwork;
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
+            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, tempStorage.address, {from: admin});
         });
 
         it("ETH recieval", async() => {
@@ -529,14 +529,14 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
-            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             proxyForFeeHandler = tempNetwork;
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
+            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, tempStorage.address, {from: admin});
         });
 
         it("set enable without feeHandler", async function(){
@@ -566,14 +566,14 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addOperator(operator, {from: admin});
             await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
             await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
-            await tempMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             proxyForFeeHandler = tempNetwork;
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, {from: admin});
+            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, tempStorage.address, {from: admin});
             await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
         });
 
@@ -588,14 +588,6 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert.unspecified(
                 tempNetwork.addReserve(mockReserve.address, reserveID , ReserveType.NONE, anyWallet, {from: operator}),
             );
-        });
-
-        it("add reserve reverts", async function(){
-            let anyWallet = taker;
-            let reserveID =  nwHelper.genReserveID(MOCK_ID, mockReserve.address);
-            await expectRevert.unspecified(
-                tempNetwork.addReserve(mockReserve.address, reserveID, ReserveType.FPR, anyWallet, {from: operator})
-            )
         });
 
         it("remove reserve revert", async function(){
@@ -644,11 +636,11 @@ contract('KyberNetwork', function(accounts) {
             matchingEngine = await MatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
-            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             // init rateHelper
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
+            await rateHelper.setContracts(matchingEngine.address, DAO.address, storage.address, {from: admin});
 
             // init gas helper
             // tests gasHelper when gasHelper != address(0), and when a trade is being done
@@ -799,7 +791,7 @@ contract('KyberNetwork', function(accounts) {
                 for (const [key, value] of Object.entries(reserveInstances)) {
                     reserve = value;
                     console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
-                    let rebateWallet = (reserve.rebateWallet == zeroAddress || reserve.rebateWallet == undefined) 
+                    let rebateWallet = (reserve.rebateWallet == zeroAddress || reserve.rebateWallet == undefined)
                         ? reserve.address : reserve.rebateWallet;
                     await network.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
                     await network.listPairForReserve(reserve.address, tokens[j%3].address, true, true, true, {from: operator});
@@ -844,7 +836,7 @@ contract('KyberNetwork', function(accounts) {
 
                     await network.setDAOContract(DAO.address, {from: admin});
                 });
-    
+
                 it("should return rates for pseudo-zero srcQty", async() => {
                     let modifiedSrcQty = new BN(1); //network backwards compatible function sets to 1
 
@@ -861,7 +853,7 @@ contract('KyberNetwork', function(accounts) {
                         networkFeeBps, zeroBN, emptyHint);
                     actualResult = await network.getExpectedRate(ethAddress, destToken.address, zeroBN);
                     Helper.assertEqual(expectedResult.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for E2T");
-    
+
                     expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                         srcToken.address, destToken.address, modifiedSrcQty,
                         srcDecimals, destDecimals,
@@ -869,7 +861,7 @@ contract('KyberNetwork', function(accounts) {
                     actualResult = await network.getExpectedRate(srcToken.address, destToken.address, zeroBN);
                     Helper.assertEqual(expectedResult.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
                 });
-    
+
                 it(`should return rates with networkFeeBps ${networkFeeBps.toString()} bps for T2E, E2T & T2T`, async() => {
                     expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                         srcToken.address, ethAddress, srcQty,
@@ -922,11 +914,11 @@ contract('KyberNetwork', function(accounts) {
                         zeroBN, zeroBN, emptyHint);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, zeroBN, emptyHint);
                     nwHelper.assertRatesEqual(expectedResult, actualResult);
-    
+
                     await network.setDAOContract(DAO.address, {from: admin});
                 });
-    
-                it("should return rates for pseudo-zero srcQty", async() => {   
+
+                it("should return rates for pseudo-zero srcQty", async() => {
                     let modifiedSrcQty = new BN(1); //function sets 0 to 1
 
                     expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
@@ -1051,7 +1043,7 @@ contract('KyberNetwork', function(accounts) {
                         ethAddress, destToken.address, ethSrcQty,
                         ethDecimals, destDecimals,
                         networkFeeBps, zeroBN, hint);
-    
+
                     let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, destToken, expectedResult);
                     let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
 
@@ -1090,7 +1082,7 @@ contract('KyberNetwork', function(accounts) {
                     let hintType = tradeType;
                     it(`should perform a T2E trade (${tradeStr[hintType]} & platform fee ${platformFee.toString()} bps) and check balances change as expected`, async() => {
                         hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
-                        
+
                         expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                             srcToken.address, ethAddress, srcQty,
                             srcDecimals, ethDecimals,
@@ -1110,7 +1102,7 @@ contract('KyberNetwork', function(accounts) {
 
                     it(`should perform a E2T trade (${tradeStr[hintType]} & platform fee ${platformFee.toString()} bps) and check balances change as expected`, async() => {
                         hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
-                        
+
                         expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                             ethAddress, destToken.address, ethSrcQty,
                             ethDecimals, destDecimals,
@@ -1129,7 +1121,7 @@ contract('KyberNetwork', function(accounts) {
 
                     it(`should perform a T2T trade (${tradeStr[hintType]} & platform fee ${platformFee.toString()} bps) and check balances change as expected`, async() => {
                         hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
-                        
+
                         expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                             srcToken.address, destToken.address, srcQty,
                             srcDecimals, destDecimals,
@@ -1153,9 +1145,9 @@ contract('KyberNetwork', function(accounts) {
                 let hintType = tradeType;
                 it(`should perform T2E trades (${tradeStr[hintType]}) with platform fee and check fee wallet receives platform fee`, async() => {
                     let platformFeeBps = new BN(50);
-                    
+
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
-                    
+
                     expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                         srcToken.address, ethAddress, srcQty,
                         srcDecimals, ethDecimals,
@@ -1522,7 +1514,7 @@ contract('KyberNetwork', function(accounts) {
 
     describe("test verifying trade inputs", async () => {
         let platformFee = 79;
-        
+
         before("initialise network", async () => {
             // init network
             storage = await KyberStorage.new(admin);
@@ -1538,7 +1530,7 @@ contract('KyberNetwork', function(accounts) {
             matchingEngine = await MatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network.address, { from: admin });
             await matchingEngine.setKyberStorage(storage.address, { from: admin});
-            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
 
             // init gas helper
             gasHelperAdd = await MockGasHelper.new(platformWallet);
@@ -1751,10 +1743,10 @@ contract('KyberNetwork', function(accounts) {
             tempStorage = await KyberStorage.new(admin);
             tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
-            
+
             // init matchingEngine
             matchingEngine = await MatchingEngine.new(admin);
-            await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
             await matchingEngine.setNetworkContract(tempNetwork.address, { from: admin });
             await matchingEngine.setKyberStorage(tempStorage.address, { from: admin });
 

@@ -6,20 +6,17 @@ import "./IKyberNetwork.sol";
 import "./KyberHintHandler.sol";
 import "./IKyberStorage.sol";
 
-
 /*
- *   @title Kyber matching engine contract
- *   The contract provides the following actions:
- *       - return list of reserves for a trade (getTradingReserves)
- *       - stores fee accounted data for reserve types
- *       - return details about a reserve (address / id, type, isFeeAccounted)
- *       - finding the best rate (doMatch)
- *
- *       getTradingReserves() will parse hint to find if user wants specific reserves
- *
- *       doMatch() will return the index of the best reserve, having accounted for fees
- *
- */
+*   @title Kyber matching engine contract
+*   The contract provides the following actions:
+*       - return details about a reserve (address / id, type)
+*       - finding the best rate (doMatch)
+*
+*       getTradingReserves() will parse hint to find if user wants specific reserves
+*
+*       doMatch() will return the index of the best reserve, having accounted for fees
+*
+*/
 contract KyberMatchingEngine is
     KyberHintHandler,
     IKyberMatchingEngine,
@@ -28,10 +25,6 @@ contract KyberMatchingEngine is
     uint256 public negligibleRateDiffBps = 5; // 1 bps is 0.01%
     IKyberNetwork public kyberNetwork;
     IKyberStorage public kyberStorage;
-
-    mapping(bytes32 => uint256) internal reserveType; //type from enum ReserveType
-
-    uint256 internal feeAccountedPerType = 0xffffffff;
 
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /* empty body */
@@ -72,82 +65,6 @@ contract KyberMatchingEngine is
         return true;
     }
 
-    function addReserve(bytes32 reserveId, ReserveType resType)
-        external
-        returns (bool)
-    {
-        onlyNetwork();
-        require(
-            (resType != ReserveType.NONE) &&
-                (uint256(resType) < uint256(ReserveType.LAST)),
-            "bad reserve type"
-        );
-        require(
-            feeAccountedPerType != 0xffffffff,
-            "fee accounted data not set"
-        );
-
-        reserveType[reserveId] = uint256(resType);
-        return true;
-    }
-
-    function removeReserve(bytes32 reserveId) external returns (bool) {
-        onlyNetwork();
-        reserveType[reserveId] = uint256(ReserveType.NONE);
-        return true;
-    }
-
-    function setFeeAccountedPerReserveType(
-        bool fpr,
-        bool apr,
-        bool bridge,
-        bool utility,
-        bool custom,
-        bool orderbook
-    ) external {
-        onlyAdmin();
-        uint256 feeAccountedData;
-
-        if (apr) feeAccountedData |= 1 << uint256(ReserveType.APR);
-        if (fpr) feeAccountedData |= 1 << uint256(ReserveType.FPR);
-        if (bridge) feeAccountedData |= 1 << uint256(ReserveType.BRIDGE);
-        if (utility) feeAccountedData |= 1 << uint256(ReserveType.UTILITY);
-        if (custom) feeAccountedData |= 1 << uint256(ReserveType.CUSTOM);
-        if (orderbook) feeAccountedData |= 1 << uint256(ReserveType.ORDERBOOK);
-
-        feeAccountedPerType = feeAccountedData;
-    }
-
-    function getReserveDetailsByAddress(address reserve)
-        external
-        view
-        returns (
-            bytes32 reserveId,
-            ReserveType resType,
-            bool isFeeAccounted
-        )
-    {
-        reserveId = kyberStorage.convertReserveAddresstoId(reserve);
-        resType = ReserveType(reserveType[reserveId]);
-        isFeeAccounted =
-            (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
-    }
-
-    function getReserveDetailsById(bytes32 reserveId)
-        external
-        view
-        returns (
-            address reserveAddress,
-            ReserveType resType,
-            bool isFeeAccounted
-        )
-    {
-        reserveAddress = kyberStorage.convertReserveIdToAddress(reserveId);
-        resType = ReserveType(reserveType[reserveId]);
-        isFeeAccounted =
-            (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
-    }
-
     /// @dev Returns trading reserves info for a trade
     /// @param src source token
     /// @param dest destination token
@@ -169,7 +86,6 @@ contract KyberMatchingEngine is
         returns (
             bytes32[] memory reserveIds,
             uint256[] memory splitValuesBps,
-            bool[] memory isFeeAccounted,
             ProcessWithRate processWithRate
         )
     {
@@ -180,14 +96,8 @@ contract KyberMatchingEngine is
                 : kyberStorage.getReservesPerTokenDest(address(dest));
 
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
-            isFeeAccounted = getIsFeeAccountedReserves(reserveIds);
             processWithRate = ProcessWithRate.Required;
-            return (
-                reserveIds,
-                splitValuesBps,
-                isFeeAccounted,
-                processWithRate
-            );
+            return (reserveIds, splitValuesBps, processWithRate);
         }
 
         TradeType tradeType;
@@ -214,7 +124,6 @@ contract KyberMatchingEngine is
             return (
                 new bytes32[](0),
                 new uint256[](0),
-                new bool[](0),
                 ProcessWithRate.NotRequired
             );
 
@@ -230,7 +139,6 @@ contract KyberMatchingEngine is
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         }
 
-        isFeeAccounted = getIsFeeAccountedReserves(reserveIds);
         processWithRate = (tradeType == TradeType.Split)
             ? ProcessWithRate.NotRequired
             : ProcessWithRate.Required;
@@ -366,24 +274,6 @@ contract KyberMatchingEngine is
         splitValuesBps = new uint256[](length);
         for (uint256 i = 0; i < length; i++) {
             splitValuesBps[i] = BPS;
-        }
-    }
-
-    // prettier-ignore
-    function getIsFeeAccountedReserves(bytes32[] memory reserveIds)
-        internal
-        view
-        returns (bool[] memory feeAccountedArr)
-    {
-        feeAccountedArr = new bool[](reserveIds.length);
-
-        uint256 feeAccountedData = feeAccountedPerType;
-
-        for (uint256 i = 0; i < reserveIds.length; i++) {
-            feeAccountedArr[i] = (
-                feeAccountedData &
-                (1 << reserveType[reserveIds[i]]) > 0
-            );
         }
     }
 

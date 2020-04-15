@@ -9,20 +9,20 @@ contract OtherMatchingEngine is KyberMatchingEngine {
     }
 
     // return false instead
-    function addReserve(bytes32 reserveId, ReserveType resType) external returns (bool) {
-        onlyNetwork();
-        require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad reserve type");
-        require(feeAccountedPerType != 0xffffffff, "fee accounting data not set");
+    // function addReserve(bytes32 reserveId, ReserveType resType) external returns (bool) {
+    //     onlyNetwork();
+    //     require((resType != ReserveType.NONE) && (uint(resType) < uint(ReserveType.LAST)), "bad reserve type");
+    //     require(feeAccountedPerType != 0xffffffff, "fee accounting data not set");
 
-        reserveType[reserveId] = uint(resType);
-        return false;
-    }
+    //     reserveType[reserveId] = uint(resType);
+    //     return false;
+    // }
 
-    function removeReserve(bytes32 reserveId) external returns (bool) {
-        onlyNetwork();
-        reserveType[reserveId] = uint(ReserveType.NONE);
-        return false;
-    }
+    // function removeReserve(bytes32 reserveId) external returns (bool) {
+    //     onlyNetwork();
+    //     reserveType[reserveId] = uint(ReserveType.NONE);
+    //     return false;
+    // }
 
     function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool) {
         onlyNetwork();

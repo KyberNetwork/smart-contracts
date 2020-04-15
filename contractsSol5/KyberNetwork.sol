@@ -12,7 +12,6 @@ import "./IKyberMatchingEngine.sol";
 import "./IKyberStorage.sol";
 import "./IGasHelper.sol";
 
-
 /*
  *   @title Kyber Network main contract
  *   Interacts with contracts:
@@ -117,7 +116,7 @@ contract KyberNetwork is
     event AddReserveToNetwork(
         address indexed reserve,
         bytes32 indexed reserveId,
-        IKyberMatchingEngine.ReserveType reserveType,
+        IKyberStorage.ReserveType reserveType,
         address indexed rebateWallet,
         bool add
     );
@@ -131,12 +130,11 @@ contract KyberNetwork is
     function addReserve(
         address reserve,
         bytes32 reserveId,
-        IKyberMatchingEngine.ReserveType reserveType,
+        IKyberStorage.ReserveType reserveType,
         address payable rebateWallet
     ) external returns (bool) {
         onlyOperator();
-        require(kyberStorage.addReserve(reserve, reserveId));
-        require(matchingEngine.addReserve(reserveId, reserveType));
+        require(kyberStorage.addReserve(reserve, reserveId, reserveType));
         require(rebateWallet != address(0));
 
         reserveIdToAddress[reserveId] = reserve;
@@ -166,7 +164,6 @@ contract KyberNetwork is
     {
         onlyOperator();
         bytes32 reserveId = kyberStorage.removeReserve(reserve, startIndex);
-        require(matchingEngine.removeReserve(reserveId));
 
         require(
             reserveIdToAddress[reserveId] == reserve,
@@ -400,7 +397,9 @@ contract KyberNetwork is
             tData.ethToToken.decimals
         );
 
-        rateWithoutFees = rateWithNetworkFee * BPS / (BPS - tData.networkFeeBps * tData.feeAccountedBps / BPS);
+        rateWithoutFees =
+            (rateWithNetworkFee * BPS) /
+            (BPS - (tData.networkFeeBps * tData.feeAccountedBps) / BPS);
     }
 
     //backward compatible
@@ -410,11 +409,11 @@ contract KyberNetwork is
     /// @param dest Destination token
     /// @param srcQty amount of src tokens in twei
     /// @return returns expected and slippage rates
-    function getExpectedRate(
-        ERC20 src,
-        ERC20 dest,
-        uint256 srcQty
-    ) external view returns (uint256 expectedRate, uint256 worstRate) {
+    function getExpectedRate(ERC20 src, ERC20 dest, uint256 srcQty)
+        external
+        view
+        returns (uint256 expectedRate, uint256 worstRate)
+    {
         if (src == dest) return (0, 0);
         uint256 qty = srcQty & ~PERM_HINT_GET_RATE;
 
@@ -511,7 +510,7 @@ contract KyberNetwork is
         returns (
             uint256 negligibleDiffBps,
             uint256 networkFeeBps,
-            uint256 expiryBlock
+            uint256 expiryTimestamp
         )
     {
         (networkFeeBps, expiryTimestamp) = readNetworkFeeData();
@@ -714,7 +713,6 @@ contract KyberNetwork is
         (
             tradingReserves.ids,
             tradingReserves.splitsBps,
-            tradingReserves.isFeeAccounted,
             processWithRate
         ) = matchingEngine.getTradingReserves(
             src,
@@ -723,6 +721,7 @@ contract KyberNetwork is
                 (tData.input.dest != ETH_TOKEN_ADDRESS),
             hint
         );
+        tradingReserves.isFeeAccounted = kyberStorage.getIsFeeAccountedReserves(tradingReserves.ids);
 
         require(
             tradingReserves.ids.length == tradingReserves.splitsBps.length,
