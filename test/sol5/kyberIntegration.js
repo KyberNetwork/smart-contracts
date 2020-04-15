@@ -90,6 +90,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         //deploy network
         network = await KyberNetwork.new(admin, networkStorage.address);
         await networkStorage.setNetworkContract(network.address, {from: admin});
+        await networkStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
         // init proxy
         networkProxy = await KyberNetworkProxy.new(admin);
@@ -108,10 +109,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
-        await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, daoContract.address, {from: admin});
+        await rateHelper.setContracts(matchingEngine.address, daoContract.address, networkStorage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});

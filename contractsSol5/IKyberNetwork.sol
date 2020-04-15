@@ -2,7 +2,6 @@ pragma solidity 0.5.11;
 
 import "./IERC20.sol";
 
-
 /// @title Kyber Network interface
 interface IKyberNetwork {
     function enabled() external view returns (bool);

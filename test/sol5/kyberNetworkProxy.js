@@ -17,13 +17,13 @@ const BN = web3.utils.BN;
 
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint} = require("../helper.js");
-const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, MASK_IN_HINTTYPE, 
+const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, MASK_IN_HINTTYPE,
     MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE}  = require('./networkHelper.js');
 
 //global variables
 //////////////////
 const gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
-const negligibleRateDiffBps = new BN(10); //0.01% 
+const negligibleRateDiffBps = new BN(10); //0.01%
 const maxDestAmt = new BN(2).pow(new BN(255));
 
 let networkFeeBps = new BN(20);
@@ -93,10 +93,10 @@ contract('KyberNetworkProxy', function(accounts) {
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setKyberStorage(storage.address, {from: admin});
-        await matchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+        await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, DAO.address, {from: admin});
+        await rateHelper.setContracts(matchingEngine.address, DAO.address, storage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -136,25 +136,25 @@ contract('KyberNetworkProxy', function(accounts) {
     describe("test get rates - compare proxy rate to netwrk returned rates", async() => {
         describe("getExpectedRate (backward compatible)", async() => {
             it("verify getExpectedRate (backward compatible) for t2e.", async() => {
-                let tokenAdd = tokens[4].address; 
+                let tokenAdd = tokens[4].address;
                 let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[4])));
                 let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, 0, emptyHint);
                 let proxyRate = await networkProxy.getExpectedRate(tokenAdd, ethAddress, srcQty);
                 Helper.assertEqual(proxyRate.worstRate, proxyRate.expectedRate.mul(new BN(97)).div(new BN(100)));
-                Helper.assertEqual(networkRate.rateWithNetworkFee, proxyRate.expectedRate, 
+                Helper.assertEqual(networkRate.rateWithNetworkFee, proxyRate.expectedRate,
                     "expected rate network not equal rate proxy");
             });
-            
+
             it("verify getExpectedRate (backward compatible) for e2t.", async() => {
-                let tokenAdd = tokens[3].address; 
+                let tokenAdd = tokens[3].address;
                 let srcQty = (new BN(2)).mul((new BN(10)).pow(new BN(ethDecimals)));
                 let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, 0, emptyHint)
                 let proxyRate = await networkProxy.getExpectedRate(ethAddress, tokenAdd, srcQty);
                 Helper.assertEqual(proxyRate.worstRate, proxyRate.expectedRate.mul(new BN(97)).div(new BN(100)));
-                Helper.assertEqual(networkRate.rateWithNetworkFee, proxyRate.expectedRate, 
+                Helper.assertEqual(networkRate.rateWithNetworkFee, proxyRate.expectedRate,
                     "expected rate network not equal rate proxy");
             });
-            
+
             it("verify getExpectedRate (backward compatible) for t2t.", async() => {
                 let srcAdd = tokens[1].address;
                 let destAdd = tokens[2].address;
@@ -162,49 +162,49 @@ contract('KyberNetworkProxy', function(accounts) {
                 let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, 0, emptyHint);
                 let proxyRate = await networkProxy.getExpectedRate(srcAdd, destAdd, srcQty);
                 Helper.assertEqual(proxyRate.worstRate, proxyRate.expectedRate.mul(new BN(97)).div(new BN(100)));
-                Helper.assertEqual(networkRate.rateWithNetworkFee, proxyRate.expectedRate, 
+                Helper.assertEqual(networkRate.rateWithNetworkFee, proxyRate.expectedRate,
                     "expected rate network not equal rate proxy");
             });
         });
-        
+
         describe("test getExpectedRateAfterFee - different hints, fees.", async() => {
             it("check for e2t, different fees, no hint.", async() => {
                 for (let fee = 0; fee <= 100; fee+= 50) {
                     let i = 0;
-                    let tokenAdd = tokens[i].address; 
+                    let tokenAdd = tokens[i].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i++])));
                     let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(ethAddress, tokenAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                 }
             });
 
             it("check for t2e, different fees, no hint.", async() => {
                 let i = numTokens - 1;
-                    
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address; 
+                    let tokenAdd = tokens[i].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i--;
                 }
             });
 
             it("check for t2t, zero fee, no hint.", async() => {
                 let i = 0;
-                
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
                     let srcAdd = tokens[i].address;
                     let destAdd = tokens[(i + 1) % numTokens].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
                     let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i++;
                 }
             });
@@ -212,14 +212,14 @@ contract('KyberNetworkProxy', function(accounts) {
             it("check for t2e, different fees, mask in trade type.", async() => {
                 // TODO: add trade type
                 let i = numTokens - 1;
-                    
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address; 
+                    let tokenAdd = tokens[i].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i--;
                 }
             });
@@ -227,14 +227,14 @@ contract('KyberNetworkProxy', function(accounts) {
             it("check for e2t, different fees, mask in trade type.", async() => {
                 // TODO: add trade type
                 let i = numTokens - 1;
-                    
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address; 
+                    let tokenAdd = tokens[i].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i--;
                 }
             });
@@ -242,15 +242,15 @@ contract('KyberNetworkProxy', function(accounts) {
             it("check for t2t, zero fee, mask in type.", async() => {
                 // TODO: add trade type
                 let i = 0;
-                
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
                     let srcAdd = tokens[i].address;
                     let destAdd = tokens[(i + 1) % numTokens].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
                     let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i++;
                 }
             });
@@ -258,14 +258,14 @@ contract('KyberNetworkProxy', function(accounts) {
             it("check for t2e, different fees, split trade type.", async() => {
                 // TODO: add trade type
                 let i = numTokens - 1;
-                    
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address; 
+                    let tokenAdd = tokens[i].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i--;
                 }
             });
@@ -273,14 +273,14 @@ contract('KyberNetworkProxy', function(accounts) {
             it("check for e2t, different fees, split trade type", async() => {
                 // TODO: add trade type
                 let i = numTokens - 1;
-                    
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address; 
+                    let tokenAdd = tokens[i].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i--;
                 }
             });
@@ -288,15 +288,15 @@ contract('KyberNetworkProxy', function(accounts) {
             it("check for t2t, zero fee, split trade type.", async() => {
                 // TODO: add trade type
                 let i = 0;
-                
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
                     let srcAdd = tokens[i].address;
                     let destAdd = tokens[(i + 1) % numTokens].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
                     let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i++;
                 }
             });
@@ -304,14 +304,14 @@ contract('KyberNetworkProxy', function(accounts) {
             it("check for t2e, different fees, mask out.", async() => {
             // TODO: add trade type
                 let i = numTokens - 1;
-                    
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address; 
+                    let tokenAdd = tokens[i].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i--;
                 }
             });
@@ -319,14 +319,14 @@ contract('KyberNetworkProxy', function(accounts) {
             it("check for e2t, different fees, mask out.", async() => {
                 // TODO: add trade type
                 let i = numTokens - 1;
-                    
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address; 
+                    let tokenAdd = tokens[i].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
                     let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i--;
                 }
             });
@@ -334,15 +334,15 @@ contract('KyberNetworkProxy', function(accounts) {
             it("check for t2t, zero fee, mask out.", async() => {
                 // TODO: add trade type
                 let i = 0;
-                
+
                 for (let fee = 0; fee <= 100; fee+= 50) {
                     let srcAdd = tokens[i].address;
                     let destAdd = tokens[(i + 1) % numTokens].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
                     let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
                     let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate, 
-                        "expected rate network not equal rate proxy, %d", i);                
+                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                        "expected rate network not equal rate proxy, %d", i);
                     i++;
                 }
             });
@@ -371,11 +371,11 @@ contract('KyberNetworkProxy', function(accounts) {
                     let tokenId = i;
                     let tokenAdd = tokens[tokenId].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(ethDecimals));
-                    
+
                     let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, tokenAdd, ethAddress, srcQty);
                     let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, 0, hint)
                     let proxyRate = await networkProxy.getPriceDataNoFees(ethAddress, tokenAdd, srcQty, hint);
-                    Helper.assertEqual(networkRate.rateWithoutFees, proxyRate, "expected rate network not equal rate proxy");     
+                    Helper.assertEqual(networkRate.rateWithoutFees, proxyRate, "expected rate network not equal rate proxy");
                 });
 
                 it(`check for t2t, ${typeStr[i]} hint.`, async() => {
@@ -383,11 +383,11 @@ contract('KyberNetworkProxy', function(accounts) {
                     let srcAdd = tokens[tokenId].address;
                     let destAdd = tokens[(tokenId + 1) % numTokens].address;
                     let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
-                    
+
                     let hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, type, numResForTest, srcAdd, destAdd, srcQty);
                     let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, 0, hint)
                     let proxyRate = await networkProxy.getPriceDataNoFees(srcAdd, destAdd, srcQty, hint);
-                    Helper.assertEqual(networkRate.rateWithoutFees, proxyRate, "expected rate network not equal rate proxy");     
+                    Helper.assertEqual(networkRate.rateWithoutFees, proxyRate, "expected rate network not equal rate proxy");
                 });
             }
         });
@@ -463,7 +463,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let rate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, hint);
 
                 await srcToken.transfer(taker, srcQty);
-                await srcToken.approve(networkProxy.address, srcQty, {from: taker});   
+                await srcToken.approve(networkProxy.address, srcQty, {from: taker});
                 let txResult = await networkProxy.tradeWithHintAndFee(srcAdd, srcQty, destAdd, taker,
                     maxDestAmt, calcMinRate(rate), platformWallet, fee, hint, {from: taker});
                 console.log(`t2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
@@ -564,7 +564,7 @@ contract('KyberNetworkProxy', function(accounts) {
         let destToken;
         let destDecimals;
 
-        before("Setup contracts with tokens with no return values", async() => {    
+        before("Setup contracts with tokens with no return values", async() => {
             //DAO related init.
             let expiryTimestamp = new BN(await web3.eth.getBlockNumber() + 150);
             let mockDAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
@@ -582,10 +582,10 @@ contract('KyberNetworkProxy', function(accounts) {
             mockMatchingEngine = await MatchingEngine.new(admin);
             await mockMatchingEngine.setNetworkContract(mockNetwork.address, {from: admin});
             await mockMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
-            await mockMatchingEngine.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
 
             mockRateHelper = await RateHelper.new(admin);
-            await mockRateHelper.setContracts(mockMatchingEngine.address, mockDAO.address, {from: admin});
+            await mockRateHelper.setContracts(mockMatchingEngine.address, mockDAO.address, tempStorage.address, {from: admin});
 
             // setup proxy
             await mockProxy.setKyberNetwork(mockNetwork.address, {from: admin});
@@ -600,7 +600,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
             //init feeHandler
             tempFeeHandler = await FeeHandler.new(mockDAO.address, mockProxy.address, mockNetwork.address, KNC.address, burnBlockInterval, mockDAO.address);
-            
+
             // init and setup reserves
             let result = await nwHelper.setupReserves(mockNetwork, mockTokens, 5, 0, 0, 0, accounts, admin, operator);
             mockReserveInstances = result.reserveInstances;
@@ -608,7 +608,7 @@ contract('KyberNetworkProxy', function(accounts) {
             //setup network
             ///////////////
             await mockNetwork.setContracts(tempFeeHandler.address, mockMatchingEngine.address, zeroAddress, {from: admin});
-            
+
             await mockNetwork.addKyberProxy(mockProxy.address, {from: admin});
             await mockNetwork.addOperator(operator, {from: admin});
 
@@ -797,7 +797,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await expectRevert(networkProxy.setHintHandler(zeroAddress, { from: admin }), "hintHandler 0");
         });
     });
-    
+
     describe("test simple swap API", async () => {
         it("swapEtherToToken", async () => {
             let destToken = tokens[1];
@@ -852,13 +852,13 @@ contract('KyberNetworkProxy', function(accounts) {
             await srcToken.approve(networkProxy.address, srcQty, { from: taker });
             let proxyRate = await networkProxy.getExpectedRate(srcToken.address, dstToken.address, srcQty);
             await networkProxy.tradeWithHint(
-                srcToken.address, 
-                srcQty, 
-                dstToken.address, 
+                srcToken.address,
+                srcQty,
+                dstToken.address,
                 destAddress,
                 maxDestAmt,
                 proxyRate.expectedRate,
-                platformWallet, 
+                platformWallet,
                 emptyHint, { from: taker });
             let dstQty = Helper.calcDstQty(srcQty, tokenDecimals[2], tokenDecimals[4], proxyRate.expectedRate);
             let actualBalance = await dstToken.balanceOf(destAddress);
@@ -866,7 +866,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await Helper.assertApproximate(dstQty, actualDstQty, "wrong balance");
 
         });
-    });    
+    });
 
     describe("test doTrade verify condition", async () => {
         let generousNetwork;
@@ -897,7 +897,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await srcToken.transfer(taker, srcQty);
             await srcToken.approve(networkProxy.address, srcQty, { from: taker });
 
-            //see trade reverts 
+            //see trade reverts
             await expectRevert(networkProxy.trade(
                 srcToken.address,
                 srcQty,
@@ -1016,7 +1016,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await dstToken.approve(networkProxy.address, maxDestAmt, { from: destAddress});
             //set my fee wei is greater than dstQty so maliciousNetwork will not send dest Token
             await maliciousNetwork.setMyFeeWei(new BN(dstQty));
-            //see trade reverts due to maliciousNetwork reduce dest Amount 
+            //see trade reverts due to maliciousNetwork reduce dest Amount
             await expectRevert(
                 networkProxy.trade(
                     srcToken.address,
@@ -1079,7 +1079,7 @@ contract('KyberNetworkProxy', function(accounts) {
             let rate = await networkProxy.getExpectedRate(srcToken.address, tokens[2].address, amountTwei);
             await srcToken.transfer(taker, amountTwei);
             await srcToken.approve(networkProxy.address, amountTwei, { from: taker });
-            //see trade reverts due to maliciousNetwork reduce dest Amount 
+            //see trade reverts due to maliciousNetwork reduce dest Amount
             await expectRevert(
                 networkProxy.trade(
                     srcToken.address,
@@ -1098,7 +1098,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await networkProxy.setKyberNetwork(network.address, { from: admin });
         });
     });
-    // test 
+    // test
 })
 
 function calcMinRate(rate) {
