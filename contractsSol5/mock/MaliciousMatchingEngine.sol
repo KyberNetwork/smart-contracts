@@ -4,9 +4,9 @@ import "../KyberMatchingEngine.sol";
 
 
 contract MaliciousMatchingEngine is KyberMatchingEngine {
-    constructor(address _admin) public
-        KyberMatchingEngine(_admin)
-    { /* empty body */ }
+    constructor(address _admin) public KyberMatchingEngine(_admin) {
+        /* empty body */
+    }
 
     // function getIsFeeAccountedReserves(bytes8[] memory reserveIds) internal view
     //     returns(bool[] memory feeAccountedArr)

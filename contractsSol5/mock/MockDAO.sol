@@ -4,8 +4,8 @@ import "../IKyberDAO.sol";
 import "../utils/Utils4.sol";
 import "../IKyberFeeHandler.sol";
 
-contract MockDAO is IKyberDAO, Utils4 {
 
+contract MockDAO is IKyberDAO, Utils4 {
     IKyberFeeHandler public feeHandler;
     uint public rewardInBPS;
     uint public rebateInBPS;
@@ -17,7 +17,13 @@ contract MockDAO is IKyberDAO, Utils4 {
     uint data;
     mapping(uint => bool) public shouldBurnRewardEpoch;
 
-    constructor(uint _rewardInBPS, uint _rebateInBPS, uint _epoch, uint _expiryTimestamp) public {
+    constructor(
+        uint256 _rewardInBPS,
+        uint256 _rebateInBPS,
+        uint256 _epoch,
+        uint256 _expiryTimestamp
+    ) public {
+
         rewardInBPS = _rewardInBPS;
         rebateInBPS = _rebateInBPS;
         epoch = _epoch;
@@ -29,37 +35,68 @@ contract MockDAO is IKyberDAO, Utils4 {
         feeHandler = _handler;
     }
 
-    function setMockEpochAndExpiryBlock(uint _epoch, uint _expiryTimestamp) public {
+    function setMockEpochAndExpiryBlock(
+        uint256 _epoch,
+        uint256 _expiryTimestamp
+    ) public {
         epoch = _epoch;
         expiryTimestamp = _expiryTimestamp;
     }
 
-    function setMockBRR(uint _rewardInBPS, uint _rebateInBPS) public {
+    function setMockBRR(uint256 _rewardInBPS, uint256 _rebateInBPS) public {
         rewardInBPS = _rewardInBPS;
         rebateInBPS = _rebateInBPS;
     }
 
-    function setNetworkFeeBps(uint _feeBps) public {
+    function setNetworkFeeBps(uint256 _feeBps) public {
         feeBps = _feeBps;
     }
 
-    function getLatestNetworkFeeData() external view returns(uint, uint) {
+    function getLatestNetworkFeeData() 
+        external 
+        view 
+        returns(uint256, uint256) {
         return (feeBps, expiryTimestamp);
     }
 
-    function getLatestNetworkFeeDataWithCache() external returns(uint, uint) {
+    function getLatestNetworkFeeDataWithCache() 
+        external 
+        returns(uint256, uint256) 
+    {
         data++;
         return (feeBps, expiryTimestamp);
     }
 
-    function getLatestBRRData() external returns(uint, uint, uint, uint, uint) {
-        return (BPS - rewardInBPS - rebateInBPS, rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+    function getLatestBRRData()
+        external
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        return (
+            BPS - rewardInBPS - rebateInBPS,
+            rewardInBPS,
+            rebateInBPS,
+            epoch,
+            expiryTimestamp
+        );
     }
 
-    function claimStakerReward(address staker, uint percentageInPrecision, uint forEpoch) 
-        external returns(bool)
-    {
-        return feeHandler.claimStakerReward(staker, percentageInPrecision, forEpoch);
+    function claimStakerReward(
+        address staker,
+        uint256 percentageInPrecision,
+        uint256 forEpoch
+    ) external returns (bool) {
+        return
+            feeHandler.claimStakerReward(
+                staker,
+                percentageInPrecision,
+                forEpoch
+            );
     }
 
     function EPOCH_PERIOD_SECONDS() external view returns(uint) {
@@ -70,18 +107,25 @@ contract MockDAO is IKyberDAO, Utils4 {
         return startTimestamp;
     }
 
-    function handleWithdrawal(address staker, uint reduceAmount) external returns(bool) {
+    function handleWithdrawal(address staker, uint256 reduceAmount)
+        external
+        returns (bool)
+    {
         staker;
         reduceAmount;
         return true;
     }
 
-    function shouldBurnRewardForEpoch(uint epochNum) external view returns(bool) {
+    function shouldBurnRewardForEpoch(uint256 epochNum)
+        external
+        view
+        returns (bool)
+    {
         if (shouldBurnRewardEpoch[epochNum]) return true;
         return false;
     }
 
-    function setShouldBurnRewardTrue(uint epochNum) public {
+    function setShouldBurnRewardTrue(uint256 epochNum) public {
         shouldBurnRewardEpoch[epochNum] = true;
     }
 
@@ -90,7 +134,7 @@ contract MockDAO is IKyberDAO, Utils4 {
         expiryTimestamp = now + epochPeriod;
     }
 
-    function vote(uint campID, uint option) external {
+    function vote(uint256 campID, uint256 option) external {
         // must implement so it can be deployed.
         campID;
         option;

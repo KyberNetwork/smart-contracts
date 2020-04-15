@@ -2,6 +2,7 @@ pragma solidity 0.5.11;
 
 import "../KyberMatchingEngine.sol";
 
+
 // overide only some of original contract. mostly return value instead of revert
 contract OtherMatchingEngine is KyberMatchingEngine {
     constructor(address _admin) public KyberMatchingEngine(_admin) {
@@ -24,7 +25,10 @@ contract OtherMatchingEngine is KyberMatchingEngine {
     //     return false;
     // }
 
-    function setNegligbleRateDiffBps(uint _negligibleRateDiffBps) external returns (bool) {
+    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps)
+        external
+        returns (bool)
+    {
         onlyNetwork();
         if (_negligibleRateDiffBps > BPS) return false; // return false instead of revert
         negligibleRateDiffBps = _negligibleRateDiffBps;
