@@ -433,7 +433,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @dev conclude brr campaign if needed and caching latest result in DAO
     */
     function getLatestBRRData()
-        public
+        external
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryTimestamp)
     {
         epoch = getCurrentEpochNumber();
