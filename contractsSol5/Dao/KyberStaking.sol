@@ -248,6 +248,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
+    * @notice don't call on-chain, possibly high gas consumption
     * @dev allow to get data up to current epoch + 1
     */
     function getStake(address staker, uint epoch) public view returns(uint) {
@@ -263,6 +264,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
+    * @notice don't call on-chain, possibly high gas consumption
     * @dev allow to get data up to current epoch + 1
     */
     function getDelegatedStake(address staker, uint epoch) public view returns(uint) {
@@ -278,6 +280,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
+    * @notice don't call on-chain, possibly high gas consumption
     * @dev allow to get data up to current epoch + 1
     */
     function getDelegatedAddress(address staker, uint epoch) public view returns(address) {

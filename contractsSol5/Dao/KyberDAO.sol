@@ -399,64 +399,21 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @dev conclude network fee campaign if needed and caching latest result in DAO
     */
     function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryTimestamp) {
-        uint curEpoch = getCurrentEpochNumber();
-
-        feeInBps = latestNetworkFeeResult;
-        // expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP + curEpoch * EPOCH_PERIOD_SECONDS - 1;
-        expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP.add(curEpoch.mul(EPOCH_PERIOD_SECONDS)).sub(1);
-
-        // there is no camp for epoch 0
-        if (curEpoch == 0) {
-            return (feeInBps, expiryTimestamp);
-        }
-
-        uint campID = networkFeeCamp[curEpoch.sub(1)];
-        if (campID == 0) {
-            // don't have network fee campaign, return latest result
-            return (feeInBps, expiryTimestamp);
-        }
-
-        uint winningOption;
-        (winningOption, feeInBps) = getCampaignWinningOptionAndValue(campID);
-
-        if (winningOption == 0) {
-            // no winning option, fall back to previous result
-            feeInBps = latestNetworkFeeResult;
-        } else {
-            // update latest result based on new winning option
-            latestNetworkFeeResult = feeInBps;
-        }
+        (feeInBps, expiryTimestamp) = getLatestNetworkFeeData();
+        // cache latest data
+        latestNetworkFeeResult = feeInBps;
     }
 
     /**
     * @dev return latest burn/reward/rebate data, also affecting epoch + expiry timestamp
     * @dev conclude brr campaign if needed and caching latest result in DAO
     */
-    function getLatestBRRData()
+    function getLatestBRRDataWithCache()
         public
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryTimestamp)
     {
-        epoch = getCurrentEpochNumber();
-        // expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP + curEpoch * EPOCH_PERIOD_SECONDS - 1;
-        expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP.add(epoch.mul(EPOCH_PERIOD_SECONDS)).sub(1);
-        uint brrData = latestBrrResult;
-        if (epoch > 0) {
-            uint campID = brrCampaign[epoch.sub(1)];
-            if (campID != 0) {
-                uint winningOption;
-                (winningOption, brrData) = getCampaignWinningOptionAndValue(campID);
-                if (winningOption == 0) {
-                    // no winning option, fallback to previous result
-                    brrData = latestBrrResult;
-                } else {
-                    // concluded campaign, updated new latest brr result
-                    latestBrrResult = brrData;
-                }
-            }
-        }
-
-        (rebateInBps, rewardInBps) = getRebateAndRewardFromData(brrData);
-        burnInBps = BPS.sub(rebateInBps).sub(rewardInBps);
+        (burnInBps, rewardInBps, rebateInBps, epoch, expiryTimestamp) = getLatestBRRDataDecoded();
+        latestBrrResult = getDataFromRewardAndRebateWithValidation(rewardInBps, rebateInBps);
     }
 
     /**
@@ -621,7 +578,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     /** 
     * @dev return latest brr data after decoded so it is easily to check from read contract
     */
-    function latestBRRDataDecoded()
+    function getLatestBRRDataDecoded()
         public view
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryTimestamp)
     {

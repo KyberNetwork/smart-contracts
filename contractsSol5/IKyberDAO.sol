@@ -11,6 +11,6 @@ interface IKyberDAO {
     function shouldBurnRewardForEpoch(uint epoch) external view returns(bool);
     function getLatestNetworkFeeData() external view returns(uint feeInBps, uint expiryTimestamp);
     function getLatestNetworkFeeDataWithCache() external returns(uint feeInBps, uint expiryTimestamp);
-    function getLatestBRRData() external
+    function getLatestBRRDataWithCache() external
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryTimestamp);
 }

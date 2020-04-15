@@ -241,7 +241,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         Helper.assertEqual(expectedReward, brrData.rewardBps);
         Helper.assertEqual(expectedRebate, brrData.rebateBps);
         // check expected brr data from dao
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(brrData.expiryTimestamp, daoBrrData.expiryTimestamp);
         Helper.assertEqual(brrData.epoch, daoBrrData.epoch);
         Helper.assertEqual(brrData.rewardBps, daoBrrData.rewardInBps);
@@ -306,7 +306,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         Helper.assertLesser(brrData.expiryTimestamp, daoStartTime - 1);
         Helper.assertEqual(brrData.epoch, 0);
 
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         let daoNetworkFee = await daoContract.latestNetworkFeeResult()
 
         // make a first trade and check data changes as expected
@@ -333,7 +333,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // no campaign yet, so still default data from DAO
 
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         let daoNetworkFee = await daoContract.latestNetworkFeeResult()
 
         await tradeAndCheckDataChangesAsExpected(
@@ -384,7 +384,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         // network fee camp should be updated without winning option
         Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
         // brr camp should be updated without winning option
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(2 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(2, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
@@ -446,7 +446,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         // network fee camp should be updated without winning option
         Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
         // brr camp should be updated with no winning option
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(3 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(3, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
@@ -508,7 +508,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         // network fee camp should be updated without winning option
         Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
         // brr camp should be updated with option 1 winning
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(4 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(4, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps.add(new BN(1)), daoBrrData.rewardInBps);
@@ -611,7 +611,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         // network fee camp should be updated with winning option
         Helper.assertEqual(await daoContract.latestNetworkFeeResult(), newFee1);
         // brr camp should be updated without winning option
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(6 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(6, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
@@ -673,7 +673,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         // network fee camp should be updated with winning option
         Helper.assertEqual(await daoContract.latestNetworkFeeResult(), newFee1);
         // brr camp should be updated with winning option
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(7 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(7, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps.add(new BN(1)), daoBrrData.rewardInBps);
@@ -740,7 +740,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         Helper.assertEqual(curBrrData.rewardBps, brrData.rewardBps);
         Helper.assertEqual(curBrrData.rebateBps, brrData.rebateBps);
         // check expected brr data from dao
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(11 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(11, daoBrrData.epoch);
         Helper.assertEqual(brrData.rewardBps, daoBrrData.rewardInBps);
@@ -960,7 +960,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         // network fee camp should be updated without winning option
         Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
         // brr camp should be updated without winning option
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(18 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(18, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);

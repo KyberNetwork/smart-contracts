@@ -41,7 +41,7 @@ contract MockKyberDaoMoreGetters is KyberDAO {
     }
 
     function checkLatestBrrData(uint _rewardInBps, uint _rebateInBps, uint _burnInBps, uint _epoch, uint _expiryTimestamp) public returns(bool) {
-        (uint burn, uint reward, uint rebate, uint epoch, uint expiryTimestamp) = getLatestBRRData();
+        (uint burn, uint reward, uint rebate, uint epoch, uint expiryTimestamp) = getLatestBRRDataWithCache();
         require(_rewardInBps == reward, "reward bps is wrong");
         require(_rebateInBps == rebate, "rebate bps is wrong");
         require(_burnInBps == burn, "burn bps is wrong");
