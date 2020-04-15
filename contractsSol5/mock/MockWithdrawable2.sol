@@ -5,5 +5,6 @@ import "../utils/Withdrawable2.sol";
 
 contract MockWithdrawable2 is Withdrawable2 {
     constructor() public Withdrawable2(msg.sender) {}
-    function () external payable {}
+
+    function() external payable {}
 }

@@ -1,17 +1,20 @@
 pragma solidity 0.5.11;
 
-
 import "../KyberNetwork.sol";
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// @title GenerousKyberNetwork2 transfer the fixed dest amount to destAddress and returns this amount to proxy
-// This would allow us to check the condition of maxDestAmount
+/*
+ * @title GenerousKyberNetwork2 transfer the fixed dest amount to destAddress and returns this amount to proxy
+ * This would allow us to check the condition of maxDestAmount
+ */
 contract GenerousKyberNetwork2 is KyberNetwork {
+    constructor(address _admin, IKyberStorage _kyberStorage)
+        public
+        KyberNetwork(_admin, _kyberStorage)
+    {}
 
-    constructor(address _admin, IKyberStorage _kyberStorage) public KyberNetwork(_admin, _kyberStorage) { }
+    event GenerousTrade(int256 which, int256 more, IERC20 token);
 
-    event GenerousTrade(int which, int more, IERC20 token);
     /* solhint-disable function-max-lines */
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
     /// @dev trade api for kyber network.
@@ -19,33 +22,52 @@ contract GenerousKyberNetwork2 is KyberNetwork {
     function trade(TradeData memory tData, bytes memory hint)
         internal
         nonReentrant
-        returns(uint destAmount)
+        returns (uint256 destAmount)
     {
         tData.networkFeeBps = getAndUpdateNetworkFee();
 
-        require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
+        require(
+            verifyTradeInputValid(tData.input, tData.networkFeeBps),
+            "invalid"
+        );
 
         // amounts excluding fees
-        uint rateWithNetworkFee;
+        uint256 rateWithNetworkFee;
         (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
-        
+
         require(rateWithNetworkFee > 0, "0 rate");
         require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(rateWithNetworkFee >= tData.input.minConversionRate, "rate < min Rate");
+        require(
+            rateWithNetworkFee >= tData.input.minConversionRate,
+            "rate < min Rate"
+        );
 
         if (gasHelper != IGasHelper(0)) {
-            gasHelper.freeGas(tData.input.platformWallet, tData.input.src, tData.input.dest, tData.tradeWei,
-            tData.tokenToEth.ids, tData.ethToToken.ids);
+            gasHelper.freeGas(
+                tData.input.platformWallet,
+                tData.input.src,
+                tData.input.dest,
+                tData.tradeWei,
+                tData.tokenToEth.ids,
+                tData.ethToToken.ids
+            );
         }
 
-        uint actualSrcAmount;
+        uint256 actualSrcAmount;
 
         if (destAmount > tData.input.maxDestAmount) {
             // notice tData passed by reference. and updated
             destAmount = tData.input.maxDestAmount;
             actualSrcAmount = calcTradeSrcAmountFromDest(tData);
 
-            require(handleChange(tData.input.src, tData.input.srcAmount, actualSrcAmount, tData.input.trader));
+            require(
+                handleChange(
+                    tData.input.src,
+                    tData.input.srcAmount,
+                    actualSrcAmount,
+                    tData.input.trader
+                )
+            );
         } else {
             actualSrcAmount = tData.input.srcAmount;
         }
@@ -57,24 +79,30 @@ contract GenerousKyberNetwork2 is KyberNetwork {
             return 1717;
         }
 
-        require(doReserveTrades(     //src to ETH
+        require(
+            doReserveTrades( //src to ETH
                 tData.input.src,
                 actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
                 address(this),
                 tData,
-                tData.tradeWei)); //tData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
+                tData.tradeWei
+            )
+        ); //tData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
 
-        require(doReserveTrades(     //Eth to dest
+        require(
+            doReserveTrades( //Eth to dest
                 ETH_TOKEN_ADDRESS,
                 tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei,
                 tData.input.dest,
                 tData.input.destAddress,
                 tData,
-                destAmount));
+                destAmount
+            )
+        );
 
         require(handleFees(tData));
-        
+
         emit KyberTrade({
             trader: tData.input.trader,
             src: tData.input.src,

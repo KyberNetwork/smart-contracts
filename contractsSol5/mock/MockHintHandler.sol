@@ -4,9 +4,8 @@ import "../KyberHintHandler.sol";
 
 
 contract MockHintHandler is KyberHintHandler {
-
-    mapping(address=>bytes32) public reserveAddressToId;
-    mapping(bytes32=>address[]) public reserveIdToAddresses;
+    mapping(address => bytes32) public reserveAddressToId;
+    mapping(bytes32 => address[]) public reserveIdToAddresses;
 
     function addReserve(address reserve, bytes32 reserveId) public {
         reserveIdToAddresses[reserveId].push(reserve);

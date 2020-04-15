@@ -7,7 +7,7 @@ import "./ReentrancyAttack.sol";
 contract ReentrancyMock is ReentrancyGuard {
     uint256 public counter;
 
-    constructor () public {
+    constructor() public {
         counter = 0;
     }
 
@@ -26,7 +26,9 @@ contract ReentrancyMock is ReentrancyGuard {
         if (n > 0) {
             count();
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success,) = address(this).call(abi.encodeWithSignature("countThisRecursive(uint256)", n - 1));
+            (bool success, ) = address(this).call(
+                abi.encodeWithSignature("countThisRecursive(uint256)", n - 1)
+            );
             require(success, "ReentrancyMock: failed call");
         }
     }

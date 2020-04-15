@@ -5,5 +5,6 @@ import "../utils/WithdrawableNoModifiers.sol";
 
 contract MockWithdrawableNoModifiers is WithdrawableNoModifiers {
     constructor() public WithdrawableNoModifiers(msg.sender) {}
-    function () external payable {}
+
+    function() external payable {}
 }
