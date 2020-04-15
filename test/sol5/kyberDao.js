@@ -30,7 +30,6 @@ let loi;
 let mike;
 let poolMaster;
 let poolMaster2;
-let maxCampOptions = 4;
 let minCampPeriod = 10 * 16; // 160s - equivalent to 10 blocks
 let defaultNetworkFee = 25;
 let defaultRewardBps = 3000; // 30%
@@ -159,7 +158,6 @@ contract('KyberDAO', function(accounts) {
       stakingContract.address,
       feeHandler.address,
       kncToken.address,
-      maxCampOptions,
       blocksToSeconds(minCampPeriod),
       defaultNetworkFee,
       defaultRewardBps,
@@ -678,7 +676,7 @@ contract('KyberDAO', function(accounts) {
       daoContract = await DAOContract.new(
         10, blockToTimestamp(currentBlock + 10),
         stakingContract.address,  feeHandler.address, kncToken.address,
-        maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+        minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
         campCreator
       )
       await daoContract.replaceStakingContract(mike);
@@ -1233,11 +1231,11 @@ contract('KyberDAO', function(accounts) {
         ),
         "validateParams: invalid number of options"
       )
-      // more than 4 options (max number options)
+      // more than 8 options (max number options)
       await expectRevert(
         submitNewCampaign(daoContract,
           0, currentBlock + 7, currentBlock + 7 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
-          [1, 2, 3, 4, 5], '0x', {from: campCreator}
+          [1, 2, 3, 4, 5, 6, 7, 8, 9], '0x', {from: campCreator}
         ),
         "validateParams: invalid number of options"
       )
@@ -2103,6 +2101,8 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
       Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+      // checked voted option for campaign 1
+      Helper.assertEqual(1, await daoContract.stakerVotedOption(victor, 1), "voted option should be correct");
       Helper.assertEqual(0, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
       Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
@@ -2122,6 +2122,8 @@ contract('KyberDAO', function(accounts) {
 
       Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+      // checked voted option for campaign 1
+      Helper.assertEqual(2, await daoContract.stakerVotedOption(mike, 1), "voted option should be correct");
       Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
       tx = await daoContract.vote(1, 1, {from: loi});
@@ -2200,6 +2202,8 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
 
       Helper.assertEqual(2, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
+      // checked voted option for campaign 1
+      Helper.assertEqual(1, await daoContract.stakerVotedOption(victor, 2), "voted option should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
@@ -2297,6 +2301,8 @@ contract('KyberDAO', function(accounts) {
 
       Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+      // checked voted option for campaign 1
+      Helper.assertEqual(2, await daoContract.stakerVotedOption(mike, 1), "voted option should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
       // vote the same
@@ -2312,6 +2318,8 @@ contract('KyberDAO', function(accounts) {
 
       Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+      // checked voted option for campaign 1
+      Helper.assertEqual(2, await daoContract.stakerVotedOption(mike, 1), "voted option should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
       // revote for mike
@@ -2331,6 +2339,8 @@ contract('KyberDAO', function(accounts) {
 
       Helper.assertEqual(1, await daoContract.getNumberVotes(victor, 1), "number votes should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
+      // checked voted option for campaign 1
+      Helper.assertEqual(1, await daoContract.stakerVotedOption(mike, 1), "voted option should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
       await daoContract.vote(2, 1, {from: mike});
@@ -4294,8 +4304,7 @@ contract('KyberDAO', function(accounts) {
       daoContract = await MockMaliciousDAO.new(
         blocksToSeconds(epochPeriod), blockToTimestamp(startBlock),
         stakingContract.address,  feeHandler.address, kncToken.address,
-        maxCampOptions, minCampPeriod,
-        defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+        minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
         campCreator
       )
       await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: campCreator});
@@ -5657,7 +5666,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(await daoContract.kncToken(), kncToken.address, "KNC token is wrong");
       Helper.assertEqual(await daoContract.staking(), stakingContract.address, "Staking contract is wrong");
       Helper.assertEqual(await daoContract.feeHandler(), feeHandler.address, "Feehandler contract is wrong");
-      Helper.assertEqual(await daoContract.MAX_CAMPAIGN_OPTIONS(), maxCampOptions, "max camp option is wrong");
+      Helper.assertEqual(await daoContract.MAX_CAMPAIGN_OPTIONS(), 8, "max camp option is wrong");
       Helper.assertEqual(await daoContract.MIN_CAMPAIGN_DURATION_SECONDS(), blocksToSeconds(minCampPeriod), "min camp period is wrong");
       Helper.assertEqual(await daoContract.latestNetworkFeeResult(), defaultNetworkFee, "default network fee is wrong");
       Helper.assertEqual(await daoContract.latestBrrResult(), defaultBrrData, "default brr data is wrong");
@@ -5672,7 +5681,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           blocksToSeconds(9), blockToTimestamp(currentBlock + 10),
           stakingContract.address,  feeHandler.address, kncToken.address,
-          maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
         "ctor: diff epoch period"
@@ -5682,7 +5691,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 11),
           stakingContract.address,  feeHandler.address, kncToken.address,
-          maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
         "ctor: diff start timestamp"
@@ -5690,7 +5699,7 @@ contract('KyberDAO', function(accounts) {
       await DAOContract.new(
         blocksToSeconds(10), blockToTimestamp(currentBlock + 10),
         stakingContract.address,  feeHandler.address, kncToken.address,
-        maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+        minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
         campCreator
       )
     });
@@ -5703,7 +5712,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           0, blockToTimestamp(currentBlock + 50),
           stakingContract.address,  feeHandler.address, kncToken.address,
-          maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
         "ctor: epoch period is 0"
@@ -5713,7 +5722,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           blocksToSeconds(20), blockToTimestamp(currentBlock - 1),
           stakingContract.address,  feeHandler.address, kncToken.address,
-          maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
         "ctor: start in the past"
@@ -5723,7 +5732,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           zeroAddress,  feeHandler.address, kncToken.address,
-          maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
         "ctor: staking is missing"
@@ -5733,7 +5742,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           stakingContract.address,  zeroAddress, kncToken.address,
-          maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
         "ctor: feeHandler is missing"
@@ -5743,7 +5752,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           stakingContract.address,  feeHandler.address, zeroAddress,
-          maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
         "ctor: knc token is missing"
@@ -5753,7 +5762,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           stakingContract.address,  feeHandler.address, kncToken.address,
-          maxCampOptions, minCampPeriod, 5000, defaultRewardBps, defaultRebateBps,
+          minCampPeriod, 5000, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
         "ctor: network fee high"
@@ -5763,7 +5772,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           stakingContract.address,  feeHandler.address, kncToken.address,
-          maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, 10001 - defaultRewardBps,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, 10001 - defaultRewardBps,
           campCreator
         ),
         "reward plus rebate high"
@@ -5773,7 +5782,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           stakingContract.address,  feeHandler.address, kncToken.address,
-          maxCampOptions, minCampPeriod, defaultNetworkFee, 10001 - defaultRebateBps, defaultRebateBps,
+          minCampPeriod, defaultNetworkFee, 10001 - defaultRebateBps, defaultRebateBps,
           campCreator
         ),
         "reward plus rebate high"
@@ -5783,7 +5792,7 @@ contract('KyberDAO', function(accounts) {
         DAOContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           stakingContract.address,  feeHandler.address, kncToken.address,
-          maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           zeroAddress
         ),
         "campaignCreator is 0"

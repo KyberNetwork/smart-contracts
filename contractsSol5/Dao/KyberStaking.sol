@@ -235,8 +235,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-    * @dev in DAO contract, if user wants to claim reward for past epoch, we must know the staker's data for that epoch
-    * @dev if the data has not been inited, it means user hasn't done any action -> no reward
+    * @dev  in DAO contract, if user wants to claim reward for past epoch, we must know the staker's data for that epoch
+    *       if the data has not been inited, it means user hasn't done any action -> no reward
     */
     function getStakerDataForPastEpoch(address staker, uint epoch)
         external view
@@ -309,7 +309,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-    * @dev
     * @dev init data if it has not been init
     * @param staker staker's address to init
     * @param epoch should be current epoch

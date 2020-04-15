@@ -79,7 +79,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     // max number of campaigns for each epoch
     uint public constant MAX_EPOCH_CAMPAIGNS = 10;
     // max number of options for each campaign
-    uint public MAX_CAMPAIGN_OPTIONS = 8;
+    uint public constant MAX_CAMPAIGN_OPTIONS = 8;
     // minimum duration in seconds for a campaign
     uint public MIN_CAMPAIGN_DURATION_SECONDS = 345600; // around 4 days
 
@@ -95,27 +95,28 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint tInPrecision;
     }
 
+    struct CampaignVoteData {
+        uint totalVotes;
+        uint[] votePerOption;
+    }
+
     struct Campaign {
         CampaignType campaignType;
-        uint campaignID;
+        bool campaignExists;
         uint startTimestamp;
         uint endTimestamp;
-        uint totalKNCSupply;        // total KNC supply at the time campaign was created
-        FormulaData formulaData;    // formula params for concluding campaign result
-        bytes link;                 // link to KIP, explaination of options, etc.
-        uint[] options;             // data of options
+        uint totalKNCSupply;                // total KNC supply at the time campaign was created
+        FormulaData formulaData;            // formula params for concluding campaign result
+        bytes link;                         // link to KIP, explaination of options, etc.
+        uint[] options;                     // data of options
+        CampaignVoteData campaignVoteData;  // campaign vote data: total votes + vote per option
     }
 
     /* Mapping from campaign ID => data */
 
     // use to generate increasing campaign ID
     uint public numberCampaigns = 0;
-    mapping(uint => bool) public campaignExists;
     mapping(uint => Campaign) internal campaignData;
-    // campaignOptionVotes[campaignID]: total votes and vote of each option for a campaign
-    // campaignOptionVotes[campaignID][0]: total votes, campaignOptionVotes[campaignID][1..]: vote for each option ID
-    mapping(uint => uint[]) internal campaignOptionVotes;
-
     /** Mapping from epoch => data */
 
     // epochCampaigns[epoch]: list campaign IDs for each epoch (epoch => campaign IDs)
@@ -192,12 +193,16 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         for (uint i = 0; i < campaignIDs.length; i++) {
             uint campaignID = campaignIDs[i];
+
             uint votedOption = stakerVotedOption[staker][campaignID];
+            if (votedOption == 0) { continue; } // staker has not voted yet
+
+            Campaign storage campaign = campaignData[campaignID];
             // deduce vote count for current running campaign that this staker has voted
-            if (votedOption > 0 && campaignData[campaignID].endTimestamp >= now) {
+            if (campaign.endTimestamp >= now) {
                 // user already voted for this campaign and the campaign is not ended
-                campaignOptionVotes[campaignID][0] = campaignOptionVotes[campaignID][0].sub(reduceAmount);
-                campaignOptionVotes[campaignID][votedOption] = campaignOptionVotes[campaignID][votedOption].sub(reduceAmount);
+                campaign.campaignVoteData.totalVotes = campaign.campaignVoteData.totalVotes.sub(reduceAmount);
+                campaign.campaignVoteData.votePerOption[votedOption - 1] = campaign.campaignVoteData.votePerOption[votedOption - 1].sub(reduceAmount);
             }
         }
 
@@ -254,7 +259,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         numberCampaigns = numberCampaigns.add(1);
         campaignID = numberCampaigns;
 
-        campaignExists[campaignID] = true;
         // add campaignID into this current epoch campaign IDs
         epochCampaigns[campEpoch].push(campaignID);
         // update network fee or brr campaigns
@@ -269,20 +273,22 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             cInPrecision: cInPrecision,
             tInPrecision: tInPrecision
         });
+        CampaignVoteData memory campaignVoteData = CampaignVoteData({
+            totalVotes: 0,
+            votePerOption: new uint[](options.length)
+        });
 
         campaignData[campaignID] = Campaign({
-            campaignID: campaignID,
+            campaignExists: true,
             campaignType: campaignType,
             startTimestamp: startTimestamp,
             endTimestamp: endTimestamp,
             totalKNCSupply: kncToken.totalSupply(),
             link: link,
             formulaData: formulaData,
-            options: options
+            options: options,
+            campaignVoteData: campaignVoteData
         });
-
-        // index 0 for total votes, index 1 -> options.length for each option
-        campaignOptionVotes[campaignID] = new uint[](options.length + 1);
 
         emit NewCampaignCreated(
             campaignType, campaignID, startTimestamp, endTimestamp,
@@ -294,20 +300,17 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     event CancelledCampaign(uint campaignID);
 
     /**
-    * @dev cancel a campaign with given id, called by admin only
-    * @dev only can cancel campaigns that have not started yet
+    * @dev  cancel a campaign with given id, called by admin only
+    *       only can cancel campaigns that have not started yet
     * @param campaignID id of the campaign to cancel
     */
     function cancelCampaign(uint campaignID) external onlyCampaignCreator {
-        require(campaignExists[campaignID], "cancelCampaign: campaignID doesn't exist");
-
         Campaign storage campaign = campaignData[campaignID];
+        require(campaign.campaignExists, "cancelCampaign: campaignID doesn't exist");
 
         require(campaign.startTimestamp > now, "cancelCampaign: campaign already started");
 
         uint epoch = getEpochNumber(campaign. startTimestamp);
-
-        campaignExists[campaignID] = false;
 
         if (campaign.campaignType == CampaignType.NetworkFee) {
             delete networkFeeCampaigns[epoch];
@@ -316,7 +319,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         }
 
         delete campaignData[campaignID];
-        delete campaignOptionVotes[campaignID];
 
         uint[] storage campaignIDs = epochCampaigns[epoch];
         for (uint i = 0; i < campaignIDs.length; i++) {
@@ -335,8 +337,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     event Voted(address staker, uint epoch, uint campaignID, uint option);
 
     /**
-    * @dev vote for an option of a campaign
-    * @dev options are indexed from 1 to number of options
+    * @dev  vote for an option of a campaign
+    *       options are indexed from 1 to number of options
     * @param campaignID id of campaign to vote for
     * @param option id of options to vote for
     */
@@ -350,20 +352,22 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint totalStake = dAddress == staker ? stake.add(dStake) : dStake;
         uint lastVotedOption = stakerVotedOption[staker][campaignID];
 
+        CampaignVoteData storage voteData = campaignData[campaignID].campaignVoteData;
+
         if (lastVotedOption == 0) {
             // increase number campaigns that the staker has voted for first time voted
             numberVotes[staker][curEpoch]++;
 
             totalEpochPoints[curEpoch] = totalEpochPoints[curEpoch].add(totalStake);
             // increase voted points for this option
-            campaignOptionVotes[campaignID][option] = campaignOptionVotes[campaignID][option].add(totalStake);
+            voteData.votePerOption[option - 1] = voteData.votePerOption[option - 1].add(totalStake);
             // increase total votes
-            campaignOptionVotes[campaignID][0] = campaignOptionVotes[campaignID][0].add(totalStake);
+            voteData.totalVotes = voteData.totalVotes.add(totalStake);
         } else if (lastVotedOption != option) {
             // deduce previous option voted count
-            campaignOptionVotes[campaignID][lastVotedOption] = campaignOptionVotes[campaignID][lastVotedOption].sub(totalStake);
+            voteData.votePerOption[lastVotedOption - 1] = voteData.votePerOption[lastVotedOption - 1].sub(totalStake);
             // increase new option voted count
-            campaignOptionVotes[campaignID][option] = campaignOptionVotes[campaignID][option].add(totalStake);
+            voteData.votePerOption[option - 1] = voteData.votePerOption[option - 1].add(totalStake);
         }
 
         stakerVotedOption[staker][campaignID] = option;
@@ -395,7 +399,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     /**
     * @dev get latest network fee data + expiry timestamp
-    * @dev conclude network fee campaign if needed and caching latest result in DAO
+    *    conclude network fee campaign if needed and caching latest result in DAO
     */
     function getLatestNetworkFeeDataWithCache() public returns(uint feeInBps, uint expiryTimestamp) {
         (feeInBps, expiryTimestamp) = getLatestNetworkFeeData();
@@ -405,7 +409,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     /**
     * @dev return latest burn/reward/rebate data, also affecting epoch + expiry timestamp
-    * @dev conclude brr campaign if needed and caching latest result in DAO
+    *      conclude brr campaign if needed and caching latest result in DAO
     */
     function getLatestBRRDataWithCache()
         public
@@ -417,7 +421,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     /**
     * @dev some epochs have reward but no one can claim, for example: epoch 0
-    * @dev return true if should burn all that reward
+    *      return true if should burn all that reward
     * @param epoch epoch to check for burning reward
     */
     function shouldBurnRewardForEpoch(uint epoch) external view returns(bool) {
@@ -447,31 +451,24 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     function getCampaignVoteCountData(uint campaignID) external view returns(uint[] memory voteCounts, uint totalVoteCount) {
-        uint[] memory votes = campaignOptionVotes[campaignID];
-        if (votes.length == 0) {
-            return (voteCounts, totalVoteCount);
-        }
-        totalVoteCount = votes[0];
-        voteCounts = new uint[](votes.length - 1);
-        for (uint i = 0; i < voteCounts.length; i++) {
-            voteCounts[i] = votes[i + 1];
-        }
+        CampaignVoteData memory voteData = campaignData[campaignID].campaignVoteData;
+        totalVoteCount = voteData.totalVotes;
+        voteCounts = voteData.votePerOption;
     }
 
     /**
     * @dev return campaign winning option and its value
-    * @dev return (0, 0) if campaign does not existed
-    * @dev return (0, 0) if campaign is not ended yet
-    * @dev return (0, 0) if campaign has no winning option based on the formula
+    *      return (0, 0) if campaign does not existed
+    *      return (0, 0) if campaign is not ended yet
+    *      return (0, 0) if campaign has no winning option based on the formula
     * @param campaignID id of campaign to get result
     */
     function getCampaignWinningOptionAndValue(uint campaignID)
         public view
         returns(uint optionID, uint value)
     {
-        if (!campaignExists[campaignID]) { return (0, 0); } // not exist
-
         Campaign storage campaign = campaignData[campaignID];
+        if (!campaign.campaignExists) { return (0, 0); } // not exist
 
         // not found or not ended yet, return 0 as winning option
         if (campaign. endTimestamp == 0 || campaign. endTimestamp > now) { return (0, 0); }
@@ -480,25 +477,26 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         // something is wrong here, total KNC supply shouldn't be 0
         if (totalSupply == 0) { return (0, 0); }
 
-        uint[] memory voteCounts = campaignOptionVotes[campaignID];
+        uint totalVotes = campaign.campaignVoteData.totalVotes;
+        uint[] memory voteCounts = campaign.campaignVoteData.votePerOption;
 
         // Finding option with most votes
         uint winningOption = 0;
         uint maxVotedCount = 0;
-        for (uint i = 1; i < voteCounts.length; i++) {
+        for (uint i = 0; i < voteCounts.length; i++) {
             if (voteCounts[i] > maxVotedCount) {
-                winningOption = i;
+                winningOption = i + 1;
                 maxVotedCount = voteCounts[i];
             } else if (voteCounts[i] == maxVotedCount) {
                 winningOption = 0;
             }
         }
+
         // more than 1 options have same vote count
         if (winningOption == 0) { return (0, 0); }
 
         FormulaData memory formulaData = campaign. formulaData;
 
-        uint totalVotes = voteCounts[0];
         // compute voted percentage (in precision)
         uint votedPercentage = totalVotes.mul(PRECISION).div(campaign. totalKNCSupply);
 
@@ -544,9 +542,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-    * @dev return staker's reward percentage in precision for an epoch
-    * @dev return 0 if epoch is in the future
-    * @dev return 0 if staker has no votes or stakes
+    * @dev  return staker's reward percentage in precision for an epoch
+    *       return 0 if epoch is in the future
+    *       return 0 if staker has no votes or stakes
     */
     function getStakerRewardPercentageInPrecision(address staker, uint epoch) public view returns(uint) {
         uint curEpoch = getCurrentEpochNumber();
@@ -611,8 +609,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-    * @dev helper func to get encoded reward and rebate
-    * @dev revert if validation failed
+    * @dev  helper func to get encoded reward and rebate
+    *       revert if validation failed
     */
     function getDataFromRewardAndRebateWithValidation(uint rewardInBps, uint rebateInBps)
         public pure
@@ -623,7 +621,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-    * Validate params to check if we could submit a new campaign with these params
+    * @dev Validate params to check if we could submit a new campaign with these params
     */
     function validateCampaignParams(
         CampaignType campaignType, uint startTimestamp, uint endTimestamp, uint startEpoch,
@@ -719,13 +717,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @dev options are indexed from 1
     */
     function validateVoteOption(uint campaignID, uint option) internal view returns(bool) {
-        require(campaignExists[campaignID], "vote: campaign doesn't exist");
-
         Campaign storage campaign = campaignData[campaignID];
+        require(campaign.campaignExists, "vote: campaign doesn't exist");
 
         require(campaign.startTimestamp <= now, "vote: campaign not started");
         require(campaign.endTimestamp >= now, "vote: campaign already ended");
 
+        // option is indexed from 1 to options.length
         require(option > 0, "vote: option is 0");
         require(option <= campaign.options.length, "vote: option is not in range");
 

@@ -33,7 +33,6 @@ let campCreator;
 let daoContract;
 let victor;
 let mike;
-let maxCampOptions = 4;
 let minCampPeriod = 10; // 10 blocks
 let defaultNetworkFee = 25;
 let defaultRewardBps = 3000; // 30%
@@ -199,8 +198,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         daoContract = await MockDao.new(
             blocksToSeconds(epochPeriod), daoStartTime,
             stakingContract.address,  feeHandler.address, KNC.address,
-            maxCampOptions, minCampPeriod,
-            defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+            minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
             campCreator
         )
         await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter});
