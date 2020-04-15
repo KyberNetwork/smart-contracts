@@ -128,9 +128,9 @@ contract MockDAO is IKyberDAO, Utils4 {
         expiryTimestamp = now + epochPeriod;
     }
 
-    function vote(uint256 campID, uint256 option) external {
+    function vote(uint campaignID, uint option) external {
         // must implement so it can be deployed.
-        campID;
+        campaignID;
         option;
     }
 }

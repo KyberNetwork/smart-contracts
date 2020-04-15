@@ -16,8 +16,8 @@ contract MockKyberDaoMoreGetters is KyberDAO {
         _defaultNetworkFeeBps, _defaultRewardBps, _defaultRebateBps,
         _admin
     ) public {
-        MAX_CAMP_OPTIONS = _maxNumOptions;
-        MIN_CAMP_DURATION_SECONDS = _minCampDuration;
+        MAX_CAMPAIGN_OPTIONS = _maxNumOptions;
+        MIN_CAMPAIGN_DURATION_SECONDS = _minCampDuration;
     }
 
     function replaceStakingContract(address _staking) public {

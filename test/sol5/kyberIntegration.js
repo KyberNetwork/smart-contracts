@@ -166,7 +166,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
     const submitNewCampaign = async(
         daoContract,
-        campType,
+        campaignType,
         startBlock,
         endBlock,
         minPercentageInPrecision,
@@ -177,7 +177,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         opt
       ) => {
         return await daoContract.submitNewCampaign(
-          campType,
+          campaignType,
           blockToTimestamp(startBlock),
           blockToTimestamp(endBlock),
           minPercentageInPrecision,

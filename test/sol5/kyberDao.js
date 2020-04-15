@@ -88,7 +88,7 @@ contract('KyberDAO', function(accounts) {
 
   const submitNewCampaign = async(
     daoContract,
-    campType,
+    campaignType,
     startBlock,
     endBlock,
     minPercentageInPrecision,
@@ -100,7 +100,7 @@ contract('KyberDAO', function(accounts) {
   ) => {
     console.log(`new campaign: start: ${blockToTimestamp(startBlock)}, end: ${blockToTimestamp(endBlock)}`);
     return await daoContract.submitNewCampaign(
-      campType,
+      campaignType,
       blockToTimestamp(startBlock),
       blockToTimestamp(endBlock),
       minPercentageInPrecision,
@@ -114,7 +114,7 @@ contract('KyberDAO', function(accounts) {
 
   const submitNewCampaignAndDelayToStart = async(
     daoContract,
-    campType,
+    campaignType,
     startBlock,
     endBlock,
     minPercentageInPrecision,
@@ -126,7 +126,7 @@ contract('KyberDAO', function(accounts) {
   ) => {
     console.log(`new campaign: start: ${blockToTimestamp(startBlock)}, end: ${blockToTimestamp(endBlock)}`);
     await daoContract.submitNewCampaign(
-      campType,
+      campaignType,
       blockToTimestamp(startBlock),
       blockToTimestamp(endBlock),
       minPercentageInPrecision,
@@ -392,8 +392,8 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
       expectEvent(txResult, 'NewCampaignCreated', {
-        campType: new BN(0),
-        campID: new BN(1),
+        campaignType: new BN(0),
+        campaignID: new BN(1),
         startTimestamp: new BN(blockToTimestamp(currentBlock + 2)),
         endTimestamp: new BN(blockToTimestamp(currentBlock + 2 + minCampPeriod)),
         minPercentageInPrecision: new BN(minPercentageInPrecision),
@@ -422,8 +422,8 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
       expectEvent(txResult, 'NewCampaignCreated', {
-        campType: new BN(1),
-        campID: new BN(2),
+        campaignType: new BN(1),
+        campaignID: new BN(2),
         startTimestamp: new BN(blockToTimestamp(currentBlock + 2)),
         endTimestamp: new BN(blockToTimestamp(currentBlock + 2 + minCampPeriod)),
         minPercentageInPrecision: minPercentageInPrecision,
@@ -503,8 +503,8 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
       expectEvent(txResult, 'NewCampaignCreated', {
-        campType: new BN(2),
-        campID: new BN(3),
+        campaignType: new BN(2),
+        campaignID: new BN(3),
         startTimestamp: new BN(blockToTimestamp(currentBlock + 20)),
         endTimestamp: new BN(blockToTimestamp(currentBlock + 20 + minCampPeriod)),
         minPercentageInPrecision: minPercentageInPrecision,
@@ -701,14 +701,14 @@ contract('KyberDAO', function(accounts) {
     it("Test submit campaign returns correct data after created", async function() {
       await deployContracts(10, currentBlock + 30, 10);
 
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "shouldn't have network fee camp");
-      Helper.assertEqual(0, await daoContract.brrCampaign(0), "shouldn't have brr camp");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(0), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(0), "shouldn't have brr camp");
 
       let totalSupply = await kncToken.INITIAL_SUPPLY();
 
       let gasUsed = new BN(0);
       for(let id = 0; id <= 2; id++) {
-        Helper.assertEqual(false, await daoContract.campExists(id + 1), "campaign shouldn't be existed");
+        Helper.assertEqual(false, await daoContract.campaignExists(id + 1), "campaign shouldn't be existed");
         let link = web3.utils.fromAscii(id == 0 ? "" : "some_link");
         let tx = await submitNewCampaign(daoContract,
           id, currentBlock + 2 * id + 5, currentBlock + 2 * id + 5 + minCampPeriod,
@@ -716,10 +716,10 @@ contract('KyberDAO', function(accounts) {
         );
         gasUsed.iadd(new BN(tx.receipt.cumulativeGasUsed));
         Helper.assertEqual(id + 1, await daoContract.numberCampaigns(), "number campaign is incorrect");
-        Helper.assertEqual(true, await daoContract.campExists(id + 1), "campaign should be existed");
+        Helper.assertEqual(true, await daoContract.campaignExists(id + 1), "campaign should be existed");
 
         let data = await daoContract.getCampaignDetails(id + 1);
-        Helper.assertEqual(id, data.campType, "campType is incorrect");
+        Helper.assertEqual(id, data.campaignType, "campaignType is incorrect");
         Helper.assertEqual(blockToTimestamp(currentBlock + 2 * id + 5), data.startTimestamp, "start time is incorrect");
         Helper.assertEqual(blockToTimestamp(currentBlock + 2 * id + 5 + minCampPeriod), data.endTimestamp, "end time is incorrect");
         Helper.assertEqual(totalSupply, data.totalKNCSupply, "total supply is incorrect");
@@ -751,8 +751,8 @@ contract('KyberDAO', function(accounts) {
 
       logInfo("Submit Campaign: Average gas used for submit new campaign: " + gasUsed.div(new BN(3)).toString(10));
 
-      Helper.assertEqual(2, await daoContract.networkFeeCamp(0), "should have network fee camp");
-      Helper.assertEqual(3, await daoContract.brrCampaign(0), "should have brr camp");
+      Helper.assertEqual(2, await daoContract.networkFeeCampaigns(0), "should have network fee camp");
+      Helper.assertEqual(3, await daoContract.brrCampaigns(0), "should have brr camp");
 
       let listCamps = await daoContract.getListCampIDs(0);
       Helper.assertEqual(3, listCamps.length, "number camps is incorrect");
@@ -772,8 +772,8 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
 
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(0), "should have network fee camp");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(1), "shouldn't have network fee camp");
 
       await submitNewCampaign(daoContract,
         0, currentBlock + 9, currentBlock + 9 + minCampPeriod,
@@ -796,26 +796,26 @@ contract('KyberDAO', function(accounts) {
         1, currentBlock + 6, currentBlock + 6 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
-      Helper.assertEqual(5, await daoContract.networkFeeCamp(1), "should have network fee camp");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(0), "should have network fee camp");
+      Helper.assertEqual(5, await daoContract.networkFeeCampaigns(1), "should have network fee camp");
 
       await daoContract.cancelCampaign(5, {from: campCreator});
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "should have network fee camp");
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(0), "should have network fee camp");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(1), "shouldn't have network fee camp");
 
       // delay to epoch 3
       await Helper.mineNewBlockAt(daoStartTime + blocksToSeconds(2 * epochPeriod));
 
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(3), "shouldn't have network fee camp");
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(2), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(3), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(2), "shouldn't have network fee camp");
 
       await updateCurrentBlockAndTimestamp();
       await submitNewCampaign(daoContract,
         1, currentBlock + 6, currentBlock + 6 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(2), "shouldn't have network fee camp");
-      Helper.assertEqual(6, await daoContract.networkFeeCamp(3), "should have network fee camp");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(2), "shouldn't have network fee camp");
+      Helper.assertEqual(6, await daoContract.networkFeeCampaigns(3), "should have network fee camp");
     });
 
     it("Test submit campaign network fee campaign changed correctly after cancel and created new one", async function() {
@@ -824,7 +824,7 @@ contract('KyberDAO', function(accounts) {
       // delay to epoch 1
       await Helper.mineNewBlockAfter(blocksToSeconds(3));
 
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(1), "shouldn't have network fee camp");
 
       await updateCurrentBlockAndTimestamp();
 
@@ -835,14 +835,14 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
       logInfo("Submit Campaign: First time create network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(1), "should have network fee camp");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(1), "should have network fee camp");
 
       let txResult = await daoContract.cancelCampaign(1, {from: campCreator});
       expectEvent(txResult, 'CancelledCampaign', {
-        campID: new BN(1)
+        campaignID: new BN(1)
       });
 
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(1), "shouldn't have network fee camp");
 
       await submitNewCampaign(daoContract,
         0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
@@ -852,14 +852,14 @@ contract('KyberDAO', function(accounts) {
         2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(1), "shouldn't have network fee camp");
 
       tx = await submitNewCampaign(daoContract,
         1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
       logInfo("Submit Campaign: Recreate network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
-      Helper.assertEqual(4, await daoContract.networkFeeCamp(1), "should have network fee camp");
+      Helper.assertEqual(4, await daoContract.networkFeeCampaigns(1), "should have network fee camp");
     });
 
     it("Test submit campaign brr campaign changed correctly after cancel and created new one", async function() {
@@ -868,7 +868,7 @@ contract('KyberDAO', function(accounts) {
       // delay to epoch 1
       await Helper.mineNewBlockAfter(blocksToSeconds(3));
 
-      Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(1), "shouldn't have brr camp");
 
       await updateCurrentBlockAndTimestamp();
 
@@ -879,11 +879,11 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
       logInfo("Submit Campaign: First time create brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
-      Helper.assertEqual(1, await daoContract.brrCampaign(1), "should have brr camp");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(1), "should have brr camp");
 
       await daoContract.cancelCampaign(1, {from: campCreator});
 
-      Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(1), "shouldn't have brr camp");
 
       await submitNewCampaign(daoContract,
         0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
@@ -893,14 +893,14 @@ contract('KyberDAO', function(accounts) {
         1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
-      Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(1), "shouldn't have brr camp");
 
       tx = await submitNewCampaign(daoContract,
         2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
       logInfo("Submit Campaign: Recreate brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
-      Helper.assertEqual(4, await daoContract.brrCampaign(1), "shouldn't have brr camp");
+      Helper.assertEqual(4, await daoContract.brrCampaigns(1), "shouldn't have brr camp");
     });
 
     it("Test submit campaign recored correctly brr camp for different epoch", async function() {
@@ -914,8 +914,8 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
 
-      Helper.assertEqual(1, await daoContract.brrCampaign(0), "should have brr camp");
-      Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(0), "should have brr camp");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(1), "shouldn't have brr camp");
 
       await submitNewCampaign(daoContract,
         0, currentBlock + 9, currentBlock + 9 + minCampPeriod,
@@ -938,26 +938,26 @@ contract('KyberDAO', function(accounts) {
         2, currentBlock + 6, currentBlock + 6 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
-      Helper.assertEqual(1, await daoContract.brrCampaign(0), "should have brr camp");
-      Helper.assertEqual(5, await daoContract.brrCampaign(1), "should have brr camp");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(0), "should have brr camp");
+      Helper.assertEqual(5, await daoContract.brrCampaigns(1), "should have brr camp");
 
       await daoContract.cancelCampaign(5, {from: campCreator});
-      Helper.assertEqual(1, await daoContract.brrCampaign(0), "should have brr camp");
-      Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(0), "should have brr camp");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(1), "shouldn't have brr camp");
 
       // deploy to epoch 3
       await Helper.mineNewBlockAt(blocksToSeconds(2 * epochPeriod) + daoStartTime);
 
-      Helper.assertEqual(0, await daoContract.brrCampaign(2), "shouldn't have brr camp");
-      Helper.assertEqual(0, await daoContract.brrCampaign(3), "shouldn't have brr camp");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(2), "shouldn't have brr camp");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(3), "shouldn't have brr camp");
 
       await updateCurrentBlockAndTimestamp();
       await submitNewCampaign(daoContract,
         2, currentBlock + 6, currentBlock + 6 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: campCreator}
       );
-      Helper.assertEqual(0, await daoContract.brrCampaign(2), "should have brr camp");
-      Helper.assertEqual(6, await daoContract.brrCampaign(3), "shouldn't have brr camp");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(2), "should have brr camp");
+      Helper.assertEqual(6, await daoContract.brrCampaigns(3), "shouldn't have brr camp");
     });
 
     it("Test submit new campaign for next epoch, data changes as expected", async function() {
@@ -971,7 +971,7 @@ contract('KyberDAO', function(accounts) {
 
       // test recorded correct data
       let data = await daoContract.getCampaignDetails(1);
-      Helper.assertEqual(0, data.campType, "campType is incorrect");
+      Helper.assertEqual(0, data.campaignType, "campaignType is incorrect");
       Helper.assertEqual(blockToTimestamp(startBlock + 1), data.startTimestamp, "start block is incorrect");
       Helper.assertEqual(blockToTimestamp(startBlock + 1 + minCampPeriod), data.endTimestamp, "end block is incorrect");
       Helper.assertEqual(await kncToken.totalSupply(), data.totalKNCSupply, "total supply is incorrect");
@@ -1026,8 +1026,8 @@ contract('KyberDAO', function(accounts) {
         1, startBlock + 1, startBlock + 1 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
       );
-      let networkFeeCamp = await daoContract.networkFeeCamp(1);
-      Helper.assertEqual(1, networkFeeCamp, "network fee camp is invalid");
+      let networkFeeCampaigns = await daoContract.networkFeeCampaigns(1);
+      Helper.assertEqual(1, networkFeeCampaigns, "network fee camp is invalid");
 
       // can not create new campaign of network fee for next epoch
       await expectRevert(
@@ -1035,7 +1035,7 @@ contract('KyberDAO', function(accounts) {
           1, startBlock + 2, startBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: campCreator}
         ),
-        "newCampaign: alr had network fee for this epoch"
+        "newCampaign: already had network fee for this epoch"
       );
 
       // still able to create for current epoch
@@ -1045,21 +1045,21 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
       );
 
-      networkFeeCamp = await daoContract.networkFeeCamp(1);
-      Helper.assertEqual(1, networkFeeCamp, "network fee camp is invalid");
-      networkFeeCamp = await daoContract.networkFeeCamp(0);
-      Helper.assertEqual(2, networkFeeCamp, "network fee camp is invalid");
+      networkFeeCampaigns = await daoContract.networkFeeCampaigns(1);
+      Helper.assertEqual(1, networkFeeCampaigns, "network fee camp is invalid");
+      networkFeeCampaigns = await daoContract.networkFeeCampaigns(0);
+      Helper.assertEqual(2, networkFeeCampaigns, "network fee camp is invalid");
 
       // delay to next epoch, try to create fee campaign again
       await Helper.mineNewBlockAt(daoStartTime);
       await updateCurrentBlockAndTimestamp();
-      // can not create new camp of network fee for current epoch as alr existed
+      // can not create new camp of network fee for current epoch as already existed
       await expectRevert(
         submitNewCampaign(daoContract,
           1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: campCreator}
         ),
-        "newCampaign: alr had network fee for this epoch"
+        "newCampaign: already had network fee for this epoch"
       );
       // still able to create camp of other types
       await updateCurrentBlockAndTimestamp();
@@ -1072,8 +1072,8 @@ contract('KyberDAO', function(accounts) {
         2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
       );
-      networkFeeCamp = await daoContract.networkFeeCamp(1);
-      Helper.assertEqual(1, networkFeeCamp, "network fee camp is invalid");
+      networkFeeCampaigns = await daoContract.networkFeeCampaigns(1);
+      Helper.assertEqual(1, networkFeeCampaigns, "network fee camp is invalid");
     });
 
     it("Test submit new campaign of brr for next epoch", async function() {
@@ -1083,7 +1083,7 @@ contract('KyberDAO', function(accounts) {
         2, startBlock + 1, startBlock + 1 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
       );
-      let brrCamp = await daoContract.brrCampaign(1);
+      let brrCamp = await daoContract.brrCampaigns(1);
       Helper.assertEqual(1, brrCamp, "brr camp is invalid");
 
       // can not create new camp of network fee for next epoch
@@ -1092,7 +1092,7 @@ contract('KyberDAO', function(accounts) {
           2, startBlock + 2, startBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: campCreator}
         ),
-        "newCampaign: alr had brr for this epoch"
+        "newCampaign: already had brr for this epoch"
       );
 
       // still able to create for current epoch
@@ -1102,22 +1102,22 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
       );
 
-      brrCamp = await daoContract.brrCampaign(1);
+      brrCamp = await daoContract.brrCampaigns(1);
       Helper.assertEqual(1, brrCamp, "brr camp is invalid");
-      brrCamp = await daoContract.brrCampaign(0);
+      brrCamp = await daoContract.brrCampaigns(0);
       Helper.assertEqual(2, brrCamp, "brr camp is invalid");
 
       // delay to next epoch, try to create fee campaign again
       await Helper.mineNewBlockAt(daoStartTime);
       await updateCurrentBlockAndTimestamp();
 
-      // can not create new camp of network fee for current epoch as alr existed
+      // can not create new camp of network fee for current epoch as already existed
       await expectRevert(
         submitNewCampaign(daoContract,
           2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: campCreator}
         ),
-        "newCampaign: alr had brr for this epoch"
+        "newCampaign: already had brr for this epoch"
       );
       // still able to create camp of other types
       await updateCurrentBlockAndTimestamp();
@@ -1130,7 +1130,7 @@ contract('KyberDAO', function(accounts) {
         1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
       );
-      brrCamp = await daoContract.brrCampaign(1);
+      brrCamp = await daoContract.brrCampaigns(1);
       Helper.assertEqual(1, brrCamp, "brr camp is invalid");
     });
 
@@ -1410,7 +1410,7 @@ contract('KyberDAO', function(accounts) {
           1, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: campCreator}
         ),
-        "newCampaign: alr had network fee for this epoch"
+        "newCampaign: already had network fee for this epoch"
       )
       await submitNewCampaign(daoContract,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1432,7 +1432,7 @@ contract('KyberDAO', function(accounts) {
           1, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: campCreator}
         ),
-        "newCampaign: alr had network fee for this epoch"
+        "newCampaign: already had network fee for this epoch"
       )
       await submitNewCampaign(daoContract,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1452,7 +1452,7 @@ contract('KyberDAO', function(accounts) {
           2, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: campCreator}
         ),
-        "newCampaign: alr had brr for this epoch"
+        "newCampaign: already had brr for this epoch"
       )
       await submitNewCampaign(daoContract,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1474,7 +1474,7 @@ contract('KyberDAO', function(accounts) {
           2, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: campCreator}
         ),
-        "newCampaign: alr had brr for this epoch"
+        "newCampaign: already had brr for this epoch"
       )
       await submitNewCampaign(daoContract,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1485,7 +1485,7 @@ contract('KyberDAO', function(accounts) {
     it("Test submit campaign should revert exceed max campaigns for current or next epoch", async function() {
       await deployContracts(20, currentBlock + 50, 4);
       await updateCurrentBlockAndTimestamp();
-      let maxCamps = await daoContract.MAX_EPOCH_CAMPS();
+      let maxCamps = await daoContract.MAX_EPOCH_CAMPAIGNS();
 
       for(let id = 0; id < maxCamps; id++) {
         await daoContract.submitNewCampaign(
@@ -1543,7 +1543,7 @@ contract('KyberDAO', function(accounts) {
       await deployContracts(10, currentBlock + 20, 2);
       await expectRevert(
         daoContract.cancelCampaign(1, {from: campCreator}),
-        "cancelCampaign: campID doesn't exist"
+        "cancelCampaign: campaignID doesn't exist"
       )
       await updateCurrentBlockAndTimestamp();
       await submitNewCampaign(daoContract,
@@ -1552,7 +1552,7 @@ contract('KyberDAO', function(accounts) {
       );
       await expectRevert(
         daoContract.cancelCampaign(2, {from: campCreator}),
-        "cancelCampaign: campID doesn't exist"
+        "cancelCampaign: campaignID doesn't exist"
       )
       await daoContract.cancelCampaign(1, {from: campCreator});
     });
@@ -1581,13 +1581,13 @@ contract('KyberDAO', function(accounts) {
       // camp already running, can not cancel
       await expectRevert(
         daoContract.cancelCampaign(1, {from: campCreator}),
-        "cancelCampaign: campaign alr started"
+        "cancelCampaign: campaign already started"
       )
       await Helper.mineNewBlockAt(blocksToSeconds(minCampPeriod));
       // camp already ended, cancel cancel
       await expectRevert(
         daoContract.cancelCampaign(1, {from: campCreator}),
-        "cancelCampaign: campaign alr started"
+        "cancelCampaign: campaign already started"
       )
     })
 
@@ -1631,7 +1631,7 @@ contract('KyberDAO', function(accounts) {
         let tx = await daoContract.cancelCampaign(campCounts, {from: campCreator});
         logInfo("Cancel campaign: 4 camps, cancel last one, gas used: " + tx.receipt.cumulativeGasUsed);
         expectEvent(tx, 'CancelledCampaign', {
-          campID: new BN(campCounts)
+          campaignID: new BN(campCounts)
         });
 
         listCamps = await daoContract.getListCampIDs(id);
@@ -1640,10 +1640,10 @@ contract('KyberDAO', function(accounts) {
         Helper.assertEqual(listCamps[1], campCounts - 2, "camp id for this epoch is incorrect");
         Helper.assertEqual(listCamps[2], campCounts - 1, "camp id for this epoch is incorrect");
 
-        Helper.assertEqual(false, await daoContract.campExists(campCounts), "camp shouldn't be existed after cancel");
+        Helper.assertEqual(false, await daoContract.campaignExists(campCounts), "camp shouldn't be existed after cancel");
 
         let campData = await daoContract.getCampaignDetails(campCounts);
-        Helper.assertEqual(campData.campType, 0, "camp details should be deleted");
+        Helper.assertEqual(campData.campaignType, 0, "camp details should be deleted");
         Helper.assertEqual(campData.startTimestamp, 0, "camp details should be deleted");
         Helper.assertEqual(campData.endTimestamp, 0, "camp details should be deleted");
         Helper.assertEqual(campData.totalKNCSupply, 0, "camp details should be deleted");
@@ -1662,7 +1662,7 @@ contract('KyberDAO', function(accounts) {
         tx = await daoContract.cancelCampaign(campCounts - 3, {from: campCreator});
         logInfo("Cancel campaign: 3 camps, cancel first one, gas used: " + tx.receipt.cumulativeGasUsed);
         expectEvent(tx, 'CancelledCampaign', {
-          campID: new BN(campCounts - 3)
+          campaignID: new BN(campCounts - 3)
         });
 
         listCamps = await daoContract.getListCampIDs(id);
@@ -1671,7 +1671,7 @@ contract('KyberDAO', function(accounts) {
         Helper.assertEqual(listCamps[1], campCounts - 2, "camp id for this epoch is incorrect");
 
         campData = await daoContract.getCampaignDetails(campCounts - 3);
-        Helper.assertEqual(campData.campType, 0, "camp details should be deleted");
+        Helper.assertEqual(campData.campaignType, 0, "camp details should be deleted");
         Helper.assertEqual(campData.startTimestamp, 0, "camp details should be deleted");
         Helper.assertEqual(campData.endTimestamp, 0, "camp details should be deleted");
         Helper.assertEqual(campData.totalKNCSupply, 0, "camp details should be deleted");
@@ -1683,7 +1683,7 @@ contract('KyberDAO', function(accounts) {
         Helper.assertEqual(voteData.voteCounts.length, 0, "camp vote data should be deleted");
         Helper.assertEqual(voteData.totalVoteCount, 0, "camp vote data be deleted");
 
-        Helper.assertEqual(false, await daoContract.campExists(campCounts - 3), "camp shouldn't be existed after cancel");
+        Helper.assertEqual(false, await daoContract.campaignExists(campCounts - 3), "camp shouldn't be existed after cancel");
 
         // numberCampaigns value shouldn't be changed
         Helper.assertEqual(await daoContract.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
@@ -1712,7 +1712,7 @@ contract('KyberDAO', function(accounts) {
     it("Test cancel campaign correctly for network fee camp", async function() {
       await deployContracts(20, currentBlock + 50, 5);
 
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(0), "network fee camp id should be correct");
 
       let link = web3.utils.fromAscii("https://kyberswap.com");
       await submitNewCampaign(daoContract,
@@ -1720,10 +1720,10 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
 
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(0), "network fee camp id should be correct");
 
       let campData = await daoContract.getCampaignDetails(1);
-      Helper.assertEqual(campData.campType, 1, "camp details should be correct");
+      Helper.assertEqual(campData.campaignType, 1, "camp details should be correct");
       Helper.assertEqual(campData.startTimestamp, blockToTimestamp(currentBlock + 15), "camp details should be correct");
       Helper.assertEqual(campData.endTimestamp, blockToTimestamp(currentBlock + 15 + minCampPeriod), "camp details should be correct");
       Helper.assertEqual(campData.totalKNCSupply, await kncToken.totalSupply(), "camp details should be correct");
@@ -1740,7 +1740,7 @@ contract('KyberDAO', function(accounts) {
       logInfo("Cancel campaign: cancel network fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
 
       campData = await daoContract.getCampaignDetails(1);
-      Helper.assertEqual(campData.campType, 0, "camp details should be deleted");
+      Helper.assertEqual(campData.campaignType, 0, "camp details should be deleted");
       Helper.assertEqual(campData.startTimestamp, 0, "camp details should be deleted");
       Helper.assertEqual(campData.endTimestamp, 0, "camp details should be deleted");
       Helper.assertEqual(campData.totalKNCSupply, 0, "camp details should be deleted");
@@ -1750,7 +1750,7 @@ contract('KyberDAO', function(accounts) {
       // campData[7] is null, can not use assert equal
       Helper.assertEqual(campData[8].length, 0, "camp details should be deleted");
 
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be deleted");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(0), "network fee camp id should be deleted");
 
       // create a general camp
       await submitNewCampaign(daoContract,
@@ -1762,7 +1762,7 @@ contract('KyberDAO', function(accounts) {
         2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: campCreator}
       );
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(0), "network fee camp id should be deleted");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(0), "network fee camp id should be deleted");
 
       link = web3.utils.fromAscii("https://google.com");
       minPercentageInPrecision = precisionUnits.div(new BN(10));
@@ -1774,10 +1774,10 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: campCreator}
       );
 
-      Helper.assertEqual(4, await daoContract.networkFeeCamp(0), "network fee camp id should be correct");
+      Helper.assertEqual(4, await daoContract.networkFeeCampaigns(0), "network fee camp id should be correct");
 
       campData = await daoContract.getCampaignDetails(4);
-      Helper.assertEqual(campData.campType, 1, "camp details should be correct");
+      Helper.assertEqual(campData.campaignType, 1, "camp details should be correct");
       Helper.assertEqual(campData.startTimestamp, blockToTimestamp(currentBlock + 20), "camp details should be correct");
       Helper.assertEqual(campData.endTimestamp, blockToTimestamp(currentBlock + 20 + minCampPeriod), "camp details should be correct");
       Helper.assertEqual(campData.totalKNCSupply, await kncToken.totalSupply(), "camp details should be correct");
@@ -1793,7 +1793,7 @@ contract('KyberDAO', function(accounts) {
     it("Test cancel campaign correctly for brr camp", async function() {
       await deployContracts(20, currentBlock + 50, 5);
 
-      Helper.assertEqual(0, await daoContract.brrCampaign(0), "brr camp id should be correct");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(0), "brr camp id should be correct");
 
       let link = web3.utils.fromAscii("https://kyberswap.com");
       await submitNewCampaign(daoContract,
@@ -1801,10 +1801,10 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
 
-      Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp id should be correct");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(0), "brr camp id should be correct");
 
       let campData = await daoContract.getCampaignDetails(1);
-      Helper.assertEqual(campData.campType, 2, "camp details should be correct");
+      Helper.assertEqual(campData.campaignType, 2, "camp details should be correct");
       Helper.assertEqual(campData.startTimestamp, blockToTimestamp(currentBlock + 15), "camp details should be correct");
       Helper.assertEqual(campData.endTimestamp, blockToTimestamp(currentBlock + 15 + minCampPeriod), "camp details should be correct");
       Helper.assertEqual(campData.totalKNCSupply, await kncToken.totalSupply(), "camp details should be correct");
@@ -1821,7 +1821,7 @@ contract('KyberDAO', function(accounts) {
       logInfo("Cancel campaign: cancel brr camp, gas used: " + tx.receipt.cumulativeGasUsed);
 
       campData = await daoContract.getCampaignDetails(1);
-      Helper.assertEqual(campData.campType, 0, "camp details should be deleted");
+      Helper.assertEqual(campData.campaignType, 0, "camp details should be deleted");
       Helper.assertEqual(campData.startTimestamp, 0, "camp details should be deleted");
       Helper.assertEqual(campData.endTimestamp, 0, "camp details should be deleted");
       Helper.assertEqual(campData.totalKNCSupply, 0, "camp details should be deleted");
@@ -1831,7 +1831,7 @@ contract('KyberDAO', function(accounts) {
       // campData[7] is null, can not use assert equal
       Helper.assertEqual(campData[8].length, 0, "camp details should be deleted");
 
-      Helper.assertEqual(0, await daoContract.brrCampaign(0), "brr camp id should be deleted");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(0), "brr camp id should be deleted");
 
       // create a general camp
       await submitNewCampaign(daoContract,
@@ -1843,7 +1843,7 @@ contract('KyberDAO', function(accounts) {
         1, currentBlock + 20, currentBlock + 20 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: campCreator}
       );
-      Helper.assertEqual(0, await daoContract.brrCampaign(0), "brr camp id should be deleted");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(0), "brr camp id should be deleted");
 
       link = web3.utils.fromAscii("https://google.com");
 
@@ -1856,10 +1856,10 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: campCreator}
       );
 
-      Helper.assertEqual(4, await daoContract.brrCampaign(0), "brr camp id should be correct");
+      Helper.assertEqual(4, await daoContract.brrCampaigns(0), "brr camp id should be correct");
 
       campData = await daoContract.getCampaignDetails(4);
-      Helper.assertEqual(campData.campType, 2, "camp details should be correct");
+      Helper.assertEqual(campData.campaignType, 2, "camp details should be correct");
       Helper.assertEqual(campData.startTimestamp, blockToTimestamp(currentBlock + 20), "camp details should be correct");
       Helper.assertEqual(campData.endTimestamp, blockToTimestamp(currentBlock + 20 + minCampPeriod), "camp details should be correct");
       Helper.assertEqual(campData.totalKNCSupply, await kncToken.totalSupply(), "camp details should be correct");
@@ -1909,57 +1909,57 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
 
-      let campIDs = await daoContract.getListCampIDs(0);
-      Helper.assertEqual(3, campIDs.length, "number ids for first epoch is wrong");
-      Helper.assertEqual(1, campIDs[0], "camp id for first epoch is wrong");
-      Helper.assertEqual(2, campIDs[1], "camp id for first epoch is wrong");
-      Helper.assertEqual(3, campIDs[2], "camp id for first epoch is wrong");
+      let campaignIDs = await daoContract.getListCampIDs(0);
+      Helper.assertEqual(3, campaignIDs.length, "number ids for first epoch is wrong");
+      Helper.assertEqual(1, campaignIDs[0], "camp id for first epoch is wrong");
+      Helper.assertEqual(2, campaignIDs[1], "camp id for first epoch is wrong");
+      Helper.assertEqual(3, campaignIDs[2], "camp id for first epoch is wrong");
 
-      campIDs = await daoContract.getListCampIDs(1);
-      Helper.assertEqual(4, campIDs.length, "number ids for second epoch is wrong");
-      Helper.assertEqual(4, campIDs[0], "camp id for second epoch is wrong");
-      Helper.assertEqual(5, campIDs[1], "camp id for second epoch is wrong");
-      Helper.assertEqual(6, campIDs[2], "camp id for second epoch is wrong");
-      Helper.assertEqual(7, campIDs[3], "camp id for second epoch is wrong");
+      campaignIDs = await daoContract.getListCampIDs(1);
+      Helper.assertEqual(4, campaignIDs.length, "number ids for second epoch is wrong");
+      Helper.assertEqual(4, campaignIDs[0], "camp id for second epoch is wrong");
+      Helper.assertEqual(5, campaignIDs[1], "camp id for second epoch is wrong");
+      Helper.assertEqual(6, campaignIDs[2], "camp id for second epoch is wrong");
+      Helper.assertEqual(7, campaignIDs[3], "camp id for second epoch is wrong");
 
       // cancel next camp
       await daoContract.cancelCampaign(5, {from: campCreator});
 
-      campIDs = await daoContract.getListCampIDs(1);
-      Helper.assertEqual(3, campIDs.length, "number ids for second epoch is wrong");
-      Helper.assertEqual(4, campIDs[0], "camp id for second epoch is wrong");
-      Helper.assertEqual(7, campIDs[1], "camp id for second epoch is wrong");
-      Helper.assertEqual(6, campIDs[2], "camp id for second epoch is wrong");
+      campaignIDs = await daoContract.getListCampIDs(1);
+      Helper.assertEqual(3, campaignIDs.length, "number ids for second epoch is wrong");
+      Helper.assertEqual(4, campaignIDs[0], "camp id for second epoch is wrong");
+      Helper.assertEqual(7, campaignIDs[1], "camp id for second epoch is wrong");
+      Helper.assertEqual(6, campaignIDs[2], "camp id for second epoch is wrong");
 
       // epoch 1 camps shouldn't be changed
-      campIDs = await daoContract.getListCampIDs(0);
-      Helper.assertEqual(3, campIDs.length, "number ids for first epoch is wrong");
-      Helper.assertEqual(1, campIDs[0], "camp id for first epoch is wrong");
-      Helper.assertEqual(2, campIDs[1], "camp id for first epoch is wrong");
-      Helper.assertEqual(3, campIDs[2], "camp id for first epoch is wrong");
+      campaignIDs = await daoContract.getListCampIDs(0);
+      Helper.assertEqual(3, campaignIDs.length, "number ids for first epoch is wrong");
+      Helper.assertEqual(1, campaignIDs[0], "camp id for first epoch is wrong");
+      Helper.assertEqual(2, campaignIDs[1], "camp id for first epoch is wrong");
+      Helper.assertEqual(3, campaignIDs[2], "camp id for first epoch is wrong");
 
       await daoContract.cancelCampaign(2, {from: campCreator});
 
-      campIDs = await daoContract.getListCampIDs(1);
-      Helper.assertEqual(3, campIDs.length, "number ids for second epoch is wrong");
-      Helper.assertEqual(4, campIDs[0], "camp id for second epoch is wrong");
-      Helper.assertEqual(7, campIDs[1], "camp id for second epoch is wrong");
-      Helper.assertEqual(6, campIDs[2], "camp id for second epoch is wrong");
+      campaignIDs = await daoContract.getListCampIDs(1);
+      Helper.assertEqual(3, campaignIDs.length, "number ids for second epoch is wrong");
+      Helper.assertEqual(4, campaignIDs[0], "camp id for second epoch is wrong");
+      Helper.assertEqual(7, campaignIDs[1], "camp id for second epoch is wrong");
+      Helper.assertEqual(6, campaignIDs[2], "camp id for second epoch is wrong");
 
-      campIDs = await daoContract.getListCampIDs(0);
-      Helper.assertEqual(2, campIDs.length, "number ids for first epoch is wrong");
-      Helper.assertEqual(1, campIDs[0], "camp id for first epoch is wrong");
-      Helper.assertEqual(3, campIDs[1], "camp id for first epoch is wrong");
+      campaignIDs = await daoContract.getListCampIDs(0);
+      Helper.assertEqual(2, campaignIDs.length, "number ids for first epoch is wrong");
+      Helper.assertEqual(1, campaignIDs[0], "camp id for first epoch is wrong");
+      Helper.assertEqual(3, campaignIDs[1], "camp id for first epoch is wrong");
 
       // delay to epoch 1
       await Helper.mineNewBlockAt(daoStartTime);
 
       await daoContract.cancelCampaign(4, {from: campCreator});
       // check camp ids
-      campIDs = await daoContract.getListCampIDs(1);
-      Helper.assertEqual(2, campIDs.length, "number ids for second epoch is wrong");
-      Helper.assertEqual(6, campIDs[0], "camp id for second epoch is wrong");
-      Helper.assertEqual(7, campIDs[1], "camp id for second epoch is wrong");
+      campaignIDs = await daoContract.getListCampIDs(1);
+      Helper.assertEqual(2, campaignIDs.length, "number ids for second epoch is wrong");
+      Helper.assertEqual(6, campaignIDs[0], "camp id for second epoch is wrong");
+      Helper.assertEqual(7, campaignIDs[1], "camp id for second epoch is wrong");
     });
 
     it("Test cancel campaign for network fee camp of next epoch", async function() {
@@ -1972,8 +1972,8 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
 
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(0), "network fee camp is wrong");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(1), "network fee camp is wrong");
 
       // create network fee for next epoch
       await submitNewCampaign(daoContract,
@@ -1981,13 +1981,13 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
 
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
-      Helper.assertEqual(2, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(0), "network fee camp is wrong");
+      Helper.assertEqual(2, await daoContract.networkFeeCampaigns(1), "network fee camp is wrong");
 
       await daoContract.cancelCampaign(2, {from: campCreator});
 
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(0), "network fee camp is wrong");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(1), "network fee camp is wrong");
 
       // create network fee for next epoch again
       await submitNewCampaign(daoContract,
@@ -1995,21 +1995,21 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
 
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(0), "network fee camp is wrong");
-      Helper.assertEqual(3, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(0), "network fee camp is wrong");
+      Helper.assertEqual(3, await daoContract.networkFeeCampaigns(1), "network fee camp is wrong");
 
       // delay to next epoch
       await Helper.mineNewBlockAt(daoStartTime);
 
       await daoContract.cancelCampaign(3, {from: campCreator});
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(1), "network fee camp is wrong");
 
       // create network fee for epoch 1 again
       await submitNewCampaign(daoContract,
         1, startBlock + 5, startBlock + 5 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
-      Helper.assertEqual(4, await daoContract.networkFeeCamp(1), "network fee camp is wrong");
+      Helper.assertEqual(4, await daoContract.networkFeeCampaigns(1), "network fee camp is wrong");
     });
 
     it("Test cancel campaign for brr camp of next epoch", async function() {
@@ -2022,8 +2022,8 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
 
-      Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
-      Helper.assertEqual(0, await daoContract.brrCampaign(1), "brr camp is wrong");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(0), "brr camp is wrong");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(1), "brr camp is wrong");
 
       // create brr for next epoch
       await submitNewCampaign(daoContract,
@@ -2031,13 +2031,13 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
 
-      Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
-      Helper.assertEqual(2, await daoContract.brrCampaign(1), "brr camp is wrong");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(0), "brr camp is wrong");
+      Helper.assertEqual(2, await daoContract.brrCampaigns(1), "brr camp is wrong");
 
       await daoContract.cancelCampaign(2, {from: campCreator});
 
-      Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
-      Helper.assertEqual(0, await daoContract.brrCampaign(1), "brr camp is wrong");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(0), "brr camp is wrong");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(1), "brr camp is wrong");
 
       // create brr for next epoch again
       await submitNewCampaign(daoContract,
@@ -2045,21 +2045,21 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
 
-      Helper.assertEqual(1, await daoContract.brrCampaign(0), "brr camp is wrong");
-      Helper.assertEqual(3, await daoContract.brrCampaign(1), "brr camp is wrong");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(0), "brr camp is wrong");
+      Helper.assertEqual(3, await daoContract.brrCampaigns(1), "brr camp is wrong");
 
       // delay to next epoch
       await Helper.mineNewBlockAt(daoStartTime);
 
       await daoContract.cancelCampaign(3, {from: campCreator});
-      Helper.assertEqual(0, await daoContract.brrCampaign(1), "brr camp is wrong");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(1), "brr camp is wrong");
 
       // create brr for epoch 1 again
       await submitNewCampaign(daoContract,
         2, startBlock + 5, startBlock + 5 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
-      Helper.assertEqual(4, await daoContract.brrCampaign(1), "brr camp is wrong");
+      Helper.assertEqual(4, await daoContract.brrCampaigns(1), "brr camp is wrong");
     });
   });
 
@@ -2255,7 +2255,7 @@ contract('KyberDAO', function(accounts) {
       expectEvent(tx, 'Voted', {
         staker: victor,
         epoch: new BN(1),
-        campID: new BN(1),
+        campaignID: new BN(1),
         option: new BN(1)
       });
 
@@ -2279,7 +2279,7 @@ contract('KyberDAO', function(accounts) {
       expectEvent(tx, 'Voted', {
         staker: mike,
         epoch: new BN(1),
-        campID: new BN(1),
+        campaignID: new BN(1),
         option: new BN(2)
       });
       await daoContract.vote(1, 2, {from: loi});
@@ -3030,7 +3030,7 @@ contract('KyberDAO', function(accounts) {
       // camp alread ended
       await expectRevert(
         daoContract.vote(1, 1, {from: mike}),
-        "vote: campaign alr ended"
+        "vote: campaign already ended"
       );
     })
 
@@ -3381,7 +3381,7 @@ contract('KyberDAO', function(accounts) {
       // can not claim again
       await expectRevert(
         daoContract.claimReward(mike, 1),
-        "claimReward: alr claimed"
+        "claimReward: already claimed"
       )
 
       await feeHandler.withdrawAllETH({from: accounts[0]});
@@ -4888,7 +4888,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(2, data[0], "winning option is wrong");
       Helper.assertEqual(26, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(0, await daoContract.networkFeeCamp(1), "shouldn't have network fee camp for epoch 1");
+      Helper.assertEqual(0, await daoContract.networkFeeCampaigns(1), "shouldn't have network fee camp for epoch 1");
 
       data = await daoContract.getLatestNetworkFeeData();
 
@@ -4922,7 +4922,7 @@ contract('KyberDAO', function(accounts) {
       // delay to epoch 2
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(1), "should have network fee camp");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(1), "should have network fee camp");
 
       data = await daoContract.getLatestNetworkFeeData();
 
@@ -4954,7 +4954,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(1, await daoContract.networkFeeCamp(1), "should have network fee camp for epoch 1");
+      Helper.assertEqual(1, await daoContract.networkFeeCampaigns(1), "should have network fee camp for epoch 1");
 
       data = await daoContract.getLatestNetworkFeeData();
 
@@ -4964,7 +4964,7 @@ contract('KyberDAO', function(accounts) {
       let tx = await daoContract.getLatestNetworkFeeDataWithCache();
       logInfo("Get Network Fee: epoch > 0, has fee camp, no win option, gas used: " + tx.receipt.cumulativeGasUsed);
       tx = await daoContract.getLatestNetworkFeeDataWithCache();
-      logInfo("Get Network Fee: epoch > 0, has fee camp, alr concluded, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Network Fee: epoch > 0, has fee camp, already concluded, gas used: " + tx.receipt.cumulativeGasUsed);
 
       await updateCurrentBlockAndTimestamp();
       // min per: 41%, C = 0, t = 0
@@ -4986,7 +4986,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(2, await daoContract.networkFeeCamp(2), "should have network fee camp");
+      Helper.assertEqual(2, await daoContract.networkFeeCampaigns(2), "should have network fee camp");
 
       data = await daoContract.getLatestNetworkFeeData();
 
@@ -5015,7 +5015,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(3, await daoContract.networkFeeCamp(3), "should have network fee camp");
+      Helper.assertEqual(3, await daoContract.networkFeeCampaigns(3), "should have network fee camp");
 
       data = await daoContract.getLatestNetworkFeeData();
 
@@ -5043,7 +5043,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(1, data[0], "winning option is wrong");
       Helper.assertEqual(32, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(4, await daoContract.networkFeeCamp(4), "should have network fee camp");
+      Helper.assertEqual(4, await daoContract.networkFeeCampaigns(4), "should have network fee camp");
 
       data = await daoContract.getLatestNetworkFeeData();
 
@@ -5077,7 +5077,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(5, await daoContract.networkFeeCamp(5), "should have network fee camp");
+      Helper.assertEqual(5, await daoContract.networkFeeCampaigns(5), "should have network fee camp");
 
       data = await daoContract.getLatestNetworkFeeData();
 
@@ -5285,7 +5285,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(2, data[0], "winning option is wrong");
       Helper.assertEqual(26, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(0, await daoContract.brrCampaign(1), "shouldn't have brr camp for epoch 1");
+      Helper.assertEqual(0, await daoContract.brrCampaigns(1), "shouldn't have brr camp for epoch 1");
 
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
@@ -5326,7 +5326,7 @@ contract('KyberDAO', function(accounts) {
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
-      Helper.assertEqual(1, await daoContract.brrCampaign(1), "should have brr camp");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(1), "should have brr camp");
       let dataDecoded = await daoContract.getLatestBRRDataDecoded();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward is wrong");
@@ -5387,7 +5387,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(1, await daoContract.brrCampaign(1), "should have brr camp for epoch 1");
+      Helper.assertEqual(1, await daoContract.brrCampaigns(1), "should have brr camp for epoch 1");
 
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
@@ -5402,7 +5402,7 @@ contract('KyberDAO', function(accounts) {
       let tx = await daoContract.getLatestBRRDataWithCache();
       logInfo("Get Brr: epoch > 0, has brr camp + no win option, gas used: " + tx.receipt.gasUsed);
       tx = await daoContract.getLatestBRRDataWithCache();
-      logInfo("Get Brr: epoch > 0, has brr camp, alr concluded, gas used: " + tx.receipt.gasUsed);
+      logInfo("Get Brr: epoch > 0, has brr camp, already concluded, gas used: " + tx.receipt.gasUsed);
 
       Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
 
@@ -5428,7 +5428,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(2, await daoContract.brrCampaign(2), "should have brr camp");
+      Helper.assertEqual(2, await daoContract.brrCampaigns(2), "should have brr camp");
 
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 3, blocksToSeconds(epochPeriod * 3) + daoStartTime - 1
@@ -5458,7 +5458,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(3, await daoContract.brrCampaign(3), "should have brr camp");
+      Helper.assertEqual(3, await daoContract.brrCampaigns(3), "should have brr camp");
 
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 4, blocksToSeconds(epochPeriod * 4) + daoStartTime - 1
@@ -5487,7 +5487,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(1, data[0], "winning option is wrong");
       Helper.assertEqual(32, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(4, await daoContract.brrCampaign(4), "should have brr camp");
+      Helper.assertEqual(4, await daoContract.brrCampaigns(4), "should have brr camp");
 
       await daoContract.getLatestBRRDataWithCache();
 
@@ -5515,12 +5515,12 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(5, await daoContract.brrCampaign(5), "should have brr camp");
+      Helper.assertEqual(5, await daoContract.brrCampaigns(5), "should have brr camp");
 
       tx = await daoContract.getLatestBRRDataWithCache();
       logInfo("Get Brr: epoch > 0, has brr camp + win option, gas used: " + tx.receipt.cumulativeGasUsed);
       tx = await daoContract.getLatestBRRDataWithCache();
-      logInfo("Get Brr: epoch > 0, has brr camp, alr concluded, gas used: " + tx.receipt.cumulativeGasUsed);
+      logInfo("Get Brr: epoch > 0, has brr camp, already concluded, gas used: " + tx.receipt.cumulativeGasUsed);
 
       Helper.assertEqual(32, await daoContract.latestBrrResult(), "brr default is wrong");
 
@@ -5657,8 +5657,8 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(await daoContract.kncToken(), kncToken.address, "KNC token is wrong");
       Helper.assertEqual(await daoContract.staking(), stakingContract.address, "Staking contract is wrong");
       Helper.assertEqual(await daoContract.feeHandler(), feeHandler.address, "Feehandler contract is wrong");
-      Helper.assertEqual(await daoContract.MAX_CAMP_OPTIONS(), maxCampOptions, "max camp option is wrong");
-      Helper.assertEqual(await daoContract.MIN_CAMP_DURATION_SECONDS(), blocksToSeconds(minCampPeriod), "min camp period is wrong");
+      Helper.assertEqual(await daoContract.MAX_CAMPAIGN_OPTIONS(), maxCampOptions, "max camp option is wrong");
+      Helper.assertEqual(await daoContract.MIN_CAMPAIGN_DURATION_SECONDS(), blocksToSeconds(minCampPeriod), "min camp period is wrong");
       Helper.assertEqual(await daoContract.latestNetworkFeeResult(), defaultNetworkFee, "default network fee is wrong");
       Helper.assertEqual(await daoContract.latestBrrResult(), defaultBrrData, "default brr data is wrong");
       Helper.assertEqual(await daoContract.campaignCreator(), campCreator, "campaignCreator is wrong");
@@ -5786,7 +5786,7 @@ contract('KyberDAO', function(accounts) {
           maxCampOptions, minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           zeroAddress
         ),
-        "campCreator is 0"
+        "campaignCreator is 0"
       )
     });
   });
@@ -5920,7 +5920,7 @@ contract('KyberDAO', function(accounts) {
 
       let txResult = await daoContract.transferCampaignCreatorQuickly(newCampCreator, {from: campCreator});
       expectEvent(txResult, 'TransferCampaignCreatorPending', {
-        pendingCampCreator: newCampCreator
+        pendingCampaignCreator: newCampCreator
       });
       expectEvent(txResult, 'CampaignCreatorClaimed', {
         newCampaignCreator: newCampCreator,
@@ -5937,9 +5937,9 @@ contract('KyberDAO', function(accounts) {
 
       txResult = await daoContract.transferCampaignCreator(campCreator, {from: newCampCreator});
       expectEvent(txResult, 'TransferCampaignCreatorPending', {
-        pendingCampCreator: campCreator
+        pendingCampaignCreator: campCreator
       });
-      Helper.assertEqual(campCreator, await daoContract.pendingCampCreator(), "pending campaign creator address is wrong");
+      Helper.assertEqual(campCreator, await daoContract.pendingCampaignCreator(), "pending campaign creator address is wrong");
       Helper.assertEqual(newCampCreator, await daoContract.campaignCreator(), "campaign creator address is wrong");
 
       // can not claim camp creator from non pending camp creator
@@ -5953,17 +5953,17 @@ contract('KyberDAO', function(accounts) {
         previousCampaignCreator: newCampCreator
       });
       Helper.assertEqual(campCreator, await daoContract.campaignCreator(), "campaign creator address is wrong");
-      Helper.assertEqual(zeroAddress, await daoContract.pendingCampCreator(), "pending campaign creator address is wrong");
+      Helper.assertEqual(zeroAddress, await daoContract.pendingCampaignCreator(), "pending campaign creator address is wrong");
 
       // can not transfer to address 0
       await expectRevert(
         daoContract.transferCampaignCreator(zeroAddress, {from: campCreator}),
-        "newCampCreator is 0"
+        "newCampaignCreator is 0"
       )
       // can not transfer quickly to address 0
       await expectRevert(
         daoContract.transferCampaignCreatorQuickly(zeroAddress, {from: campCreator}),
-        "newCampCreator is 0"
+        "newCampaignCreator is 0"
       )
     });
 

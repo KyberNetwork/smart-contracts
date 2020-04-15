@@ -81,7 +81,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     * @dev calls to set delegation for msg.sender, will take effect from the next epoch
     * @param dAddr address to delegate to
     */
-    function delegate(address dAddr) public returns(bool) {
+    function delegate(address dAddr) external {
         require(dAddr != address(0), "delegate: delegated address should not be 0x0");
         address staker = msg.sender;
         uint curEpoch = getCurrentEpochNumber();
@@ -90,7 +90,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         address curDAddr = delegatedAddress[curEpoch + 1][staker];
         // nothing changes here
-        if (dAddr == curDAddr) { return false; }
+        if (dAddr == curDAddr) { return; }
 
         uint updatedStake = stake[curEpoch + 1][staker];
 
@@ -132,7 +132,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     * @dev call to stake more KNC for msg.sender
     * @param amount amount of KNC to stake
     */
-    function deposit(uint amount) public {
+    function deposit(uint amount) external {
         require(amount > 0, "deposit: amount to deposit should be positive");
         // compute epoch number
         uint curEpoch = getCurrentEpochNumber();
@@ -163,7 +163,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     * @dev call to withdraw KNC from staking, it could affect reward when calling DAO handleWithdrawal
     * @param amount amount of KNC to withdraw
     */
-    function withdraw(uint amount) public nonReentrant {
+    function withdraw(uint amount) external nonReentrant {
         require(amount > 0, "withdraw: amount is 0");
 
         uint curEpoch = getCurrentEpochNumber();
@@ -239,7 +239,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     * @dev if the data has not been inited, it means user hasn't done any action -> no reward
     */
     function getStakerDataForPastEpoch(address staker, uint epoch)
-        public view
+        external view
         returns(uint _stake, uint _delegatedStake, address _delegatedAddress)
     {
         _stake = stake[epoch][staker];
@@ -251,7 +251,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     * @notice don't call on-chain, possibly high gas consumption
     * @dev allow to get data up to current epoch + 1
     */
-    function getStake(address staker, uint epoch) public view returns(uint) {
+    function getStake(address staker, uint epoch) external view returns(uint) {
         uint curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch + 1) { return 0; }
         uint i = epoch;
@@ -267,7 +267,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     * @notice don't call on-chain, possibly high gas consumption
     * @dev allow to get data up to current epoch + 1
     */
-    function getDelegatedStake(address staker, uint epoch) public view returns(uint) {
+    function getDelegatedStake(address staker, uint epoch) external view returns(uint) {
         uint curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch + 1) { return 0; }
         uint i = epoch;
@@ -283,7 +283,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     * @notice don't call on-chain, possibly high gas consumption
     * @dev allow to get data up to current epoch + 1
     */
-    function getDelegatedAddress(address staker, uint epoch) public view returns(address) {
+    function getDelegatedAddress(address staker, uint epoch) external view returns(address) {
         uint curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch + 1) { return address(0); }
         uint i = epoch;
@@ -296,15 +296,15 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         return staker;
     }
 
-    function getLatestDelegatedAddress(address staker) public view returns(address) {
+    function getLatestDelegatedAddress(address staker) external view returns(address) {
         return latestDelegatedAddress[staker] == address(0) ? staker : latestDelegatedAddress[staker];
     }
 
-    function getLatestDelegatedStake(address staker) public view returns(uint) {
+    function getLatestDelegatedStake(address staker) external view returns(uint) {
         return latestDelegatedStake[staker];
     }
 
-    function getLatestStakeBalance(address staker) public view returns(uint) {
+    function getLatestStakeBalance(address staker) external view returns(uint) {
         return latestStake[staker];
     }
 
