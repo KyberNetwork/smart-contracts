@@ -155,7 +155,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     event Withdraw(uint curEpoch, address staker, uint amount);
     // event is fired if something is wrong with withdrawal
     // even though the withdrawal is still success
-    event WithdrawFailure(uint curEpoch, address staker, uint amount);
+    event WithdrawDataUpdateFailed(uint curEpoch, address staker, uint amount);
 
     /**
     * @dev call to withdraw KNC from staking, it could affect reward when calling DAO handleWithdrawal
@@ -172,7 +172,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         (bool success,) = address(this).call(abi.encodeWithSignature("handleWithdrawal(address,uint256,uint256)",staker,amount,curEpoch));
         if (!success) {
             // Note: should catch this event to check if something went wrong
-            emit WithdrawFailure(curEpoch, staker, amount);
+            emit WithdrawDataUpdateFailed(curEpoch, staker, amount);
         }
 
         stakerLatestData[staker].stake = stakerLatestData[staker].stake.sub(amount);
@@ -336,7 +336,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
                 // don't revert if DAO revert so data will be updated correctly
                 (bool success,) = address(daoContract).call(abi.encodeWithSignature("handleWithdrawal(address,uint256)",dAddr,reduceAmount));
                 if (!success) {
-                    emit WithdrawFailure(curEpoch, staker, amount);
+                    emit WithdrawDataUpdateFailed(curEpoch, staker, amount);
                 }
             }
         }

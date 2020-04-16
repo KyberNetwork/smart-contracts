@@ -184,15 +184,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     * @param staker address of staker to reduce reward
     * @param reduceAmount amount voting power to be reduced for each campaign staker has voted at this epoch
     */
-    function handleWithdrawal(address staker, uint reduceAmount) external onlyStakingContract returns(bool) {
+    function handleWithdrawal(address staker, uint reduceAmount) external onlyStakingContract {
         // staking shouldn't call this func with reduce amount = 0
-        if (reduceAmount == 0) { return false; }
+        if (reduceAmount == 0) { return; }
         uint curEpoch = getCurrentEpochNumber();
 
         // update total points for epoch
         uint numVotes = numberVotes[staker][curEpoch];
         // if no votes, no need to deduce points, but it should still return true to allow withdraw
-        if (numVotes == 0) { return true; }
+        if (numVotes == 0) { return; }
 
         totalEpochPoints[curEpoch] = totalEpochPoints[curEpoch].sub(numVotes.mul(reduceAmount));
 
@@ -213,8 +213,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                 campaign.campaignVoteData.votePerOption[votedOption - 1] = campaign.campaignVoteData.votePerOption[votedOption - 1].sub(reduceAmount);
             }
         }
-
-        return true;
     }
 
     event NewCampaignCreated(

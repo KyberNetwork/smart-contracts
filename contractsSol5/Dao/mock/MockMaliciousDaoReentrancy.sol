@@ -29,13 +29,12 @@ contract MockMaliciousDaoReentrancy is EpochUtils {
         staking.withdraw(amount);
     }
 
-    function handleWithdrawal(address, uint) public returns(bool) {
+    function handleWithdrawal(address, uint) public {
         if (totalDeposit > 0) {
             // reentrant one
             uint amount = totalDeposit;
             totalDeposit = 0;
             staking.withdraw(amount);
         }
-        return true;
     }
 }
