@@ -399,19 +399,19 @@ contract('KyberFeeHandler', function(accounts) {
             );
         });
 
-        it("should revert if expiry block >= 2 ** 64", async() => {
+        it("should revert if expiry timestamp >= 2 ** 64", async() => {
             let badExpiryTimestamp = new BN(2).pow(new BN(64));
             await mockDAO.setMockEpochAndExpiryTimestamp(defaultEpoch, badExpiryTimestamp);
             await expectRevert(
                 feeHandler.getBRR(),
-                "expiry block overflow"
+                "expiry timestamp overflow"
             );
 
             badExpiryTimestamp = badExpiryTimestamp.add(new BN(1));
             await mockDAO.setMockEpochAndExpiryTimestamp(defaultEpoch, badExpiryTimestamp);
             await expectRevert(
                 feeHandler.getBRR(),
-                "expiry block overflow"
+                "expiry timestamp overflow"
             );
         });
 
@@ -440,11 +440,11 @@ contract('KyberFeeHandler', function(accounts) {
         });
 
         it("should have updated BRR if expiryTimestamp == 2 ** 64 - 1", async() => {
-            let maxEpiryBlock = new BN(2).pow(new BN(64)).sub(new BN(1));
-            await mockDAO.setMockEpochAndExpiryTimestamp(defaultEpoch, maxEpiryBlock);
+            let maxExpiryTimestamp = new BN(2).pow(new BN(64)).sub(new BN(1));
+            await mockDAO.setMockEpochAndExpiryTimestamp(defaultEpoch, maxExpiryTimestamp);
             await feeHandler.getBRR();
             let result = await feeHandler.readBRRData();
-            Helper.assertEqual(result.expiryTimestamp, maxEpiryBlock, "expiry block was not updated");
+            Helper.assertEqual(result.expiryTimestamp, maxExpiryTimestamp, "expiry timestamp was not updated");
         });
     });
 

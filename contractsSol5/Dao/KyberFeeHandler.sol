@@ -28,7 +28,7 @@ import "../utils/zeppelin/SafeMath.sol";
  *              Burn: accumulated in the contract. Burned value and interval limited with safe check using sanity rate
  *              Platfrom fee: accumulated per platform wallet, can be claimed any time.
  *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO.
- *          Expiry block for data is set. when data expires. Fee handler reads new data from DAO.
+ *          Expiry timestamp for data is set. when data expires. Fee handler reads new data from DAO.
  */
 
  contract BurnConfigPermission {
@@ -433,7 +433,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
 
     function updateBRRData(uint reward, uint rebate, uint expiryTimestamp, uint epoch) internal {
         // reward and rebate combined values <= BPS. Tested in getBRR.
-        require(expiryTimestamp < 2 ** 64, "expiry block overflow");
+        require(expiryTimestamp < 2 ** 64, "expiry timestamp overflow");
         require(epoch < 2 ** 32, "epoch overflow");
 
         brrAndEpochData.rewardBps = uint16(reward);

@@ -298,11 +298,11 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
     it("test first trade of epoch 0 records correct default network fee and brr data", async() => {
         let networkData = await network.getNetworkData();
-        // default network data, expiry block should be block when network is deployed
+        // default network data, expiry timestamp should be block when network is deployed
         Helper.assertLesser(networkData.expiryTimestamp, daoStartTime - 1);
 
         let brrData = await feeHandler.readBRRData();
-        // default brr data, expiry block should be block when feeHandler is deployed
+        // default brr data, expiry timestamp should be block when feeHandler is deployed
         Helper.assertLesser(brrData.expiryTimestamp, daoStartTime - 1);
         Helper.assertEqual(brrData.epoch, 0);
 
@@ -319,7 +319,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         );
     });
 
-    it("test first trade at epoch 1 records correct default data with different expiry block number", async function() {
+    it("test first trade at epoch 1 records correct default data with different expiry timestamp number", async function() {
         // delay to epoch 1
         await Helper.mineNewBlockAt(daoStartTime);
         Helper.assertEqual(1, await daoContract.getCurrentEpochNumber());
@@ -680,7 +680,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         Helper.assertEqual(curBrrData.rebateBps.add(new BN(1)), daoBrrData.rebateInBps);
     });
 
-    it("test no network fee and brr camps, data changes only expiry block as expected", async() => {
+    it("test no network fee and brr camps, data changes only expiry timestamp as expected", async() => {
         let curNetworkFee = await daoContract.latestNetworkFeeResult();
         let curBrrData = await feeHandler.readBRRData();
 

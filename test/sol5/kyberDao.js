@@ -4893,7 +4893,7 @@ contract('KyberDAO', function(accounts) {
       data = await daoContract.getLatestNetworkFeeData();
 
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
-      // expiry block should be end of epoch 2
+      // expiry timestamp should be end of epoch 2
       Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, data[1], "expiry timestamp is wrong for epoch 1");
     });
 
@@ -5178,10 +5178,10 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward default is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate default is wrong");
       Helper.assertEqual(0, dataDecoded.epoch, "epoch is wrong");
-      Helper.assertEqual(daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry block is wrong");
+      Helper.assertEqual(daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry timestamp is wrong");
 
       // make sure data is correct
-      // reward - rebate - burn - epoch - expiry block
+      // reward - rebate - burn - epoch - expiry timestamp
       let tx = await daoContract.getLatestBRRData();
       logInfo("Get Brr: epoch = 0, gas used: " + tx.receipt.cumulativeGasUsed);
 
@@ -5203,7 +5203,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward default is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate default is wrong");
       Helper.assertEqual(0, dataDecoded.epoch, "epoch is wrong");
-      Helper.assertEqual(daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry block is wrong");
+      Helper.assertEqual(daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry timestamp is wrong");
     });
 
     it("Test get brr data returns correct latest data, no campaigns", async function() {
@@ -5225,7 +5225,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward default is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate default is wrong");
       Helper.assertEqual(1, dataDecoded.epoch, "epoch is wrong");
-      Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry block is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry timestamp is wrong");
 
       rebate = 46;
       reward = 54;
@@ -5249,7 +5249,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate is wrong");
       Helper.assertEqual(4, dataDecoded.epoch, "epoch is wrong");
-      Helper.assertEqual(blocksToSeconds(epochPeriod * 4) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry block is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod * 4) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry timestamp is wrong");
     });
 
     it("Test get brr returns correct latest data, has camp but no brr campaign", async function() {
@@ -5332,7 +5332,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate is wrong");
       Helper.assertEqual(1, dataDecoded.epoch, "epoch is wrong");
-      Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry block is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry timestamp is wrong");
 
       // delay to epoch 2, winning option should take effect
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
@@ -5342,7 +5342,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(newReward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(newRebate, dataDecoded.rebateInBps, "rebate is wrong");
       Helper.assertEqual(2, dataDecoded.epoch, "epoch is wrong");
-      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry block is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry timestamp is wrong");
 
       await daoContract.checkLatestBrrData(
         newReward, newRebate, 10000 - newRebate - newReward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
@@ -5355,7 +5355,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(newReward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(newRebate, dataDecoded.rebateInBps, "rebate is wrong");
       Helper.assertEqual(2, dataDecoded.epoch, "epoch is wrong");
-      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry block is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry timestamp is wrong");
 
       await resetSetupForKNCToken();
     });
@@ -5397,7 +5397,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate is wrong");
       Helper.assertEqual(2, dataDecoded.epoch, "epoch is wrong");
-      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry block is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry timestamp is wrong");
 
       let tx = await daoContract.getLatestBRRData();
       logInfo("Get Brr: epoch > 0, has brr camp + no win option, gas used: " + tx.receipt.gasUsed);

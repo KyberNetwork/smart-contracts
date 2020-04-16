@@ -1713,7 +1713,7 @@ contract('KyberNetwork', function(accounts) {
             );
         });
 
-        it("set expiry block", async function(){
+        it("set expiry timestamp", async function(){
             currentTime = await Helper.getCurrentBlockTime();
             feeBPS = new BN(100);
             expiryTimestamp = currentTime + 10;
