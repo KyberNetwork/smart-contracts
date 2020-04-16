@@ -1116,6 +1116,25 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(mulPrecision(10), await dao.values(loi), "dao values should be correct");
     });
 
+    it("Test handleWithdrawal should revert sender is not staking", async() => {
+      await deployStakingContract(10, currentBlock + 10);
+      let dao = await MockKyberDAO.new(
+        blocksToSeconds(10),
+        blockToTimestamp(currentBlock + 10),
+      );
+      await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
+
+      await kncToken.transfer(victor, mulPrecision(500));
+      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await stakingContract.deposit(mulPrecision(500), {from: victor});
+
+      await expectRevert(
+        stakingContract.handleWithdrawal(victor, mulPrecision(100), 0),
+        "only staking contract can call this function"
+      )
+      await stakingContract.withdraw(mulPrecision(100), {from: victor});
+    });
+
     it("Test withdraw gas usages", async function() {
       await deployStakingContract(10, currentBlock + 10);
       let dao = await MockKyberDAO.new(
@@ -2540,7 +2559,20 @@ contract('KyberStaking', function(accounts) {
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
     });
 
-    it("Test withdraw should revert when handleWithdrawal in DAO reverted", async function() {
+    it("Test delegate should revert when delegate to address 0", async function() {
+      await deployStakingContract(2, currentBlock + 2);
+      await stakingContract.setDAOAddressWithoutCheck(accounts[8], {from: daoSetter});
+
+      await expectRevert(
+        stakingContract.delegate(zeroAddress, {from: victor}),
+        "delegate: delegated address should not be 0x0"
+      )
+      await stakingContract.delegate(mike, {from: victor});
+    });
+  });
+
+  describe("Test Withdrawal shouldn't revert", () => {
+    it("Test withdraw shouldn't revert when handleWithdrawal in DAO reverted", async function() {
       await deployStakingContract(10, currentBlock + 10);
       let dao = await MockDAOWithdrawFailed.new(
         blocksToSeconds(10),
@@ -2559,13 +2591,14 @@ contract('KyberStaking', function(accounts) {
       await Helper.increaseNextBlockTimestamp(
         blocksToSeconds(epochPeriod)
       );
-      await expectRevert(
-        stakingContract.withdraw(mulPrecision(100), {from: victor}),
-        "withdraw: dao returns false for handle withdrawal"
-      )
+      // shoule call DAO, but shouldn't revert, only latest data is updated
+      await stakingContract.withdraw(mulPrecision(100), {from: victor});
+      await Helper.assertEqual(mulPrecision(300), await stakingContract.getLatestStakeBalance(victor));
+      await Helper.assertEqual(mulPrecision(300), await stakingContract.getStake(victor, 1));
+      await Helper.assertEqual(mulPrecision(300), await stakingContract.getStake(victor, 2));
     });
 
-    it("Test withdraw should revert when DAO does not have handleWithdrawl func", async function() {
+    it("Test withdraw shouldn't revert when DAO does not have handleWithdrawl func", async function() {
       await deployStakingContract(10, currentBlock + 10);
       await stakingContract.setDAOAddressWithoutCheck(accounts[8], {from: daoSetter});
 
@@ -2580,14 +2613,14 @@ contract('KyberStaking', function(accounts) {
         blocksToSeconds(epochPeriod)
       );
 
-      // Transaction reverted: function call to a non-contract account
-      // so use unspecified here
-      await expectRevert.unspecified(
-        stakingContract.withdraw(mulPrecision(100), {from: victor})
-      )
+      // revert when calling dao, but withdraw function should pass
+      await stakingContract.withdraw(mulPrecision(100), {from: victor});
+      await Helper.assertEqual(mulPrecision(300), await stakingContract.getLatestStakeBalance(victor));
+      await Helper.assertEqual(mulPrecision(300), await stakingContract.getStake(victor, 1));
+      await Helper.assertEqual(mulPrecision(300), await stakingContract.getStake(victor, 2));
     });
 
-    it("Test withdraw should revert with re-entrancy", async() => {
+    it("Test withdraw shouldn't revert with re-entrancy from DAO", async() => {
       await deployStakingContract(10, currentBlock + 10);
       let maliciousDao = await MaliciousDaoReentrancy.new(
         blocksToSeconds(10),
@@ -2607,29 +2640,24 @@ contract('KyberStaking', function(accounts) {
       );
 
       // partial withdraw, dao will try to re-enter withdraw
-      await expectRevert(
-        maliciousDao.withdraw(mulPrecision(10)),
-        "ReentrancyGuard: reentrant call"
-      )
+      await maliciousDao.withdraw(mulPrecision(10));
+      // latest stake should be updated, but stake is still the same
+      await Helper.assertEqual(mulPrecision(70), await stakingContract.getLatestStakeBalance(maliciousDao.address));
+      await Helper.assertEqual(mulPrecision(70), await stakingContract.getStake(maliciousDao.address, 1));
+      await Helper.assertEqual(mulPrecision(70), await stakingContract.getStake(maliciousDao.address, 2));
 
       // full withdraw, no reentrant
-      await maliciousDao.withdraw(mulPrecision(80));
-    });
+      await maliciousDao.withdraw(mulPrecision(70));
+      // stake and latest stake should be updated
+      await Helper.assertEqual(0, await stakingContract.getLatestStakeBalance(maliciousDao.address));
+      await Helper.assertEqual(0, await stakingContract.getStake(maliciousDao.address, 1));
+      await Helper.assertEqual(0, await stakingContract.getStake(maliciousDao.address, 2));
 
-    it("Test delegate should revert when delegate to address 0", async function() {
-      await deployStakingContract(2, currentBlock + 2);
-      await stakingContract.setDAOAddressWithoutCheck(accounts[8], {from: daoSetter});
-
-      await expectRevert(
-        stakingContract.delegate(zeroAddress, {from: victor}),
-        "delegate: delegated address should not be 0x0"
-      )
-      await stakingContract.delegate(mike, {from: victor});
     });
-  });
+  })
 
   describe("#Malicious Staking", () => {
-    it("Test withdraw should revert, stake at next epoch less than amount", async function() {
+    it("Test withdraw shouldn't revert, stake at next epoch less than amount", async function() {
       epochPeriod = 10;
       startBlock = currentBlock + 20;
       stakingContract = await MaliciousStaking.new(
@@ -2645,9 +2673,11 @@ contract('KyberStaking', function(accounts) {
       // reduce next epoch stake, so withdraw will check and revert
       await stakingContract.setEpochStake(victor, 1, mulPrecision(100));
 
-      await expectRevert.unspecified(
-        stakingContract.withdraw(mulPrecision(200), {from: victor})
-      )
+      await stakingContract.withdraw(mulPrecision(200), {from: victor});
+      // latest stake is still update correctly
+      // stake of next epoch is not updated
+      Helper.assertEqual(mulPrecision(300), await stakingContract.getLatestStakeBalance(victor));
+      Helper.assertEqual(mulPrecision(100), await stakingContract.getStake(victor, 1));
     });
 
     it("Test withdraw should revert, pass checking but not enough knc to withdraw", async function() {
@@ -2673,7 +2703,7 @@ contract('KyberStaking', function(accounts) {
       )
     });
 
-    it("Test withdraw should revert, delegated stake less than withdrawal amount", async function() {
+    it("Test withdraw shouldn't revert, delegated stake less than withdrawal amount", async function() {
       epochPeriod = 10;
       startBlock = currentBlock + 20;
       stakingContract = await MaliciousStaking.new(
@@ -2689,15 +2719,21 @@ contract('KyberStaking', function(accounts) {
 
       await stakingContract.setLatestDelegatedStake(mike, mulPrecision(200));
 
-      await expectRevert.unspecified(
-        stakingContract.withdraw(mulPrecision(300), {from: victor})
-      )
+      await stakingContract.withdraw(mulPrecision(300), {from: victor});
+      // latest stake is still update correctly
+      // latest delegated stake + delegated stake are not updated
+      Helper.assertEqual(mulPrecision(200), await stakingContract.getLatestStakeBalance(victor));
+      Helper.assertEqual(mulPrecision(500), await stakingContract.getDelegatedStake(mike, 1));
+      Helper.assertEqual(mulPrecision(200), await stakingContract.getLatestDelegatedStake(mike));
 
-      await stakingContract.setEpochDelegatedStake(mike, 1, mulPrecision(200));
+      await stakingContract.setEpochDelegatedStake(mike, 1, mulPrecision(100));
 
-      await expectRevert.unspecified(
-        stakingContract.withdraw(mulPrecision(300), {from: victor})
-      )
+      await stakingContract.withdraw(mulPrecision(150), {from: victor});
+      // latest stake is still update correctly
+      // latest delegated stake + delegated stake are not updated
+      Helper.assertEqual(mulPrecision(50), await stakingContract.getLatestStakeBalance(victor));
+      Helper.assertEqual(mulPrecision(100), await stakingContract.getDelegatedStake(mike, 1));
+      Helper.assertEqual(mulPrecision(200), await stakingContract.getLatestDelegatedStake(mike));
     });
 
     it("Test delegate should revert, delegated stake is small", async function() {
