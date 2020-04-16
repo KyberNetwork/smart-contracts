@@ -10,13 +10,14 @@ const RateHelper = artifacts.require("KyberRateHelper.sol");
 const GenerousNetwork = artifacts.require("GenerousKyberNetwork.sol");
 const GenerousNetwork2 = artifacts.require("GenerousKyberNetwork2.sol");
 const MaliciousNetwork = artifacts.require("MaliciousKyberNetwork.sol");
+const MockTrader = artifacts.require("MockTrader.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
 
 const BN = web3.utils.BN;
 
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint} = require("../helper.js");
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../helper.js");
 const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, MASK_IN_HINTTYPE,
     MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE}  = require('./networkHelper.js');
 
@@ -27,12 +28,14 @@ const negligibleRateDiffBps = new BN(10); //0.01%
 const maxDestAmt = new BN(2).pow(new BN(255));
 
 let networkFeeBps = new BN(20);
+let platformFeeArray = [zeroBN, new BN(50), new BN(100)];
 
 let admin;
 let alerter;
 let networkProxy;
 let network;
 let storage;
+let rateHelper;
 let DAO;
 let feeHandler;
 let matchingEngine;
@@ -55,6 +58,9 @@ let burnBlockInterval = new BN(30);
 //////////////
 let reserveInstances = [];
 let numReserves;
+let hint;
+const tradeTypesArray = [EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE];
+const tradeStr = ["MASK IN", "MASK OUT", "SPLIT", "NO HINT"];
 
 //tokens data
 ////////////
@@ -168,184 +174,49 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         describe("test getExpectedRateAfterFee - different hints, fees.", async() => {
-            it("check for e2t, different fees, no hint.", async() => {
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let i = 0;
-                    let tokenAdd = tokens[i].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i++])));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(ethAddress, tokenAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
+            for (platformFeeBps of platformFeeArray) {
+                for (tradeType of tradeTypesArray) {
+                    let platformFee = platformFeeBps;
+                    let hintType = tradeType;
+                    let t2eIterator = numTokens - 1;
+                    let e2tIterator = 0;
+                    let t2tIterator = 0;
+
+                    it(`check for t2e (${tradeStr[hintType]}), platform fee ${platformFee.toString()} bps)`, async() => {
+                        let tokenAdd = tokens[t2eIterator].address;
+                        let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, tokenAdd, ethAddress, srcQty);
+                        let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, platformFee, emptyHint)
+                        let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, platformFee, emptyHint);
+                        Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                            "expected rate network not equal rate proxy, %d", t2eIterator);
+                        t2eIterator--;
+                    });
+
+                    it(`check for e2t (${tradeStr[hintType]}), platform fee ${platformFee.toString()} bps)`, async() => {  
+                        let tokenAdd = tokens[e2tIterator].address;
+                        let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[e2tIterator])));
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, tokenAdd, srcQty);
+                        let networkRate = await network.getExpectedRateWithHintAndFee(ethAddress, tokenAdd, srcQty, platformFee, hint)
+                        let proxyRate = await networkProxy.getExpectedRateAfterFee(ethAddress, tokenAdd, srcQty, platformFee, hint);
+                        Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                            "expected rate network not equal rate proxy, %d", e2tIterator);
+                        e2tIterator++;
+                    });
+
+                    it(`check for t2t (${tradeStr[hintType]}), platform fee ${platformFee.toString()} bps)`, async() => {
+                        let srcAdd = tokens[t2tIterator].address;
+                        let destAdd = tokens[(t2tIterator + 1) % numTokens].address;
+                        let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[t2tIterator])));
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcAdd, destAdd, srcQty);
+                        let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, platformFee, hint)
+                        let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, platformFee, hint);
+                        Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
+                            "expected rate network not equal rate proxy, %d", t2tIterator);
+                        t2tIterator++;
+                    });
                 }
-            });
-
-            it("check for t2e, different fees, no hint.", async() => {
-                let i = numTokens - 1;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i--;
-                }
-            });
-
-            it("check for t2t, zero fee, no hint.", async() => {
-                let i = 0;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let srcAdd = tokens[i].address;
-                    let destAdd = tokens[(i + 1) % numTokens].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i++;
-                }
-            });
-
-            it("check for t2e, different fees, mask in trade type.", async() => {
-                // TODO: add trade type
-                let i = numTokens - 1;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i--;
-                }
-            });
-
-            it("check for e2t, different fees, mask in trade type.", async() => {
-                // TODO: add trade type
-                let i = numTokens - 1;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i--;
-                }
-            });
-
-            it("check for t2t, zero fee, mask in type.", async() => {
-                // TODO: add trade type
-                let i = 0;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let srcAdd = tokens[i].address;
-                    let destAdd = tokens[(i + 1) % numTokens].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i++;
-                }
-            });
-
-            it("check for t2e, different fees, split trade type.", async() => {
-                // TODO: add trade type
-                let i = numTokens - 1;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i--;
-                }
-            });
-
-            it("check for e2t, different fees, split trade type", async() => {
-                // TODO: add trade type
-                let i = numTokens - 1;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i--;
-                }
-            });
-
-            it("check for t2t, zero fee, split trade type.", async() => {
-                // TODO: add trade type
-                let i = 0;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let srcAdd = tokens[i].address;
-                    let destAdd = tokens[(i + 1) % numTokens].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i++;
-                }
-            });
-
-            it("check for t2e, different fees, mask out.", async() => {
-            // TODO: add trade type
-                let i = numTokens - 1;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i--;
-                }
-            });
-
-            it("check for e2t, different fees, mask out.", async() => {
-                // TODO: add trade type
-                let i = numTokens - 1;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let tokenAdd = tokens[i].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(ethDecimals)));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(tokenAdd, ethAddress, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i--;
-                }
-            });
-
-            it("check for t2t, zero fee, mask out.", async() => {
-                // TODO: add trade type
-                let i = 0;
-
-                for (let fee = 0; fee <= 100; fee+= 50) {
-                    let srcAdd = tokens[i].address;
-                    let destAdd = tokens[(i + 1) % numTokens].address;
-                    let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[i])));
-                    let networkRate = await network.getExpectedRateWithHintAndFee(srcAdd, destAdd, srcQty, fee, emptyHint)
-                    let proxyRate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, emptyHint);
-                    Helper.assertEqual(networkRate.rateWithAllFees, proxyRate,
-                        "expected rate network not equal rate proxy, %d", i);
-                    i++;
-                }
-            });
+            }
         });
 
         describe("test getPriceData no fee - different hints.", async() => {
@@ -541,7 +412,73 @@ contract('KyberNetworkProxy', function(accounts) {
 
 
     describe("test actual rate vs min rate in different scenarios. ", async() => {
-        //todo: use minRate = network.getRateWithFee and see why its very different then actual calculated rate in proxy
+        before("deploy mockTrader instance", async() => {
+            mockTrader = await MockTrader.new(networkProxy.address);
+        });
+
+        for (tradeType of tradeTypesArray) {
+            let hintType = tradeType;
+            let fee = new BN(123);
+            let tokenId = 0;
+
+            it(`should perform a t2e trade (${tradeStr[hintType]}), with minRate = getExpectedRateAfterFee`, async() => {
+                let tokenAdd = tokens[tokenId].address;
+                let token = tokens[tokenId];
+                let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
+                const numResForTest = getNumReservesForType(hintType);
+
+                //log("testing - numRes: " + numResForTest + " type: " + str + " fee: " + fee);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, numResForTest, tokenAdd, ethAddress, srcQty);
+                let rate = await networkProxy.getExpectedRateAfterFee(tokenAdd, ethAddress, srcQty, fee, hint);
+
+                await token.transfer(taker, srcQty);
+                await token.approve(networkProxy.address, srcQty, {from: taker});
+                await networkProxy.tradeWithHintAndFee(tokenAdd, srcQty, ethAddress, taker,
+                    maxDestAmt, rate, platformWallet, fee, hint, {from: taker});
+                    
+                await token.transfer(taker, srcQty);
+                await token.approve(mockTrader.address, srcQty, {from: taker});
+                await mockTrader.tradeWithHintAndFee(tokenAdd, srcQty, ethAddress, taker,
+                    platformWallet, fee, hint, {from: taker});
+            });
+
+            it(`should perform a e2t trade (${tradeStr[hintType]}), with minRate = getExpectedRateAfterFee`, async() => {
+                let tokenAdd = tokens[tokenId].address;
+                let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
+                const numResForTest = getNumReservesForType(hintType);
+
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, numResForTest, ethAddress, tokenAdd, srcQty);
+                let rate = await networkProxy.getExpectedRateAfterFee(ethAddress, tokenAdd, srcQty, fee, hint);
+                await networkProxy.tradeWithHintAndFee(ethAddress, srcQty, tokenAdd, taker,
+                    maxDestAmt, rate, platformWallet, fee, hint, {from: taker, value: srcQty});
+                
+                await mockTrader.tradeWithHintAndFee(ethAddress, srcQty, tokenAdd, taker,
+                    platformWallet, fee, hint, {from: taker, value: srcQty});
+            });
+
+            it(`should perform a t2t trade (${tradeStr[hintType]}), with minRate = getExpectedRateAfterFee`, async() => {
+                let srcAdd = tokens[tokenId].address;
+                let destAdd = tokens[(tokenId + 1) % numTokens].address;
+                let srcToken = tokens[tokenId];
+                let srcQty = (new BN(3)).mul((new BN(10)).pow(new BN(tokenDecimals[tokenId])));
+                const numResForTest = getNumReservesForType(hintType);
+
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, numResForTest, srcAdd, destAdd, srcQty);
+                let rate = await networkProxy.getExpectedRateAfterFee(srcAdd, destAdd, srcQty, fee, hint);
+
+                await srcToken.transfer(taker, srcQty);
+                await srcToken.approve(networkProxy.address, srcQty, {from: taker});
+                await networkProxy.tradeWithHintAndFee(srcAdd, srcQty, destAdd, taker,
+                    maxDestAmt, rate, platformWallet, fee, hint, {from: taker});
+                
+                await srcToken.transfer(taker, srcQty);
+                await srcToken.approve(mockTrader.address, srcQty, {from: taker});
+                await mockTrader.tradeWithHintAndFee(srcAdd, srcQty, destAdd, taker,
+                    platformWallet, fee, hint, {from: taker});
+            });
+
+            tokenId++;
+        }
     });
 
     describe("test trade with tokens that don't return values for its functions", async() => {

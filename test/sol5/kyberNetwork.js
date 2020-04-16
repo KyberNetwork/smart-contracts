@@ -1432,7 +1432,26 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("update fee in DAO and see updated in network on correct block", async() => {
-            //TODO:
+            let tempStorage = await KyberStorage.new(admin);
+            let tempNetwork = await MockNetwork.new(admin, tempStorage.address);
+            await tempStorage.setNetworkContract(tempNetwork.address, { from: admin });
+            expiryTimestamp = new BN(Math.round((new Date()).getTime() / 1000) + 1000);
+            let tempDAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+            let newNetworkFeeBps = new BN(50);
+            await tempDAO.setNetworkFeeBps(newNetworkFeeBps);
+            await tempNetwork.setDAOContract(tempDAO.address, { from: admin });
+            result = await tempNetwork.getNetworkFeeData();
+            Helper.assertEqual(result[0], defaultNetworkFeeBps, "unexpected network fee");
+
+            //advance time to expiry timestamp
+            await Helper.mineNewBlockAt(Number(result[1]));
+
+            result = await tempNetwork.mockGetNetworkFee();
+            Helper.assertEqual(result, newNetworkFeeBps, "unexpected network fee");
+
+            await tempNetwork.getAndUpdateNetworkFee();
+            result = await tempNetwork.getNetworkFeeData();
+            Helper.assertEqual(result[0], newNetworkFeeBps, "unexpected network fee");
         });
     });
 

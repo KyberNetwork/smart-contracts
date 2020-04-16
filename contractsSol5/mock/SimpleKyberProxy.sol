@@ -85,14 +85,14 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
         IERC20 src,
         IERC20 dest,
         uint256 srcQty,
-        uint256 customFeeBps,
+        uint256 platformFeeBps,
         bytes calldata hint
     ) external view returns (uint256 expectedRate) {
         srcQty;
-        customFeeBps;
+        platformFeeBps;
         hint;
         expectedRate = pairRate[keccak256(abi.encodePacked(src, dest))];
-        expectedRate = (expectedRate * (BPS - customFeeBps)) / BPS;
+        expectedRate = (expectedRate * (BPS - platformFeeBps)) / BPS;
     }
 
     function getPriceDataNoFees(
