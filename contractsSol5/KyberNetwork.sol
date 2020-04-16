@@ -152,7 +152,7 @@ contract KyberNetwork is
         return true;
     }
 
-    event RemoveReserveFromNetwork(address reserve, bytes32 indexed reserveId);
+    event RemoveReserveFromNetwork(address indexed reserve, bytes32 indexed reserveId);
 
     /// @notice can be called only by operator
     /// @dev removes a reserve from Kyber network.
@@ -183,8 +183,8 @@ contract KyberNetwork is
 
     event ListReservePairs(
         address indexed reserve,
-        IERC20 src,
-        IERC20 dest,
+        IERC20 indexed src,
+        IERC20 indexed dest,
         bool add
     );
 
@@ -1076,8 +1076,8 @@ contract KyberNetwork is
 
     event KyberTrade(
         address indexed trader,
-        IERC20 src,
-        IERC20 dest,
+        IERC20 indexed src,
+        IERC20 indexed dest,
         uint256 srcAmount,
         uint256 destAmount,
         address destAddress,

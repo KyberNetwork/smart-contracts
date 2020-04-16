@@ -77,7 +77,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit DAOContractSetterRemoved();
     }
 
-    event Delegated(address staker, address dAddr, uint epoch, bool isDelegated);
+    event Delegated(address indexed staker, address indexed dAddr, uint indexed epoch, bool isDelegated);
 
     /**
     * @dev calls to set delegation for msg.sender, will take effect from the next epoch
@@ -122,7 +122,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit Delegated(staker, dAddr, curEpoch, true);
     }
 
-    event Deposited(uint curEpoch, address staker, uint amount);
+    event Deposited(uint indexed curEpoch, address indexed staker, uint amount);
 
     /**
     * @dev call to stake more KNC for msg.sender
@@ -153,7 +153,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit Deposited(curEpoch, staker, amount);
     }
 
-    event Withdraw(uint curEpoch, address staker, uint amount);
+    event Withdraw(uint indexed curEpoch, address indexed staker, uint amount);
 
     /**
     * @dev call to withdraw KNC from staking, it could affect reward when calling DAO handleWithdrawal

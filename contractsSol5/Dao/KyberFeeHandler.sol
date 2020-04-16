@@ -167,11 +167,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     }
 
     event FeeDistributed(
-        address platformWallet,
+        address indexed platformWallet,
         uint platformFeeWei,
         uint rewardWei,
         uint rebateWei,
-        address[] rebateWallets,
+        address[] indexed rebateWallets,
         uint[] rebatePercentBpsPerWallet,
         uint burnAmtWei
     );
@@ -221,7 +221,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         return true;
     }
 
-    event RewardPaid(address staker, uint epoch, uint amountWei);
+    event RewardPaid(address indexed staker, uint indexed epoch, uint amountWei);
 
     /// @dev only Dao can call a claim to staker rewards.
     /// @param staker address.
@@ -250,7 +250,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         return true;
     }
 
-    event RebatePaid(address rebateWallet, uint amountWei);
+    event RebatePaid(address indexed rebateWallet, uint amountWei);
 
     /// @dev claim reabate per reserve wallet. called by any address
     /// @param rebateWallet the wallet to claim rebates for. Total accumulated rebate sent to this wallet.
@@ -275,7 +275,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         return amount;
     }
 
-    event PlatformFeePaid(address platformWallet, uint amountWei);
+    event PlatformFeePaid(address indexed platformWallet, uint amountWei);
 
     /// @dev claim accumulated fee per platform wallet. Called by any address
     /// @param platformWallet the wallet to claim fee for. Total accumulated fee sent to this wallet.
@@ -380,7 +380,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         return destQty;
     }
 
-    event RewardsRemovedToBurn(uint epoch, uint rewardsWei);
+    event RewardsRemovedToBurn(uint indexed epoch, uint rewardsWei);
 
     /// @dev if no one voted for an epoch (like epoch 0). no one gets rewards. so should reward amount.
     ///         call DAO contract to check if for this epoch any votes occured.
@@ -409,7 +409,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         expiryTimestamp = uint(brrAndEpochData.expiryTimestamp);
     }
 
-    event BRRUpdated(uint rewardBps, uint rebateBps, uint burnBps, uint expiryTimestamp, uint epoch);
+    event BRRUpdated(uint rewardBps, uint rebateBps, uint burnBps, uint expiryTimestamp, uint indexed epoch);
 
     function getBRR() public returns(uint rewardBps, uint rebateBps, uint epoch) {
         uint expiryTimestamp;

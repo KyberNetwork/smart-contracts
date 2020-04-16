@@ -218,7 +218,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     event NewCampaignCreated(
-        CampaignType campaignType, uint campaignID,
+        CampaignType campaignType, uint indexed campaignID,
         uint startTimestamp, uint endTimestamp,
         uint minPercentageInPrecision, uint cInPrecision, uint tInPrecision,
         uint[] options, bytes link
@@ -305,7 +305,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         );
     }
 
-    event CancelledCampaign(uint campaignID);
+    event CancelledCampaign(uint indexed campaignID);
 
     /**
     * @dev  cancel a campaign with given id, called by admin only
@@ -342,7 +342,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         emit CancelledCampaign(campaignID);
     }
 
-    event Voted(address staker, uint epoch, uint campaignID, uint option);
+    event Voted(address indexed staker, uint indexed epoch, uint indexed campaignID, uint option);
 
     /**
     * @dev  vote for an option of a campaign
@@ -383,7 +383,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         emit Voted(staker, curEpoch, campaignID, option);
     }
 
-    event RewardClaimed(address staker, uint epoch, uint perInPrecision);
+    event RewardClaimed(address indexed staker, uint indexed epoch, uint perInPrecision);
 
     /**
     * @dev call to claim reward of an epoch, can call by anyone, only once for each epoch
