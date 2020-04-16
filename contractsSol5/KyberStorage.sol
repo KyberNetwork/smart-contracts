@@ -51,6 +51,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         address _matchingEngine
     ) external returns (bool) {
         onlyNetwork();
+        require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
+        require(_matchingEngine != address(0), "matchingEngine 0");
         IKyberMatchingEngine newMatchingEngine = IKyberMatchingEngine(
             _matchingEngine
         );
@@ -73,6 +75,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     function setDAOContract(IKyberDAO _kyberDAO) external returns (bool) {
         onlyNetwork();
+        require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
         if (kyberDAO.length > 0) {
             kyberDAO.push(kyberDAO[0]);
             kyberDAO[0] = _kyberDAO;
@@ -291,6 +294,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         returns (bool)
     {
         onlyNetwork();
+        require(networkProxy != address(0), "proxy 0");
         require(
             kyberProxyArray.length < max_approved_proxies,
             "max proxies limit reached"
@@ -313,6 +317,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
             }
         }
 
+        require(proxyIndex != 2**255, "proxy not found");
         kyberProxyArray[proxyIndex] = kyberProxyArray[
             kyberProxyArray.length - 1
         ];

@@ -165,10 +165,7 @@ contract KyberNetwork is
         onlyOperator();
         bytes32 reserveId = kyberStorage.removeReserve(reserve, startIndex);
 
-        require(
-            reserveIdToAddress[reserveId] == reserve,
-            "reserve and id mismatch"
-        );
+        require(reserveIdToAddress[reserveId] == reserve);
 
         reserveIdToAddress[reserveId] = address(0);
 
@@ -244,11 +241,6 @@ contract KyberNetwork is
         IGasHelper _gasHelper
     ) external {
         onlyAdmin();
-        require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
-        require(
-            _matchingEngine != IKyberMatchingEngine(0),
-            "matchingEngine 0"
-        );
 
         if (feeHandler != _feeHandler) {
             feeHandler = _feeHandler;
@@ -265,22 +257,21 @@ contract KyberNetwork is
             emit GasHelperUpdated(_gasHelper);
         }
 
-        require(
-            kyberStorage.setContracts(_feeHandler, address(_matchingEngine)),
-            "set contract fail"
-        );
+        require(kyberStorage.setContracts(_feeHandler, address(_matchingEngine)));
+        require(_feeHandler != IKyberFeeHandler(0));
+        require(_matchingEngine != IKyberMatchingEngine(0));
     }
 
     event KyberDAOUpdated(IKyberDAO newDAO);
 
     function setDAOContract(IKyberDAO _kyberDAO) external {
         onlyAdmin();
-        require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
         if (kyberDAO != _kyberDAO) {
             kyberDAO = _kyberDAO;
             require(kyberStorage.setDAOContract(_kyberDAO));
             emit KyberDAOUpdated(_kyberDAO);
         }
+        require(_kyberDAO != IKyberDAO(0));
     }
 
     event KyberNetworkParamsSet(
@@ -305,12 +296,9 @@ contract KyberNetwork is
         onlyAdmin();
 
         if (enable) {
-            require(feeHandler != IKyberFeeHandler(0), "feeHandler 0");
-            require(
-                matchingEngine != IKyberMatchingEngine(0),
-                "matchingEngine 0"
-            );
-            require(kyberStorage.isKyberProxyAdded(), "proxy 0");
+            require(feeHandler != IKyberFeeHandler(0));
+            require(matchingEngine != IKyberMatchingEngine(0));
+            require(kyberStorage.isKyberProxyAdded());
         }
 
         isEnabled = enable;
@@ -324,11 +312,11 @@ contract KyberNetwork is
     /// @dev no. of KyberNetworkProxies are capped
     function addKyberProxy(address networkProxy) external {
         onlyAdmin();
-        require(networkProxy != address(0), "proxy 0");
-        require(!kyberProxyContracts[networkProxy], "proxy exists");
         require(
             kyberStorage.addKyberProxy(networkProxy, MAX_APPROVED_PROXIES)
         );
+        require(networkProxy != address(0));
+        require(!kyberProxyContracts[networkProxy]);
 
         kyberProxyContracts[networkProxy] = true;
 
@@ -337,9 +325,10 @@ contract KyberNetwork is
 
     function removeKyberProxy(address networkProxy) external {
         onlyAdmin();
-        require(kyberProxyContracts[networkProxy], "proxy not found");
 
         require(kyberStorage.removeKyberProxy(networkProxy));
+
+        require(kyberProxyContracts[networkProxy]);
 
         kyberProxyContracts[networkProxy] = false;
 
