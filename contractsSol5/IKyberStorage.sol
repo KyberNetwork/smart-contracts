@@ -90,7 +90,7 @@ contract IKyberStorage {
             bool isFeeAccounted
         );
 
-    function getIsFeeAccountedReserves(bytes32[] calldata reserveIds)
+    function getFeeAccountedData(bytes32[] calldata reserveIds)
         external
         view
         returns (bool[] memory feeAccountedArr);

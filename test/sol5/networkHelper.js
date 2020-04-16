@@ -659,7 +659,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             (srcToken != ethAddress) && (destToken != ethAddress),
             hint
             );
-        isFeeAccounted = await storage.getIsFeeAccountedReserves(reserves.reserveIds);
+        isFeeAccounted = await storage.getFeeAccountedData(reserves.reserveIds);
 
         for (let i = 0; i < reserves.reserveIds.length; i++) {
             result.t2eSrcAmts[i] = srcQty.mul(reserves.splitValuesBps[i]).div(BPS);
@@ -722,7 +722,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             (srcToken != ethAddress) && (destToken != ethAddress),
             hint
             );
-        isFeeAccounted = await storage.getIsFeeAccountedReserves(reserves.reserveIds);
+        isFeeAccounted = await storage.getFeeAccountedData(reserves.reserveIds);
 
         for (let i = 0; i < reserves.reserveIds.length; i++) {
             if (isFeeAccounted[i]) {

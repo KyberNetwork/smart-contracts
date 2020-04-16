@@ -151,7 +151,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
             false,
             ""
         );
-        isFeeAccounted = kyberStorage.getIsFeeAccountedReserves(buyReserves);
+        isFeeAccounted = kyberStorage.getFeeAccountedData(buyReserves);
         buyRates = new uint256[](buyReserves.length);
 
         for (uint256 i = 0; i < buyReserves.length; i++) {
@@ -211,7 +211,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
             false,
             ""
         );
-        isFeeAccounted = kyberStorage.getIsFeeAccountedReserves(sellReserves);
+        isFeeAccounted = kyberStorage.getFeeAccountedData(sellReserves);
         sellRates = new uint256[](sellReserves.length);
 
         for (uint256 i = 0; i < sellReserves.length; i++) {
