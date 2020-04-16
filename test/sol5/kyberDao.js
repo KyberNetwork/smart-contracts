@@ -5658,13 +5658,13 @@ contract('KyberDAO', function(accounts) {
     it("Test correct data is set after deployment", async function() {
       await deployContracts(10, currentBlock + 10, 10);
 
-      Helper.assertEqual(await daoContract.EPOCH_PERIOD_SECONDS(), blocksToSeconds(10), "Epoch period is wrong");
-      Helper.assertEqual(await daoContract.FIRST_EPOCH_START_TIMESTAMP(), daoStartTime, "Start block is wrong");
+      Helper.assertEqual(await daoContract.epochPeriodInSeconds(), blocksToSeconds(10), "Epoch period is wrong");
+      Helper.assertEqual(await daoContract.firstEpochStartTimestamp(), daoStartTime, "Start block is wrong");
       Helper.assertEqual(await daoContract.kncToken(), kncToken.address, "KNC token is wrong");
       Helper.assertEqual(await daoContract.staking(), stakingContract.address, "Staking contract is wrong");
       Helper.assertEqual(await daoContract.feeHandler(), feeHandler.address, "Feehandler contract is wrong");
       Helper.assertEqual(await daoContract.MAX_CAMPAIGN_OPTIONS(), 8, "max camp option is wrong");
-      Helper.assertEqual(await daoContract.MIN_CAMPAIGN_DURATION_SECONDS(), blocksToSeconds(minCampPeriod), "min camp period is wrong");
+      Helper.assertEqual(await daoContract.minCampaignDurationInSeconds(), blocksToSeconds(minCampPeriod), "min camp period is wrong");
       Helper.assertEqual((await daoContract.getLatestNetworkFeeData()).feeInBps, defaultNetworkFee, "default network fee is wrong");
       Helper.assertEqual(await daoContract.latestBrrResult(), defaultBrrData, "default brr data is wrong");
       Helper.assertEqual(await daoContract.campaignCreator(), campCreator, "campaignCreator is wrong");

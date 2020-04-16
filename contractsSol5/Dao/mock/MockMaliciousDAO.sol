@@ -15,7 +15,7 @@ contract MockMaliciousDAO is KyberDAO {
         _defaultNetworkFeeBps, _defaultRewardBps, _defaultRebateBps,
         _admin
     ) public {
-        MIN_CAMPAIGN_DURATION_SECONDS = _minCampDuration;
+        minCampaignDurationInSeconds = _minCampDuration;
     }
 
     function setTotalEpochPoints(uint epoch, uint pts) public {

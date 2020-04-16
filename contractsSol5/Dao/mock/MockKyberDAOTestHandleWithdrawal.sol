@@ -6,8 +6,8 @@ contract MockKyberDAOTestHandleWithdrawal is EpochUtils {
 
     mapping(address => uint) public values;
     constructor(uint _epochPeriod, uint _startTimestamp) public {
-        EPOCH_PERIOD_SECONDS = _epochPeriod;
-        FIRST_EPOCH_START_TIMESTAMP = _startTimestamp;
+        epochPeriodInSeconds = _epochPeriod;
+        firstEpochStartTimestamp = _startTimestamp;
     }
 
     function handleWithdrawal(address staker, uint amount) public returns(bool) {

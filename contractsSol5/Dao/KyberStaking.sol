@@ -37,8 +37,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         require(_kncToken != address(0), "ctor: KNC address is missing");
         require(_daoContractSetter != address(0), "ctor: daoContractSetter address is missing");
 
-        EPOCH_PERIOD_SECONDS = _epochPeriod;
-        FIRST_EPOCH_START_TIMESTAMP = _startTimestamp;
+        epochPeriodInSeconds = _epochPeriod;
+        firstEpochStartTimestamp = _startTimestamp;
         kncToken = IERC20(_kncToken);
         daoContractSetter = _daoContractSetter;
     }
@@ -62,11 +62,11 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         daoContract = IKyberDAO(_daoAddress);
         // verify the same epoch period + start timestamp
         require(
-            daoContract.EPOCH_PERIOD_SECONDS() == EPOCH_PERIOD_SECONDS,
+            daoContract.epochPeriodInSeconds() == epochPeriodInSeconds,
             "updateDAO: DAO and Staking have different epoch period"
         );
         require(
-            daoContract.FIRST_EPOCH_START_TIMESTAMP() == FIRST_EPOCH_START_TIMESTAMP,
+            daoContract.firstEpochStartTimestamp() == firstEpochStartTimestamp,
             "updateDAO: DAO and Staking have different start timestamp"
         );
 

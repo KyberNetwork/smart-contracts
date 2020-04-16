@@ -81,7 +81,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     // max number of options for each campaign
     uint public constant MAX_CAMPAIGN_OPTIONS = 8;
     // minimum duration in seconds for a campaign
-    uint public MIN_CAMPAIGN_DURATION_SECONDS = 345600; // around 4 days
+    uint public minCampaignDurationInSeconds = 345600; // around 4 days
 
     IERC20 public kncToken;
     IKyberStaking public staking;
@@ -161,11 +161,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(_defaultRewardBps.add(_defaultRebateBps) <= BPS, "reward plus rebate high");
 
         staking = IKyberStaking(_staking);
-        require(staking.EPOCH_PERIOD_SECONDS() == _epochPeriod, "ctor: diff epoch period");
-        require(staking.FIRST_EPOCH_START_TIMESTAMP() == _startTimestamp, "ctor: diff start timestamp");
+        require(staking.epochPeriodInSeconds() == _epochPeriod, "ctor: diff epoch period");
+        require(staking.firstEpochStartTimestamp() == _startTimestamp, "ctor: diff start timestamp");
 
-        EPOCH_PERIOD_SECONDS = _epochPeriod;
-        FIRST_EPOCH_START_TIMESTAMP = _startTimestamp;
+        epochPeriodInSeconds = _epochPeriod;
+        firstEpochStartTimestamp = _startTimestamp;
         feeHandler = IFeeHandler(_feeHandler);
         kncToken = IERC20(_knc);
         latestNetworkFeeResult = _defaultNetworkFeeBps;
@@ -467,8 +467,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     /**
     * @dev return campaign winning option and its value
-    *      return (0, 0) if campaign does not existed
-    *      return (0, 0) if campaign is not ended yet
+    *      return (0, 0) if campaign does not exist
+    *      return (0, 0) if campaign has not ended yet
     *      return (0, 0) if campaign has no winning option based on the formula
     * @param campaignID id of campaign to get result
     */
@@ -531,8 +531,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     function getLatestNetworkFeeData() public view returns(uint feeInBps, uint expiryTimestamp) {
         uint curEpoch = getCurrentEpochNumber();
         feeInBps = latestNetworkFeeResult;
-        // expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP + curEpoch * EPOCH_PERIOD_SECONDS - 1;
-        expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP.add(curEpoch.mul(EPOCH_PERIOD_SECONDS)).sub(1);
+        // expiryTimestamp = firstEpochStartTimestamp + curEpoch * epochPeriodInSeconds - 1;
+        expiryTimestamp = firstEpochStartTimestamp.add(curEpoch.mul(epochPeriodInSeconds)).sub(1);
         if (curEpoch == 0) {
             return (feeInBps, expiryTimestamp);
         }
@@ -590,8 +590,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryTimestamp)
     {
         epoch = getCurrentEpochNumber();
-        // expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP + epoch * EPOCH_PERIOD_SECONDS - 1;
-        expiryTimestamp = FIRST_EPOCH_START_TIMESTAMP.add(epoch.mul(EPOCH_PERIOD_SECONDS)).sub(1);
+        // expiryTimestamp = firstEpochStartTimestamp + epoch * epochPeriodInSeconds - 1;
+        expiryTimestamp = firstEpochStartTimestamp.add(epoch.mul(epochPeriodInSeconds)).sub(1);
         rewardInBps = latestBrrData.rewardInBps;
         rebateInBps = latestBrrData.rebateInBps;
 
@@ -648,9 +648,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             "validateParams: can't start in the past"
         );
         // campaign duration must be at least min campaign duration
-        // endTimestamp - startTimestamp + 1 >= MIN_CAMPAIGN_DURATION_SECONDS,
+        // endTimestamp - startTimestamp + 1 >= minCampaignDurationInSeconds,
         require(
-            endTimestamp.add(1) >= startTimestamp.add(MIN_CAMPAIGN_DURATION_SECONDS),
+            endTimestamp.add(1) >= startTimestamp.add(minCampaignDurationInSeconds),
             "validateParams: campaign duration is low"
         );
 

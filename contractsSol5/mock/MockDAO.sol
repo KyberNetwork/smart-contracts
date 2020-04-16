@@ -93,11 +93,11 @@ contract MockDAO is IKyberDAO, Utils4 {
             );
     }
 
-    function EPOCH_PERIOD_SECONDS() external view returns(uint) {
+    function epochPeriodInSeconds() external view returns(uint) {
         return epochPeriod;
     }
 
-    function FIRST_EPOCH_START_TIMESTAMP() external view returns(uint) {
+    function firstEpochStartTimestamp() external view returns(uint) {
         return startTimestamp;
     }
 
