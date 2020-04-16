@@ -4822,12 +4822,12 @@ contract('KyberDAO', function(accounts) {
       // get fee data for epoch 0
       let feeData = await daoContract.getLatestNetworkFeeData();
       Helper.assertEqual(defaultNetworkFee, feeData.feeInBps, "network fee default is wrong");
-      Helper.assertEqual(daoStartTime - 1, feeData.expiryTimestamp, "expiry block number is wrong");
+      Helper.assertEqual(daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
       await daoContract.setLatestNetworkFee(36);
       feeData = await daoContract.getLatestNetworkFeeData();
       Helper.assertEqual(36, feeData.feeInBps, "network fee default is wrong");
-      Helper.assertEqual(daoStartTime - 1, feeData.expiryTimestamp, "expiry block number is wrong");
+      Helper.assertEqual(daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
       let tx = await daoContract.getLatestNetworkFeeDataWithCache();
       logInfo("Get Network Fee: epoch 0, gas used: " + tx.receipt.cumulativeGasUsed);
@@ -4842,19 +4842,19 @@ contract('KyberDAO', function(accounts) {
       // get fee data for epoch 1
       feeData = await daoContract.getLatestNetworkFeeData();
       Helper.assertEqual(defaultNetworkFee, feeData.feeInBps, "network fee default is wrong");
-      Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, feeData.expiryTimestamp, "expiry block number is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
       await daoContract.setLatestNetworkFee(32);
       feeData = await daoContract.getLatestNetworkFeeData();
       Helper.assertEqual(32, feeData.feeInBps, "network fee default is wrong");
-      Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, feeData.expiryTimestamp, "expiry block number is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
       // delay to epoch 4
       await Helper.mineNewBlockAt(blocksToSeconds(3 * epochPeriod) + daoStartTime);
       // get fee data for epoch 4
       feeData = await daoContract.getLatestNetworkFeeData();
       Helper.assertEqual(32, feeData.feeInBps, "network fee default is wrong");
-      Helper.assertEqual(blocksToSeconds(4*epochPeriod) + daoStartTime - 1, feeData.expiryTimestamp, "expiry block number is wrong");
+      Helper.assertEqual(blocksToSeconds(4*epochPeriod) + daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
       let tx = await daoContract.getLatestNetworkFeeDataWithCache();
       logInfo("Get Network Fee: epoch > 0, no fee camp, gas used: " + tx.receipt.cumulativeGasUsed);
@@ -4894,7 +4894,7 @@ contract('KyberDAO', function(accounts) {
 
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
       // expiry block should be end of epoch 2
-      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, data[1], "expiry block number is wrong for epoch 1");
+      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, data[1], "expiry timestamp is wrong for epoch 1");
     });
 
     it("Test get network fee returns correct latest data on-going network fee has a winning option", async function() {
@@ -4917,7 +4917,7 @@ contract('KyberDAO', function(accounts) {
       // camp is not ended yet, so data shouldn't change
       let data = await daoContract.getLatestNetworkFeeData();
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
-      Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, data[1], "expiry block number is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
       // delay to epoch 2
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
@@ -4927,7 +4927,7 @@ contract('KyberDAO', function(accounts) {
       data = await daoContract.getLatestNetworkFeeData();
 
       Helper.assertEqual(50, data[0], "should fallback to previous data");
-      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, data[1], "expiry block number is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
       await resetSetupForKNCToken();
     });
@@ -4959,7 +4959,7 @@ contract('KyberDAO', function(accounts) {
       data = await daoContract.getLatestNetworkFeeData();
 
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
-      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, data[1], "expiry block number is wrong for epoch 1");
+      Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, data[1], "expiry timestamp is wrong for epoch 1");
 
       let tx = await daoContract.getLatestNetworkFeeDataWithCache();
       logInfo("Get Network Fee: epoch > 0, has fee camp, no win option, gas used: " + tx.receipt.cumulativeGasUsed);
@@ -4991,7 +4991,7 @@ contract('KyberDAO', function(accounts) {
       data = await daoContract.getLatestNetworkFeeData();
 
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
-      Helper.assertEqual(blocksToSeconds(epochPeriod * 3) + daoStartTime - 1, data[1], "expiry block number is wrong");
+      Helper.assertEqual(blocksToSeconds(epochPeriod * 3) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
       await updateCurrentBlockAndTimestamp();
       // min per: 40%, C = 100%, t = 1
@@ -5020,7 +5020,7 @@ contract('KyberDAO', function(accounts) {
       data = await daoContract.getLatestNetworkFeeData();
 
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
-      Helper.assertEqual(blocksToSeconds(4 * epochPeriod) + daoStartTime - 1, data[1], "expiry block number is wrong");
+      Helper.assertEqual(blocksToSeconds(4 * epochPeriod) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
       await updateCurrentBlockAndTimestamp();
       // min per: 40%, C = 100%, t = 1
@@ -5048,7 +5048,7 @@ contract('KyberDAO', function(accounts) {
       data = await daoContract.getLatestNetworkFeeData();
 
       Helper.assertEqual(32, data[0], "should get correct winning value as new network fee");
-      Helper.assertEqual(blocksToSeconds(5 * epochPeriod) + daoStartTime - 1, data[1], "expiry block number is wrong");
+      Helper.assertEqual(blocksToSeconds(5 * epochPeriod) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
       // conclude and save data
       Helper.assertEqual(defaultNetworkFee, await daoContract.latestNetworkFeeResult(), "latest network fee is wrong");
@@ -5082,7 +5082,7 @@ contract('KyberDAO', function(accounts) {
       data = await daoContract.getLatestNetworkFeeData();
 
       Helper.assertEqual(32, data[0], "should fallback to previous data");
-      Helper.assertEqual(blocksToSeconds(6 * epochPeriod) + daoStartTime - 1, data[1], "expiry block number is wrong");
+      Helper.assertEqual(blocksToSeconds(6 * epochPeriod) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
       tx = await daoContract.getLatestNetworkFeeDataWithCache();
       logInfo("Get Network Fee: epoch > 0, has fee camp + win option, gas used: " + tx.receipt.cumulativeGasUsed);

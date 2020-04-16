@@ -44,6 +44,6 @@ interface IKyberNetwork {
         returns (
             uint256 negligibleDiffBps,
             uint256 networkFeeBps,
-            uint256 expiryBlock
+            uint256 expiryTimestamp
         );
 }

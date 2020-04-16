@@ -35,7 +35,7 @@ contract MockDAO is IKyberDAO, Utils4 {
         feeHandler = _handler;
     }
 
-    function setMockEpochAndExpiryBlock(
+    function setMockEpochAndExpiryTimestamp(
         uint256 _epoch,
         uint256 _expiryTimestamp
     ) public {

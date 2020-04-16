@@ -63,7 +63,7 @@ contract KyberNetwork is
         public
         WithdrawableNoModifiers(_admin)
     {
-        updateNetworkFee(block.number, DEFAULT_NETWORK_FEE_BPS);
+        updateNetworkFee(now, DEFAULT_NETWORK_FEE_BPS);
         kyberStorage = _kyberStorage;
     }
 
