@@ -29,6 +29,8 @@ let operator;
 let network;
 let kyberStorage;
 let user;
+let feeHandler;
+let kyberMatchingEngine;
 
 //reserve data
 //////////////
@@ -73,6 +75,7 @@ contract('KyberStorage', function(accounts) {
         admin = accounts[1];
         operator = accounts[2];
         network = accounts[3];
+        DAOAddr = accounts[4];
     });
 
     describe("test onlyAdmin and onlyNetwork permissions", async() => {
@@ -198,12 +201,36 @@ contract('KyberStorage', function(accounts) {
     describe("test setting contracts and params", async() => {
         before("deploy and setup kyberStorage instance", async() => {
             kyberStorage = await KyberStorage.new(admin);
+            await kyberStorage.setNetworkContract(network, {from: admin});
+            feeHandler = accounts[5];
+            kyberMatchingEngine = accounts[6];
         });
 
         it("should revert setting zero address for network", async() => {
             await expectRevert(
                 kyberStorage.setNetworkContract(zeroAddress, {from: admin}),
                 "network 0");
+        });
+
+        it("set empty fee handler contract", async function(){
+            await expectRevert(
+                kyberStorage.setContracts(zeroAddress, kyberMatchingEngine, {from: network}),
+                "feeHandler 0"
+            );
+        });
+
+        it("set empty matching engine contract", async function(){
+            await expectRevert(
+                kyberStorage.setContracts(feeHandler, zeroAddress, {from: network}),
+                "matchingEngine 0"
+            );
+        });
+
+        it("set empty dao contract", async function(){
+            await expectRevert(
+                kyberStorage.setDAOContract(zeroAddress, {from: network}),
+                "kyberDAO 0"
+            );
         });
     });
 
@@ -228,10 +255,26 @@ contract('KyberStorage', function(accounts) {
             );
         });
 
+        if("test removeKyberProxy revert if not added", async() => {
+            await expectRevert(
+                kyberStorage.removeKyberProxy(proxy1, maxProxies, {from: network}),
+                "proxy not found"
+            );
+            await kyberStorage.addKyberProxy(proxy1, maxProxies, {from: network});
+            await kyberStorage.removeKyberProxy(proxy1, maxProxies, {from: network});
+        });
+
         it("test only admin can add proxies", async() => {
             await expectRevert(
                 kyberStorage.addKyberProxy(proxy1, new BN(100), {from: accounts[0]}),
                 "only network"
+            );
+        });
+
+        it("test can't add proxy zero address", async() => {
+            await expectRevert(
+                kyberStorage.addKyberProxy(zeroAddress, maxProxies, {from: network}),
+                "proxy 0"
             );
         });
     });
