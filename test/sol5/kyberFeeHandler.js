@@ -329,25 +329,25 @@ contract('KyberFeeHandler', function(accounts) {
    
     describe("test getBRR and updateBRRData functions", async() => {
         let defaultEpoch;
-        let defaultExpiryBlock;
+        let defaultExpiryTimestamp;
 
         before("init variables", async() => {
             defaultEpoch = zeroBN;
-            defaultExpiryBlock = new BN(5);
+            defaultExpiryTimestamp = new BN(5);
             await mockDAO.setMockBRR(rewardInBPS, rebateInBPS);
-            await mockDAO.setMockEpochAndExpiryBlock(defaultEpoch, defaultExpiryBlock);
+            await mockDAO.setMockEpochAndExpiryTimestamp(defaultEpoch, defaultExpiryTimestamp);
         });
 
         afterEach("reset to default BRR values", async() => {
             await mockDAO.setMockBRR(rewardInBPS, rebateInBPS);
-            await mockDAO.setMockEpochAndExpiryBlock(defaultEpoch, defaultExpiryBlock);
+            await mockDAO.setMockEpochAndExpiryTimestamp(defaultEpoch, defaultExpiryTimestamp);
         });
 
         after("set default values", async() => {
             let results = await feeHandler.readBRRData();
             rewardBps = results.rewardBps;
             rebateBps = results.rebateBps;
-            expiryBlock = results.expiryTimestamp;
+            expiryTimestamp = results.expiryTimestamp;
             epoch = results.epoch;
         });
 
@@ -400,15 +400,15 @@ contract('KyberFeeHandler', function(accounts) {
         });
 
         it("should revert if expiry block >= 2 ** 64", async() => {
-            let badExpiryBlock = new BN(2).pow(new BN(64));
-            await mockDAO.setMockEpochAndExpiryBlock(defaultEpoch, badExpiryBlock);
+            let badExpiryTimestamp = new BN(2).pow(new BN(64));
+            await mockDAO.setMockEpochAndExpiryTimestamp(defaultEpoch, badExpiryTimestamp);
             await expectRevert(
                 feeHandler.getBRR(),
                 "expiry block overflow"
             );
 
-            badExpiryBlock = badExpiryBlock.add(new BN(1));
-            await mockDAO.setMockEpochAndExpiryBlock(defaultEpoch, badExpiryBlock);
+            badExpiryTimestamp = badExpiryTimestamp.add(new BN(1));
+            await mockDAO.setMockEpochAndExpiryTimestamp(defaultEpoch, badExpiryTimestamp);
             await expectRevert(
                 feeHandler.getBRR(),
                 "expiry block overflow"
@@ -417,14 +417,14 @@ contract('KyberFeeHandler', function(accounts) {
 
         it("should revert if epoch >= 2 ** 32", async() => {
             let badEpoch = new BN(2).pow(new BN(32));
-            await mockDAO.setMockEpochAndExpiryBlock(badEpoch, defaultExpiryBlock);
+            await mockDAO.setMockEpochAndExpiryTimestamp(badEpoch, defaultExpiryTimestamp);
             await expectRevert(
                 feeHandler.getBRR(),
                 "epoch overflow"
             );
 
             badEpoch = badEpoch.add(new BN(1));
-            await mockDAO.setMockEpochAndExpiryBlock(badEpoch, defaultExpiryBlock);
+            await mockDAO.setMockEpochAndExpiryTimestamp(badEpoch, defaultExpiryTimestamp);
             await expectRevert(
                 feeHandler.getBRR(),
                 "epoch overflow"
@@ -433,15 +433,15 @@ contract('KyberFeeHandler', function(accounts) {
 
         it("should have updated BRR if epoch == 2 ** 32 - 1", async() => {
             let maxEpoch = (new BN(2).pow(new BN(32))).sub(new BN(1));
-            await mockDAO.setMockEpochAndExpiryBlock(maxEpoch, defaultExpiryBlock);
+            await mockDAO.setMockEpochAndExpiryTimestamp(maxEpoch, defaultExpiryTimestamp);
             await feeHandler.getBRR();
             let result = await feeHandler.readBRRData();
             Helper.assertEqual(result.epoch, maxEpoch, "epoch was not updated");
         });
 
-        it("should have updated BRR if expiryBlock == 2 ** 64 - 1", async() => {
+        it("should have updated BRR if expiryTimestamp == 2 ** 64 - 1", async() => {
             let maxEpiryBlock = new BN(2).pow(new BN(64)).sub(new BN(1));
-            await mockDAO.setMockEpochAndExpiryBlock(defaultEpoch, maxEpiryBlock);
+            await mockDAO.setMockEpochAndExpiryTimestamp(defaultEpoch, maxEpiryBlock);
             await feeHandler.getBRR();
             let result = await feeHandler.readBRRData();
             Helper.assertEqual(result.expiryTimestamp, maxEpiryBlock, "expiry block was not updated");
@@ -479,7 +479,7 @@ contract('KyberFeeHandler', function(accounts) {
         let currentRewardBps;
         let currentRebateBps;
         let currentEpoch;
-        let curentExpiryBlock;
+        let curentExpiryTimestamp;
 
         let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
         
