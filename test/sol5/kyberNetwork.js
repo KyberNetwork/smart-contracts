@@ -95,7 +95,7 @@ contract('KyberNetwork', function(accounts) {
         hintParser = accounts[6];
 
         //DAO related init.
-        expiryTimestamp = new BN(await web3.eth.getBlockNumber() + 150);
+        expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
         DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
         await DAO.setNetworkFeeBps(networkFeeBps);
 
@@ -616,7 +616,7 @@ contract('KyberNetwork', function(accounts) {
     describe("test with MockDAO", async() => {
         before("initialise DAO, network and reserves", async() => {
             // DAO related init.
-            expiryTimestamp = new BN(await web3.eth.getBlockNumber() + 150);
+            expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
             DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
             await DAO.setNetworkFeeBps(networkFeeBps);
 
@@ -807,7 +807,7 @@ contract('KyberNetwork', function(accounts) {
             describe("backward compatible getExpectedRate (no hint)", async() => {
                 it("should get expected rate, no fees at all for T2E, E2T & T2T", async() => {
                     //setup mockDAO with zero network bps
-                    expiryTimestamp = new BN(await web3.eth.getBlockNumber() + 150);
+                    expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
                     let tempDAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
                     await tempDAO.setNetworkFeeBps(zeroBN);
                     await network.setDAOContract(tempDAO.address, {from: admin});
@@ -888,7 +888,7 @@ contract('KyberNetwork', function(accounts) {
             describe("getExpectedRateWithHintAndFee", async() => {
                 it("should get expected rate, no fees at all for T2E, E2T & T2T", async() => {
                     //setup mockDAO with zero network bps
-                    expiryTimestamp = new BN(await web3.eth.getBlockNumber() + 150);
+                    expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
                     let tempDAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
                     await tempDAO.setNetworkFeeBps(zeroBN);
                     await network.setDAOContract(tempDAO.address, {from: admin});
@@ -1403,7 +1403,7 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(networkData.networkFeeBps, defaultNetworkFeeBps);
 
             let newFee = new BN(35);
-            let newExpiryTimestamp = new BN(723);
+            let newExpiryTimestamp = await Helper.getCurrentBlockTime() + 10;
             await tempNetwork.setNetworkFeeData(newFee, newExpiryTimestamp);
 
             networkData = await tempNetwork.getNetworkData();
@@ -1695,10 +1695,10 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("expiryTimestamp too large", async function(){
-            expirtyBlock = ((new BN(2)).pow(new BN(64))).add(new BN(1));
+            expiryTimestamp = ((new BN(2)).pow(new BN(64))).add(new BN(1));
             feeBPS = new BN(100);
             await expectRevert(
-                tempNetwork.setNetworkFeeData(feeBPS, expirtyBlock),
+                tempNetwork.setNetworkFeeData(feeBPS, expiryTimestamp),
                 "expiry overflow"
             );
         });
@@ -1759,7 +1759,7 @@ contract('KyberNetwork', function(accounts) {
             DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
             await tempNetwork.setDAOContract(DAO.address, { from: admin });
             feeBPS = new BN(100);
-            expiryTimestamp = await Helper.getCurrentBlock() + 100;
+            expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
