@@ -421,7 +421,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         public
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryTimestamp)
     {
-        (burnInBps, rewardInBps, rebateInBps, epoch, expiryTimestamp) = getLatestBRRDataDecoded();
+        (burnInBps, rewardInBps, rebateInBps, epoch, expiryTimestamp) = getLatestBRRData();
         latestBrrData.rewardInBps = rewardInBps;
         latestBrrData.rebateInBps = rebateInBps;
     }
@@ -586,9 +586,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /** 
-    * @dev return latest brr data after decoded so it is easily to check from read contract
+    * @dev return latest brr result, conclude brr campaign if needed
     */
-    function getLatestBRRDataDecoded()
+    function getLatestBRRData()
         public view
         returns(uint burnInBps, uint rewardInBps, uint rebateInBps, uint epoch, uint expiryTimestamp)
     {

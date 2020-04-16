@@ -5182,7 +5182,7 @@ contract('KyberDAO', function(accounts) {
       await deployContracts(10, currentBlock + 10, 5);
 
       Helper.assertEqual(defaultBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
-      let dataDecoded = await daoContract.getLatestBRRDataDecoded();
+      let dataDecoded = await daoContract.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn default is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward default is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate default is wrong");
@@ -5207,7 +5207,7 @@ contract('KyberDAO', function(accounts) {
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 0, daoStartTime - 1
       );
-      dataDecoded = await daoContract.getLatestBRRDataDecoded();
+      dataDecoded = await daoContract.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn default is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward default is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate default is wrong");
@@ -5228,7 +5228,7 @@ contract('KyberDAO', function(accounts) {
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
-      let dataDecoded = await daoContract.getLatestBRRDataDecoded();
+      let dataDecoded = await daoContract.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn default is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward default is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate default is wrong");
@@ -5250,7 +5250,7 @@ contract('KyberDAO', function(accounts) {
         reward, rebate, 10000 - rebate - reward, 4, blocksToSeconds(epochPeriod * 4) + daoStartTime - 1
       );
 
-      dataDecoded = await daoContract.getLatestBRRDataDecoded();
+      dataDecoded = await daoContract.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate is wrong");
@@ -5333,7 +5333,7 @@ contract('KyberDAO', function(accounts) {
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
       Helper.assertEqual(1, await daoContract.brrCampaigns(1), "should have brr camp");
-      let dataDecoded = await daoContract.getLatestBRRDataDecoded();
+      let dataDecoded = await daoContract.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate is wrong");
@@ -5343,7 +5343,7 @@ contract('KyberDAO', function(accounts) {
       // delay to epoch 2, winning option should take effect
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      dataDecoded = await daoContract.getLatestBRRDataDecoded();
+      dataDecoded = await daoContract.getLatestBRRData();
       Helper.assertEqual(10000 - newRebate - newReward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(newReward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(newRebate, dataDecoded.rebateInBps, "rebate is wrong");
@@ -5356,7 +5356,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(brrData, await daoContract.latestBrrResult(), "latest brr is wrong");
 
       // test winning option is encoded
-      dataDecoded = await daoContract.getLatestBRRDataDecoded();
+      dataDecoded = await daoContract.getLatestBRRData();
       Helper.assertEqual(10000 - newRebate - newReward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(newReward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(newRebate, dataDecoded.rebateInBps, "rebate is wrong");
@@ -5398,7 +5398,7 @@ contract('KyberDAO', function(accounts) {
       await daoContract.checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
       );
-      let dataDecoded = await daoContract.getLatestBRRDataDecoded();
+      let dataDecoded = await daoContract.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate is wrong");

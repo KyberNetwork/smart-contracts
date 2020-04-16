@@ -154,7 +154,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     event Withdraw(uint curEpoch, address staker, uint amount);
     // event is fired if something is wrong with withdrawal
-    // even though the withdrawal is still success
+    // even though the withdrawal is still successful
     event WithdrawDataUpdateFailed(uint curEpoch, address staker, uint amount);
 
     /**
