@@ -439,6 +439,16 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         return totalEpochPoints[epoch] == 0;
     }
 
+    // return list campaign ids for epoch, excluding non-existed ones
+    function getListCampIDs(uint epoch) external view returns(uint[] memory campaignIDs) {
+        return epochCampaigns[epoch];
+    }
+
+    // return total points for an epoch
+    function getTotalEpochPoints(uint epoch) external view returns(uint) {
+        return totalEpochPoints[epoch];
+    }
+
     function getCampaignDetails(uint campaignID)
         external view
         returns(
@@ -575,11 +585,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         if (points > totalPts) { return 0; }
 
         return points.mul(PRECISION).div(totalPts);
-    }
-
-    // return list campaign ids for epoch, excluding non-existed ones
-    function getListCampIDs(uint epoch) external view returns(uint[] memory campaignIDs) {
-        return epochCampaigns[epoch];
     }
 
     /** 

@@ -35,10 +35,6 @@ contract MockKyberDaoMoreGetters is KyberDAO {
         return getDataFromRewardAndRebateWithValidation(latestBrrData.rewardInBps, latestBrrData.rebateInBps);
     }
 
-    function getTotalPoints(uint epoch) public view returns(uint) {
-        return totalEpochPoints[epoch];
-    }
-
     function getNumberVotes(address staker, uint epoch) public view returns(uint) {
         return numberVotes[staker][epoch];
     }

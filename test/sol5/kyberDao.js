@@ -254,9 +254,9 @@ contract('KyberDAO', function(accounts) {
 
       // withdraw when no votes
       let totalPoints = new BN(0);
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       await daoContract.vote(1, 1, {from: victor});
 
@@ -264,7 +264,7 @@ contract('KyberDAO', function(accounts) {
       let voteCount1 = new BN(0);
       voteCount1.iadd(initVictorStake).isub(mulPrecision(10));
 
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       let voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
@@ -276,7 +276,7 @@ contract('KyberDAO', function(accounts) {
       totalPoints.isub(mulPrecision(100));
       voteCount1.isub(mulPrecision(100));
 
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
@@ -285,7 +285,7 @@ contract('KyberDAO', function(accounts) {
 
       await stakingContract.withdraw(mulPrecision(100), {from: mike});
 
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
@@ -296,7 +296,7 @@ contract('KyberDAO', function(accounts) {
       totalPoints.iadd(initMikeStake).isub(mulPrecision(100));
       let voteCount2 = initMikeStake.sub(mulPrecision(100));
 
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
@@ -308,7 +308,7 @@ contract('KyberDAO', function(accounts) {
       totalPoints.isub(mulPrecision(100));
       voteCount2.isub(mulPrecision(100));
 
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
@@ -318,7 +318,7 @@ contract('KyberDAO', function(accounts) {
 
       await stakingContract.deposit(mulPrecision(200), {from: victor});
 
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
@@ -329,7 +329,7 @@ contract('KyberDAO', function(accounts) {
       // less than new deposit (200)
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
 
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
@@ -342,7 +342,7 @@ contract('KyberDAO', function(accounts) {
 
       totalPoints.isub(mulPrecision(200));
       voteCount1.isub(mulPrecision(200));
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
@@ -355,7 +355,7 @@ contract('KyberDAO', function(accounts) {
       voteCount2.iadd(voteCount1);
       voteCount1 = new BN(0);
 
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
@@ -368,7 +368,7 @@ contract('KyberDAO', function(accounts) {
       totalPoints.isub(mulPrecision(100));
       voteCount2.isub(mulPrecision(100));
 
-      Helper.assertEqual(totalPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
 
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
@@ -409,7 +409,7 @@ contract('KyberDAO', function(accounts) {
       let totalCampPoint1 = (new BN(0)).add(initVictorStake);
       let voteCount11 = (new BN(0)).add(initVictorStake);
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       let voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -440,7 +440,7 @@ contract('KyberDAO', function(accounts) {
       let voteCount22 = (new BN(0)).add(initVictorStake);
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -457,7 +457,7 @@ contract('KyberDAO', function(accounts) {
       voteCount22.isub(mulPrecision(100));
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -467,7 +467,7 @@ contract('KyberDAO', function(accounts) {
 
       await daoContract.vote(1, 2, {from: victor});
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount11, "option voted count is incorrect");
@@ -486,7 +486,7 @@ contract('KyberDAO', function(accounts) {
       totalCampPoint2.isub(mulPrecision(100));
       voteCount22.isub(mulPrecision(100));
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount11, "option voted count is incorrect");
@@ -518,7 +518,7 @@ contract('KyberDAO', function(accounts) {
       totalCampPoint2.isub(mulPrecision(100));
       voteCount22.isub(mulPrecision(100));
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount11, "option voted count is incorrect");
@@ -553,7 +553,7 @@ contract('KyberDAO', function(accounts) {
       let voteCount11 = (new BN(0)).add(initVictorStake).add(initMikeStake);
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       let voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -566,7 +566,7 @@ contract('KyberDAO', function(accounts) {
       voteCount11.isub(victorWithdrewAmt);
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -574,7 +574,7 @@ contract('KyberDAO', function(accounts) {
       // withdraw from staker with no votes
       await stakingContract.withdraw(mulPrecision(10), {from: loi});
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -586,7 +586,7 @@ contract('KyberDAO', function(accounts) {
       let voteCount12 = (new BN(0)).add(initLoiStake).isub(mulPrecision(10));
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -594,7 +594,7 @@ contract('KyberDAO', function(accounts) {
 
       await daoContract.vote(1, 3, {from: loi});
       // check pts and vote counts, nothing should be changed
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -603,7 +603,7 @@ contract('KyberDAO', function(accounts) {
       await stakingContract.delegate(loi, {from: victor});
 
       // check pts and vote counts, nothing should be changed
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -621,7 +621,7 @@ contract('KyberDAO', function(accounts) {
       let voteCount21 = (new BN(0)).add(initMikeStake).add(initVictorStake).sub(victorWithdrewAmt);
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -641,7 +641,7 @@ contract('KyberDAO', function(accounts) {
       voteCount21.isub(mulPrecision(200));
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -661,7 +661,7 @@ contract('KyberDAO', function(accounts) {
       totalCampPoint2.isub(mulPrecision(100));
       voteCount21.isub(mulPrecision(100));
 
-      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalPoints(1), "points should be correct");
+      Helper.assertEqual(totalEpochPoints, await daoContract.getTotalEpochPoints(1), "points should be correct");
       voteData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
@@ -2074,7 +2074,7 @@ contract('KyberDAO', function(accounts) {
         0, 0, 0, [25, 50, 100], '0x', {from: campCreator}
       );
 
-      Helper.assertEqual(0, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(0, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       let campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(0, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
@@ -2093,7 +2093,7 @@ contract('KyberDAO', function(accounts) {
       let campPoints = new BN(0).add(initVictorStake);
       let optionPoint1 = new BN(0).add(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2113,7 +2113,7 @@ contract('KyberDAO', function(accounts) {
       campPoints.iadd(initMikeStake);
       let optionPoint2 = new BN(0).add(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2135,7 +2135,7 @@ contract('KyberDAO', function(accounts) {
       campPoints.iadd(initLoiStake);
       optionPoint1.iadd(initLoiStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2152,7 +2152,7 @@ contract('KyberDAO', function(accounts) {
       campPoints.isub(mulPrecision(100));
       optionPoint1.isub(mulPrecision(100));
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2167,7 +2167,7 @@ contract('KyberDAO', function(accounts) {
       await stakingContract.delegate(victor, {from: loi});
 
       // data shouldn't be changed
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2189,7 +2189,7 @@ contract('KyberDAO', function(accounts) {
       let campPoints2 = new BN(0).add(initVictorStake);
       let optionPoint21 = new BN(0).add(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2215,7 +2215,7 @@ contract('KyberDAO', function(accounts) {
       campPoints2.isub(mulPrecision(200));
       optionPoint21.isub(mulPrecision(200));
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2245,7 +2245,7 @@ contract('KyberDAO', function(accounts) {
         0, 0, 0, [25, 50], '0x', {from: campCreator}
       );
 
-      Helper.assertEqual(0, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(0, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       let campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(0, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
@@ -2267,7 +2267,7 @@ contract('KyberDAO', function(accounts) {
       let campPoints = new BN(0).add(initVictorStake);
       let optionPoint1 = new BN(0).add(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2292,7 +2292,7 @@ contract('KyberDAO', function(accounts) {
       campPoints.iadd(initMikeStake).iadd(initLoiStake);
       let optionPoint2 = new BN(0).add(initMikeStake).add(initLoiStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2309,7 +2309,7 @@ contract('KyberDAO', function(accounts) {
       tx = await daoContract.vote(1, 2, {from: mike});
       logInfo("Vote: revote same option, gas used: " + tx.receipt.gasUsed);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2330,7 +2330,7 @@ contract('KyberDAO', function(accounts) {
       optionPoint1.iadd(initMikeStake);
       optionPoint2.isub(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2346,7 +2346,7 @@ contract('KyberDAO', function(accounts) {
       await daoContract.vote(2, 1, {from: mike});
       epochPoints.iadd(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2373,7 +2373,7 @@ contract('KyberDAO', function(accounts) {
       campPoints2.isub(mulPrecision(100));
       option1Camp2.isub(mulPrecision(100));
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2394,7 +2394,7 @@ contract('KyberDAO', function(accounts) {
       await stakingContract.delegate(mike, {from: victor});
 
       // nothing should be changed here
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2423,7 +2423,7 @@ contract('KyberDAO', function(accounts) {
       );
 
       // Check: initial data for epoch 1 and camp 1
-      Helper.assertEqual(0, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(0, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       let campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(0, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
@@ -2445,7 +2445,7 @@ contract('KyberDAO', function(accounts) {
       let campPoints = new BN(0);
       let optionPoint1 = new BN(0);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2470,7 +2470,7 @@ contract('KyberDAO', function(accounts) {
       optionPoint1.iadd(initVictorStake);
       let optionPoint2 = new BN(0);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2488,7 +2488,7 @@ contract('KyberDAO', function(accounts) {
       campPoints.iadd(initLoiStake);
       optionPoint1.iadd(initLoiStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2506,7 +2506,7 @@ contract('KyberDAO', function(accounts) {
       campPoints.isub(mulPrecision(100));
       optionPoint1.isub(mulPrecision(100));
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2524,7 +2524,7 @@ contract('KyberDAO', function(accounts) {
       campPoints.iadd(initMikeStake);
       optionPoint2.iadd(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2547,7 +2547,7 @@ contract('KyberDAO', function(accounts) {
       await stakingContract.deposit(initPoolMasterStake, {from: poolMaster});
 
       // data shouldn't be changed
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2570,7 +2570,7 @@ contract('KyberDAO', function(accounts) {
       let campPoints2 = new BN(0).add(initVictorStake);
       let optionPoint21 = new BN(0).add(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2597,7 +2597,7 @@ contract('KyberDAO', function(accounts) {
       campPoints2.isub(mulPrecision(100));
       optionPoint21.isub(mulPrecision(100));
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
@@ -2632,7 +2632,7 @@ contract('KyberDAO', function(accounts) {
       let optionPoints31 = new BN(0).add(initPoolMasterStake).add(initVictorStake).add(initLoiStake);
       let optionPoints32 = new BN(0).add(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(2), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(2), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(3);
       Helper.assertEqual(campPoints3, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoints31, campPointsData[0][0], "option voted count is incorrect");
@@ -2652,7 +2652,7 @@ contract('KyberDAO', function(accounts) {
       optionPoints31.isub(mulPrecision(350));
       optionPoints32.isub(mulPrecision(150));
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(2), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(2), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(3);
       Helper.assertEqual(campPoints3, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoints31, campPointsData[0][0], "option voted count is incorrect");
@@ -2671,7 +2671,7 @@ contract('KyberDAO', function(accounts) {
       let votePoints42 = new BN(0).add(campPoints4);
       epochPoints.iadd(campPoints4);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(2), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(2), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(3);
       Helper.assertEqual(campPoints3, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoints31, campPointsData[0][0], "option voted count is incorrect");
@@ -2714,7 +2714,7 @@ contract('KyberDAO', function(accounts) {
       let optionPoint21 = new BN(0);
       let optionPoint22 = new BN(0);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       let campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
@@ -2748,7 +2748,7 @@ contract('KyberDAO', function(accounts) {
       optionPoint12.iadd(initPoolMaster2Stake).iadd(initLoiStake);
 
       Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster2, 1), "number votes should be correct");
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
@@ -2765,7 +2765,7 @@ contract('KyberDAO', function(accounts) {
       optionPoint12.isub(initPoolMaster2Stake).isub(initLoiStake);
       optionPoint11.iadd(initPoolMaster2Stake).iadd(initLoiStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
@@ -2777,7 +2777,7 @@ contract('KyberDAO', function(accounts) {
       optionPoint21.isub(initMikeStake);
       optionPoint22.iadd(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
 
       campPointsData = await daoContract.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
@@ -2790,7 +2790,7 @@ contract('KyberDAO', function(accounts) {
       optionPoint11.isub(initPoolMaster2Stake).isub(initLoiStake);
       optionPoint12.iadd(initPoolMaster2Stake).iadd(initLoiStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
@@ -2800,7 +2800,7 @@ contract('KyberDAO', function(accounts) {
       await daoContract.vote(1, 2, {from: poolMaster2});
       await daoContract.vote(2, 2, {from: poolMaster});
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
@@ -2870,7 +2870,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster2, 4), "number votes should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster, 4), "number votes should be correct");
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(4), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(4), "total epoch points should be correct");
       let campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
@@ -2904,7 +2904,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(0, await daoContract.getNumberVotes(poolMaster2, 0), "number votes should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(poolMaster, 0), "number votes should be correct");
 
-      Helper.assertEqual(0, await daoContract.getTotalPoints(0), "total epoch points should be correct");
+      Helper.assertEqual(0, await daoContract.getTotalEpochPoints(0), "total epoch points should be correct");
       let campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(0, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
@@ -2959,7 +2959,7 @@ contract('KyberDAO', function(accounts) {
       campPoints1.iadd(initVictorStake);
       optionPoint12.iadd(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       let campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
@@ -2976,7 +2976,7 @@ contract('KyberDAO', function(accounts) {
       campPoints1.isub(initVictorStake);
       optionPoint12.isub(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
@@ -2984,7 +2984,7 @@ contract('KyberDAO', function(accounts) {
 
       await daoContract.vote(2, 1, {from: poolMaster});
 
-      Helper.assertEqual(epochPoints, await daoContract.getTotalPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await daoContract.getTotalEpochPoints(1), "total epoch points should be correct");
       campPointsData = await daoContract.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
