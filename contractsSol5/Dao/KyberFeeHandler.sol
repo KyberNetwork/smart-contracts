@@ -415,11 +415,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         uint expiryTimestamp;
         (rewardBps, rebateBps, expiryTimestamp, epoch) = readBRRData();
 
-          // Check current block number
+          // Check current timestamp
         if (now > expiryTimestamp && kyberDAO != IKyberDAO(0)) {
             uint burnBps;
 
-            (burnBps, rewardBps, rebateBps, epoch, expiryTimestamp) = kyberDAO.getLatestBRRData();
+            (burnBps, rewardBps, rebateBps, epoch, expiryTimestamp) = kyberDAO.getLatestBRRDataWithCache();
             require(burnBps + rewardBps + rebateBps == BPS, "Bad BRR values");
             require(burnBps <= BPS, "burnBps overflow");
             require(rewardBps <= BPS, "rewardBps overflow");

@@ -7,8 +7,7 @@ contract MockMaliciousDAO is KyberDAO {
     constructor(
         uint _epochPeriod, uint _startTimestamp,
         address _staking, address _feeHandler, address _knc,
-        uint _maxNumOptions, uint _minCampDuration,
-        uint _defaultNetworkFeeBps, uint _defaultRewardBps, uint _defaultRebateBps,
+        uint _minCampDuration, uint _defaultNetworkFeeBps, uint _defaultRewardBps, uint _defaultRebateBps,
         address _admin
     ) KyberDAO(
         _epochPeriod, _startTimestamp,
@@ -16,8 +15,7 @@ contract MockMaliciousDAO is KyberDAO {
         _defaultNetworkFeeBps, _defaultRewardBps, _defaultRebateBps,
         _admin
     ) public {
-        MAX_CAMP_OPTIONS = _maxNumOptions;
-        MIN_CAMP_DURATION_SECONDS = _minCampDuration;
+        minCampaignDurationInSeconds = _minCampDuration;
     }
 
     function setTotalEpochPoints(uint epoch, uint pts) public {

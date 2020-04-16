@@ -12,8 +12,8 @@ contract MockMaliciousDaoReentrancy is EpochUtils {
     uint totalDeposit = 0;
 
     constructor(uint _epochPeriod, uint _startTimestamp, KyberStaking _staking, IERC20 _knc) public {
-        EPOCH_PERIOD_SECONDS = _epochPeriod;
-        FIRST_EPOCH_START_TIMESTAMP = _startTimestamp;
+        epochPeriodInSeconds = _epochPeriod;
+        firstEpochStartTimestamp = _startTimestamp;
         staking = _staking;
         knc = _knc;
         require(_knc.approve(address(_staking), 2**255));

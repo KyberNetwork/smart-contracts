@@ -33,7 +33,6 @@ let campCreator;
 let daoContract;
 let victor;
 let mike;
-let maxCampOptions = 4;
 let minCampPeriod = 10; // 10 blocks
 let defaultNetworkFee = 25;
 let defaultRewardBps = 3000; // 30%
@@ -166,7 +165,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
     const submitNewCampaign = async(
         daoContract,
-        campType,
+        campaignType,
         startBlock,
         endBlock,
         minPercentageInPrecision,
@@ -177,7 +176,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         opt
       ) => {
         return await daoContract.submitNewCampaign(
-          campType,
+          campaignType,
           blockToTimestamp(startBlock),
           blockToTimestamp(endBlock),
           minPercentageInPrecision,
@@ -199,8 +198,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         daoContract = await MockDao.new(
             blocksToSeconds(epochPeriod), daoStartTime,
             stakingContract.address,  feeHandler.address, KNC.address,
-            maxCampOptions, minCampPeriod,
-            defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+            minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
             campCreator
         )
         await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter});
@@ -232,7 +230,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         networkData = await network.getNetworkData();
         Helper.assertEqual(blocksToSeconds(epoch * epochPeriod) + daoStartTime - 1, networkData.expiryTimestamp);
         Helper.assertEqual(expectedNetworkFee, networkData.networkFeeBps);
-        Helper.assertEqual(expectedNetworkFee, await daoContract.latestNetworkFeeResult());
+        Helper.assertEqual(expectedNetworkFee, (await daoContract.getLatestNetworkFeeData()).feeInBps);
 
         // check expected brr data from fee handler
         let brrData = await feeHandler.readBRRData();
@@ -241,7 +239,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         Helper.assertEqual(expectedReward, brrData.rewardBps);
         Helper.assertEqual(expectedRebate, brrData.rebateBps);
         // check expected brr data from dao
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(brrData.expiryTimestamp, daoBrrData.expiryTimestamp);
         Helper.assertEqual(brrData.epoch, daoBrrData.epoch);
         Helper.assertEqual(brrData.rewardBps, daoBrrData.rewardInBps);
@@ -298,16 +296,16 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
     it("test first trade of epoch 0 records correct default network fee and brr data", async() => {
         let networkData = await network.getNetworkData();
-        // default network data, expiry timestamp should be block when network is deployed
+        // default network data, expiry timestamp should be timestamp when network is deployed
         Helper.assertLesser(networkData.expiryTimestamp, daoStartTime - 1);
 
         let brrData = await feeHandler.readBRRData();
-        // default brr data, expiry timestamp should be block when feeHandler is deployed
+        // default brr data, expiry timestamp should be timestamp when feeHandler is deployed
         Helper.assertLesser(brrData.expiryTimestamp, daoStartTime - 1);
         Helper.assertEqual(brrData.epoch, 0);
 
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
-        let daoNetworkFee = await daoContract.latestNetworkFeeResult()
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
+        let daoNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
 
         // make a first trade and check data changes as expected
         await tradeAndCheckDataChangesAsExpected(
@@ -333,8 +331,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // no campaign yet, so still default data from DAO
 
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
-        let daoNetworkFee = await daoContract.latestNetworkFeeResult()
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
+        let daoNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
 
         await tradeAndCheckDataChangesAsExpected(
             1, // epoch
@@ -346,7 +344,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test has network fee camp without winning option, no brr camp, data changes as expected", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         await updateCurrentBlockAndTimestamp();
@@ -382,9 +380,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         );
 
         // network fee camp should be updated without winning option
-        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
+        Helper.assertEqual((await daoContract.getLatestNetworkFeeData()).feeInBps, curNetworkFee);
         // brr camp should be updated without winning option
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(2 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(2, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
@@ -392,7 +390,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test has network fee camp without winning option, has brr camp without winning option, data changes as expected", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -444,9 +442,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         );
 
         // network fee camp should be updated without winning option
-        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
+        Helper.assertEqual((await daoContract.getLatestNetworkFeeData()).feeInBps, curNetworkFee);
         // brr camp should be updated with no winning option
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(3 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(3, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
@@ -454,7 +452,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test has network fee camp without winning option, has brr camp with winning option, data changes as expected", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -506,9 +504,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         );
 
         // network fee camp should be updated without winning option
-        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
+        Helper.assertEqual((await daoContract.getLatestNetworkFeeData()).feeInBps, curNetworkFee);
         // brr camp should be updated with option 1 winning
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(4 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(4, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps.add(new BN(1)), daoBrrData.rewardInBps);
@@ -516,7 +514,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test has network fee camp with winning option, no brr camp, data changes as expected", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -553,11 +551,11 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         );
 
         // network fee camp should be updated with winning option
-        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), newFee1);
+        Helper.assertEqual((await daoContract.getLatestNetworkFeeData()).feeInBps, newFee1);
     });
 
     it("test has network fee camp with winning option, has brr camp without winning option, data changes as expected", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -609,9 +607,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         );
 
         // network fee camp should be updated with winning option
-        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), newFee1);
+        Helper.assertEqual((await daoContract.getLatestNetworkFeeData()).feeInBps, newFee1);
         // brr camp should be updated without winning option
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(6 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(6, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);
@@ -619,7 +617,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test has network fee camp with winning option, has brr camp with winning option, data changes as expected", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -671,9 +669,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         );
 
         // network fee camp should be updated with winning option
-        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), newFee1);
+        Helper.assertEqual((await daoContract.getLatestNetworkFeeData()).feeInBps, newFee1);
         // brr camp should be updated with winning option
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(7 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(7, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps.add(new BN(1)), daoBrrData.rewardInBps);
@@ -681,7 +679,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test no network fee and brr camps, data changes only expiry timestamp as expected", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         // delay until epoch 10
@@ -699,7 +697,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test update network fee from DAO with fee 0, network updates network fee, feeHandler doesn't update brr data", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -731,7 +729,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         networkData = await network.getNetworkData();
         Helper.assertEqual(blocksToSeconds(11 * epochPeriod) + daoStartTime - 1, networkData.expiryTimestamp);
         Helper.assertEqual(0, networkData.networkFeeBps);
-        Helper.assertEqual(0, await daoContract.latestNetworkFeeResult());
+        Helper.assertEqual(0, (await daoContract.getLatestNetworkFeeData()).feeInBps);
 
         // brr is not updated as there is no fee
         let brrData = await feeHandler.readBRRData();
@@ -740,7 +738,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         Helper.assertEqual(curBrrData.rewardBps, brrData.rewardBps);
         Helper.assertEqual(curBrrData.rebateBps, brrData.rebateBps);
         // check expected brr data from dao
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(11 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(11, daoBrrData.epoch);
         Helper.assertEqual(brrData.rewardBps, daoBrrData.rewardInBps);
@@ -748,7 +746,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test update network fee from DAO with fee 49.99% - max fee", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -804,7 +802,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test update reward to 100%", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -838,7 +836,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test update rebate to 100%", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
 
@@ -871,7 +869,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test update reward and rebate to 0", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
 
@@ -904,7 +902,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     });
 
     it("test can not record new data for DAO as no trade for more than 1 epoch", async() => {
-        let curNetworkFee = await daoContract.latestNetworkFeeResult();
+        let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
         let curBrrData = await feeHandler.readBRRData();
 
         let link = web3.utils.fromAscii("https://kyberswap.com");
@@ -958,9 +956,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         );
 
         // network fee camp should be updated without winning option
-        Helper.assertEqual(await daoContract.latestNetworkFeeResult(), curNetworkFee);
+        Helper.assertEqual((await daoContract.getLatestNetworkFeeData()).feeInBps, curNetworkFee);
         // brr camp should be updated without winning option
-        let daoBrrData = await daoContract.latestBRRDataDecoded();
+        let daoBrrData = await daoContract.getLatestBRRDataDecoded();
         Helper.assertEqual(blocksToSeconds(18 * epochPeriod) + daoStartTime - 1, daoBrrData.expiryTimestamp);
         Helper.assertEqual(18, daoBrrData.epoch);
         Helper.assertEqual(curBrrData.rewardBps, daoBrrData.rewardInBps);

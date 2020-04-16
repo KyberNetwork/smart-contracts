@@ -7,8 +7,8 @@ contract MockKyberDaoWithdrawFailed is EpochUtils {
     uint public value;
 
     constructor(uint _epochPeriod, uint _startTimestamp) public {
-        EPOCH_PERIOD_SECONDS = _epochPeriod;
-        FIRST_EPOCH_START_TIMESTAMP = _startTimestamp;
+        epochPeriodInSeconds = _epochPeriod;
+        firstEpochStartTimestamp = _startTimestamp;
     }
 
     function handleWithdrawal(address, uint) public returns(bool) {

@@ -8,19 +8,19 @@ contract MockKyberStakingMalicious is KyberStaking {
         KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) public { }
 
     function setLatestStake(address staker, uint amount) public {
-        latestStake[staker] = amount;
+        stakerLatestData[staker].stake = amount;
     }
 
     function setLatestDelegatedStake(address staker, uint amount) public {
-        latestDelegatedStake[staker] = amount;
+        stakerLatestData[staker].delegatedStake = amount;
     }
 
     function setEpochStake(address staker, uint epoch, uint amount) public {
-        stake[epoch][staker] = amount;
+        stakerPerEpochData[epoch][staker].stake = amount;
     }
 
     function setEpochDelegatedStake(address staker, uint epoch, uint amount) public {
-        delegatedStake[epoch][staker] = amount;
+        stakerPerEpochData[epoch][staker].delegatedStake = amount;
     }
 }
 

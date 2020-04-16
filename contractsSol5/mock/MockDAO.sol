@@ -52,22 +52,16 @@ contract MockDAO is IKyberDAO, Utils4 {
         feeBps = _feeBps;
     }
 
-    function getLatestNetworkFeeData() 
-        external 
-        view 
-        returns(uint256, uint256) {
+    function getLatestNetworkFeeData() external view returns(uint, uint) {
         return (feeBps, expiryTimestamp);
     }
 
-    function getLatestNetworkFeeDataWithCache() 
-        external 
-        returns(uint256, uint256) 
-    {
+    function getLatestNetworkFeeDataWithCache() external returns(uint, uint) {
         data++;
         return (feeBps, expiryTimestamp);
     }
 
-    function getLatestBRRData()
+    function getLatestBRRDataWithCache()
         external
         returns (
             uint256,
@@ -99,11 +93,11 @@ contract MockDAO is IKyberDAO, Utils4 {
             );
     }
 
-    function EPOCH_PERIOD_SECONDS() external view returns(uint) {
+    function epochPeriodInSeconds() external view returns(uint) {
         return epochPeriod;
     }
 
-    function FIRST_EPOCH_START_TIMESTAMP() external view returns(uint) {
+    function firstEpochStartTimestamp() external view returns(uint) {
         return startTimestamp;
     }
 
@@ -134,9 +128,9 @@ contract MockDAO is IKyberDAO, Utils4 {
         expiryTimestamp = now + epochPeriod;
     }
 
-    function vote(uint256 campID, uint256 option) external {
+    function vote(uint campaignID, uint option) external {
         // must implement so it can be deployed.
-        campID;
+        campaignID;
         option;
     }
 }
