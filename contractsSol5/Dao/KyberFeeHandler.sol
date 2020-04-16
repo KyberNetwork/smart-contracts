@@ -415,7 +415,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         uint expiryTimestamp;
         (rewardBps, rebateBps, expiryTimestamp, epoch) = readBRRData();
 
-          // Check current block number
+          // Check current timestamp
         if (now > expiryTimestamp && kyberDAO != IKyberDAO(0)) {
             uint burnBps;
 

@@ -94,14 +94,14 @@ contract('KyberStaking', function(accounts) {
     Helper.assertEqual(currentEpoch, await stakingContract.getCurrentEpochNumber(), "wrong epoch number");
 
     currentEpoch = 1;
-    // delay until first block of epoch 1
+    // delay until start timestamp of epoch 1
     await Helper.mineNewBlockAt(blockToTimestamp(startBlock));
 
     currentTime = await Helper.getCurrentBlockTime();
     Helper.assertEqual(currentEpoch, await stakingContract.getCurrentEpochNumber(), "wrong epoch number");
     Helper.assertEqual(currentEpoch, await stakingContract.getEpochNumber(currentTime), "wrong epoch number");
 
-    // delay until last block of epoch 1
+    // delay until end timestamp of epoch 1
     await Helper.mineNewBlockAt(blockToTimestamp(epochPeriod + startBlock) - 1);
     Helper.assertEqual(currentEpoch, await stakingContract.getCurrentEpochNumber(), "wrong epoch number");
 
@@ -2315,7 +2315,7 @@ contract('KyberStaking', function(accounts) {
       )
     });
 
-    it("Test update DAO address should revert when epoch period or start block is different between staking & DAO", async function() {
+    it("Test update DAO address should revert when epoch period or start timestamp is different between staking & DAO", async function() {
       await deployStakingContract(10, currentBlock + 10);
       let dao = await MockKyberDAO.new(
         blocksToSeconds(9),
@@ -2332,7 +2332,7 @@ contract('KyberStaking', function(accounts) {
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 9)
       );
-      // revert different start block number
+      // revert different start timestamp number
       await expectRevert(
         stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
         "updateDAO: DAO and Staking have different start timestamp"
@@ -2366,7 +2366,7 @@ contract('KyberStaking', function(accounts) {
         ),
         "ctor: epoch duration must be positive"
       )
-      // start block is in the past
+      // start timestamp is in the past
       await expectRevert(
         StakingContract.new(
           kncToken.address,

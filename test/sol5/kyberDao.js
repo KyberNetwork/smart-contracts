@@ -970,8 +970,8 @@ contract('KyberDAO', function(accounts) {
       // test recorded correct data
       let data = await daoContract.getCampaignDetails(1);
       Helper.assertEqual(0, data.campaignType, "campaignType is incorrect");
-      Helper.assertEqual(blockToTimestamp(startBlock + 1), data.startTimestamp, "start block is incorrect");
-      Helper.assertEqual(blockToTimestamp(startBlock + 1 + minCampPeriod), data.endTimestamp, "end block is incorrect");
+      Helper.assertEqual(blockToTimestamp(startBlock + 1), data.startTimestamp, "start timestamp is incorrect");
+      Helper.assertEqual(blockToTimestamp(startBlock + 1 + minCampPeriod), data.endTimestamp, "end timestamp is incorrect");
       Helper.assertEqual(await kncToken.totalSupply(), data.totalKNCSupply, "total supply is incorrect");
       Helper.assertEqual(minPercentageInPrecision, data.minPercentageInPrecision, "minPercentage is incorrect");
       Helper.assertEqual(cInPrecision, data.cInPrecision, "c is incorrect");
@@ -1148,7 +1148,7 @@ contract('KyberDAO', function(accounts) {
       );
     });
 
-    it("Test submit campaign should revert start or end block is invalid", async function() {
+    it("Test submit campaign should revert start or end timestamp is invalid", async function() {
       await deployContracts(30, currentBlock + 30, 10);
       await updateCurrentBlockAndTimestamp();
       // start in the past, use time to make it more accurate
@@ -5659,7 +5659,7 @@ contract('KyberDAO', function(accounts) {
       await deployContracts(10, currentBlock + 10, 10);
 
       Helper.assertEqual(await daoContract.epochPeriodInSeconds(), blocksToSeconds(10), "Epoch period is wrong");
-      Helper.assertEqual(await daoContract.firstEpochStartTimestamp(), daoStartTime, "Start block is wrong");
+      Helper.assertEqual(await daoContract.firstEpochStartTimestamp(), daoStartTime, "Start timestamp is wrong");
       Helper.assertEqual(await daoContract.kncToken(), kncToken.address, "KNC token is wrong");
       Helper.assertEqual(await daoContract.staking(), stakingContract.address, "Staking contract is wrong");
       Helper.assertEqual(await daoContract.feeHandler(), feeHandler.address, "Feehandler contract is wrong");
