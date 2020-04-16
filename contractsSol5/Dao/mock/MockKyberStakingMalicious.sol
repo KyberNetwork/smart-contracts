@@ -7,6 +7,10 @@ contract MockKyberStakingMalicious is KyberStaking {
     constructor(address _kncToken, uint _epochPeriod, uint _startBlock, address _admin) 
         KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) public { }
 
+    function getHasInitedValue(address staker, uint epoch) public view returns(bool) {
+        return hasInited[epoch][staker];
+    }
+
     function setLatestStake(address staker, uint amount) public {
         stakerLatestData[staker].stake = amount;
     }
