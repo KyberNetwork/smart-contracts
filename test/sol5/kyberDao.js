@@ -3144,21 +3144,21 @@ contract('KyberDAO', function(accounts) {
       expectEvent(tx, 'RewardClaimed', {
         staker: mike,
         epoch: new BN(1),
-        perInPrecision: await daoContract.getStakerRewardPercentageInPrecision(mike, 1)
+        percentInPrecision: await daoContract.getStakerRewardPercentageInPrecision(mike, 1)
       });
       gasUsed.iadd(new BN(tx.receipt.gasUsed));
       tx = await daoContract.claimReward(poolMaster, 1);
       expectEvent(tx, 'RewardClaimed', {
         staker: poolMaster,
         epoch: new BN(1),
-        perInPrecision: await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1)
+        percentInPrecision: await daoContract.getStakerRewardPercentageInPrecision(poolMaster, 1)
       });
       gasUsed.iadd(new BN(tx.receipt.gasUsed));
       tx = await daoContract.claimReward(poolMaster2, 1);
       expectEvent(tx, 'RewardClaimed', {
         staker: poolMaster2,
         epoch: new BN(1),
-        perInPrecision: await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1)
+        percentInPrecision: await daoContract.getStakerRewardPercentageInPrecision(poolMaster2, 1)
       });
       gasUsed.iadd(new BN(tx.receipt.gasUsed));
       logInfo("Claim reward: Average gas used: " + gasUsed.div(new BN(3)).toString(10));
