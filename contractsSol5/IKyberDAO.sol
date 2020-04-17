@@ -6,6 +6,7 @@ interface IKyberDAO {
     function firstEpochStartTimestamp() external view returns(uint);
 
     function vote(uint campaignID, uint option) external;
+    function claimReward(address staker, uint epoch) external;
 
     function handleWithdrawal(address staker, uint penaltyAmount) external;
     function shouldBurnRewardForEpoch(uint epoch) external view returns(bool);
