@@ -62,7 +62,7 @@ let reserve;
 let numReserves;
 let info;
 let hint;
-const tradeTypesArray = [EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE];
+const tradeTypesArray = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE];
 const tradeStr = ["MASK IN", "MASK OUT", "SPLIT", "NO HINT"];
 
 //tokens data
