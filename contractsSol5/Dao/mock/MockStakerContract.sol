@@ -11,7 +11,6 @@ contract MockStakerContractNoFallback {
     IKyberStaking public staking;
     IKyberDAO public dao;
 
-
     constructor(IERC20 _kncToken, IKyberStaking _staking, IKyberDAO _dao) public {
         kncToken = _kncToken;
         staking = _staking;
