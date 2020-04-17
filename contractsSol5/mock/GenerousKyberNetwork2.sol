@@ -8,12 +8,12 @@ import "../KyberNetwork.sol";
  * This would allow us to check the condition of maxDestAmount
  */
 contract GenerousKyberNetwork2 is KyberNetwork {
+    event GenerousTrade(int256 which, int256 more, IERC20 token);
+
     constructor(address _admin, IKyberStorage _kyberStorage)
         public
         KyberNetwork(_admin, _kyberStorage)
     {}
-
-    event GenerousTrade(int256 which, int256 more, IERC20 token);
 
     /* solhint-disable function-max-lines */
     /// @notice use token address ETH_TOKEN_ADDRESS for ether

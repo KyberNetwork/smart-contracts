@@ -10,42 +10,6 @@ contract MockNetwork is KyberNetwork {
         KyberNetwork(_admin, _kyberStorage)
     {}
 
-    //over ride some functions to reduce contract size.
-    function doReserveTrades(
-        IERC20 src,
-        uint256 amount,
-        IERC20 dest,
-        address payable destAddress,
-        TradeData memory tradeData,
-        uint256 expectedDestAmount
-    ) internal returns (bool) {
-        src;
-        amount;
-        dest;
-        destAddress;
-        tradeData;
-        expectedDestAmount;
-
-        revert("must use real network");
-        // return true;
-    }
-
-    function setNetworkFeeData(uint256 _networkFeeBps, uint256 _expiryTimestamp) public {
-        updateNetworkFee(_expiryTimestamp, _networkFeeBps);
-    }
-
-    function getNetworkFeeData()
-        public
-        view
-        returns (uint256 _networkFeeBps, uint256 _expiryTimestamp)
-    {
-        (_networkFeeBps, _expiryTimestamp) = readNetworkFeeData();
-    }
-
-    function mockGetNetworkFee() public view returns (uint256 networkFeeBps) {
-        return getNetworkFee();
-    }
-
     function mockHandleChange(
         IERC20 src,
         uint256 srcAmount,
@@ -75,5 +39,41 @@ contract MockNetwork is KyberNetwork {
             gasHelper = _gasHelper;
             emit GasHelperUpdated(_gasHelper);
         }
+    }
+
+    function setNetworkFeeData(uint256 _networkFeeBps, uint256 _expiryTimestamp) public {
+        updateNetworkFee(_expiryTimestamp, _networkFeeBps);
+    }
+
+    function getNetworkFeeData()
+        public
+        view
+        returns (uint256 _networkFeeBps, uint256 _expiryTimestamp)
+    {
+        (_networkFeeBps, _expiryTimestamp) = readNetworkFeeData();
+    }
+
+    function mockGetNetworkFee() public view returns (uint256 networkFeeBps) {
+        return getNetworkFee();
+    }
+
+    //over ride some functions to reduce contract size.
+    function doReserveTrades(
+        IERC20 src,
+        uint256 amount,
+        IERC20 dest,
+        address payable destAddress,
+        TradeData memory tradeData,
+        uint256 expectedDestAmount
+    ) internal returns (bool) {
+        src;
+        amount;
+        dest;
+        destAddress;
+        tradeData;
+        expectedDestAmount;
+
+        revert("must use real network");
+        // return true;
     }
 }
