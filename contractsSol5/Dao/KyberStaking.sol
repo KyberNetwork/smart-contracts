@@ -76,7 +76,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit DAOContractSetterRemoved();
     }
 
-    event Delegated(address indexed staker, address indexed dAddr, uint indexed epoch, bool isDelegated);
+    event Delegated(address indexed staker, address indexed delegatedAddress, uint indexed epoch, bool isDelegated);
 
     /**
     * @dev calls to set delegation for msg.sender, will take effect from the next epoch

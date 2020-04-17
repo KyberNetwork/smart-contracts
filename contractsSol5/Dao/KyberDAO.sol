@@ -381,7 +381,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         emit Voted(staker, curEpoch, campaignID, option);
     }
 
-    event RewardClaimed(address indexed staker, uint indexed epoch, uint perInPrecision);
+    event RewardClaimed(address indexed staker, uint indexed epoch, uint percentInPrecision);
 
     /**
     * @dev call to claim reward of an epoch, can call by anyone, only once for each epoch
