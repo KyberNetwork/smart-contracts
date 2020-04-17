@@ -13,34 +13,30 @@ import "./IKyberStorage.sol";
  *       - getting trading reserves
  *       - matching best reserve for trades
  */
-contract KyberMatchingEngine is
-    KyberHintHandler,
-    IKyberMatchingEngine,
-    WithdrawableNoModifiers
-{
-    uint256 public negligibleRateDiffBps = 5; // 1 bps is 0.01%
+contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, WithdrawableNoModifiers {
+    struct BestReserveInfo {
+        uint256 index;
+        uint256 destAmount;
+        uint256 numRelevantReserves;
+    }
     IKyberNetwork public kyberNetwork;
     IKyberStorage public kyberStorage;
+
+    uint256 public negligibleRateDiffBps = 5; // 1 bps is 0.01%
+
+    event KyberStorageUpdated(IKyberStorage newStorage);
+    event KyberNetworkUpdated(IKyberNetwork newNetwork);
 
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /* empty body */
     }
 
-    function onlyNetwork() internal view {
-        require(msg.sender == address(kyberNetwork), "only network");
-    }
-
-    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps)
-        external
-        returns (bool)
-    {
+    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps) external returns (bool) {
         onlyNetwork();
         require(_negligibleRateDiffBps <= BPS, "rateDiffBps exceed BPS"); // at most 100%
         negligibleRateDiffBps = _negligibleRateDiffBps;
         return true;
     }
-
-    event KyberNetworkUpdated(IKyberNetwork newNetwork);
 
     function setNetworkContract(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
@@ -49,12 +45,7 @@ contract KyberMatchingEngine is
         kyberNetwork = _kyberNetwork;
     }
 
-    event KyberStorageUpdated(IKyberStorage newStorage);
-
-    function setKyberStorage(IKyberStorage _kyberStorage)
-        external
-        returns (bool)
-    {
+    function setKyberStorage(IKyberStorage _kyberStorage) external returns (bool) {
         onlyAdmin();
         emit KyberStorageUpdated(_kyberStorage);
         kyberStorage = _kyberStorage;
@@ -101,26 +92,18 @@ contract KyberMatchingEngine is
             bytes memory unpackedHint;
             if (src == ETH_TOKEN_ADDRESS) {
                 (, unpackedHint) = unpackT2THint(hint);
-                (tradeType, reserveIds, splitValuesBps, error) = parseHint(
-                    unpackedHint
-                );
+                (tradeType, reserveIds, splitValuesBps, error) = parseHint(unpackedHint);
             }
             if (dest == ETH_TOKEN_ADDRESS) {
                 (unpackedHint, ) = unpackT2THint(hint);
-                (tradeType, reserveIds, splitValuesBps, error) = parseHint(
-                    unpackedHint
-                );
+                (tradeType, reserveIds, splitValuesBps, error) = parseHint(unpackedHint);
             }
         } else {
             (tradeType, reserveIds, splitValuesBps, error) = parseHint(hint);
         }
 
         if (error != HintErrors.NoError)
-            return (
-                new bytes32[](0),
-                new uint256[](0),
-                ProcessWithRate.NotRequired
-            );
+            return (new bytes32[](0), new uint256[](0), ProcessWithRate.NotRequired);
 
         if (tradeType == TradeType.MaskIn) {
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
@@ -141,46 +124,6 @@ contract KyberMatchingEngine is
 
     function getNegligibleRateDiffBps() external view returns (uint256) {
         return negligibleRateDiffBps;
-    }
-
-    /// @notice Logic for masking out reserves
-    /// @param allReservesPerToken Array of reserveIds that support the t2e or e2t side of the trade
-    /// @param maskedOutReserves Array of reserveIds to be excluded from allReservesPerToken
-    /// @return Returns an array of reserveIds that can be used for the trade
-    function maskOutReserves(
-        bytes32[] memory allReservesPerToken,
-        bytes32[] memory maskedOutReserves
-    ) internal pure returns (bytes32[] memory filteredReserves) {
-        require(
-            allReservesPerToken.length >= maskedOutReserves.length,
-            "mask out exceeds available reserves"
-        );
-        filteredReserves = new bytes32[](
-            allReservesPerToken.length - maskedOutReserves.length
-        );
-        uint256 currentResultIndex = 0;
-
-        for (uint256 i = 0; i < allReservesPerToken.length; i++) {
-            bytes32 reserveId = allReservesPerToken[i];
-            bool notMaskedOut = true;
-
-            for (uint256 j = 0; j < maskedOutReserves.length; j++) {
-                bytes32 maskedOutReserveId = maskedOutReserves[j];
-                if (reserveId == maskedOutReserveId) {
-                    notMaskedOut = false;
-                    break;
-                }
-            }
-
-            if (notMaskedOut)
-                filteredReserves[currentResultIndex++] = reserveId;
-        }
-    }
-
-    struct BestReserveInfo {
-        uint256 index;
-        uint256 destAmount;
-        uint256 numRelevantReserves;
     }
 
     // prettier-ignore
@@ -261,6 +204,49 @@ contract KyberMatchingEngine is
         reserveIndexes[0] = bestReserve.index;
     }
 
+    function convertReserveIdToAddress(bytes32 reserveId) internal view returns (address) {
+        return kyberStorage.convertReserveIdToAddress(reserveId);
+    }
+
+    function convertAddressToReserveId(address reserveAddress) internal view returns (bytes32) {
+        return kyberStorage.convertReserveAddresstoId(reserveAddress);
+    }
+
+    function onlyNetwork() internal view {
+        require(msg.sender == address(kyberNetwork), "only network");
+    }
+
+    /// @notice Logic for masking out reserves
+    /// @param allReservesPerToken Array of reserveIds that support the t2e or e2t side of the trade
+    /// @param maskedOutReserves Array of reserveIds to be excluded from allReservesPerToken
+    /// @return Returns an array of reserveIds that can be used for the trade
+    function maskOutReserves(
+        bytes32[] memory allReservesPerToken,
+        bytes32[] memory maskedOutReserves
+    ) internal pure returns (bytes32[] memory filteredReserves) {
+        require(
+            allReservesPerToken.length >= maskedOutReserves.length,
+            "mask out exceeds available reserves"
+        );
+        filteredReserves = new bytes32[](allReservesPerToken.length - maskedOutReserves.length);
+        uint256 currentResultIndex = 0;
+
+        for (uint256 i = 0; i < allReservesPerToken.length; i++) {
+            bytes32 reserveId = allReservesPerToken[i];
+            bool notMaskedOut = true;
+
+            for (uint256 j = 0; j < maskedOutReserves.length; j++) {
+                bytes32 maskedOutReserveId = maskedOutReserves[j];
+                if (reserveId == maskedOutReserveId) {
+                    notMaskedOut = false;
+                    break;
+                }
+            }
+
+            if (notMaskedOut) filteredReserves[currentResultIndex++] = reserveId;
+        }
+    }
+
     function populateSplitValuesBps(uint256 length)
         internal
         pure
@@ -270,21 +256,5 @@ contract KyberMatchingEngine is
         for (uint256 i = 0; i < length; i++) {
             splitValuesBps[i] = BPS;
         }
-    }
-
-    function convertReserveIdToAddress(bytes32 reserveId)
-        internal
-        view
-        returns (address)
-    {
-        return kyberStorage.convertReserveIdToAddress(reserveId);
-    }
-
-    function convertAddressToReserveId(address reserveAddress)
-        internal
-        view
-        returns (bytes32)
-    {
-        return kyberStorage.convertReserveAddresstoId(reserveAddress);
     }
 }

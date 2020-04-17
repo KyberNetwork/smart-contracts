@@ -20,104 +20,6 @@ import "./IKyberHint.sol";
  *             returns 0 rate for bad hint values
  */
 contract KyberHintHandler is IKyberHint, Utils4 {
-    /// @notice Builds the hint for a token to ether trade
-    /// @param tokenToEthType token to ether trade hint type
-    /// @param tokenToEthReserveIds token to ether reserve IDs
-    /// @param tokenToEthSplits token to ether reserve splits
-    /// @return Returns the ABI encoded hint
-    function buildTokenToEthHint(
-        TradeType tokenToEthType,
-        bytes32[] calldata tokenToEthReserveIds,
-        uint256[] calldata tokenToEthSplits
-    ) external pure returns (bytes memory hint) {
-        bytes32[] memory seqT2EReserveIds = ensureReserveIdSeq(
-            tokenToEthReserveIds
-        );
-
-        HintErrors valid = verifyData(
-            tokenToEthType,
-            seqT2EReserveIds,
-            tokenToEthSplits
-        );
-        if (valid != HintErrors.NoError) throwHintError(valid);
-
-        hint = abi.encode(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
-    }
-
-    /// @notice Builds the hint for a ether to token trade
-    /// @param ethToTokenType ether to token trade hint type
-    /// @param ethToTokenReserveIds ether to token reserve IDs
-    /// @param ethToTokenSplits ether to token reserve splits
-    /// @return Returns the ABI encoded hint
-    function buildEthToTokenHint(
-        TradeType ethToTokenType,
-        bytes32[] calldata ethToTokenReserveIds,
-        uint256[] calldata ethToTokenSplits
-    ) external pure returns (bytes memory hint) {
-        bytes32[] memory seqE2TReserveIds = ensureReserveIdSeq(
-            ethToTokenReserveIds
-        );
-
-        HintErrors valid = verifyData(
-            ethToTokenType,
-            seqE2TReserveIds,
-            ethToTokenSplits
-        );
-        if (valid != HintErrors.NoError) throwHintError(valid);
-
-        hint = abi.encode(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
-    }
-
-    /// @notice Builds the hint for a token to token trade
-    /// @param tokenToEthType token to ether trade hint type
-    /// @param tokenToEthReserveIds token to ether reserve IDs
-    /// @param tokenToEthSplits token to ether reserve splits
-    /// @param ethToTokenType ether to token trade hint type
-    /// @param ethToTokenReserveIds ether to token reserve IDs
-    /// @param ethToTokenSplits ether to token reserve splits
-    /// @return Returns the ABI encoded hint
-    function buildTokenToTokenHint(
-        TradeType tokenToEthType,
-        bytes32[] calldata tokenToEthReserveIds,
-        uint256[] calldata tokenToEthSplits,
-        TradeType ethToTokenType,
-        bytes32[] calldata ethToTokenReserveIds,
-        uint256[] calldata ethToTokenSplits
-    ) external pure returns (bytes memory hint) {
-        bytes32[] memory seqT2EReserveIds = ensureReserveIdSeq(
-            tokenToEthReserveIds
-        );
-        bytes32[] memory seqE2TReserveIds = ensureReserveIdSeq(
-            ethToTokenReserveIds
-        );
-
-        HintErrors validT2E = verifyData(
-            tokenToEthType,
-            seqT2EReserveIds,
-            tokenToEthSplits
-        );
-        if (validT2E != HintErrors.NoError) throwHintError(validT2E);
-
-        HintErrors validE2T = verifyData(
-            ethToTokenType,
-            seqE2TReserveIds,
-            ethToTokenSplits
-        );
-        if (validE2T != HintErrors.NoError) throwHintError(validE2T);
-
-        bytes memory t2eHint = abi.encode(
-            tokenToEthType,
-            seqT2EReserveIds,
-            tokenToEthSplits
-        );
-        bytes memory e2tHint = abi.encode(
-            ethToTokenType,
-            seqE2TReserveIds,
-            ethToTokenSplits
-        );
-        hint = abi.encode(t2eHint, e2tHint);
-    }
-
     /// @notice Parses the hint for a token to ether trade
     /// @param hint The ABI encoded hint, built using the build*Hint functions
     /// @return Returns the decoded token to ether trade hint type, reserve IDs, and splits
@@ -133,12 +35,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     {
         HintErrors error;
 
-        (
-            tokenToEthType,
-            tokenToEthReserveIds,
-            tokenToEthSplits,
-            error
-        ) = parseHint(hint);
+        (tokenToEthType, tokenToEthReserveIds, tokenToEthSplits, error) = parseHint(hint);
 
         if (error != HintErrors.NoError) throwHintError(error);
 
@@ -166,12 +63,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     {
         HintErrors error;
 
-        (
-            ethToTokenType,
-            ethToTokenReserveIds,
-            ethToTokenSplits,
-            error
-        ) = parseHint(hint);
+        (ethToTokenType, ethToTokenReserveIds, ethToTokenSplits, error) = parseHint(hint);
 
         if (error != HintErrors.NoError) throwHintError(error);
 
@@ -208,20 +100,10 @@ contract KyberHintHandler is IKyberHint, Utils4 {
 
         (t2eHint, e2tHint) = unpackT2THint(hint);
 
-        (
-            tokenToEthType,
-            tokenToEthReserveIds,
-            tokenToEthSplits,
-            t2eError
-        ) = parseHint(t2eHint);
+        (tokenToEthType, tokenToEthReserveIds, tokenToEthSplits, t2eError) = parseHint(t2eHint);
         if (t2eError != HintErrors.NoError) throwHintError(t2eError);
 
-        (
-            ethToTokenType,
-            ethToTokenReserveIds,
-            ethToTokenSplits,
-            e2tError
-        ) = parseHint(e2tHint);
+        (ethToTokenType, ethToTokenReserveIds, ethToTokenSplits, e2tError) = parseHint(e2tHint);
         if (e2tError != HintErrors.NoError) throwHintError(e2tError);
 
         tokenToEthAddresses = new IKyberReserve[](tokenToEthReserveIds.length);
@@ -239,6 +121,72 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         }
     }
 
+    /// @notice Builds the hint for a token to ether trade
+    /// @param tokenToEthType token to ether trade hint type
+    /// @param tokenToEthReserveIds token to ether reserve IDs
+    /// @param tokenToEthSplits token to ether reserve splits
+    /// @return Returns the ABI encoded hint
+    function buildTokenToEthHint(
+        TradeType tokenToEthType,
+        bytes32[] calldata tokenToEthReserveIds,
+        uint256[] calldata tokenToEthSplits
+    ) external pure returns (bytes memory hint) {
+        bytes32[] memory seqT2EReserveIds = ensureReserveIdSeq(tokenToEthReserveIds);
+
+        HintErrors valid = verifyData(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
+        if (valid != HintErrors.NoError) throwHintError(valid);
+
+        hint = abi.encode(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
+    }
+
+    /// @notice Builds the hint for a ether to token trade
+    /// @param ethToTokenType ether to token trade hint type
+    /// @param ethToTokenReserveIds ether to token reserve IDs
+    /// @param ethToTokenSplits ether to token reserve splits
+    /// @return Returns the ABI encoded hint
+    function buildEthToTokenHint(
+        TradeType ethToTokenType,
+        bytes32[] calldata ethToTokenReserveIds,
+        uint256[] calldata ethToTokenSplits
+    ) external pure returns (bytes memory hint) {
+        bytes32[] memory seqE2TReserveIds = ensureReserveIdSeq(ethToTokenReserveIds);
+
+        HintErrors valid = verifyData(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
+        if (valid != HintErrors.NoError) throwHintError(valid);
+
+        hint = abi.encode(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
+    }
+
+    /// @notice Builds the hint for a token to token trade
+    /// @param tokenToEthType token to ether trade hint type
+    /// @param tokenToEthReserveIds token to ether reserve IDs
+    /// @param tokenToEthSplits token to ether reserve splits
+    /// @param ethToTokenType ether to token trade hint type
+    /// @param ethToTokenReserveIds ether to token reserve IDs
+    /// @param ethToTokenSplits ether to token reserve splits
+    /// @return Returns the ABI encoded hint
+    function buildTokenToTokenHint(
+        TradeType tokenToEthType,
+        bytes32[] calldata tokenToEthReserveIds,
+        uint256[] calldata tokenToEthSplits,
+        TradeType ethToTokenType,
+        bytes32[] calldata ethToTokenReserveIds,
+        uint256[] calldata ethToTokenSplits
+    ) external pure returns (bytes memory hint) {
+        bytes32[] memory seqT2EReserveIds = ensureReserveIdSeq(tokenToEthReserveIds);
+        bytes32[] memory seqE2TReserveIds = ensureReserveIdSeq(ethToTokenReserveIds);
+
+        HintErrors validT2E = verifyData(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
+        if (validT2E != HintErrors.NoError) throwHintError(validT2E);
+
+        HintErrors validE2T = verifyData(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
+        if (validE2T != HintErrors.NoError) throwHintError(validE2T);
+
+        bytes memory t2eHint = abi.encode(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
+        bytes memory e2tHint = abi.encode(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
+        hint = abi.encode(t2eHint, e2tHint);
+    }
+
     /// @notice Parses or decodes the token to ether or ether to token bytes hint
     /// @param hint token to ether or ether to token trade hint
     /// @return Returns the trade type, reserve IDs, and reserve splits
@@ -252,10 +200,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             HintErrors valid
         )
     {
-        (tradeType, reserveIds, splits) = abi.decode(
-            hint,
-            (TradeType, bytes32[], uint256[])
-        );
+        (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes32[], uint256[]));
         valid = verifyData(tradeType, reserveIds, splits);
 
         if (valid != HintErrors.NoError) {
@@ -310,8 +255,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     ) internal pure returns (HintErrors) {
         if (!(reserveIds.length > 0)) return HintErrors.ReserveIdEmptyError;
         if (tradeType == TradeType.Split) {
-            if (reserveIds.length != splits.length)
-                return HintErrors.ReserveIdSplitsError;
+            if (reserveIds.length != splits.length) return HintErrors.ReserveIdSplitsError;
 
             uint256 bpsSoFar;
             for (uint256 i = 0; i < splits.length; i++) {
@@ -329,24 +273,14 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     /// @notice Throws error message to user to indicate error on hint
     /// @param error Error type from HintErrors enum
     function throwHintError(HintErrors error) internal pure {
-        if (error == HintErrors.ReserveIdDupError)
-            revert("duplicate reserveId");
-        if (error == HintErrors.ReserveIdEmptyError)
-            revert("reserveIds cannot be empty");
-        if (error == HintErrors.ReserveIdSplitsError)
-            revert("reserveIds.length != splits.length");
+        if (error == HintErrors.ReserveIdDupError) revert("duplicate reserveId");
+        if (error == HintErrors.ReserveIdEmptyError) revert("reserveIds cannot be empty");
+        if (error == HintErrors.ReserveIdSplitsError) revert("reserveIds.length != splits.length");
         if (error == HintErrors.TotalBPSError) revert("total BPS != 10000");
-        if (error == HintErrors.SplitsNotEmptyError)
-            revert("splits must be empty");
+        if (error == HintErrors.SplitsNotEmptyError) revert("splits must be empty");
     }
 
-    function convertReserveIdToAddress(bytes32 reserveId)
-        internal
-        view
-        returns (address);
+    function convertReserveIdToAddress(bytes32 reserveId) internal view returns (address);
 
-    function convertAddressToReserveId(address reserveAddress)
-        internal
-        view
-        returns (bytes32);
+    function convertAddressToReserveId(address reserveAddress) internal view returns (bytes32);
 }
