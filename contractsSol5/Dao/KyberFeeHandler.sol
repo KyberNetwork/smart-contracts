@@ -513,28 +513,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         rewardWei = RRAmountWei.mul(rewardInBps).div(BPS);
     }
 
-    function validateEthToKncRateToBurn(uint256 rateEthToKnc) internal view returns (bool) {
-        require(rateEthToKnc <= MAX_RATE, "ethToKnc rate out of bounds");
-        require(rateEthToKnc > 0, "ethToKnc rate is 0");
-        require(sanityRateContract.length > 0, "no sanity rate contract");
-        require(sanityRateContract[0] != ISanityRate(0), "sanity rate is 0x0, burning is blocked");
-
-        // get latest knc/eth rate from sanity contract
-        uint256 kncToEthRate = sanityRateContract[0].latestAnswer();
-        require(kncToEthRate > 0, "sanity rate is 0");
-        require(kncToEthRate <= MAX_RATE, "sanity rate out of bounds");
-
-        uint256 sanityEthToKncRate = PRECISION.mul(PRECISION).div(kncToEthRate);
-
-        // rate shouldn't be 10% lower than sanity rate
-        require(
-            rateEthToKnc.mul(BPS) >= sanityEthToKncRate.mul(BPS.sub(SANITY_RATE_DIFF_BPS)),
-            "Kyber eth to knc rate too low"
-        );
-
-        return true;
-    }
-
     function updateRebateValues(
         uint256 rebateWei,
         address[] memory rebateWallets,
@@ -557,5 +535,27 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         }
 
         require(totalRebateBps <= BPS, "rebates more then 100%");
+    }
+
+    function validateEthToKncRateToBurn(uint256 rateEthToKnc) internal view returns (bool) {
+        require(rateEthToKnc <= MAX_RATE, "ethToKnc rate out of bounds");
+        require(rateEthToKnc > 0, "ethToKnc rate is 0");
+        require(sanityRateContract.length > 0, "no sanity rate contract");
+        require(sanityRateContract[0] != ISanityRate(0), "sanity rate is 0x0, burning is blocked");
+
+        // get latest knc/eth rate from sanity contract
+        uint256 kncToEthRate = sanityRateContract[0].latestAnswer();
+        require(kncToEthRate > 0, "sanity rate is 0");
+        require(kncToEthRate <= MAX_RATE, "sanity rate out of bounds");
+
+        uint256 sanityEthToKncRate = PRECISION.mul(PRECISION).div(kncToEthRate);
+
+        // rate shouldn't be 10% lower than sanity rate
+        require(
+            rateEthToKnc.mul(BPS) >= sanityEthToKncRate.mul(BPS.sub(SANITY_RATE_DIFF_BPS)),
+            "Kyber eth to knc rate too low"
+        );
+
+        return true;
     }
 }
