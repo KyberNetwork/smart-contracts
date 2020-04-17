@@ -9,6 +9,12 @@ import "../utils/WithdrawableNoModifiers.sol";
 
 
 contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
+    struct Amounts {
+        uint256 srcAmount;
+        uint256 ethSrcAmount;
+        uint256 destAmount;
+    }
+
     IKyberMatchingEngine public matchingEngine;
     IKyberDAO public kyberDAO;
     IKyberStorage public kyberStorage;
@@ -17,9 +23,9 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         /* empty body */
     }
 
-    event MatchingEngineContractSet(IKyberMatchingEngine matchingEngine);
     event KyberDAOContractSet(IKyberDAO kyberDAO);
     event KyberStorageSet(IKyberStorage kyberStorage);
+    event MatchingEngineContractSet(IKyberMatchingEngine matchingEngine);
 
     function setContracts(
         IKyberMatchingEngine _matchingEngine,
@@ -27,10 +33,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         IKyberStorage _kyberStorage
     ) public {
         onlyAdmin();
-        require(
-            _matchingEngine != IKyberMatchingEngine(0),
-            "matching engine 0"
-        );
+        require(_matchingEngine != IKyberMatchingEngine(0), "matching engine 0");
         require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
         require(_kyberStorage != IKyberStorage(0), "kyberStorage 0");
 
@@ -50,10 +53,21 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         }
     }
 
-    struct Amounts {
-        uint256 srcAmount;
-        uint256 ethSrcAmount;
-        uint256 destAmount;
+    function getPricesForToken(
+        IERC20 token,
+        uint256 optionalBuyAmount,
+        uint256 optionalSellAmount
+    )
+        public
+        view
+        returns (
+            bytes32[] memory buyReserves,
+            uint256[] memory buyRates,
+            bytes32[] memory sellReserves,
+            uint256[] memory sellRates
+        )
+    {
+        return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, 0);
     }
 
     function getRatesForToken(
@@ -71,36 +85,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         )
     {
         (uint256 feeBps, ) = kyberDAO.getLatestNetworkFeeData();
-        return
-            getRatesForTokenWithCustomFee(
-                token,
-                optionalBuyAmount,
-                optionalSellAmount,
-                feeBps
-            );
-    }
-
-    function getPricesForToken(
-        IERC20 token,
-        uint256 optionalBuyAmount,
-        uint256 optionalSellAmount
-    )
-        public
-        view
-        returns (
-            bytes32[] memory buyReserves,
-            uint256[] memory buyRates,
-            bytes32[] memory sellReserves,
-            uint256[] memory sellRates
-        )
-    {
-        return
-            getRatesForTokenWithCustomFee(
-                token,
-                optionalBuyAmount,
-                optionalSellAmount,
-                0
-            );
+        return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, feeBps);
     }
 
     // prettier-ignore
@@ -135,22 +120,13 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         IERC20 token,
         uint256 optionalBuyAmount,
         uint256 networkFeeBps
-    )
-        internal
-        view
-        returns (bytes32[] memory buyReserves, uint256[] memory buyRates)
-    {
+    ) internal view returns (bytes32[] memory buyReserves, uint256[] memory buyRates) {
         Amounts memory A;
         bool[] memory isFeeAccounted;
         address reserve;
 
         A.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
-        (buyReserves, , ) = matchingEngine.getTradingReserves(
-            ETH_TOKEN_ADDRESS,
-            token,
-            false,
-            ""
-        );
+        (buyReserves, , ) = matchingEngine.getTradingReserves(ETH_TOKEN_ADDRESS, token, false, "");
         isFeeAccounted = kyberStorage.getFeeAccountedData(buyReserves);
         buyRates = new uint256[](buyReserves.length);
 
@@ -166,9 +142,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
                 continue;
             }
 
-            A.ethSrcAmount =
-                A.srcAmount -
-                ((A.srcAmount * networkFeeBps) / BPS);
+            A.ethSrcAmount = A.srcAmount - ((A.srcAmount * networkFeeBps) / BPS);
             buyRates[i] = IKyberReserve(reserve).getConversionRate(
                 ETH_TOKEN_ADDRESS,
                 token,
@@ -195,11 +169,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         IERC20 token,
         uint256 optionalSellAmount,
         uint256 networkFeeBps
-    )
-        internal
-        view
-        returns (bytes32[] memory sellReserves, uint256[] memory sellRates)
-    {
+    ) internal view returns (bytes32[] memory sellReserves, uint256[] memory sellRates) {
         Amounts memory A;
         bool[] memory isFeeAccounted;
         address reserve;
@@ -215,9 +185,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         sellRates = new uint256[](sellReserves.length);
 
         for (uint256 i = 0; i < sellReserves.length; i++) {
-            (reserve, , ) = kyberStorage.getReserveDetailsById(
-                sellReserves[i]
-            );
+            (reserve, , ) = kyberStorage.getReserveDetailsById(sellReserves[i]);
             sellRates[i] = IKyberReserve(reserve).getConversionRate(
                 token,
                 ETH_TOKEN_ADDRESS,
@@ -227,12 +195,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
             if (networkFeeBps == 0 || !isFeeAccounted[i]) {
                 continue;
             }
-            A.destAmount = calcDstQty(
-                A.srcAmount,
-                getDecimals(token),
-                ETH_DECIMALS,
-                sellRates[i]
-            );
+            A.destAmount = calcDstQty(A.srcAmount, getDecimals(token), ETH_DECIMALS, sellRates[i]);
             A.destAmount -= (networkFeeBps * A.destAmount) / BPS;
             sellRates[i] = calcRateFromQty(
                 A.srcAmount,
