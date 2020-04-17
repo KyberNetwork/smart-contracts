@@ -5,7 +5,6 @@ import "./IKyberReserve.sol";
 
 interface IKyberHint {
     enum TradeType {MaskIn, MaskOut, Split}
-
     enum HintErrors {
         NoError,
         ReserveIdDupError,
@@ -14,27 +13,6 @@ interface IKyberHint {
         SplitsNotEmptyError,
         TotalBPSError
     }
-
-    function buildTokenToEthHint(
-        TradeType tokenToEthType,
-        bytes32[] calldata tokenToEthReserveIds,
-        uint256[] calldata tokenToEthSplits
-    ) external pure returns (bytes memory hint);
-
-    function buildEthToTokenHint(
-        TradeType ethToTokenType,
-        bytes32[] calldata ethToTokenReserveIds,
-        uint256[] calldata ethToTokenSplits
-    ) external pure returns (bytes memory hint);
-
-    function buildTokenToTokenHint(
-        TradeType tokenToEthType,
-        bytes32[] calldata tokenToEthReserveIds,
-        uint256[] calldata tokenToEthSplits,
-        TradeType ethToTokenType,
-        bytes32[] calldata ethToTokenReserveIds,
-        uint256[] calldata ethToTokenSplits
-    ) external pure returns (bytes memory hint);
 
     function parseTokenToEthHint(bytes calldata hint)
         external
@@ -69,4 +47,25 @@ interface IKyberHint {
             IKyberReserve[] memory ethToTokenAddresses,
             uint256[] memory ethToTokenSplits
         );
+
+    function buildTokenToEthHint(
+        TradeType tokenToEthType,
+        bytes32[] calldata tokenToEthReserveIds,
+        uint256[] calldata tokenToEthSplits
+    ) external pure returns (bytes memory hint);
+
+    function buildEthToTokenHint(
+        TradeType ethToTokenType,
+        bytes32[] calldata ethToTokenReserveIds,
+        uint256[] calldata ethToTokenSplits
+    ) external pure returns (bytes memory hint);
+
+    function buildTokenToTokenHint(
+        TradeType tokenToEthType,
+        bytes32[] calldata tokenToEthReserveIds,
+        uint256[] calldata tokenToEthSplits,
+        TradeType ethToTokenType,
+        bytes32[] calldata ethToTokenReserveIds,
+        uint256[] calldata ethToTokenSplits
+    ) external pure returns (bytes memory hint);
 }

@@ -4,18 +4,15 @@ import "./IKyberReserve.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberStorage.sol";
 
+
 interface IKyberMatchingEngine {
     enum ProcessWithRate {NotRequired, Required}
 
+    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps) external returns (bool);
+
+    function setKyberStorage(IKyberStorage _kyberStorage) external returns (bool);
+
     function getNegligibleRateDiffBps() external view returns (uint256);
-
-    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps)
-        external
-        returns (bool);
-
-    function setKyberStorage(IKyberStorage _kyberStorage)
-        external
-        returns (bool);
 
     function getTradingReserves(
         IERC20 src,
