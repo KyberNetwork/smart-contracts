@@ -21,12 +21,17 @@ contract Utils4 {
 
     mapping(address => uint256) internal decimals;
 
-    /// @dev get the balance of a user.
-    /// @param token The token type
-    /// @return The balance
-    function getBalance(IERC20 token, address user) internal view returns (uint256) {
-        if (token == ETH_TOKEN_ADDRESS) return user.balance;
-        else return token.balanceOf(user);
+    function getUpdateDecimals(IERC20 token) internal returns (uint256) {
+        if (token == ETH_TOKEN_ADDRESS) return ETH_DECIMALS; // save storage access
+        uint256 tokenDecimals = decimals[address(token)];
+        // moreover, very possible that old tokens have decimals 0
+        // these tokens will just have higher gas fees.
+        if (tokenDecimals == 0) {
+            tokenDecimals = token.decimals();
+            decimals[address(token)] = token.decimals();
+        }
+
+        return tokenDecimals;
     }
 
     function setDecimals(IERC20 token) internal {
@@ -34,6 +39,14 @@ contract Utils4 {
 
         if (token == ETH_TOKEN_ADDRESS) decimals[address(token)] = ETH_DECIMALS;
         else decimals[address(token)] = token.decimals();
+    }
+
+    /// @dev get the balance of a user.
+    /// @param token The token type
+    /// @return The balance
+    function getBalance(IERC20 token, address user) internal view returns (uint256) {
+        if (token == ETH_TOKEN_ADDRESS) return user.balance;
+        else return token.balanceOf(user);
     }
 
     function getDecimals(IERC20 token) internal view returns (uint256) {
@@ -46,17 +59,22 @@ contract Utils4 {
         return tokenDecimals;
     }
 
-    function getUpdateDecimals(IERC20 token) internal returns (uint256) {
-        if (token == ETH_TOKEN_ADDRESS) return ETH_DECIMALS; // save storage access
-        uint256 tokenDecimals = decimals[address(token)];
-        // moreover, very possible that old tokens have decimals 0
-        // these tokens will just have higher gas fees.
-        if (tokenDecimals == 0) {
-            tokenDecimals = token.decimals();
-            decimals[address(token)] = token.decimals();
-        }
+    function calcDestAmount(
+        IERC20 src,
+        IERC20 dest,
+        uint256 srcAmount,
+        uint256 rate
+    ) internal view returns (uint256) {
+        return calcDstQty(srcAmount, getDecimals(src), getDecimals(dest), rate);
+    }
 
-        return tokenDecimals;
+    function calcSrcAmount(
+        IERC20 src,
+        IERC20 dest,
+        uint256 destAmount,
+        uint256 rate
+    ) internal view returns (uint256) {
+        return calcSrcQty(destAmount, getDecimals(src), getDecimals(dest), rate);
     }
 
     function calcDstQty(
@@ -99,24 +117,6 @@ contract Utils4 {
             denominator = (rate * (10**(dstDecimals - srcDecimals)));
         }
         return (numerator + denominator - 1) / denominator; //avoid rounding down errors
-    }
-
-    function calcDestAmount(
-        IERC20 src,
-        IERC20 dest,
-        uint256 srcAmount,
-        uint256 rate
-    ) internal view returns (uint256) {
-        return calcDstQty(srcAmount, getDecimals(src), getDecimals(dest), rate);
-    }
-
-    function calcSrcAmount(
-        IERC20 src,
-        IERC20 dest,
-        uint256 destAmount,
-        uint256 rate
-    ) internal view returns (uint256) {
-        return calcSrcQty(destAmount, getDecimals(src), getDecimals(dest), rate);
     }
 
     function calcRateFromQty(

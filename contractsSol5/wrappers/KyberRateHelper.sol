@@ -9,6 +9,12 @@ import "../utils/WithdrawableNoModifiers.sol";
 
 
 contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
+    struct Amounts {
+        uint256 srcAmount;
+        uint256 ethSrcAmount;
+        uint256 destAmount;
+    }
+
     IKyberMatchingEngine public matchingEngine;
     IKyberDAO public kyberDAO;
     IKyberStorage public kyberStorage;
@@ -17,9 +23,9 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         /* empty body */
     }
 
-    event MatchingEngineContractSet(IKyberMatchingEngine matchingEngine);
     event KyberDAOContractSet(IKyberDAO kyberDAO);
     event KyberStorageSet(IKyberStorage kyberStorage);
+    event MatchingEngineContractSet(IKyberMatchingEngine matchingEngine);
 
     function setContracts(
         IKyberMatchingEngine _matchingEngine,
@@ -47,10 +53,21 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         }
     }
 
-    struct Amounts {
-        uint256 srcAmount;
-        uint256 ethSrcAmount;
-        uint256 destAmount;
+    function getPricesForToken(
+        IERC20 token,
+        uint256 optionalBuyAmount,
+        uint256 optionalSellAmount
+    )
+        public
+        view
+        returns (
+            bytes32[] memory buyReserves,
+            uint256[] memory buyRates,
+            bytes32[] memory sellReserves,
+            uint256[] memory sellRates
+        )
+    {
+        return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, 0);
     }
 
     function getRatesForToken(
@@ -69,23 +86,6 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
     {
         (uint256 feeBps, ) = kyberDAO.getLatestNetworkFeeData();
         return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, feeBps);
-    }
-
-    function getPricesForToken(
-        IERC20 token,
-        uint256 optionalBuyAmount,
-        uint256 optionalSellAmount
-    )
-        public
-        view
-        returns (
-            bytes32[] memory buyReserves,
-            uint256[] memory buyRates,
-            bytes32[] memory sellReserves,
-            uint256[] memory sellRates
-        )
-    {
-        return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, 0);
     }
 
     // prettier-ignore
