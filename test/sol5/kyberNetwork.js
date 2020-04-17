@@ -1948,6 +1948,141 @@ contract('KyberNetwork', function(accounts) {
             }
         })
     })
+
+
+    describe("test big rates", async() => {
+        let srcToken;
+        let destToken;
+        let kyberProxy = accounts[0];
+        let reserves;
+        let reserveInstances;
+        let network;
+        let matchingEngine;
+        let rateHelper;
+
+        const MAX_DST_QTY = Helper.calcDstQty(MAX_QTY, new BN(0), new BN(18), MAX_RATE);
+        before("init token balance", async() => {
+            srcToken = await TestToken.new("decimal 0", "0", new BN(0));
+            destToken = await TestToken.new("decimal 36", "36", new BN(36));
+            let tokens = [srcToken, destToken];
+
+            let KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            //init network 
+            const storage =  await KyberStorage.new(admin);
+            network = await KyberNetwork.new(admin, storage.address);
+            await storage.setNetworkContract(network.address, {from: admin});
+            await network.addOperator(operator, { from: admin });
+            //init matchingEngine, feeHandler
+            matchingEngine = await MatchingEngine.new(admin);
+            await matchingEngine.setNetworkContract(network.address, { from: admin });
+            await matchingEngine.setKyberStorage(storage.address, {from : admin});
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+            let feeHandler = await FeeHandler.new(DAO.address, network.address, network.address, KNC.address, burnBlockInterval, DAO.address);
+            await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
+            // set DAO contract
+            await network.setDAOContract(DAO.address, { from: admin });
+            // point proxy to network
+            await network.addKyberProxy(kyberProxy, { from: admin });
+            //set params, enable network
+            await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
+            await network.setEnable(true, { from: admin });
+            // setup reserve
+            reserves = await nwHelper.setupReserves(network, tokens, 2, 0, 0, 0, accounts, admin, operator);
+            reserveInstances = reserves.reserveInstances;
+            await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+            for (const [key, value] of Object.entries(reserveInstances)) {
+                let reserve = value.instance;
+                await reserve.setRate(srcToken.address, MAX_RATE, MAX_RATE);
+                await reserve.setRate(destToken.address, MAX_RATE, MAX_RATE);
+            }
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setContracts(matchingEngine.address, DAO.address, storage.address, {from: admin});
+        });
+
+        beforeEach("ensure each reserve have max eth-token value", async() => {
+            for (const [key, value] of Object.entries(reserveInstances)) {
+                let reserve = value.instance;
+                
+                let currentBalance = await srcToken.balanceOf(reserve.address);
+                if (MAX_DST_QTY.gt(currentBalance)) {
+                    await srcToken.transfer(reserve.address, MAX_DST_QTY.sub(currentBalance));
+                }
+
+                currentBalance = await destToken.balanceOf(reserve.address);
+                if (MAX_DST_QTY.gt(currentBalance)) {
+                    await destToken.transfer(reserve.address, MAX_DST_QTY.sub(currentBalance));
+                }
+
+                currentBalance = await Helper.getBalancePromise(reserve.address);
+                if (MAX_QTY.gt(currentBalance)) {
+                    await Helper.sendEtherWithPromise(accounts[3], reserve.address, MAX_QTY.sub(currentBalance));
+                    await Helper.assertSameEtherBalance(reserve.address, MAX_QTY);
+                }
+            }
+        });
+
+        it("test e2t revert with max_rate max_qty empty hint", async() => {
+            await expectRevert(
+                network.tradeWithHintAndFee(kyberProxy, ethAddress, MAX_QTY, destToken.address, taker,
+                        maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
+                        { value: MAX_QTY, from: kyberProxy }
+                    ),
+                "destAmount > MAX_QTY"
+            );
+        });
+
+        it("test t2e revert with max_rate max_qty empty hint", async() => {
+            srcToken.transfer(network.address, MAX_QTY);
+            // failed at calDstQty for E2E
+            await expectRevert(
+                network.tradeWithHintAndFee(kyberProxy, srcToken.address, MAX_QTY, ethAddress, taker,
+                        maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
+                        { from: kyberProxy }
+                    ),
+                "srcAmount > MAX_QTY"
+            );
+        });
+
+        it("test e2t revert with max_rate max_qty split trade", async() => {
+            hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, 
+                ethAddress, destToken.address, MAX_QTY);
+            await expectRevert(
+                network.tradeWithHintAndFee(kyberProxy, ethAddress, MAX_QTY, destToken.address, taker,
+                        maxDestAmt, minConversionRate, platformWallet, new BN(0), hint, 
+                        { value: MAX_QTY, from: kyberProxy }
+                    ),
+                "destAmount > MAX_QTY"
+            );
+        });
+
+        it("test t2e revert with max_rate max_qty split trade", async() => {
+            hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, 
+                srcToken.address, ethAddress, MAX_QTY);
+            // failed at calDstQty for E2E
+            await expectRevert(
+                network.tradeWithHintAndFee(kyberProxy, srcToken.address, MAX_QTY, ethAddress, taker,
+                        maxDestAmt, minConversionRate, platformWallet, new BN(0), hint, 
+                        { from: kyberProxy }
+                    ),
+                "srcAmount > MAX_QTY"
+            );
+        });
+
+        it("test t2e revert with max_rate max_qty split trade", async() => {
+            hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, 
+                srcToken.address, destToken.address, new BN(2));
+            srcToken.transfer(network.address, new BN(2));
+
+            // console.log(await network.getExpectedRate(srcToken.address, destToken.address, new BN(1)));
+            await expectRevert(
+                network.tradeWithHintAndFee(kyberProxy, srcToken.address, new BN(2), destToken.address, taker,
+                        maxDestAmt, minConversionRate, platformWallet, new BN(0), hint, 
+                        { from: kyberProxy }
+                    ),
+                "destAmount > MAX_QTY"
+            );
+        });
+    });
 });
 
 //returns random integer between min (inclusive) and max (inclusive)
