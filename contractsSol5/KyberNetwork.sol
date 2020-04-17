@@ -611,7 +611,7 @@ contract KyberNetwork is
         view
         returns (uint256 destAmount, uint256 rateWithNetworkFee)
     {
-        // token to eth. find best reserve match and calculate wei amount
+        // token to ether: find best reserve match and calculate wei amount
         /////////////////////////////////////////////////////////////////
         tradeData.tradeWei = calcDestQtyAndMatchReserves(
             tradeData.input.src,
@@ -641,7 +641,7 @@ contract KyberNetwork is
             "fees exceed trade"
         );
 
-        // Eth to Token. find best reserve match and calculate trade dest amount
+        // ether to token: find best reserve match and calculate trade dest amount
         uint256 actualSrcWei = tradeData.tradeWei -
             tradeData.networkFeeWei -
             tradeData.platformFeeWei;
@@ -909,7 +909,7 @@ contract KyberNetwork is
         if ((tradeData.numFeeAccountedReserves == 0) && (tradeData.platformFeeWei == 0))
             return true;
 
-        // Updates reserve eligibility and rebate percentages
+        // update reserve eligibility and rebate percentages
         (
             address[] memory rebateWallets,
             uint256[] memory rebatePercentBps
@@ -917,7 +917,7 @@ contract KyberNetwork is
 
         uint256 sentFee = tradeData.networkFeeWei + tradeData.platformFeeWei;
 
-        // Send total fee amount to fee handler with reserve data.
+        // send total fee amount to fee handler with reserve data
         require(
             feeHandler.handleFees.value(sentFee)(
                 rebateWallets,
@@ -946,7 +946,7 @@ contract KyberNetwork is
 
         uint256 index;
 
-        // tokenToEth
+        // token to ether
         index = populateRebateWalletList(
             rebateWallets,
             rebatePercentBps,
@@ -955,7 +955,7 @@ contract KyberNetwork is
             tradeData.feeAccountedBps
         );
 
-        // ethToToken
+        // ether to token
         populateRebateWalletList(
             rebateWallets,
             rebatePercentBps,
@@ -1146,7 +1146,7 @@ contract KyberNetwork is
             actualSrcAmount = tradeData.input.srcAmount;
         }
 
-        // src to ETH
+        // token to ether
         require(
             doReserveTrades(
                 tradeData.input.src,
@@ -1158,7 +1158,7 @@ contract KyberNetwork is
             )
         ); // tradeData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
 
-        // Eth to dest
+        // ether to token
         require(
             doReserveTrades(
                 ETH_TOKEN_ADDRESS,
@@ -1226,7 +1226,7 @@ contract KyberNetwork is
     ) internal returns (bool) {
         amount;
         if (src == dest) {
-            // E2E, need not do anything except for T2E, transfer ETH to destAddress
+            // ether to ether, need not do anything except for token to ether: transfer ETH to destAddress
             if (destAddress != (address(this))) {
                 (bool success, ) = destAddress.call.value(expectedDestAmount)("");
                 require(success, "send dest qty failed");
@@ -1259,7 +1259,7 @@ contract KyberNetwork is
         }
 
         if (destAddress != address(this)) {
-            // for E2T, T2T, transfer tokens to destAddress
+            // for ether to token / token to token, transfer tokens to destAddress
             dest.safeTransfer(destAddress, expectedDestAmount);
         }
 
