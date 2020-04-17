@@ -4,7 +4,7 @@ import "./utils/Utils4.sol";
 import "./IKyberHint.sol";
 
 
-/*
+/**
  *   @title Kyber Hint Handler contract
  *   The contract provides the following actions:
  *       - building hints
@@ -20,11 +20,11 @@ import "./IKyberHint.sol";
  *             returns 0 rate for bad hint values
  */
 contract KyberHintHandler is IKyberHint, Utils4 {
-    /// @notice Builds the hint for a Token to ETH trade
-    /// @param tokenToEthType Token to ETH trade hint type
-    /// @param tokenToEthReserveIds Token to ETH reserve IDs
-    /// @param tokenToEthSplits Token to ETH reserve splits
-    /// @return returns the ABI encoded hint
+    /// @notice Builds the hint for a token to ether trade
+    /// @param tokenToEthType token to ether trade hint type
+    /// @param tokenToEthReserveIds token to ether reserve IDs
+    /// @param tokenToEthSplits token to ether reserve splits
+    /// @return Returns the ABI encoded hint
     function buildTokenToEthHint(
         TradeType tokenToEthType,
         bytes32[] calldata tokenToEthReserveIds,
@@ -44,11 +44,11 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         hint = abi.encode(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
     }
 
-    /// @notice Builds the hint for a ETH to Token trade
-    /// @param ethToTokenType ETH to Token trade hint type
-    /// @param ethToTokenReserveIds ETH to Token reserve IDs
-    /// @param ethToTokenSplits ETH to Token reserve splits
-    /// @return returns the ABI encoded hint
+    /// @notice Builds the hint for a ether to token trade
+    /// @param ethToTokenType ether to token trade hint type
+    /// @param ethToTokenReserveIds ether to token reserve IDs
+    /// @param ethToTokenSplits ether to token reserve splits
+    /// @return Returns the ABI encoded hint
     function buildEthToTokenHint(
         TradeType ethToTokenType,
         bytes32[] calldata ethToTokenReserveIds,
@@ -68,14 +68,14 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         hint = abi.encode(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
     }
 
-    /// @notice Builds the hint for a Token to Token trade
-    /// @param tokenToEthType Token to ETH trade hint type
-    /// @param tokenToEthReserveIds Token to ETH reserve IDs
-    /// @param tokenToEthSplits Token to ETH reserve splits
-    /// @param ethToTokenType ETH to Token trade hint type
-    /// @param ethToTokenReserveIds ETH to Token reserve IDs
-    /// @param ethToTokenSplits ETH to Token reserve splits
-    /// @return returns the ABI encoded hint
+    /// @notice Builds the hint for a token to token trade
+    /// @param tokenToEthType token to ether trade hint type
+    /// @param tokenToEthReserveIds token to ether reserve IDs
+    /// @param tokenToEthSplits token to ether reserve splits
+    /// @param ethToTokenType ether to token trade hint type
+    /// @param ethToTokenReserveIds ether to token reserve IDs
+    /// @param ethToTokenSplits ether to token reserve splits
+    /// @return Returns the ABI encoded hint
     function buildTokenToTokenHint(
         TradeType tokenToEthType,
         bytes32[] calldata tokenToEthReserveIds,
@@ -118,9 +118,9 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         hint = abi.encode(t2eHint, e2tHint);
     }
 
-    /// @notice Parses the hint for a Token to ETH trade
+    /// @notice Parses the hint for a token to ether trade
     /// @param hint The ABI encoded hint, built using the build*Hint functions
-    /// @return returns the decoded Token to ETH trade hint type, reserve IDs, and splits
+    /// @return Returns the decoded token to ether trade hint type, reserve IDs, and splits
     function parseTokenToEthHint(bytes calldata hint)
         external
         view
@@ -151,9 +151,9 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         }
     }
 
-    /// @notice Parses the hint for a ETH to Token trade
+    /// @notice Parses the hint for a ether to token trade
     /// @param hint The ABI encoded hint, built using the build*Hint functions
-    /// @return returns the decoded ETH to Token trade hint type, reserve IDs, and splits
+    /// @return Returns the decoded ether to token trade hint type, reserve IDs, and splits
     function parseEthToTokenHint(bytes calldata hint)
         external
         view
@@ -184,9 +184,9 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         }
     }
 
-    /// @notice Parses the hint for a Token to Token trade
+    /// @notice Parses the hint for a token to token trade
     /// @param hint The ABI encoded hint, built using the build*Hint functions
-    /// @return returns the decoded Token to ETH and ETH to Token trade hint type, reserve IDs, and splits
+    /// @return Returns the decoded token to ether and ether to token trade hint type, reserve IDs, and splits
     function parseTokenToTokenHint(bytes calldata hint)
         external
         view
@@ -239,9 +239,9 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         }
     }
 
-    /// @notice Parses or decodes the Token to ETH or ETH to Token bytes hint
-    /// @param hint Token to ETH or ETH to Token trade hint
-    /// @return returns the trade type, reserve IDs, and reserve splits
+    /// @notice Parses or decodes the token to ether or ether to token bytes hint
+    /// @param hint token to ether or ether to token trade hint
+    /// @return Returns the trade type, reserve IDs, and reserve splits
     function parseHint(bytes memory hint)
         internal
         pure
@@ -264,9 +264,9 @@ contract KyberHintHandler is IKyberHint, Utils4 {
         }
     }
 
-    /// @notice Unpacks the Token to Token hint to Token to ETH and ETH to Token hints
-    /// @param hint Token to Token trade hint
-    /// @return returns a Token to ETH hint and ETH to Token hint in bytes
+    /// @notice Unpacks the token to token hint to token to ether and ether to token hints
+    /// @param hint token to token trade hint
+    /// @return Returns a token to ether hint and ether to token hint in bytes
     function unpackT2THint(bytes memory hint)
         internal
         pure
@@ -277,7 +277,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
 
     /// @notice Ensures that the reserveIds passed when building hints are in increasing sequence
     /// @param reserveIds Reserve IDs
-    /// @return returns a bytes32[] with reserveIds in increasing sequence
+    /// @return Returns a bytes32[] with reserveIds in increasing sequence
     function ensureReserveIdSeq(bytes32[] memory reserveIds)
         internal
         pure
@@ -302,7 +302,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
     /// @param tradeType Trade hint type
     /// @param reserveIds Reserve IDs
     /// @param splits Reserve splits
-    /// @return returns a HintError enum to indicate valid or invalid hint data
+    /// @return Returns a HintError enum to indicate valid or invalid hint data
     function verifyData(
         TradeType tradeType,
         bytes32[] memory reserveIds,
