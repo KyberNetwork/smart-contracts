@@ -38,7 +38,7 @@ interface IKyberNetworkProxy {
         IERC20 src,
         IERC20 dest,
         uint256 srcQty,
-        uint256 customFeeBps,
+        uint256 platformFeeBps,
         bytes calldata hint
     ) external view returns (uint256 expectedRate);
 
