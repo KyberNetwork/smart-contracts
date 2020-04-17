@@ -6,17 +6,13 @@ import "./IKyberNetwork.sol";
 import "./KyberHintHandler.sol";
 import "./IKyberStorage.sol";
 
-/*
-*   @title Kyber matching engine contract
-*   The contract provides the following actions:
-*       - return details about a reserve (address / id, type)
-*       - finding the best rate (doMatch)
-*
-*       getTradingReserves() will parse hint to find if user wants specific reserves
-*
-*       doMatch() will return the index of the best reserve, having accounted for fees
-*
-*/
+
+/**
+ *   @title Kyber matching engine contract
+ *   Receives call from KyberNetwork for:
+ *       - getting trading reserves
+ *       - matching best reserve for trades
+ */
 contract KyberMatchingEngine is
     KyberHintHandler,
     IKyberMatchingEngine,
@@ -66,14 +62,13 @@ contract KyberMatchingEngine is
     }
 
     /// @dev Returns trading reserves info for a trade
-    /// @param src source token
-    /// @param dest destination token
-    /// @param isTokenToToken whether the trade is T2T
-    /// @param hint user-specified reserves for this trade
-    /// @return returns ids, split values, feeAccounted info and whether more processing is necessary
+    /// @param src Source token
+    /// @param dest Destination token
+    /// @param isTokenToToken Whether the trade is T2T
+    /// @param hint Defines which reserves should be used for the trade
+    /// @return Returns ids, split values and whether more processing is necessary
     /// @return reserveIds Array of reserve IDs for the trade, each being 32 bytes. 1st byte is reserve type
-    /// @return splitValuesBps Array of split values (in basis points) for the trade.
-    /// @return isFeeAccounted Boolean array of isFeeAccounted for each corresponding reserve ID
+    /// @return splitValuesBps Array of split values (in basis points) for the trade
     /// @return processWithRate Enum ProcessWithRate, whether extra processing is required or not
     function getTradingReserves(
         IERC20 src,
@@ -149,8 +144,8 @@ contract KyberMatchingEngine is
     }
 
     /// @notice Logic for masking out reserves
-    /// @param allReservesPerToken arrary of reserveIds that support the t2e or e2t side of the trade
-    /// @param maskedOutReserves array of reserveIds to be excluded from allReservesPerToken
+    /// @param allReservesPerToken Array of reserveIds that support the t2e or e2t side of the trade
+    /// @param maskedOutReserves Array of reserveIds to be excluded from allReservesPerToken
     /// @return Returns an array of reserveIds that can be used for the trade
     function maskOutReserves(
         bytes32[] memory allReservesPerToken,
@@ -190,11 +185,11 @@ contract KyberMatchingEngine is
 
     // prettier-ignore
     /// @dev Returns the indexes of the best rate from the rates array for the t2e or e2t side
-    /// @param src source token (not needed)
-    /// @param dest destination token (not needed)
-    /// @param srcAmounts array of srcAmounts for each rate provided
+    /// @param src Source token (not needed in this matchingEngine version)
+    /// @param dest Destination token (not needed in this matchingEngine version)
+    /// @param srcAmounts Array of srcAmounts
     /// @param feeAccountedBpsDest Fees charged in BPS, to be deducted from calculated destAmount
-    /// @param rates rates provided by reserves
+    /// @param rates Rates provided by reserves
     /// @return Return an array of the indexes most suited for the trade
     function doMatch(
         IERC20 src,
@@ -207,11 +202,11 @@ contract KyberMatchingEngine is
         dest;
         reserveIndexes = new uint256[](1);
 
-        //use destAmounts for comparison, but return the best rate
+        // use destAmounts for comparison, but return the best rate
         BestReserveInfo memory bestReserve;
         bestReserve.numRelevantReserves = 1; // assume always best reserve will be relevant
 
-        //return empty array for unlisted tokens
+        // return empty array for unlisted tokens
         if (rates.length == 0) {
             reserveIndexes = new uint256[](0);
             return reserveIndexes;
@@ -226,7 +221,7 @@ contract KyberMatchingEngine is
                 (srcAmounts[i] * rates[i] * (BPS - feeAccountedBpsDest[i])) /
                 BPS;
             if (destAmount > bestReserve.destAmount) {
-                //best rate is highest rate
+                // best rate is highest rate
                 bestReserve.destAmount = destAmount;
                 bestReserve.index = i;
             }
@@ -254,7 +249,7 @@ contract KyberMatchingEngine is
         }
 
         if (bestReserve.numRelevantReserves > 1) {
-            //when encountering small rate diff from bestRate. draw from relevant reserves
+            // when encountering small rate diff from bestRate. draw from relevant reserves
             bestReserve.index = reserveCandidates[
                 uint256(blockhash(block.number - 1)) %
                 bestReserve.numRelevantReserves
