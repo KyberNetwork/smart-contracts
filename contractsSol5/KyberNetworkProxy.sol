@@ -28,8 +28,48 @@ contract KyberNetworkProxy is
     IKyberNetwork public kyberNetwork;
     IKyberHint public hintHandler; // hint handler pointer for users.
 
+    event KyberNetworkSet(IKyberNetwork newNetwork, IKyberNetwork oldNetwork);
+    event HintHandlerSet(IKyberHint hintHandler);
+
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /*empty body*/
+    }
+
+    /// @notice Use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev Trade from src to dest token and sends dest token to destAddress
+    /// @param src Source token
+    /// @param srcAmount Amount of src tokens in twei
+    /// @param dest Destination token
+    /// @param destAddress Address to send tokens to
+    /// @param maxDestAmount A limit on the amount of dest tokens in twei
+    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
+    /// @param platformWallet Wallet address to receive a portion of the fees collected
+    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
+    /// @param hint Defines which reserves should be used for the trade
+    /// @return Amount of actual dest tokens in twei
+    function tradeWithHintAndFee(
+        IERC20 src,
+        uint256 srcAmount,
+        IERC20 dest,
+        address payable destAddress,
+        uint256 maxDestAmount,
+        uint256 minConversionRate,
+        address payable platformWallet,
+        uint256 platformFeeBps,
+        bytes calldata hint
+    ) external payable returns (uint256 destAmount) {
+        return
+            doTrade(
+                src,
+                srcAmount,
+                dest,
+                destAddress,
+                maxDestAmount,
+                minConversionRate,
+                platformWallet,
+                platformFeeBps,
+                hint
+            );
     }
 
     /// @notice Backward compatible function
@@ -114,7 +154,7 @@ contract KyberNetworkProxy is
         uint256 srcAmount,
         IERC20 dest,
         uint256 minConversionRate
-    ) public returns (uint256) {
+    ) external returns (uint256) {
         bytes memory hint;
 
         return
@@ -136,7 +176,7 @@ contract KyberNetworkProxy is
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
     /// @return Amount of actual dest tokens in twei
     function swapEtherToToken(IERC20 token, uint256 minConversionRate)
-        public
+        external
         payable
         returns (uint256)
     {
@@ -165,7 +205,7 @@ contract KyberNetworkProxy is
         IERC20 token,
         uint256 srcAmount,
         uint256 minConversionRate
-    ) public returns (uint256) {
+    ) external returns (uint256) {
         bytes memory hint;
 
         return
@@ -180,6 +220,22 @@ contract KyberNetworkProxy is
                 0,
                 hint
             );
+    }
+
+    function setKyberNetwork(IKyberNetwork _kyberNetwork) public {
+        onlyAdmin();
+        require(_kyberNetwork != IKyberNetwork(0), "KyberNetwork 0");
+        emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
+
+        kyberNetwork = _kyberNetwork;
+    }
+
+    function setHintHandler(IKyberHint _hintHandler) public {
+        onlyAdmin();
+        require(_hintHandler != IKyberHint(0), "hintHandler 0");
+        emit HintHandlerSet(_hintHandler);
+
+        hintHandler = _hintHandler;
     }
 
     /// @notice Backward compatible function
@@ -250,57 +306,19 @@ contract KyberNetworkProxy is
         (priceNoFee, , ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
     }
 
-    /// @notice Use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev Trade from src to dest token and sends dest token to destAddress
-    /// @param src Source token
-    /// @param srcAmount Amount of src tokens in twei
-    /// @param dest Destination token
-    /// @param destAddress Address to send tokens to
-    /// @param maxDestAmount A limit on the amount of dest tokens in twei
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
-    /// @param platformWallet Wallet address to receive a portion of the fees collected
-    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
-    /// @param hint Defines which reserves should be used for the trade
-    /// @return Amount of actual dest tokens in twei
-    function tradeWithHintAndFee(
-        IERC20 src,
-        uint256 srcAmount,
-        IERC20 dest,
-        address payable destAddress,
-        uint256 maxDestAmount,
-        uint256 minConversionRate,
-        address payable platformWallet,
-        uint256 platformFeeBps,
-        bytes calldata hint
-    ) external payable returns (uint256 destAmount) {
-        return
-            doTrade(
-                src,
-                srcAmount,
-                dest,
-                destAddress,
-                maxDestAmount,
-                minConversionRate,
-                platformWallet,
-                platformFeeBps,
-                hint
-            );
+    function maxGasPrice() external view returns (uint256) {
+        return kyberNetwork.maxGasPrice();
     }
 
+    function enabled() external view returns (bool) {
+        return kyberNetwork.enabled();
+    }
+
+    /// helper structure for function doTrade
     struct UserBalance {
         uint256 srcTok;
         uint256 destTok;
     }
-
-    event ExecuteTrade(
-        address indexed trader,
-        IERC20 src,
-        IERC20 dest,
-        uint256 actualSrcAmount,
-        uint256 actualDestAmount,
-        address platformWallet,
-        uint256 platformFeeBps
-    );
 
     function doTrade(
         IERC20 src,
@@ -358,34 +376,7 @@ contract KyberNetworkProxy is
         return tradeOutcome.userDeltaDestToken;
     }
 
-    event KyberNetworkSet(IKyberNetwork newNetwork, IKyberNetwork oldNetwork);
-
-    function setKyberNetwork(IKyberNetwork _kyberNetwork) public {
-        onlyAdmin();
-        require(_kyberNetwork != IKyberNetwork(0), "KyberNetwork 0");
-        emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
-
-        kyberNetwork = _kyberNetwork;
-    }
-
-    event HintHandlerSet(IKyberHint hintHandler);
-
-    function setHintHandler(IKyberHint _hintHandler) public {
-        onlyAdmin();
-        require(_hintHandler != IKyberHint(0), "hintHandler 0");
-        emit HintHandlerSet(_hintHandler);
-
-        hintHandler = _hintHandler;
-    }
-
-    function maxGasPrice() public view returns (uint256) {
-        return kyberNetwork.maxGasPrice();
-    }
-
-    function enabled() public view returns (bool) {
-        return kyberNetwork.enabled();
-    }
-
+    /// helper structur for function prepareTrade
     struct TradeOutcome {
         uint256 userDeltaSrcToken;
         uint256 userDeltaDestToken;

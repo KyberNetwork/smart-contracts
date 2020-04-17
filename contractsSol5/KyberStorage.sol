@@ -33,10 +33,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     IKyberNetwork public kyberNetwork;
 
-    function onlyNetwork() internal view {
-        require(msg.sender == address(kyberNetwork), "only network");
-    }
-
     constructor(address _admin) public PermissionGroupsNoModifiers(_admin) {}
 
     event KyberNetworkUpdated(IKyberNetwork newNetwork);
@@ -84,21 +80,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
             kyberDAO.push(_kyberDAO);
         }
         return true;
-    }
-
-    /// @notice Should be called off chain
-    /// @dev Returns list of DAO, feeHandler and matchingEngine contracts used
-    /// @dev Index 0 is currently used contract address, indexes > 0 are older versions
-    function getContracts()
-        external
-        view
-        returns (
-            IKyberDAO[] memory daoAddresses,
-            IKyberFeeHandler[] memory feeHandlerAddresses,
-            IKyberMatchingEngine[] memory matchingEngineAddresses
-        )
-    {
-        return (kyberDAO, feeHandler, matchingEngine);
     }
 
     function addReserve(
@@ -158,10 +139,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return reserveId;
     }
 
-    function getReserveID(address reserve) external view returns (bytes32) {
-        return reserveAddressToId[reserve];
-    }
-
     function listPairForReserve(
         address reserve,
         IERC20 token,
@@ -184,42 +161,67 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return true;
     }
 
-    function listPairs(
-        bytes32 reserveId,
-        IERC20 token,
-        bool isTokenToEth,
-        bool add
-    ) internal {
-        uint256 i;
-        bytes32[] storage reserveArr = reservesPerTokenDest[address(token)];
+    /// @dev No. of KyberNetworkProxies are capped
+    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
+        external
+        returns (bool)
+    {
+        onlyNetwork();
+        require(networkProxy != address(0), "proxy 0");
+        require(kyberProxyArray.length < max_approved_proxies, "max proxies limit reached");
 
-        if (isTokenToEth) {
-            reserveArr = reservesPerTokenSrc[address(token)];
-        }
+        kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
 
-        for (i = 0; i < reserveArr.length; i++) {
-            if (reserveId == reserveArr[i]) {
-                if (add) {
-                    break; // already added
-                } else {
-                    // remove
-                    reserveArr[i] = reserveArr[reserveArr.length - 1];
-                    reserveArr.pop();
-                    break;
-                }
+        return true;
+    }
+
+    function removeKyberProxy(address networkProxy) external returns (bool) {
+        onlyNetwork();
+        uint256 proxyIndex = 2**255;
+
+        for (uint256 i = 0; i < kyberProxyArray.length; i++) {
+            if (kyberProxyArray[i] == IKyberNetworkProxy(networkProxy)) {
+                proxyIndex = i;
+                break;
             }
         }
 
-        if (add && i == reserveArr.length) {
-            // if reserve wasn't found add it
-            reserveArr.push(reserveId);
-        }
+        require(proxyIndex != 2**255, "proxy not found");
+        kyberProxyArray[proxyIndex] = kyberProxyArray[kyberProxyArray.length - 1];
+        kyberProxyArray.pop();
+
+        return true;
+    }
+
+    function setFeeAccountedPerReserveType(
+        bool fpr,
+        bool apr,
+        bool bridge,
+        bool utility,
+        bool custom,
+        bool orderbook
+    ) external {
+        onlyAdmin();
+        uint256 feeAccountedData;
+
+        if (apr) feeAccountedData |= 1 << uint256(ReserveType.APR);
+        if (fpr) feeAccountedData |= 1 << uint256(ReserveType.FPR);
+        if (bridge) feeAccountedData |= 1 << uint256(ReserveType.BRIDGE);
+        if (utility) feeAccountedData |= 1 << uint256(ReserveType.UTILITY);
+        if (custom) feeAccountedData |= 1 << uint256(ReserveType.CUSTOM);
+        if (orderbook) feeAccountedData |= 1 << uint256(ReserveType.ORDERBOOK);
+
+        feeAccountedPerType = feeAccountedData;
     }
 
     /// @notice Should be called off chain
     /// @return An array of all reserves
     function getReserves() external view returns (IKyberReserve[] memory) {
         return reserves;
+    }
+
+    function getReserveID(address reserve) external view returns (bytes32) {
+        return reserveAddressToId[reserve];
     }
 
     function convertReserveAddresstoId(address reserve) external view returns (bytes32 reserveId) {
@@ -268,39 +270,19 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return reservesPerTokenDest[token];
     }
 
-    /// @dev No. of KyberNetworkProxies are capped
-    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
+    /// @notice Should be called off chain
+    /// @dev Returns list of DAO, feeHandler and matchingEngine contracts used
+    /// @dev Index 0 is currently used contract address, indexes > 0 are older versions
+    function getContracts()
         external
-        returns (bool)
+        view
+        returns (
+            IKyberDAO[] memory daoAddresses,
+            IKyberFeeHandler[] memory feeHandlerAddresses,
+            IKyberMatchingEngine[] memory matchingEngineAddresses
+        )
     {
-        onlyNetwork();
-        require(networkProxy != address(0), "proxy 0");
-        require(kyberProxyArray.length < max_approved_proxies, "max proxies limit reached");
-
-        kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
-
-        return true;
-    }
-
-    // prettier-ignore
-    function removeKyberProxy(address networkProxy) external returns (bool) {
-        onlyNetwork();
-        uint256 proxyIndex = 2**255;
-
-        for (uint256 i = 0; i < kyberProxyArray.length; i++) {
-            if (kyberProxyArray[i] == IKyberNetworkProxy(networkProxy)) {
-                proxyIndex = i;
-                break;
-            }
-        }
-
-        require(proxyIndex != 2**255, "proxy not found");
-        kyberProxyArray[proxyIndex] = kyberProxyArray[
-            kyberProxyArray.length - 1
-        ];
-        kyberProxyArray.pop();
-
-        return true;
+        return (kyberDAO, feeHandler, matchingEngine);
     }
 
     /// @notice Should be called off chain
@@ -311,27 +293,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     function isKyberProxyAdded() external view returns (bool) {
         return (kyberProxyArray.length > 0);
-    }
-
-    function setFeeAccountedPerReserveType(
-        bool fpr,
-        bool apr,
-        bool bridge,
-        bool utility,
-        bool custom,
-        bool orderbook
-    ) external {
-        onlyAdmin();
-        uint256 feeAccountedData;
-
-        if (apr) feeAccountedData |= 1 << uint256(ReserveType.APR);
-        if (fpr) feeAccountedData |= 1 << uint256(ReserveType.FPR);
-        if (bridge) feeAccountedData |= 1 << uint256(ReserveType.BRIDGE);
-        if (utility) feeAccountedData |= 1 << uint256(ReserveType.UTILITY);
-        if (custom) feeAccountedData |= 1 << uint256(ReserveType.CUSTOM);
-        if (orderbook) feeAccountedData |= 1 << uint256(ReserveType.ORDERBOOK);
-
-        feeAccountedPerType = feeAccountedData;
     }
 
     /// @notice Returns information about a reserve given its reserve ID
@@ -382,5 +343,41 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         for (uint256 i = 0; i < reserveIds.length; i++) {
             feeAccountedArr[i] = (feeAccountedData & (1 << reserveType[reserveIds[i]]) > 0);
         }
+    }
+
+    function listPairs(
+        bytes32 reserveId,
+        IERC20 token,
+        bool isTokenToEth,
+        bool add
+    ) internal {
+        uint256 i;
+        bytes32[] storage reserveArr = reservesPerTokenDest[address(token)];
+
+        if (isTokenToEth) {
+            reserveArr = reservesPerTokenSrc[address(token)];
+        }
+
+        for (i = 0; i < reserveArr.length; i++) {
+            if (reserveId == reserveArr[i]) {
+                if (add) {
+                    break; // already added
+                } else {
+                    // remove
+                    reserveArr[i] = reserveArr[reserveArr.length - 1];
+                    reserveArr.pop();
+                    break;
+                }
+            }
+        }
+
+        if (add && i == reserveArr.length) {
+            // if reserve wasn't found add it
+            reserveArr.push(reserveId);
+        }
+    }
+
+    function onlyNetwork() internal view {
+        require(msg.sender == address(kyberNetwork), "only network");
     }
 }
