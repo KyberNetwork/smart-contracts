@@ -728,29 +728,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         burnInBps = BPS.sub(rebateInBps).sub(rewardInBps);
     }
 
-    // Helper functions for squeezing data
-    function getRebateAndRewardFromData(uint256 data)
-        public
-        pure
-        returns (uint256 rebateInBps, uint256 rewardInBps)
-    {
-        rewardInBps = data & (POWER_128.sub(1));
-        rebateInBps = (data.div(POWER_128)) & (POWER_128.sub(1));
-    }
-
-    /**
-     * @dev  helper func to get encoded reward and rebate
-     *       revert if validation failed
-     */
-    function getDataFromRewardAndRebateWithValidation(uint256 rewardInBps, uint256 rebateInBps)
-        public
-        pure
-        returns (uint256 data)
-    {
-        require(rewardInBps.add(rebateInBps) <= BPS, "reward plus rebate high");
-        data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
-    }
-
     /**
      * @dev Validate params to check if we could submit a new campaign with these params
      */
@@ -829,6 +806,29 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(tInPrecision <= POWER_128, "validateParams: t is high");
 
         return true;
+    }
+
+    // Helper functions for squeezing data
+    function getRebateAndRewardFromData(uint256 data)
+        public
+        pure
+        returns (uint256 rebateInBps, uint256 rewardInBps)
+    {
+        rewardInBps = data & (POWER_128.sub(1));
+        rebateInBps = (data.div(POWER_128)) & (POWER_128.sub(1));
+    }
+
+    /**
+     * @dev  helper func to get encoded reward and rebate
+     *       revert if validation failed
+     */
+    function getDataFromRewardAndRebateWithValidation(uint256 rewardInBps, uint256 rebateInBps)
+        public
+        pure
+        returns (uint256 data)
+    {
+        require(rewardInBps.add(rebateInBps) <= BPS, "reward plus rebate high");
+        data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
     }
 
     /**
