@@ -8,4 +8,7 @@ interface IKyberStaking {
         external returns(uint _stake, uint _delegatedStake, address _delegatedAddress);
     function getStakerDataForPastEpoch(address staker, uint epoch)
         external view returns(uint _stake, uint _delegatedStake, address _delegatedAddress);
+    function deposit(uint amount) external;
+    function withdraw(uint amount) external;
+    function delegate(address dAddr) external;
 }

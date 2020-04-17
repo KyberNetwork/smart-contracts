@@ -384,6 +384,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     event RewardClaimed(address staker, uint epoch, uint perInPrecision);
 
     /**
+    * @notice When staker address is a contract, it should be able to receive claimed reward in Eth whenever anyone calls this function.
     * @dev call to claim reward of an epoch, can call by anyone, only once for each epoch
     * @param staker address to claim reward for
     * @param epoch to claim reward

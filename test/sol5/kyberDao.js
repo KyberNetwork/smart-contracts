@@ -5,6 +5,8 @@ const MockFeeHandler = artifacts.require("MockFeeHandlerNoContructor.sol");
 const MockMaliciousDAO = artifacts.require("MockMaliciousDAO.sol");
 const MockFeeHandlerClaimRewardFailed = artifacts.require("MockFeeHandlerClaimRewardFailed.sol");
 const MockMaliciousFeeHandlerReentrancy = artifacts.require("MockMaliciousFeeHandlerReentrancy.sol");
+const MockStakerContractNoFallback = artifacts.require("MockStakerContractNoFallback");
+const MockStakerContractWithFallback = artifacts.require("MockStakerContractWithFallback");
 const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
@@ -3577,6 +3579,63 @@ contract('KyberDAO', function(accounts) {
       await daoContract.claimReward(mike, 1);
 
       await feeHandler.withdrawAllETH({from: accounts[0]});
+    });
+
+    it("Test claim reward staker is a contract", async() => {
+      await deployContracts(15, currentBlock + 15, 5);
+      let stakerContractNoFallback = await MockStakerContractNoFallback.new(kncToken.address, stakingContract.address, daoContract.address);
+      await kncToken.transfer(stakerContractNoFallback.address, mulPrecision(500));
+      await stakerContractNoFallback.deposit(mulPrecision(500));
+      let stakerContractWithFallback = await MockStakerContractWithFallback.new(kncToken.address, stakingContract.address, daoContract.address);
+      await kncToken.transfer(stakerContractWithFallback.address, mulPrecision(500));
+      await stakerContractWithFallback.deposit(mulPrecision(500));
+
+      // delay to epoch 1
+      await Helper.mineNewBlockAt(daoStartTime);
+
+      // create a campaign and vote
+      await updateCurrentBlockAndTimestamp();
+      await submitNewCampaignAndDelayToStart(daoContract,
+        0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+        0, 0, 0, [25, 50], '0x', {from: campCreator}
+      );
+
+      await stakerContractNoFallback.vote(1, 1);
+      await stakerContractWithFallback.vote(1, 2);
+
+      // delay to epoch 2
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+
+      // set some fee for epoch 1
+      await feeHandler.setEpochReward(1, {from: accounts[0], value: precisionUnits.div(new BN(10))});
+
+      // staker's reward should be greater than 0%
+      Helper.assertGreater(await daoContract.getStakerRewardPercentageInPrecision(stakerContractNoFallback.address, 1), 0);
+      // try to claim reward from any accounts
+      await expectRevert.unspecified(
+        daoContract.claimReward(stakerContractNoFallback.address, 1, {from: accounts[1]})
+      );
+      await expectRevert.unspecified(
+        stakerContractNoFallback.claimReward(1)
+      );
+
+      await daoContract.claimReward(stakerContractWithFallback.address, 1, {from: accounts[1]});
+
+      // create a campaign and vote
+      await updateCurrentBlockAndTimestamp();
+      await submitNewCampaignAndDelayToStart(daoContract,
+        0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
+        0, 0, 0, [25, 50], '0x', {from: campCreator}
+      );
+
+      await stakerContractWithFallback.vote(2, 2);
+      // delay to epoch 3
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+
+      // set some fee for epoch 2
+      await feeHandler.setEpochReward(2, {from: accounts[0], value: precisionUnits.div(new BN(10))});
+      // using func in staker contract to claim reward
+      await stakerContractWithFallback.claimReward(2);
     });
 
     it("Test get reward percentage after new deposit", async function() {

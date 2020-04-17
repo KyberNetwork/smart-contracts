@@ -131,4 +131,6 @@ contract MockDAO is IKyberDAO, Utils4 {
         campaignID;
         option;
     }
+
+    function claimReward(address, uint) external {}
 }
