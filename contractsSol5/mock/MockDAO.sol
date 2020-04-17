@@ -58,6 +58,17 @@ contract MockDAO is IKyberDAO, Utils4 {
         return feeHandler.claimStakerReward(staker, percentageInPrecision, forEpoch);
     }
 
+    function handleWithdrawal(address staker, uint256 reduceAmount) external {
+        staker;
+        reduceAmount;
+    }
+
+    function vote(uint256 campaignID, uint256 option) external {
+        // must implement so it can be deployed.
+        campaignID;
+        option;
+    }
+
     function epochPeriodInSeconds() external view returns (uint256) {
         return epochPeriod;
     }
@@ -70,20 +81,9 @@ contract MockDAO is IKyberDAO, Utils4 {
         return (feeBps, expiryTimestamp);
     }
 
-    function handleWithdrawal(address staker, uint256 reduceAmount) external {
-        staker;
-        reduceAmount;
-    }
-
     function shouldBurnRewardForEpoch(uint256 epochNum) external view returns (bool) {
         if (shouldBurnRewardEpoch[epochNum]) return true;
         return false;
-    }
-
-    function vote(uint256 campaignID, uint256 option) external {
-        // must implement so it can be deployed.
-        campaignID;
-        option;
     }
 
     function advanceEpoch() public {
