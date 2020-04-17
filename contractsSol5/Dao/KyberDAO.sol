@@ -21,6 +21,9 @@ contract CampPermissionGroups {
     address public campaignCreator;
     address public pendingCampaignCreator;
 
+    event TransferCampaignCreatorPending(address pendingCampaignCreator);
+    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
+
     constructor(address _campaignCreator) public {
         require(_campaignCreator != address(0), "campaignCreator is 0");
         campaignCreator = _campaignCreator;
@@ -31,24 +34,23 @@ contract CampPermissionGroups {
         _;
     }
 
-    event TransferCampaignCreatorPending(address pendingCampaignCreator);
-
     /**
      * @dev Allows the current campaignCreator to set the pendingCampaignCreator address.
      * @param newCampaignCreator The address to transfer ownership to.
      */
-    function transferCampaignCreator(address newCampaignCreator) public onlyCampaignCreator {
+    function transferCampaignCreator(address newCampaignCreator) external onlyCampaignCreator {
         require(newCampaignCreator != address(0), "newCampaignCreator is 0");
         emit TransferCampaignCreatorPending(newCampaignCreator);
         pendingCampaignCreator = newCampaignCreator;
     }
 
     /**
-     * @dev Allows the current campCcampaignCreatorreator to set the campaignCreator in one tx. Useful initial deployment.
+     * @dev Allows the current campCcampaignCreatorreator to set the campaignCreator in one tx.
+            Useful initial deployment.
      * @param newCampaignCreator The address to transfer ownership to.
      */
     function transferCampaignCreatorQuickly(address newCampaignCreator)
-        public
+        external
         onlyCampaignCreator
     {
         require(newCampaignCreator != address(0), "newCampaignCreator is 0");
@@ -57,12 +59,10 @@ contract CampPermissionGroups {
         campaignCreator = newCampaignCreator;
     }
 
-    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
-
     /**
      * @dev Allows the pendingCampaignCreator address to finalize the change campaign creator process.
      */
-    function claimCampaignCreator() public {
+    function claimCampaignCreator() external {
         require(pendingCampaignCreator == msg.sender, "only pending campaign creator");
         emit CampaignCreatorClaimed(pendingCampaignCreator, campaignCreator);
         campaignCreator = pendingCampaignCreator;
@@ -72,13 +72,10 @@ contract CampPermissionGroups {
 
 
 /**
+ * @notice This contract is using SafeMath for uint, which is inherited from EpochUtils
  * @dev Network fee campaign: options are fee in bps
- * @dev BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
- * @dev General campaign: options are from 1 to num_options
- */
-
-/*
- * This contract is using SafeMath for uint, which is inherited from EpochUtils
+ *      BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
+ *      General campaign: options are from 1 to num_options
  */
 contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroups, Utils4 {
     // Constants
@@ -87,12 +84,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     uint256 public constant MAX_EPOCH_CAMPAIGNS = 10;
     // max number of options for each campaign
     uint256 public constant MAX_CAMPAIGN_OPTIONS = 8;
-    // minimum duration in seconds for a campaign
-    uint256 public minCampaignDurationInSeconds = 345600; // around 4 days
-
-    IERC20 public kncToken;
-    IKyberStaking public staking;
-    IFeeHandler public feeHandler;
 
     enum CampaignType {General, NetworkFee, FeeHandlerBRR}
 
@@ -124,8 +115,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint256 rebateInBps;
     }
 
-    /* Mapping from campaign ID => data */
+    // minimum duration in seconds for a campaign
+    uint256 public minCampaignDurationInSeconds = 345600; // around 4 days
+    IERC20 public kncToken;
+    IKyberStaking public staking;
+    IFeeHandler public feeHandler;
 
+    /* Mapping from campaign ID => data */
     // use to generate increasing campaign ID
     uint256 public numberCampaigns = 0;
     mapping(uint256 => Campaign) internal campaignData;
@@ -150,6 +146,21 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     BRRData internal latestBrrData;
     // epoch => campaignID for brr campaigns
     mapping(uint256 => uint256) public brrCampaigns;
+
+    event NewCampaignCreated(
+        CampaignType campaignType,
+        uint256 indexed campaignID,
+        uint256 startTimestamp,
+        uint256 endTimestamp,
+        uint256 minPercentageInPrecision,
+        uint256 cInPrecision,
+        uint256 tInPrecision,
+        uint256[] options,
+        bytes link
+    );
+    event CancelledCampaign(uint256 indexed campaignID);
+    event Voted(address indexed staker, uint indexed epoch, uint indexed campaignID, uint option);
+    event RewardClaimed(address indexed staker, uint256 indexed epoch, uint256 percentInPrecision);
 
     constructor(
         uint256 _epochPeriod,
@@ -240,18 +251,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             }
         }
     }
-
-    event NewCampaignCreated(
-        CampaignType campaignType,
-        uint256 indexed campaignID,
-        uint256 startTimestamp,
-        uint256 endTimestamp,
-        uint256 minPercentageInPrecision,
-        uint256 cInPrecision,
-        uint256 tInPrecision,
-        uint256[] options,
-        bytes link
-    );
 
     /**
      * @dev create new campaign, only called by admin
@@ -353,8 +352,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         );
     }
 
-    event CancelledCampaign(uint256 indexed campaignID);
-
     /**
      * @dev  cancel a campaign with given id, called by admin only
      *       only can cancel campaigns that have not started yet
@@ -389,8 +386,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         emit CancelledCampaign(campaignID);
     }
-
-    event Voted(address indexed staker, uint indexed epoch, uint indexed campaignID, uint option);
 
     // prettier-ignore
     /**
@@ -436,10 +431,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         emit Voted(staker, curEpoch, campaignID, option);
     }
 
-    event RewardClaimed(address indexed staker, uint256 indexed epoch, uint256 percentInPrecision);
-
     /**
-     * @notice WARNING When staker address is a contract, it should be able to receive claimed reward in Eth whenever anyone calls this function.
+     * @notice  WARNING When staker address is a contract,
+                it should be able to receive claimed reward in Eth whenever anyone calls this function.
      * @dev call to claim reward of an epoch, can call by anyone, only once for each epoch
      * @param staker address to claim reward for
      * @param epoch to claim reward
@@ -467,7 +461,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
      *    conclude network fee campaign if needed and caching latest result in DAO
      */
     function getLatestNetworkFeeDataWithCache()
-        public
+        external
         returns (uint256 feeInBps, uint256 expiryTimestamp)
     {
         (feeInBps, expiryTimestamp) = getLatestNetworkFeeData();
@@ -480,7 +474,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
      *      conclude brr campaign if needed and caching latest result in DAO
      */
     function getLatestBRRDataWithCache()
-        public
+        external
         returns (
             uint256 burnInBps,
             uint256 rewardInBps,
@@ -734,29 +728,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         burnInBps = BPS.sub(rebateInBps).sub(rewardInBps);
     }
 
-    // Helper functions for squeezing data
-    function getRebateAndRewardFromData(uint256 data)
-        public
-        pure
-        returns (uint256 rebateInBps, uint256 rewardInBps)
-    {
-        rewardInBps = data & (POWER_128.sub(1));
-        rebateInBps = (data.div(POWER_128)) & (POWER_128.sub(1));
-    }
-
-    /**
-     * @dev  helper func to get encoded reward and rebate
-     *       revert if validation failed
-     */
-    function getDataFromRewardAndRebateWithValidation(uint256 rewardInBps, uint256 rebateInBps)
-        public
-        pure
-        returns (uint256 data)
-    {
-        require(rewardInBps.add(rebateInBps) <= BPS, "reward plus rebate high");
-        data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
-    }
-
     /**
      * @dev Validate params to check if we could submit a new campaign with these params
      */
@@ -835,6 +806,29 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         require(tInPrecision <= POWER_128, "validateParams: t is high");
 
         return true;
+    }
+
+    // Helper functions for squeezing data
+    function getRebateAndRewardFromData(uint256 data)
+        public
+        pure
+        returns (uint256 rebateInBps, uint256 rewardInBps)
+    {
+        rewardInBps = data & (POWER_128.sub(1));
+        rebateInBps = (data.div(POWER_128)) & (POWER_128.sub(1));
+    }
+
+    /**
+     * @dev  helper func to get encoded reward and rebate
+     *       revert if validation failed
+     */
+    function getDataFromRewardAndRebateWithValidation(uint256 rewardInBps, uint256 rebateInBps)
+        public
+        pure
+        returns (uint256 data)
+    {
+        require(rewardInBps.add(rebateInBps) <= BPS, "reward plus rebate high");
+        data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
     }
 
     /**
