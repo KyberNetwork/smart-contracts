@@ -31,6 +31,13 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         /* empty body */
     }
 
+    function setKyberStorage(IKyberStorage _kyberStorage) external returns (bool) {
+        onlyAdmin();
+        emit KyberStorageUpdated(_kyberStorage);
+        kyberStorage = _kyberStorage;
+        return true;
+    }
+
     function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps) external returns (bool) {
         onlyNetwork();
         require(_negligibleRateDiffBps <= BPS, "rateDiffBps exceed BPS"); // at most 100%
@@ -43,13 +50,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         require(_kyberNetwork != IKyberNetwork(0), "network 0");
         emit KyberNetworkUpdated(_kyberNetwork);
         kyberNetwork = _kyberNetwork;
-    }
-
-    function setKyberStorage(IKyberStorage _kyberStorage) external returns (bool) {
-        onlyAdmin();
-        emit KyberStorageUpdated(_kyberStorage);
-        kyberStorage = _kyberStorage;
-        return true;
     }
 
     /// @dev Returns trading reserves info for a trade
@@ -212,10 +212,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return kyberStorage.convertReserveAddresstoId(reserveAddress);
     }
 
-    function onlyNetwork() internal view {
-        require(msg.sender == address(kyberNetwork), "only network");
-    }
-
     /// @notice Logic for masking out reserves
     /// @param allReservesPerToken Array of reserveIds that support the t2e or e2t side of the trade
     /// @param maskedOutReserves Array of reserveIds to be excluded from allReservesPerToken
@@ -245,6 +241,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
             if (notMaskedOut) filteredReserves[currentResultIndex++] = reserveId;
         }
+    }
+
+    function onlyNetwork() internal view {
+        require(msg.sender == address(kyberNetwork), "only network");
     }
 
     function populateSplitValuesBps(uint256 length)
