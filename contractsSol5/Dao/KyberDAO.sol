@@ -72,18 +72,19 @@ contract CampPermissionGroups {
 
 
 /**
- * @notice This contract is using SafeMath for uint, which is inherited from EpochUtils
+ * @notice  This contract is using SafeMath for uint, which is inherited from EpochUtils
+            Some events are moved to interface, easier for public uses
  * @dev Network fee campaign: options are fee in bps
  *      BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
  *      General campaign: options are from 1 to num_options
  */
 contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroups, Utils4 {
-    // Constants
-    uint256 internal constant POWER_128 = 2**128;
+    /* Constants */
     // max number of campaigns for each epoch
-    uint256 public constant MAX_EPOCH_CAMPAIGNS = 10;
+    uint256 public   constant MAX_EPOCH_CAMPAIGNS = 10;
     // max number of options for each campaign
-    uint256 public constant MAX_CAMPAIGN_OPTIONS = 8;
+    uint256 public   constant MAX_CAMPAIGN_OPTIONS = 8;
+    uint256 internal constant POWER_128 = 2**128;
 
     enum CampaignType {General, NetworkFee, FeeHandlerBRR}
 
@@ -158,9 +159,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint256[] options,
         bytes link
     );
+
     event CancelledCampaign(uint256 indexed campaignID);
-    event Voted(address indexed staker, uint indexed epoch, uint indexed campaignID, uint option);
-    event RewardClaimed(address indexed staker, uint256 indexed epoch, uint256 percentInPrecision);
 
     constructor(
         uint256 _epochPeriod,
