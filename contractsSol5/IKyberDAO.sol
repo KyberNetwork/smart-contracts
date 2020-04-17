@@ -7,7 +7,7 @@ interface IKyberDAO {
 
     function vote(uint campaignID, uint option) external;
 
-    function handleWithdrawal(address staker, uint penaltyAmount) external returns(bool);
+    function handleWithdrawal(address staker, uint penaltyAmount) external;
     function shouldBurnRewardForEpoch(uint epoch) external view returns(bool);
     function getLatestNetworkFeeData() external view returns(uint feeInBps, uint expiryTimestamp);
     function getLatestNetworkFeeDataWithCache() external returns(uint feeInBps, uint expiryTimestamp);

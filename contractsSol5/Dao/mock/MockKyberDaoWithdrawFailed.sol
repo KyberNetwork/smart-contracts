@@ -11,8 +11,8 @@ contract MockKyberDaoWithdrawFailed is EpochUtils {
         firstEpochStartTimestamp = _startTimestamp;
     }
 
-    function handleWithdrawal(address, uint) public returns(bool) {
+    function handleWithdrawal(address, uint) public {
         value++;
-        return false;
+        revert();
     }
 }
