@@ -4,26 +4,22 @@ import "./IKyberFeeHandler.sol";
 import "./IKyberDAO.sol";
 import "./IKyberNetworkProxy.sol";
 
-/// @title KyberStorage interface
+
+/*
+ * @title KyberStorage interface
+ */
 contract IKyberStorage {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
 
-    function setContracts(
-        IKyberFeeHandler _feeHandler,
-        address _matchingEngine
-    ) external returns (bool);
-
-    function setDAOContract(IKyberDAO _kyberDAO) external returns (bool);
+    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
+        external
+        returns (bool);
 
     function addReserve(
         address reserve,
         bytes32 reserveId,
         ReserveType resType
     ) external returns (bool);
-
-    function removeReserve(address reserve, uint256 startIndex)
-        external
-        returns (bytes32 reserveId);
 
     function listPairForReserve(
         address reserve,
@@ -33,10 +29,19 @@ contract IKyberStorage {
         bool add
     ) external returns (bool);
 
-    function convertReserveAddresstoId(address reserve)
+    function removeKyberProxy(address networkProxy) external returns (bool);
+
+    function removeReserve(address reserve, uint256 startIndex)
         external
-        view
         returns (bytes32 reserveId);
+
+    function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
+        external
+        returns (bool);
+
+    function setDAOContract(IKyberDAO _kyberDAO) external returns (bool);
+
+    function convertReserveAddresstoId(address reserve) external view returns (bytes32 reserveId);
 
     function convertReserveIdToAddress(bytes32 reserveId)
         external
@@ -63,23 +68,16 @@ contract IKyberStorage {
         view
         returns (bytes32[] memory reserveIds);
 
-    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
-        external
-        returns (bool);
-
-    function removeKyberProxy(address networkProxy) external returns (bool);
-
-    function isKyberProxyAdded() external view returns (bool);
-
-    function getKyberProxies()
-        external
-        view
-        returns (IKyberNetworkProxy[] memory);
+    function getKyberProxies() external view returns (IKyberNetworkProxy[] memory);
 
     function getReserveDetailsByAddress(address reserve)
         external
         view
-        returns (bytes32 reserveId, ReserveType resType, bool isFeeAccounted);
+        returns (
+            bytes32 reserveId,
+            ReserveType resType,
+            bool isFeeAccounted
+        );
 
     function getReserveDetailsById(bytes32 reserveId)
         external
@@ -94,4 +92,6 @@ contract IKyberStorage {
         external
         view
         returns (bool[] memory feeAccountedArr);
+
+    function isKyberProxyAdded() external view returns (bool);
 }

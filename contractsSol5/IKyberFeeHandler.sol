@@ -9,9 +9,7 @@ interface IKyberFeeHandler {
         uint256 platformFeeWei
     ) external payable returns (bool);
 
-    function claimReserveRebate(address rebateWallet)
-        external
-        returns (uint256);
+    function claimReserveRebate(address rebateWallet) external returns (uint256);
 
     function claimStakerReward(
         address staker,
