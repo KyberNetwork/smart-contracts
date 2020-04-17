@@ -388,7 +388,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
             (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
     }
 
-    function getIsFeeAccountedReserves(bytes32[] calldata reserveIds)
+    function getFeeAccountedData(bytes32[] calldata reserveIds)
         external
         view
         returns (bool[] memory feeAccountedArr)

@@ -140,7 +140,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
             return true;
         }
 
-        TradingReserves memory reservesData = src == ETH_TOKEN_ADDRESS
+        ReservesData memory reservesData = src == ETH_TOKEN_ADDRESS
             ? tData.ethToToken
             : tData.tokenToEth;
         uint256 callValue;
