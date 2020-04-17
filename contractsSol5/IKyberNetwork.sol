@@ -4,6 +4,22 @@ import "./IERC20.sol";
 
 
 interface IKyberNetwork {
+
+        event KyberTrade(
+        address indexed trader,
+        IERC20 indexed src,
+        IERC20 indexed dest,
+        uint256 srcAmount,
+        uint256 destAmount,
+        address destAddress,
+        uint256 ethWeiValue,
+        uint256 networkFeeWei,
+        uint256 customPlatformFeeWei,
+        bytes32[] t2eIds,
+        bytes32[] e2tIds,
+        bytes hint
+    );
+
     function tradeWithHintAndFee(
         address payable trader,
         IERC20 src,
