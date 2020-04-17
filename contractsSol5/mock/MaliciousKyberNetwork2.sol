@@ -35,8 +35,7 @@ contract MaliciousKyberNetwork2 is KyberNetwork {
     ) internal returns (bool) {
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
-            if (destAddress != (address(this)))
-                destAddress.transfer(amount - myFeeWei);
+            if (destAddress != (address(this))) destAddress.transfer(amount - myFeeWei);
             return true;
         }
 

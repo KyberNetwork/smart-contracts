@@ -30,9 +30,7 @@ contract MockNetwork is KyberNetwork {
         // return true;
     }
 
-    function setNetworkFeeData(uint256 _networkFeeBps, uint256 _expiryTimestamp)
-        public
-    {
+    function setNetworkFeeData(uint256 _networkFeeBps, uint256 _expiryTimestamp) public {
         updateNetworkFee(_expiryTimestamp, _networkFeeBps);
     }
 

@@ -82,10 +82,7 @@ contract ERC20Basic {
  * see https://github.com/ethereum/EIPs/issues/20
  */
 contract ERC20 is ERC20Basic {
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
 
     function transferFrom(
         address from,
@@ -95,11 +92,7 @@ contract ERC20 is ERC20Basic {
 
     function approve(address spender, uint256 value) external returns (bool);
 
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
 
@@ -124,11 +117,7 @@ contract BasicToken is ERC20Basic {
         _;
     }
 
-    function transfer(address _to, uint256 _value)
-        public
-        onlyPayloadSize(2 * 32)
-        returns (bool)
-    {
+    function transfer(address _to, uint256 _value) public onlyPayloadSize(2 * 32) returns (bool) {
         balances[msg.sender] = balances[msg.sender].sub(_value);
         balances[_to] = balances[_to].add(_value);
         emit Transfer(msg.sender, _to, _value);
@@ -176,11 +165,7 @@ contract StandardToken is BasicToken, ERC20 {
         return true;
     }
 
-    function allowance(address _owner, address _spender)
-        public
-        view
-        returns (uint256 remaining)
-    {
+    function allowance(address _owner, address _spender) public view returns (uint256 remaining) {
         return allowed[_owner][_spender];
     }
 }

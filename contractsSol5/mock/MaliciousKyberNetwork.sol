@@ -31,10 +31,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
     {
         tData.networkFeeBps = getAndUpdateNetworkFee();
 
-        require(
-            verifyTradeInputValid(tData.input, tData.networkFeeBps),
-            "invalid"
-        );
+        require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
 
         // amounts excluding fees
         uint256 rateWithNetworkFee;
@@ -42,10 +39,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
 
         require(rateWithNetworkFee > 0, "0 rate");
         require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(
-            rateWithNetworkFee >= tData.input.minConversionRate,
-            "rate < minConvRate"
-        );
+        require(rateWithNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
 
         if (gasHelper != IGasHelper(0)) {
             gasHelper.freeGas(
@@ -135,8 +129,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
     ) internal returns (bool) {
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
-            if (destAddress != (address(this)))
-                destAddress.transfer(amount - myFeeWei);
+            if (destAddress != (address(this))) destAddress.transfer(amount - myFeeWei);
             return true;
         }
 

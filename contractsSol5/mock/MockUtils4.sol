@@ -33,11 +33,7 @@ contract MockUtils4 is Utils4 {
         return BPS;
     }
 
-    function mockGetBalance(IERC20 token, address user)
-        public
-        view
-        returns (uint256)
-    {
+    function mockGetBalance(IERC20 token, address user) public view returns (uint256) {
         return getBalance(token, user);
     }
 
@@ -49,10 +45,7 @@ contract MockUtils4 is Utils4 {
         return getDecimals(token);
     }
 
-    function mockCheckGetUpdateDecimals(IERC20 token)
-        public
-        returns (uint256)
-    {
+    function mockCheckGetUpdateDecimals(IERC20 token) public returns (uint256) {
         return getUpdateDecimals(token);
     }
 
@@ -102,8 +95,7 @@ contract MockUtils4 is Utils4 {
         uint256 srcDecimals,
         uint256 dstDecimals
     ) public pure returns (uint256) {
-        return
-            calcRateFromQty(srcAmount, destAmount, srcDecimals, dstDecimals);
+        return calcRateFromQty(srcAmount, destAmount, srcDecimals, dstDecimals);
     }
 
     function mockMinOf(uint256 x, uint256 y) public pure returns (uint256) {
