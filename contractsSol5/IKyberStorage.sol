@@ -8,15 +8,21 @@ import "./IKyberNetworkProxy.sol";
 contract IKyberStorage {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
 
-    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
-        external
-        returns (bool);
-
     function addReserve(
         address reserve,
         bytes32 reserveId,
         ReserveType resType
     ) external returns (bool);
+
+    function removeReserve(address reserve, uint256 startIndex)
+        external
+        returns (bytes32 reserveId);
+
+    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
+        external
+        returns (bool);
+
+    function removeKyberProxy(address networkProxy) external returns (bool);
 
     function listPairForReserve(
         address reserve,
@@ -25,12 +31,6 @@ contract IKyberStorage {
         bool tokenToEth,
         bool add
     ) external returns (bool);
-
-    function removeKyberProxy(address networkProxy) external returns (bool);
-
-    function removeReserve(address reserve, uint256 startIndex)
-        external
-        returns (bytes32 reserveId);
 
     function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
         external
