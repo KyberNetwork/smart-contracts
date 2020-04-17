@@ -5,5 +5,5 @@ pragma solidity 0.5.11;
 /// @dev Using ChainLink as the provider for current KNC/ETH price
 interface ISanityRate {
     // return latest rate of KNC/ETH
-    function latestAnswer() external view returns (uint);
+    function latestAnswer() external view returns (uint256);
 }

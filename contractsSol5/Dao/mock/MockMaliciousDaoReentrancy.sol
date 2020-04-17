@@ -3,15 +3,20 @@ pragma solidity 0.5.11;
 import "../EpochUtils.sol";
 import "../KyberStaking.sol";
 
+
 /// @notice Mock Malicious DAO tries to re-enter withdraw function in Staking
 contract MockMaliciousDaoReentrancy is EpochUtils {
-
     KyberStaking public staking;
     IERC20 public knc;
 
-    uint totalDeposit = 0;
+    uint256 totalDeposit = 0;
 
-    constructor(uint _epochPeriod, uint _startTimestamp, KyberStaking _staking, IERC20 _knc) public {
+    constructor(
+        uint256 _epochPeriod,
+        uint256 _startTimestamp,
+        KyberStaking _staking,
+        IERC20 _knc
+    ) public {
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
         staking = _staking;
@@ -19,20 +24,20 @@ contract MockMaliciousDaoReentrancy is EpochUtils {
         require(_knc.approve(address(_staking), 2**255));
     }
 
-    function deposit(uint amount) public {
+    function deposit(uint256 amount) public {
         staking.deposit(amount);
         totalDeposit += amount;
     }
 
-    function withdraw(uint amount) public {
+    function withdraw(uint256 amount) public {
         totalDeposit -= amount;
         staking.withdraw(amount);
     }
 
-    function handleWithdrawal(address, uint) public {
+    function handleWithdrawal(address, uint256) public {
         if (totalDeposit > 0) {
             // reentrant one
-            uint amount = totalDeposit;
+            uint256 amount = totalDeposit;
             totalDeposit = 0;
             staking.withdraw(amount);
         }

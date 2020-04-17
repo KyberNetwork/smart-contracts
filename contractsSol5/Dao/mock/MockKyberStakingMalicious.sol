@@ -2,29 +2,40 @@ pragma solidity 0.5.11;
 
 import "../KyberStaking.sol";
 
+
 contract MockKyberStakingMalicious is KyberStaking {
+    constructor(
+        address _kncToken,
+        uint256 _epochPeriod,
+        uint256 _startBlock,
+        address _admin
+    ) public KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) {}
 
-    constructor(address _kncToken, uint _epochPeriod, uint _startBlock, address _admin) 
-        KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) public { }
-
-    function getHasInitedValue(address staker, uint epoch) public view returns(bool) {
+    function getHasInitedValue(address staker, uint256 epoch) public view returns (bool) {
         return hasInited[epoch][staker];
     }
 
-    function setLatestStake(address staker, uint amount) public {
+    function setLatestStake(address staker, uint256 amount) public {
         stakerLatestData[staker].stake = amount;
     }
 
-    function setLatestDelegatedStake(address staker, uint amount) public {
+    function setLatestDelegatedStake(address staker, uint256 amount) public {
         stakerLatestData[staker].delegatedStake = amount;
     }
 
-    function setEpochStake(address staker, uint epoch, uint amount) public {
+    function setEpochStake(
+        address staker,
+        uint256 epoch,
+        uint256 amount
+    ) public {
         stakerPerEpochData[epoch][staker].stake = amount;
     }
 
-    function setEpochDelegatedStake(address staker, uint epoch, uint amount) public {
+    function setEpochDelegatedStake(
+        address staker,
+        uint256 epoch,
+        uint256 amount
+    ) public {
         stakerPerEpochData[epoch][staker].delegatedStake = amount;
     }
 }
-
