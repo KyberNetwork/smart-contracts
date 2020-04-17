@@ -3,11 +3,7 @@ pragma solidity 0.5.11;
 import "./IERC20.sol";
 
 
-/*
- * @title Kyber Network interface
- */
 interface IKyberNetwork {
-    // destAmount is amount after deducting all fees
     function tradeWithHintAndFee(
         address payable trader,
         IERC20 src,
@@ -23,7 +19,6 @@ interface IKyberNetwork {
 
     function enabled() external view returns (bool);
 
-    // new APIs
     function getExpectedRateWithHintAndFee(
         IERC20 src,
         IERC20 dest,
