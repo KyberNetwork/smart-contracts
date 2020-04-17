@@ -20,12 +20,6 @@ import "./IGasHelper.sol";
  *       KyberFeeHandler: accumulate fees for the trade
  *       KyberMatchingEngine: parse user hint and match reserves
  *       KyberStorage: store / access reserves, token listings and contract addresses
- *
- *   Kyber network will call matching engine for:
- *       - add / remove reserve
- *       - list tokens
- *       - get rate
- *       - trade
  */
 contract KyberNetwork is
     WithdrawableNoModifiers,
