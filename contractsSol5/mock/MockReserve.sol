@@ -22,26 +22,6 @@ contract MockReserve is IKyberReserve, Utils4 {
         sellTokenRates[address(token)] = sellRate;
     }
 
-    function getTokenDecimals(IERC20 token) public view returns (uint256) {
-        return getDecimals(token);
-    }
-
-    function getConversionRate(
-        IERC20 src,
-        IERC20 dest,
-        uint256 srcQty,
-        uint256 blockNumber
-    ) public view returns (uint256) {
-        blockNumber;
-        uint256 rate;
-        srcQty;
-
-        rate = (src == ETH_TOKEN_ADDRESS)
-            ? buyTokenRates[address(dest)]
-            : sellTokenRates[address(src)];
-        return rate;
-    }
-
     function trade(
         IERC20 srcToken,
         uint256 srcAmount,
@@ -71,5 +51,25 @@ contract MockReserve is IKyberReserve, Utils4 {
             destToken.safeTransfer(destAddress, destAmount);
         }
         return true;
+    }
+
+    function getTokenDecimals(IERC20 token) public view returns (uint256) {
+        return getDecimals(token);
+    }
+
+    function getConversionRate(
+        IERC20 src,
+        IERC20 dest,
+        uint256 srcQty,
+        uint256 blockNumber
+    ) public view returns (uint256) {
+        blockNumber;
+        uint256 rate;
+        srcQty;
+
+        rate = (src == ETH_TOKEN_ADDRESS)
+            ? buyTokenRates[address(dest)]
+            : sellTokenRates[address(src)];
+        return rate;
     }
 }

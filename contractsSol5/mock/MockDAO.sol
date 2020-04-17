@@ -30,28 +30,6 @@ contract MockDAO is IKyberDAO, Utils4 {
         startTimestamp = now;
     }
 
-    function setFeeHandler(IKyberFeeHandler _handler) public {
-        feeHandler = _handler;
-    }
-
-    function setMockEpochAndExpiryTimestamp(uint256 _epoch, uint256 _expiryTimestamp) public {
-        epoch = _epoch;
-        expiryTimestamp = _expiryTimestamp;
-    }
-
-    function setMockBRR(uint256 _rewardInBPS, uint256 _rebateInBPS) public {
-        rewardInBPS = _rewardInBPS;
-        rebateInBPS = _rebateInBPS;
-    }
-
-    function setNetworkFeeBps(uint256 _feeBps) public {
-        feeBps = _feeBps;
-    }
-
-    function getLatestNetworkFeeData() external view returns (uint256, uint256) {
-        return (feeBps, expiryTimestamp);
-    }
-
     function getLatestNetworkFeeDataWithCache() external returns (uint256, uint256) {
         data++;
         return (feeBps, expiryTimestamp);
@@ -70,6 +48,8 @@ contract MockDAO is IKyberDAO, Utils4 {
         return (BPS - rewardInBPS - rebateInBPS, rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
     }
 
+    function claimReward(address, uint256) external {}
+
     function claimStakerReward(
         address staker,
         uint256 percentageInPrecision,
@@ -86,6 +66,10 @@ contract MockDAO is IKyberDAO, Utils4 {
         return startTimestamp;
     }
 
+    function getLatestNetworkFeeData() external view returns (uint256, uint256) {
+        return (feeBps, expiryTimestamp);
+    }
+
     function handleWithdrawal(address staker, uint256 reduceAmount) external {
         staker;
         reduceAmount;
@@ -96,8 +80,10 @@ contract MockDAO is IKyberDAO, Utils4 {
         return false;
     }
 
-    function setShouldBurnRewardTrue(uint256 epochNum) public {
-        shouldBurnRewardEpoch[epochNum] = true;
+    function vote(uint256 campaignID, uint256 option) external {
+        // must implement so it can be deployed.
+        campaignID;
+        option;
     }
 
     function advanceEpoch() public {
@@ -105,11 +91,25 @@ contract MockDAO is IKyberDAO, Utils4 {
         expiryTimestamp = now + epochPeriod;
     }
 
-    function vote(uint256 campaignID, uint256 option) external {
-        // must implement so it can be deployed.
-        campaignID;
-        option;
+    function setFeeHandler(IKyberFeeHandler _handler) public {
+        feeHandler = _handler;
     }
 
-    function claimReward(address, uint) external {}
+    function setShouldBurnRewardTrue(uint256 epochNum) public {
+        shouldBurnRewardEpoch[epochNum] = true;
+    }
+
+    function setMockEpochAndExpiryTimestamp(uint256 _epoch, uint256 _expiryTimestamp) public {
+        epoch = _epoch;
+        expiryTimestamp = _expiryTimestamp;
+    }
+
+    function setMockBRR(uint256 _rewardInBPS, uint256 _rebateInBPS) public {
+        rewardInBPS = _rewardInBPS;
+        rebateInBPS = _rebateInBPS;
+    }
+
+    function setNetworkFeeBps(uint256 _feeBps) public {
+        feeBps = _feeBps;
+    }
 }

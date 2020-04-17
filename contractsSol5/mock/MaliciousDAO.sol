@@ -13,16 +13,6 @@ contract MaliciousDAO is MockDAO {
         uint256 _expiryTimestamp
     ) public MockDAO(_rewardInBPS, _rebateInBPS, _epoch, _expiryTimestamp) {}
 
-    function setMockBRR(
-        uint256 _burnInBPS,
-        uint256 _rewardInBPS,
-        uint256 _rebateInBPS
-    ) public {
-        rewardInBPS = _rewardInBPS;
-        rebateInBPS = _rebateInBPS;
-        burnInBPS = _burnInBPS;
-    }
-
     function getLatestBRRDataWithCache()
         external
         returns (
@@ -34,5 +24,15 @@ contract MaliciousDAO is MockDAO {
         )
     {
         return (burnInBPS, rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+    }
+
+    function setMockBRR(
+        uint256 _burnInBPS,
+        uint256 _rewardInBPS,
+        uint256 _rebateInBPS
+    ) public {
+        rewardInBPS = _rewardInBPS;
+        rebateInBPS = _rebateInBPS;
+        burnInBPS = _burnInBPS;
     }
 }

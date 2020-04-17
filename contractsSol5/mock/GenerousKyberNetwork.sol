@@ -7,12 +7,18 @@ import "../KyberNetwork.sol";
  * @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
  */
 contract GenerousKyberNetwork is KyberNetwork {
+    event GenerousTrade(int256 which, int256 more, IERC20 token);
+
     constructor(address _admin, IKyberStorage _kyberStorage)
         public
         KyberNetwork(_admin, _kyberStorage)
     {}
 
-    event GenerousTrade(int256 which, int256 more, IERC20 token);
+    /* solhint-enable function-max-lines */
+    function removeKyberProxy(address networkProxy) external {
+        // reduce extra gas cost of deploying this contract
+        networkProxy;
+    }
 
     /* solhint-disable function-max-lines */
     /// @notice use token address ETH_TOKEN_ADDRESS for ether
@@ -122,12 +128,5 @@ contract GenerousKyberNetwork is KyberNetwork {
         });
 
         return (destAmount);
-    }
-
-    /* solhint-enable function-max-lines */
-
-    function removeKyberProxy(address networkProxy) external {
-        // reduce extra gas cost of deploying this contract
-        networkProxy;
     }
 }

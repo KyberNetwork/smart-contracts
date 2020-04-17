@@ -9,6 +9,11 @@ contract MockPermissionGroupsNoModifiers is PermissionGroupsNoModifiers {
 
     constructor() public PermissionGroupsNoModifiers(msg.sender) {}
 
+    function activateTrade() public {
+        onlyOperator();
+        tradeActive = true;
+    }
+
     function setRate(uint256 newRate) public {
         onlyOperator();
         rate = newRate;
@@ -17,10 +22,5 @@ contract MockPermissionGroupsNoModifiers is PermissionGroupsNoModifiers {
     function stopTrade() public {
         onlyAlerter();
         tradeActive = false;
-    }
-
-    function activateTrade() public {
-        onlyOperator();
-        tradeActive = true;
     }
 }

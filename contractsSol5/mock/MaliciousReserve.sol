@@ -7,25 +7,16 @@ import "../IKyberNetworkProxy.sol";
 
 
 contract MaliciousReserve is IKyberReserve, Utils4 {
+    using SafeERC20 for IERC20;
+
+    mapping(address => uint256) public buyTokenRates;
     IKyberNetworkProxy proxy;
     address payable scammer;
     IERC20 public scamToken;
 
     uint256 public numRecursive = 1;
 
-    using SafeERC20 for IERC20;
-
-    mapping(address => uint256) public buyTokenRates;
-
     function() external payable {}
-
-    function setRate(IERC20 token, uint256 buyRate) public {
-        buyTokenRates[address(token)] = buyRate;
-    }
-
-    function getTokenDecimals(IERC20 token) public view returns (uint256) {
-        return getDecimals(token);
-    }
 
     function getConversionRate(
         IERC20 src,
@@ -71,10 +62,6 @@ contract MaliciousReserve is IKyberReserve, Utils4 {
         return true;
     }
 
-    function setKyberProxy(IKyberNetworkProxy _proxy) public {
-        proxy = _proxy;
-    }
-
     function doTrade() public {
         uint256 callValue = 960;
 
@@ -97,7 +84,19 @@ contract MaliciousReserve is IKyberReserve, Utils4 {
         scamToken = _token;
     }
 
+    function setKyberProxy(IKyberNetworkProxy _proxy) public {
+        proxy = _proxy;
+    }
+
     function setNumRecursive(uint256 num) public {
         numRecursive = num;
+    }
+
+    function setRate(IERC20 token, uint256 buyRate) public {
+        buyTokenRates[address(token)] = buyRate;
+    }
+
+    function getTokenDecimals(IERC20 token) public view returns (uint256) {
+        return getDecimals(token);
     }
 }

@@ -14,10 +14,10 @@ interface IGST2 {
 
 
 contract GasHelper is IGasHelper, WithdrawableNoModifiers {
+    address kyberNetwork;
+
     IGST2 constant GST2 = IGST2(0x0000000000b3F879cb30FE243b4Dfee438691c04);
     uint256 constant MIN_ACTIVATE_PRICE = 8 * 1000 * 1000 * 1000; // 8 gwei
-
-    address kyberNetwork;
 
     constructor(address _kyberNetwork, address _admin) public WithdrawableNoModifiers(_admin) {
         require(_kyberNetwork != address(0));

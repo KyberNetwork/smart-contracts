@@ -9,27 +9,10 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
     using SafeERC20 for IERC20;
 
     mapping(bytes32 => uint256) public pairRate; //rate in precision units. i.e. if rate is 10**18 its same as 1:1
+
     uint256 networkFeeBps = 25;
 
     function() external payable {}
-
-    function setPairRate(
-        ERC20 src,
-        ERC20 dest,
-        uint256 rate
-    ) public {
-        pairRate[keccak256(abi.encodePacked(src, dest))] = rate;
-    }
-
-    function getExpectedRate(
-        ERC20 src,
-        ERC20 dest,
-        uint256 srcQty
-    ) public view returns (uint256 expectedRate, uint256 worstRate) {
-        srcQty;
-        expectedRate = pairRate[keccak256(abi.encodePacked(src, dest))];
-        worstRate = (expectedRate * 97) / 100;
-    }
 
     function tradeWithHint(
         ERC20 src,
@@ -51,32 +34,6 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
                 maxDestAmount,
                 minConversionRate,
                 address(uint160(address(walletId)))
-            );
-    }
-
-    // @dev trade function with same prototype as KyberNetwork
-    // will be used only to trade token to Ether,
-    // will work only when set pair worked.
-    function trade(
-        IERC20 src,
-        uint256 srcAmount,
-        IERC20 dest,
-        address payable destAddress,
-        uint256 maxDestAmount,
-        uint256 minConversionRate,
-        address payable platformWallet
-    ) public payable returns (uint256) {
-        return
-            tradeWithHintAndFee(
-                src,
-                srcAmount,
-                dest,
-                destAddress,
-                maxDestAmount,
-                minConversionRate,
-                platformWallet,
-                0,
-                ""
             );
     }
 
@@ -104,6 +61,40 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
         srcQty;
         hint;
         rateNoFee = pairRate[keccak256(abi.encodePacked(src, dest))];
+    }
+
+    function setPairRate(
+        ERC20 src,
+        ERC20 dest,
+        uint256 rate
+    ) public {
+        pairRate[keccak256(abi.encodePacked(src, dest))] = rate;
+    }
+
+    // @dev trade function with same prototype as KyberNetwork
+    // will be used only to trade token to Ether,
+    // will work only when set pair worked.
+    function trade(
+        IERC20 src,
+        uint256 srcAmount,
+        IERC20 dest,
+        address payable destAddress,
+        uint256 maxDestAmount,
+        uint256 minConversionRate,
+        address payable platformWallet
+    ) public payable returns (uint256) {
+        return
+            tradeWithHintAndFee(
+                src,
+                srcAmount,
+                dest,
+                destAddress,
+                maxDestAmount,
+                minConversionRate,
+                platformWallet,
+                0,
+                ""
+            );
     }
 
     function tradeWithHintAndFee(
@@ -151,5 +142,15 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils4 {
         }
 
         return destAmount;
+    }
+
+    function getExpectedRate(
+        ERC20 src,
+        ERC20 dest,
+        uint256 srcQty
+    ) public view returns (uint256 expectedRate, uint256 worstRate) {
+        srcQty;
+        expectedRate = pairRate[keccak256(abi.encodePacked(src, dest))];
+        worstRate = (expectedRate * 97) / 100;
     }
 }
