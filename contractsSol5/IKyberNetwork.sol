@@ -2,13 +2,23 @@ pragma solidity 0.5.11;
 
 import "./IERC20.sol";
 
-/// @title Kyber Network interface
+
 interface IKyberNetwork {
+    function tradeWithHintAndFee(
+        address payable trader,
+        IERC20 src,
+        uint256 srcAmount,
+        IERC20 dest,
+        address payable destAddress,
+        uint256 maxDestAmount,
+        uint256 minConversionRate,
+        address payable platformWallet,
+        uint256 platformFeeBps,
+        bytes calldata hint
+    ) external payable returns (uint256 destAmount);
+
     function enabled() external view returns (bool);
 
-    function maxGasPrice() external view returns (uint256);
-
-    // new APIs
     function getExpectedRateWithHintAndFee(
         IERC20 src,
         IERC20 dest,
@@ -24,20 +34,6 @@ interface IKyberNetwork {
             uint256 expectedRateAfterAllFees
         );
 
-    // destAmount is amount after deducting all fees
-    function tradeWithHintAndFee(
-        address payable trader,
-        IERC20 src,
-        uint256 srcAmount,
-        IERC20 dest,
-        address payable destAddress,
-        uint256 maxDestAmount,
-        uint256 minConversionRate,
-        address payable platformWallet,
-        uint256 platformFeeBps,
-        bytes calldata hint
-    ) external payable returns (uint256 destAmount);
-
     function getNetworkData()
         external
         view
@@ -46,4 +42,6 @@ interface IKyberNetwork {
             uint256 networkFeeBps,
             uint256 expiryTimestamp
         );
+
+    function maxGasPrice() external view returns (uint256);
 }
