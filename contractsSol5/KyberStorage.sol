@@ -49,16 +49,14 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         kyberNetwork = _kyberNetwork;
     }
 
-    function setContracts(
-        IKyberFeeHandler _feeHandler,
-        address _matchingEngine
-    ) external returns (bool) {
+    function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
+        external
+        returns (bool)
+    {
         onlyNetwork();
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
         require(_matchingEngine != address(0), "matchingEngine 0");
-        IKyberMatchingEngine newMatchingEngine = IKyberMatchingEngine(
-            _matchingEngine
-        );
+        IKyberMatchingEngine newMatchingEngine = IKyberMatchingEngine(_matchingEngine);
 
         if (feeHandler.length > 0) {
             feeHandler.push(feeHandler[0]);
@@ -112,22 +110,15 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         require(
-            (resType != ReserveType.NONE) &&
-                (uint256(resType) < uint256(ReserveType.LAST)),
+            (resType != ReserveType.NONE) && (uint256(resType) < uint256(ReserveType.LAST)),
             "bad reserve type"
         );
-        require(
-            feeAccountedPerType != 0xffffffff,
-            "fee accounted data not set"
-        );
+        require(feeAccountedPerType != 0xffffffff, "fee accounted data not set");
 
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
         } else {
-            require(
-                reserveIdToAddresses[reserveId][0] == address(0),
-                "reserveId taken"
-            );
+            require(reserveIdToAddresses[reserveId][0] == address(0), "reserveId taken");
             reserveIdToAddresses[reserveId][0] = reserve;
         }
 
@@ -154,16 +145,11 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         reserves[reserveIndex] = reserves[reserves.length - 1];
         reserves.pop();
         // remove reserve from mapping to address
-        require(
-            reserveAddressToId[reserve] != bytes32(0),
-            "reserve's existing reserveId is 0"
-        );
+        require(reserveAddressToId[reserve] != bytes32(0), "reserve's existing reserveId is 0");
         reserveId = reserveAddressToId[reserve];
 
         // update reserve mappings
-        reserveIdToAddresses[reserveId].push(
-            reserveIdToAddresses[reserveId][0]
-        );
+        reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
         reserveIdToAddresses[reserveId][0] = address(0);
         reserveAddressToId[reserve] = bytes32(0);
 
@@ -236,19 +222,11 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return reserves;
     }
 
-    function convertReserveAddresstoId(address reserve)
-        external
-        view
-        returns (bytes32 reserveId)
-    {
+    function convertReserveAddresstoId(address reserve) external view returns (bytes32 reserveId) {
         return reserveAddressToId[reserve];
     }
 
-    function convertReserveIdToAddress(bytes32 reserveId)
-        external
-        view
-        returns (address reserve)
-    {
+    function convertReserveIdToAddress(bytes32 reserveId) external view returns (address reserve) {
         return reserveIdToAddresses[reserveId][0];
     }
 
@@ -297,10 +275,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     {
         onlyNetwork();
         require(networkProxy != address(0), "proxy 0");
-        require(
-            kyberProxyArray.length < max_approved_proxies,
-            "max proxies limit reached"
-        );
+        require(kyberProxyArray.length < max_approved_proxies, "max proxies limit reached");
 
         kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
 
@@ -330,11 +305,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     /// @notice Should be called off chain
     /// @return An array of KyberNetworkProxies
-    function getKyberProxies()
-        external
-        view
-        returns (IKyberNetworkProxy[] memory)
-    {
+    function getKyberProxies() external view returns (IKyberNetworkProxy[] memory) {
         return kyberProxyArray;
     }
 
@@ -378,8 +349,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     {
         reserveAddress = reserveIdToAddresses[reserveId][0];
         resType = ReserveType(reserveType[reserveId]);
-        isFeeAccounted =
-            (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
+        isFeeAccounted = (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
     }
 
     /// @notice Returns information about a reserve given its reserve ID
@@ -389,12 +359,15 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     function getReserveDetailsByAddress(address reserve)
         external
         view
-        returns (bytes32 reserveId, ReserveType resType, bool isFeeAccounted)
+        returns (
+            bytes32 reserveId,
+            ReserveType resType,
+            bool isFeeAccounted
+        )
     {
         reserveId = reserveAddressToId[reserve];
         resType = ReserveType(reserveType[reserveId]);
-        isFeeAccounted =
-            (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
+        isFeeAccounted = (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
     }
 
     function getFeeAccountedData(bytes32[] calldata reserveIds)
@@ -407,9 +380,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         uint256 feeAccountedData = feeAccountedPerType;
 
         for (uint256 i = 0; i < reserveIds.length; i++) {
-            feeAccountedArr[i] = (feeAccountedData &
-                (1 << reserveType[reserveIds[i]]) >
-                0);
+            feeAccountedArr[i] = (feeAccountedData & (1 << reserveType[reserveIds[i]]) > 0);
         }
     }
 }

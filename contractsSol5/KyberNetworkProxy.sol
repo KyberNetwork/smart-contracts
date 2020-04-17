@@ -191,11 +191,11 @@ contract KyberNetworkProxy is
     /// @return expectedRate for a trade after deducting network fee. Rate = destQty (twei) / srcQty (twei) * 10 ** 18
     /// @return worstRate for a trade. Usually expectedRate * 97 / 100
     ///             Use worstRate value as trade min conversion rate at your own risk
-    function getExpectedRate(ERC20 src, ERC20 dest, uint256 srcQty)
-        external
-        view
-        returns (uint256 expectedRate, uint256 worstRate)
-    {
+    function getExpectedRate(
+        ERC20 src,
+        ERC20 dest,
+        uint256 srcQty
+    ) external view returns (uint256 expectedRate, uint256 worstRate) {
         bytes memory hint;
         (, expectedRate, ) = kyberNetwork.getExpectedRateWithHintAndFee(
             src,
@@ -247,13 +247,7 @@ contract KyberNetworkProxy is
         uint256 srcQty,
         bytes calldata hint
     ) external view returns (uint256 priceNoFee) {
-        (priceNoFee, , ) = kyberNetwork.getExpectedRateWithHintAndFee(
-            src,
-            dest,
-            srcQty,
-            0,
-            hint
-        );
+        (priceNoFee, , ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
     }
 
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
@@ -319,16 +313,9 @@ contract KyberNetworkProxy is
         uint256 platformFeeBps,
         bytes memory hint
     ) internal returns (uint256) {
-        UserBalance memory balanceBefore = prepareTrade(
-            src,
-            dest,
-            srcAmount,
-            destAddress
-        );
+        UserBalance memory balanceBefore = prepareTrade(src, dest, srcAmount, destAddress);
 
-        uint256 reportedDestAmount = kyberNetwork.tradeWithHintAndFee.value(
-            msg.value
-        )(
+        uint256 reportedDestAmount = kyberNetwork.tradeWithHintAndFee.value(msg.value)(
             msg.sender,
             src,
             srcAmount,
@@ -356,10 +343,7 @@ contract KyberNetworkProxy is
             tradeOutcome.userDeltaDestToken <= maxDestAmount,
             "actual dest amount exceeds maxDestAmount"
         );
-        require(
-            tradeOutcome.actualRate >= minConversionRate,
-            "rate below minConversionRate"
-        );
+        require(tradeOutcome.actualRate >= minConversionRate, "rate below minConversionRate");
 
         emit ExecuteTrade(
             msg.sender,
@@ -414,10 +398,7 @@ contract KyberNetworkProxy is
         uint256 srcAmount,
         address destAddress
     ) internal returns (UserBalance memory balanceBefore) {
-        require(
-            src == ETH_TOKEN_ADDRESS || msg.value == 0,
-            "msg.value should be 0"
-        );
+        require(src == ETH_TOKEN_ADDRESS || msg.value == 0, "msg.value should be 0");
 
         balanceBefore.srcTok = getBalance(src, msg.sender);
         balanceBefore.destTok = getBalance(dest, destAddress);
@@ -447,17 +428,10 @@ contract KyberNetworkProxy is
             destTokenBalanceAfter > balanceBefore.destTok,
             "wrong amount in destination address"
         );
-        require(
-            balanceBefore.srcTok > srcTokenBalanceAfter,
-            "wrong amount in source address"
-        );
+        require(balanceBefore.srcTok > srcTokenBalanceAfter, "wrong amount in source address");
 
-        outcome.userDeltaSrcToken =
-            balanceBefore.srcTok -
-            srcTokenBalanceAfter;
-        outcome.userDeltaDestToken =
-            destTokenBalanceAfter -
-            balanceBefore.destTok;
+        outcome.userDeltaSrcToken = balanceBefore.srcTok - srcTokenBalanceAfter;
+        outcome.userDeltaDestToken = destTokenBalanceAfter - balanceBefore.destTok;
 
         // what would be the src amount after deducting platformFee
         // not protecting from platform fee
