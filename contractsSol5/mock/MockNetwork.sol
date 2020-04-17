@@ -10,15 +10,6 @@ contract MockNetwork is KyberNetwork {
         KyberNetwork(_admin, _kyberStorage)
     {}
 
-    function mockHandleChange(
-        IERC20 src,
-        uint256 srcAmount,
-        uint256 requiredSrcAmount,
-        address payable trader
-    ) public returns (bool) {
-        return handleChange(src, srcAmount, requiredSrcAmount, trader);
-    }
-
     // allow set zero contract
     function setContracts(
         IKyberFeeHandler _feeHandler,
@@ -39,6 +30,15 @@ contract MockNetwork is KyberNetwork {
             gasHelper = _gasHelper;
             emit GasHelperUpdated(_gasHelper);
         }
+    }
+
+    function mockHandleChange(
+        IERC20 src,
+        uint256 srcAmount,
+        uint256 requiredSrcAmount,
+        address payable trader
+    ) public returns (bool) {
+        return handleChange(src, srcAmount, requiredSrcAmount, trader);
     }
 
     function setNetworkFeeData(uint256 _networkFeeBps, uint256 _expiryTimestamp) public {

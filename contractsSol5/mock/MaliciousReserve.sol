@@ -18,21 +18,6 @@ contract MaliciousReserve is IKyberReserve, Utils4 {
 
     function() external payable {}
 
-    function getConversionRate(
-        IERC20 src,
-        IERC20 dest,
-        uint256 srcQty,
-        uint256 blockNumber
-    ) public view returns (uint256) {
-        blockNumber;
-        srcQty;
-
-        if (src == ETH_TOKEN_ADDRESS) {
-            return buyTokenRates[address(dest)];
-        }
-        return 0;
-    }
-
     function trade(
         IERC20 srcToken,
         uint256 srcAmount,
@@ -94,6 +79,21 @@ contract MaliciousReserve is IKyberReserve, Utils4 {
 
     function setRate(IERC20 token, uint256 buyRate) public {
         buyTokenRates[address(token)] = buyRate;
+    }
+
+    function getConversionRate(
+        IERC20 src,
+        IERC20 dest,
+        uint256 srcQty,
+        uint256 blockNumber
+    ) public view returns (uint256) {
+        blockNumber;
+        srcQty;
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            return buyTokenRates[address(dest)];
+        }
+        return 0;
     }
 
     function getTokenDecimals(IERC20 token) public view returns (uint256) {
