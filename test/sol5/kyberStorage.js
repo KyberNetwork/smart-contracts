@@ -1,27 +1,18 @@
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
-const KyberMatchingEngine = artifacts.require("KyberMatchingEngine.sol");
-const MockMatchEngine = artifacts.require("MockMatchEngine.sol");
-const MaliciousKyberEngine = artifacts.require("MaliciousMatchingEngine.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
-const RateHelper = artifacts.require("KyberRateHelper.sol");
-
+const MockStorage = artifacts.require("MockStorage.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
 
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY, MAX_RATE} = require("../helper.js");
-const {NULL_ID, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, ReserveType}  = require('./networkHelper.js');
+const {zeroAddress, zeroBN} = require("../helper.js");
 
 //global variables
 //////////////////
-const negligibleRateDiffBps = new BN(5); //0.05%
-const minConversionRate = new BN(0);
 const maxProxies = new BN(2);
 
-let networkFeeArray = [new BN(0), new BN(250), new BN(400)];
-let platformFeeArray = [new BN(0), new BN(250, new BN(400))];
 let txResult;
 
 let admin;
@@ -37,35 +28,10 @@ let kyberMatchingEngine;
 let reserveInstances = {};
 let reserve;
 let numReserves;
-let numMaskedReserves;
-let reserveRates;
-let reserveRatesE2T;
-let reserveRatesT2E;
 
 //tokens data
 ////////////
-let srcToken;
-let destToken;
 let token;
-let srcDecimals;
-let destDecimals;
-let tokenDecimals;
-
-//quantities
-////////////
-let srcQty;
-let ethSrcQty = precisionUnits;
-let tokenQty;
-let queryQty;
-
-//expected result variables
-///////////////////////////
-let expectedReserveRate;
-let expectedDestAmt;
-let expectedRate;
-let expectedTradeResult;
-let expectedOutput;
-let actualResult;
 
 contract('KyberStorage', function(accounts) {
 
@@ -165,23 +131,23 @@ contract('KyberStorage', function(accounts) {
 
         it("should not have unauthorized personnel remove reserve", async() => {
             await expectRevert(
-                kyberStorage.removeReserve(reserve.address, new BN(0), {from: user}),
+                kyberStorage.removeReserve(reserve.address, zeroBN, {from: user}),
                 "only network"
             );
 
             await expectRevert(
-                kyberStorage.removeReserve(reserve.address, new BN(0), {from: operator}),
+                kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator}),
                 "only network"
             );
 
             await expectRevert(
-                kyberStorage.removeReserve(reserve.address, new BN(0), {from: admin}),
+                kyberStorage.removeReserve(reserve.address, zeroBN, {from: admin}),
                 "only network"
             );
         });
 
         it("should have network remove reserve", async() => {
-            await kyberStorage.removeReserve(reserve.address, new BN(0), {from: network});
+            await kyberStorage.removeReserve(reserve.address, zeroBN, {from: network});
         });
     });
 
@@ -294,9 +260,8 @@ contract('KyberStorage', function(accounts) {
 
         describe("test cases where reserve has never been added", async() => {
             it("should revert for zero reserve id", async() => {
-                let zeroReserveId = "0x0";
                 await expectRevert(
-                    kyberStorage.addReserve(reserve.address, zeroReserveId, reserve.onChainType, {from: network}),
+                    kyberStorage.addReserve(reserve.address, nwHelper.ZERO_RESERVE_ID, reserve.onChainType, {from: network}),
                     "reserveId = 0"
                 );
             });
@@ -323,13 +288,13 @@ contract('KyberStorage', function(accounts) {
             });
 
             it("should be able to re-add a reserve after its removal", async() => {
-                await kyberStorage.removeReserve(reserve.address, new BN(0), {from: network});
+                await kyberStorage.removeReserve(reserve.address, zeroBN, {from: network});
                 await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
             });
 
             it("should be able to add a new reserve address for an existing id after removing an old one", async() => {
                 let newReserve = await MockReserve.new();
-                await kyberStorage.removeReserve(reserve.address, new BN(0), {from: network});
+                await kyberStorage.removeReserve(reserve.address, zeroBN, {from: network});
                 await kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                 let actualNewReserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 0);
                 let actualOldReserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 1);
@@ -371,15 +336,28 @@ contract('KyberStorage', function(accounts) {
 
         it("should revert when removing non-reserve", async() => {
             await expectRevert(
-                kyberStorage.removeReserve(user, new BN(0), {from : network}),
+                kyberStorage.removeReserve(user, zeroBN, {from : network}),
                 "reserve not found"
            );
         });
 
-        //TODO: add a test to revert reserve -> 0 reserveId when removing reserve
+        it("should revert if reserveId is 0 when removing reserve", async() => {
+            let mockStorage = await MockStorage.new(admin);
+            await mockStorage.setNetworkContract(network, {from: admin});
+            await mockStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            for (const value of Object.values(reserveInstances)) {
+                reserve = value;
+            }
+            await mockStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            await mockStorage.setReserveId(reserve.address, nwHelper.ZERO_RESERVE_ID);
+            await expectRevert(
+                mockStorage.removeReserve(reserve.address,zeroBN, {from: network}),
+                "reserve's existing reserveId is 0"
+            );
+        });
 
         it("should have reserveId reset to zero after removal", async() => {
-            await kyberStorage.removeReserve(reserve.address, new BN(0), {from: network});
+            await kyberStorage.removeReserve(reserve.address, zeroBN, {from: network});
             let reserveId = await kyberStorage.getReserveID(reserve.address);
             Helper.assertEqual(reserveId, nwHelper.ZERO_RESERVE_ID, "reserve id was not reset to zero");
 
