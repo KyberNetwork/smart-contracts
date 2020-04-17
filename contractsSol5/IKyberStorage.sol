@@ -5,9 +5,6 @@ import "./IKyberDAO.sol";
 import "./IKyberNetworkProxy.sol";
 
 
-/*
- * @title KyberStorage interface
- */
 contract IKyberStorage {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
 
