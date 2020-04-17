@@ -31,22 +31,6 @@ contract MockStakingContract is KyberStaking {
         return stakerPerEpochData[epoch][staker].delegatedAddress;
     }
 
-    function checkInitAndReturnStakerDataForCurrentEpoch(
-        address staker,
-        uint256 expectedStake,
-        uint256 expectedDelegatedStake,
-        address expectedDelegatedAddress
-    ) public {
-        (
-            uint256 stake,
-            uint256 delegatedStake,
-            address delegatedAddr
-        ) = initAndReturnStakerDataForCurrentEpoch(staker);
-        require(stake == expectedStake, "stake is incorrect");
-        require(delegatedStake == expectedDelegatedStake, "delegated stake is incorrect");
-        require(delegatedAddr == expectedDelegatedAddress, "delegated stake is incorrect");
-    }
-
     function setDAOAddressWithoutCheck(address dao) public {
         daoContract = IKyberDAO(dao);
     }

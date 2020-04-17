@@ -61,6 +61,15 @@ contract('KyberStaking', function(accounts) {
     );
   };
 
+  const checkInitAndReturnStakerDataForCurrentEpoch = async(
+	  staker, stake, delegatedStake, delegatedAddress, sender) => {
+	await stakingContract.initAndReturnStakerDataForCurrentEpoch(staker, {from: sender});
+	let result = await stakingContract.initAndReturnStakerDataForCurrentEpoch.call(staker, {from: sender});
+	Helper.assertEqual(stake, result._stake);
+	Helper.assertEqual(delegatedStake, result._delegatedStake);
+	Helper.assertEqual(delegatedAddress, result._delegatedAddress);
+  };
+
   it("Test setting DAO address and verify inited data", async function() {
     await deployStakingContract(10, currentBlock + 10);
     let daoContract = await MockKyberDAO.new(
@@ -2228,10 +2237,10 @@ contract('KyberStaking', function(accounts) {
       await kncToken.transfer(loi, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: loi});
 
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, {from: dao});
+      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, dao);
 
       await stakingContract.deposit(mulPrecision(100), {from: victor});
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, {from: dao});
+      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, dao);
 
       // delay to epoch 2
       await Helper.setNextBlockTimestamp(
@@ -2241,21 +2250,21 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(false, await stakingContract.getHasInitedValue(victor, 2), "shouldn't inited value for epoch 2");
 
       // victor: stake (100), delegated stake (0), delegated address (victor)
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, victor, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        victor, mulPrecision(100), 0, victor, dao
       );
       Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 2), "should inited value for epoch 2");
       Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 3), "should inited value for epoch 3");
 
       await stakingContract.delegate(mike, {from: victor});
       // victor: stake (100), delegated stake (0), delegated address (victor)
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, victor, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        victor, mulPrecision(100), 0, victor, dao
       );
 
       // mike: stake (0), delegated stake (0), delegated address (mike)
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, 0, 0, mike, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        mike, 0, 0, mike, dao
       );
 
       await stakingContract.deposit(mulPrecision(200), {from: mike});
@@ -2265,35 +2274,35 @@ contract('KyberStaking', function(accounts) {
       );
 
       // victor: stake (100), delegated stake (0), delegated address (mike)
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, mike, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        victor, mulPrecision(100), 0, mike, dao
       );
 
       // mike: stake (200), delegated stake (100), delegated address (mike)
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        mike, mulPrecision(200), mulPrecision(100), mike, dao
       );
 
       await stakingContract.delegate(loi, {from: victor});
 
       // mike: stake (200), delegated stake (100), delegated address (mike)
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        mike, mulPrecision(200), mulPrecision(100), mike, dao
       );
       // loi: stake (0), delegated stake (0), delegated address (loi)
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, 0, loi, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        loi, 0, 0, loi, dao
       );
 
       await stakingContract.deposit(mulPrecision(10), {from: victor});
       // loi: stake (0), delegated stake (0), delegated address (loi)
-      stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, 0, loi, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        loi, 0, 0, loi, dao
       );
 
       // mike: stake (200), delegated stake (100), delegated address (mike)
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        mike, mulPrecision(200), mulPrecision(100), mike, dao
       );
 
       await Helper.setNextBlockTimestamp(
@@ -2301,13 +2310,13 @@ contract('KyberStaking', function(accounts) {
       );
 
       // mike: stake (200), delegated stake (0), delegated address (mike)
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), 0, mike, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        mike, mulPrecision(200), 0, mike, dao
       );
 
       // loi: stake (0), delegated stake (90), delegated address (loi)
-      await stakingContract.checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, mulPrecision(110), loi, {from: dao}
+      await checkInitAndReturnStakerDataForCurrentEpoch(
+        loi, 0, mulPrecision(110), loi, dao
       );
     });
   });
