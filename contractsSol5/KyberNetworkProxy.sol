@@ -35,6 +35,7 @@ contract KyberNetworkProxy is
         /*empty body*/
     }
 
+    /// @notice Backward compatible function
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
     /// @dev Trade from src to dest token and sends dest token to destAddress
     /// @param src Source token
@@ -44,20 +45,18 @@ contract KyberNetworkProxy is
     /// @param maxDestAmount A limit on the amount of dest tokens in twei
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
     /// @param platformWallet Wallet address to receive a portion of the fees collected
-    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
-    /// @param hint Defines which reserves should be used for the trade
     /// @return Amount of actual dest tokens in twei
-    function tradeWithHintAndFee(
+    function trade(
         IERC20 src,
         uint256 srcAmount,
         IERC20 dest,
         address payable destAddress,
         uint256 maxDestAmount,
         uint256 minConversionRate,
-        address payable platformWallet,
-        uint256 platformFeeBps,
-        bytes calldata hint
-    ) external payable returns (uint256 destAmount) {
+        address payable platformWallet
+    ) external payable returns (uint256) {
+        bytes memory hint;
+
         return
             doTrade(
                 src,
@@ -67,7 +66,7 @@ contract KyberNetworkProxy is
                 maxDestAmount,
                 minConversionRate,
                 platformWallet,
-                platformFeeBps,
+                0,
                 hint
             );
     }
@@ -117,18 +116,20 @@ contract KyberNetworkProxy is
     /// @param maxDestAmount A limit on the amount of dest tokens in twei
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
     /// @param platformWallet Wallet address to receive a portion of the fees collected
+    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
+    /// @param hint Defines which reserves should be used for the trade
     /// @return Amount of actual dest tokens in twei
-    function trade(
+    function tradeWithHintAndFee(
         IERC20 src,
         uint256 srcAmount,
         IERC20 dest,
         address payable destAddress,
         uint256 maxDestAmount,
         uint256 minConversionRate,
-        address payable platformWallet
-    ) external payable returns (uint256) {
-        bytes memory hint;
-
+        address payable platformWallet,
+        uint256 platformFeeBps,
+        bytes calldata hint
+    ) external payable returns (uint256 destAmount) {
         return
             doTrade(
                 src,
@@ -138,7 +139,7 @@ contract KyberNetworkProxy is
                 maxDestAmount,
                 minConversionRate,
                 platformWallet,
-                0,
+                platformFeeBps,
                 hint
             );
     }
