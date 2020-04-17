@@ -504,7 +504,6 @@ async function compileSol5Contracts() {
 module.exports.compileAllContracts = main;
 async function main() {
   let output = {contracts: {}, sources: {}};
-  //TODO: combine outputs
   let v4Output = await compileContracts("sol4");
   let v5Output = await compileContracts("sol5");
   return [v4Output, v5Output];
