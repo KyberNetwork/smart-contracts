@@ -10,9 +10,8 @@ contract MockKyberDAOTestHandleWithdrawal is EpochUtils {
         firstEpochStartTimestamp = _startTimestamp;
     }
 
-    function handleWithdrawal(address staker, uint amount) public returns(bool) {
+    function handleWithdrawal(address staker, uint amount) public {
         // to test if staking has called this func or not when withdrawing
         values[staker] += amount;
-        return true;
     }
 }

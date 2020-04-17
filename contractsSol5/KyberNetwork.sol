@@ -862,6 +862,12 @@ contract KyberNetwork is
         TradeData memory tData
     ) internal pure returns (uint256 destAmount) {
         uint256 totalBps;
+        uint256 srcDecimals = (src == ETH_TOKEN_ADDRESS)
+            ? ETH_DECIMALS
+            : tradingReserves.decimals;
+        uint256 destDecimals = (src == ETH_TOKEN_ADDRESS)
+            ? tradingReserves.decimals
+            : ETH_DECIMALS;
 
         for (uint256 i = 0; i < tradingReserves.addresses.length; i++) {
             if (
@@ -874,12 +880,8 @@ contract KyberNetwork is
 
             destAmount += calcDstQty(
                 tradingReserves.srcAmounts[i],
-                (src == ETH_TOKEN_ADDRESS)
-                    ? ETH_DECIMALS
-                    : tradingReserves.decimals,
-                (src == ETH_TOKEN_ADDRESS)
-                    ? tradingReserves.decimals
-                    : ETH_DECIMALS,
+                srcDecimals,
+                destDecimals,
                 tradingReserves.rates[i]
             );
 

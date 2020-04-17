@@ -207,7 +207,7 @@ contract KyberNetworkProxy is
     /// @param src Src token
     /// @param dest Destination token
     /// @param srcQty amount of src tokens in twei
-    /// @param customFeeBps part of the trade that will be sent as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
+    /// @param platformFeeBps part of the trade that will be sent as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
     /// @param hint to define which reserves should be used for a trade.
     /// @return expectedRate for a trade after deducting network + platform fee.
     ///             Rate = destQty (twei) / srcQty (twei) * 10 ** 18
@@ -215,14 +215,14 @@ contract KyberNetworkProxy is
         IERC20 src,
         IERC20 dest,
         uint256 srcQty,
-        uint256 customFeeBps,
+        uint256 platformFeeBps,
         bytes calldata hint
     ) external view returns (uint256 expectedRate) {
         (, , expectedRate) = kyberNetwork.getExpectedRateWithHintAndFee(
             src,
             dest,
             srcQty,
-            customFeeBps,
+            platformFeeBps,
             hint
         );
     }

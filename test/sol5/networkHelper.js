@@ -165,9 +165,6 @@ async function setupReserves
         result.reserveIdToRebateWallet[reserveId] = rebateWallet;
     }
 
-
-
-    //TODO: implement logic for other reserve types
     return result;
 }
 

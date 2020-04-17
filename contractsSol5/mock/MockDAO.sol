@@ -103,11 +103,9 @@ contract MockDAO is IKyberDAO, Utils4 {
 
     function handleWithdrawal(address staker, uint256 reduceAmount)
         external
-        returns (bool)
     {
         staker;
         reduceAmount;
-        return true;
     }
 
     function shouldBurnRewardForEpoch(uint256 epochNum)
