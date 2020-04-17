@@ -126,7 +126,7 @@ contract KyberNetworkProxy is
         uint256 maxDestAmount,
         uint256 minConversionRate,
         address payable platformWallet
-    ) public payable returns (uint256) {
+    ) external payable returns (uint256) {
         bytes memory hint;
 
         return
@@ -222,7 +222,7 @@ contract KyberNetworkProxy is
             );
     }
 
-    function setKyberNetwork(IKyberNetwork _kyberNetwork) public {
+    function setKyberNetwork(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
         require(_kyberNetwork != IKyberNetwork(0), "KyberNetwork 0");
         emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
@@ -230,7 +230,7 @@ contract KyberNetworkProxy is
         kyberNetwork = _kyberNetwork;
     }
 
-    function setHintHandler(IKyberHint _hintHandler) public {
+    function setHintHandler(IKyberHint _hintHandler) external {
         onlyAdmin();
         require(_hintHandler != IKyberHint(0), "hintHandler 0");
         emit HintHandlerSet(_hintHandler);
