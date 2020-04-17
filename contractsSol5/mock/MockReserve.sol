@@ -57,12 +57,7 @@ contract MockReserve is IKyberReserve, Utils4 {
 
         uint256 srcDecimals = getDecimals(srcToken);
         uint256 destDecimals = getDecimals(destToken);
-        uint256 destAmount = calcDstQty(
-            srcAmount,
-            srcDecimals,
-            destDecimals,
-            conversionRate
-        );
+        uint256 destAmount = calcDstQty(srcAmount, srcDecimals, destDecimals, conversionRate);
 
         // collect src tokens
         if (srcToken != ETH_TOKEN_ADDRESS) {

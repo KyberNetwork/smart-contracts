@@ -35,16 +35,17 @@ contract MockTrader {
             hint
         );
 
-        return kyberNetworkProxy.tradeWithHintAndFee.value(msg.value)(
-            src,
-            srcAmount,
-            dest,
-            destAddress,
-            2 ** 255,
-            rate,
-            platformWallet,
-            platformFeeBps,
-            hint
-        );
+        return
+            kyberNetworkProxy.tradeWithHintAndFee.value(msg.value)(
+                src,
+                srcAmount,
+                dest,
+                destAddress,
+                2**255,
+                rate,
+                platformWallet,
+                platformFeeBps,
+                hint
+            );
     }
 }

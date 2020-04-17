@@ -7,9 +7,7 @@ import "../utils/WithdrawableNoModifiers.sol";
 interface IGST2 {
     function freeUpTo(uint256 value) external returns (uint256 freed);
 
-    function freeFromUpTo(address from, uint256 value)
-        external
-        returns (uint256 freed);
+    function freeFromUpTo(address from, uint256 value) external returns (uint256 freed);
 
     function balanceOf(address who) external view returns (uint256);
 }
@@ -21,10 +19,7 @@ contract GasHelper is IGasHelper, WithdrawableNoModifiers {
 
     address kyberNetwork;
 
-    constructor(address _kyberNetwork, address _admin)
-        public
-        WithdrawableNoModifiers(_admin)
-    {
+    constructor(address _kyberNetwork, address _admin) public WithdrawableNoModifiers(_admin) {
         require(_kyberNetwork != address(0));
         kyberNetwork = _kyberNetwork;
     }

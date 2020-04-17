@@ -25,10 +25,7 @@ contract OtherMatchingEngine is KyberMatchingEngine {
     //     return false;
     // }
 
-    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps)
-        external
-        returns (bool)
-    {
+    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps) external returns (bool) {
         onlyNetwork();
         if (_negligibleRateDiffBps > BPS) return false; // return false instead of revert
         negligibleRateDiffBps = _negligibleRateDiffBps;
