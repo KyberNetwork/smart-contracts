@@ -4,7 +4,6 @@ import "../KyberFeeHandler.sol";
 
 
 contract MockContractCallBurnKnc {
-
     KyberFeeHandler public feeHandler;
 
     constructor(KyberFeeHandler _feeHandler) public {

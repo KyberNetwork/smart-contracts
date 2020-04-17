@@ -2,33 +2,46 @@ pragma solidity 0.5.11;
 
 import "../KyberStaking.sol";
 
+
 contract MockStakingContract is KyberStaking {
+    constructor(
+        address _kncToken,
+        uint256 _epochPeriod,
+        uint256 _startBlock,
+        address _admin
+    ) public KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) {}
 
-    constructor(address _kncToken, uint _epochPeriod, uint _startBlock, address _admin) 
-        KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) public { }
-
-    function getHasInitedValue(address staker, uint epoch) public view returns(bool) {
+    function getHasInitedValue(address staker, uint256 epoch) public view returns (bool) {
         return hasInited[epoch][staker];
     }
 
-    function getStakesValue(address staker, uint epoch) public view returns(uint) {
+    function getStakesValue(address staker, uint256 epoch) public view returns (uint256) {
         return stakerPerEpochData[epoch][staker].stake;
     }
 
-    function getDelegatedStakesValue(address staker, uint epoch) public view returns(uint) {
+    function getDelegatedStakesValue(address staker, uint256 epoch) public view returns (uint256) {
         return stakerPerEpochData[epoch][staker].delegatedStake;
     }
 
-    function getDelegatedAddressValue(address staker, uint epoch) public view returns(address) {
+    function getDelegatedAddressValue(address staker, uint256 epoch)
+        public
+        view
+        returns (address)
+    {
         return stakerPerEpochData[epoch][staker].delegatedAddress;
     }
 
     function checkInitAndReturnStakerDataForCurrentEpoch(
-        address staker, uint expectedStake,
-        uint expectedDelegatedStake, address expectedDelegatedAddress)
-        public
-    {
-        (uint stake, uint delegatedStake, address delegatedAddr) = initAndReturnStakerDataForCurrentEpoch(staker);
+        address staker,
+        uint256 expectedStake,
+        uint256 expectedDelegatedStake,
+        address expectedDelegatedAddress
+    ) public {
+        (
+            uint256 stake,
+            uint256 delegatedStake,
+            address delegatedAddr
+        ) = initAndReturnStakerDataForCurrentEpoch(staker);
         require(stake == expectedStake, "stake is incorrect");
         require(delegatedStake == expectedDelegatedStake, "delegated stake is incorrect");
         require(delegatedAddr == expectedDelegatedAddress, "delegated stake is incorrect");
