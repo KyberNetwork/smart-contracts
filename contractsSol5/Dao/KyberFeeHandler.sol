@@ -10,10 +10,11 @@ import "./ISanityRate.sol";
 import "../utils/zeppelin/SafeMath.sol";
 
 
-/*
+/**
  * @title Kyber fee handler
  *
  * @dev Kyber fee Handler works tightly with contracts KyberNetwork and KyberDAO.
+ *      Some events are moved to interface, easier for public uses
  * @dev Terminology:
  *          Epoch - DAO Voting campaign time frame.
  *              Kyber DAO voting campaigns have pre defined time period defined in number of blocks.
@@ -128,12 +129,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     );
 
     event EthReceived(uint256 amount);
-    event RewardPaid(address indexed staker, uint256 indexed epoch, uint256 amountWei);
-    event RebatePaid(address indexed rebateWallet, uint256 amountWei);
-    event PlatformFeePaid(address indexed platformWallet, uint256 amountWei);
     event KyberDaoAddressSet(IKyberDAO kyberDAO);
     event BurnConfigSet(ISanityRate sanityRate, uint256 weiToBurn);
-    event KncBurned(uint256 kncTWei, uint256 amountWei);
     event RewardsRemovedToBurn(uint256 indexed epoch, uint256 rewardsWei);
 
     constructor(

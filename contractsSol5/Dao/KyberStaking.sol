@@ -7,8 +7,9 @@ import "../IKyberDAO.sol";
 import "./EpochUtils.sol";
 
 
-/*
- * This contract is using SafeMath for uint, which is inherited from EpochUtils
+/**
+ * @notice   This contract is using SafeMath for uint, which is inherited from EpochUtils
+ *           Some events are moved to interface, easier for public uses
  */
 contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     struct StakerData {
@@ -30,12 +31,10 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     event DAOAddressSet(address _daoAddress);
     event DAOContractSetterRemoved();
-    event Delegated(address indexed staker, address indexed delegatedAddress, uint256 indexed epoch, bool isDelegated);
-    event Deposited(uint256 curEpoch, address indexed staker, uint256 amount);
-    event Withdraw(uint256 indexed curEpoch, address indexed staker, uint256 amount);
     // event is fired if something is wrong with withdrawal
     // even though the withdrawal is still successful
     event WithdrawDataUpdateFailed(uint256 curEpoch, address staker, uint256 amount);
+
     constructor(
         address _kncToken,
         uint256 _epochPeriod,
