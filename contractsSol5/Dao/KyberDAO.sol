@@ -243,7 +243,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     event NewCampaignCreated(
         CampaignType campaignType,
-        uint256 campaignID,
+        uint256 indexed campaignID,
         uint256 startTimestamp,
         uint256 endTimestamp,
         uint256 minPercentageInPrecision,
@@ -353,7 +353,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         );
     }
 
-    event CancelledCampaign(uint256 campaignID);
+    event CancelledCampaign(uint256 indexed campaignID);
 
     /**
      * @dev  cancel a campaign with given id, called by admin only
@@ -390,7 +390,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         emit CancelledCampaign(campaignID);
     }
 
-    event Voted(address staker, uint256 epoch, uint256 campaignID, uint256 option);
+    event Voted(address indexed staker, uint indexed epoch, uint indexed campaignID, uint option);
 
     // prettier-ignore
     /**
@@ -436,7 +436,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         emit Voted(staker, curEpoch, campaignID, option);
     }
 
-    event RewardClaimed(address staker, uint256 epoch, uint256 perInPrecision);
+    event RewardClaimed(address indexed staker, uint256 indexed epoch, uint256 percentInPrecision);
 
     /**
      * @notice WARNING When staker address is a contract, it should be able to receive claimed reward in Eth whenever anyone calls this function.

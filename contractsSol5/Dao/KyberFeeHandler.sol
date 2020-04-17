@@ -156,7 +156,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
     }
 
     event FeeDistributed(
-        address platformWallet,
+        address indexed platformWallet,
         uint256 platformFeeWei,
         uint256 rewardWei,
         uint256 rebateWei,
@@ -229,7 +229,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         return true;
     }
 
-    event RewardPaid(address staker, uint256 epoch, uint256 amountWei);
+    event RewardPaid(address indexed staker, uint256 indexed epoch, uint256 amountWei);
 
     /// @dev only Dao can call a claim to staker rewards.
     /// @param staker address.
@@ -263,7 +263,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         return true;
     }
 
-    event RebatePaid(address rebateWallet, uint256 amountWei);
+    event RebatePaid(address indexed rebateWallet, uint256 amountWei);
 
     /// @dev claim reabate per reserve wallet. called by any address
     /// @param rebateWallet the wallet to claim rebates for. Total accumulated rebate sent to this wallet.
@@ -288,7 +288,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         return amount;
     }
 
-    event PlatformFeePaid(address platformWallet, uint256 amountWei);
+    event PlatformFeePaid(address indexed platformWallet, uint256 amountWei);
 
     /// @dev claim accumulated fee per platform wallet. Called by any address
     /// @param platformWallet the wallet to claim fee for. Total accumulated fee sent to this wallet.
@@ -400,7 +400,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         return destQty;
     }
 
-    event RewardsRemovedToBurn(uint256 epoch, uint256 rewardsWei);
+    event RewardsRemovedToBurn(uint256 indexed epoch, uint256 rewardsWei);
 
     /// @dev if no one voted for an epoch (like epoch 0). no one gets rewards. so should reward amount.
     ///         call DAO contract to check if for this epoch any votes occured.
@@ -443,7 +443,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         uint256 rebateBps,
         uint256 burnBps,
         uint256 expiryTimestamp,
-        uint256 epoch
+        uint256 indexed epoch
     );
 
     function getBRR()

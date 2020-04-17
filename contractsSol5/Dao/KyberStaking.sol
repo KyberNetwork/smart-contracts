@@ -80,7 +80,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit DAOContractSetterRemoved();
     }
 
-    event Delegated(address staker, address dAddr, uint256 epoch, bool isDelegated);
+    event Delegated(address indexed staker, address indexed delegatedAddress, uint256 indexed epoch, bool isDelegated);
 
     // prettier-ignore
     /**
@@ -132,7 +132,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit Delegated(staker, dAddr, curEpoch, true);
     }
 
-    event Deposited(uint256 curEpoch, address staker, uint256 amount);
+    event Deposited(uint256 curEpoch, address indexed staker, uint256 amount);
 
     // prettier-ignore
     /**
@@ -171,7 +171,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit Deposited(curEpoch, staker, amount);
     }
 
-    event Withdraw(uint256 curEpoch, address staker, uint256 amount);
+    event Withdraw(uint256 indexed curEpoch, address indexed staker, uint256 amount);
     // event is fired if something is wrong with withdrawal
     // even though the withdrawal is still successful
     event WithdrawDataUpdateFailed(uint256 curEpoch, address staker, uint256 amount);

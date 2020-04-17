@@ -1227,7 +1227,7 @@ contract('KyberStaking', function(accounts) {
       let tx = await stakingContract.delegate(mike, {from: victor});
       expectEvent(tx, "Delegated", {
         staker: victor,
-        dAddr: mike,
+        delegatedAddress: mike,
         epoch: new BN(0),
         isDelegated: true
       });
@@ -1246,13 +1246,13 @@ contract('KyberStaking', function(accounts) {
       tx = await stakingContract.delegate(loi, {from: victor});
       expectEvent(tx, "Delegated", {
         staker: victor,
-        dAddr: mike,
+        delegatedAddress: mike,
         epoch: new BN(5),
         isDelegated: false
       });
       expectEvent(tx, "Delegated", {
         staker: victor,
-        dAddr: loi,
+        delegatedAddress: loi,
         epoch: new BN(5),
         isDelegated: true
       });
@@ -2594,7 +2594,15 @@ contract('KyberStaking', function(accounts) {
     let dStakeNextDAddress = await stakingContract.getDelegatedStake(nextDAddress, epoch+1);
     let hasInitNextDAddress = await stakingContract.getHasInitedValue(nextDAddress, epoch);
 
-    await stakingContract.withdraw(withdrawAmount, {from: staker});
+    let txResult = await stakingContract.withdraw(withdrawAmount, {from: staker});
+    if (isReverted) {
+      // check event
+      expectEvent(txResult, 'WithdrawDataUpdateFailed', {
+        curEpoch: new BN(epoch),
+        staker: staker,
+        amount: new BN(withdrawAmount)
+      });
+    }
 
     latestStake = latestStake.sub(withdrawAmount);
     Helper.assertEqual(latestStake, await stakingContract.getLatestStakeBalance(staker));
