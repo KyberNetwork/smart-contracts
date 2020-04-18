@@ -6,7 +6,7 @@ import "./IKyberHint.sol";
 
 /**
  *   @title Kyber Hint Handler contract
- *   The contract provides the following actions:
+ *   The contract provides the following functionalities:
  *       - building hints
  *       - parsing hints
  *
@@ -14,9 +14,9 @@ import "./IKyberHint.sol";
  *           - Will revert with error message if an error is found
  *           - parse*Hint() returns both reserveIds and reserveAddresses
  *       Internal functions unpackT2THint() and parseHint():
- *           - Is part of trade flow
- *           - Doesn't revert if error is found
- *           - If error is found, return no data such that the trade flow
+ *           - Are part of ger rate && trade flow
+ *           - Don't revert if an error is found
+ *           - If an error is found, return no data such that the trade flow
  *             returns 0 rate for bad hint values
  */
 contract KyberHintHandler is IKyberHint, Utils4 {

@@ -73,7 +73,7 @@ contract IKyberStorage {
         returns (
             bytes32 reserveId,
             ReserveType resType,
-            bool isFeeAccounted
+            bool isFeeAccountedFlags
         );
 
     function getReserveDetailsById(bytes32 reserveId)
@@ -82,7 +82,7 @@ contract IKyberStorage {
         returns (
             address reserveAddress,
             ReserveType resType,
-            bool isFeeAccounted
+            bool isFeeAccountedFlags
         );
 
     function getFeeAccountedData(bytes32[] calldata reserveIds)

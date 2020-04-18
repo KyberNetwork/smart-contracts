@@ -32,7 +32,7 @@ interface IKyberMatchingEngine {
         IERC20 src,
         IERC20 dest,
         uint256[] calldata srcAmounts,
-        uint256[] calldata feeAccountedBpsDest,
+        uint256[] calldata feesAccountedBpsDest,
         uint256[] calldata rates
     ) external view returns (uint256[] memory reserveIndexes);
 }

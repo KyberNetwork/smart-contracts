@@ -9,14 +9,14 @@ import "./utils/PermissionGroupsNoModifiers.sol";
 
 /**
  *   @title KyberStorage contract
- *   The contract provides the following functions:
+ *   The contract provides the following functions for KyberNetwork contract:
  *   - Stores reserve and token listing information by the network
  *   - Stores feeAccounted data for reserve types
  *   - Record contract changes for network, matchingEngine, feeHandler, reserves, network proxies and kyberDAO
  */
 contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     // store current and previous contracts.
-    IKyberNetwork[] internal oldNetworks;
+    IKyberNetwork[] internal previousNetworks;
     IKyberFeeHandler[] internal feeHandler;
     IKyberDAO[] internal kyberDAO;
     IKyberMatchingEngine[] internal matchingEngine;
@@ -41,7 +41,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         onlyAdmin();
         require(_kyberNetwork != IKyberNetwork(0), "network 0");
         emit KyberNetworkUpdated(_kyberNetwork);
-        oldNetworks.push(kyberNetwork);
+        previousNetworks.push(kyberNetwork);
         kyberNetwork = _kyberNetwork;
     }
 
@@ -271,7 +271,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     }
 
     /// @notice Should be called off chain
-    /// @dev Returns list of DAO, feeHandler and matchingEngine contracts used
+    /// @dev Returns list of DAO, feeHandler, matchingEngine and previous network contracts
     /// @dev Index 0 is currently used contract address, indexes > 0 are older versions
     function getContracts()
         external
@@ -279,10 +279,11 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         returns (
             IKyberDAO[] memory daoAddresses,
             IKyberFeeHandler[] memory feeHandlerAddresses,
-            IKyberMatchingEngine[] memory matchingEngineAddresses
+            IKyberMatchingEngine[] memory matchingEngineAddresses,
+            IKyberNetwork[] memory previousNetworks
         )
     {
-        return (kyberDAO, feeHandler, matchingEngine);
+        return (kyberDAO, feeHandler, matchingEngine, previousNetworks);
     }
 
     /// @notice Should be called off chain
@@ -298,37 +299,37 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     /// @notice Returns information about a reserve given its reserve ID
     /// @return reserveAddress Address of the reserve
     /// @return resType Reserve type from enum ReserveType
-    /// @return isFeeAccounted Whether fees are to be charged for the trade for this reserve
+    /// @return isFeeAccountedFlags Whether fees are to be charged for the trade for this reserve
     function getReserveDetailsById(bytes32 reserveId)
         external
         view
         returns (
             address reserveAddress,
             ReserveType resType,
-            bool isFeeAccounted
+            bool isFeeAccountedFlags
         )
     {
         reserveAddress = reserveIdToAddresses[reserveId][0];
         resType = ReserveType(reserveType[reserveId]);
-        isFeeAccounted = (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
+        isFeeAccountedFlags = (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
     }
 
     /// @notice Returns information about a reserve given its reserve ID
     /// @return reserveId The reserve ID in 32 bytes. 1st byte is reserve type
     /// @return resType Reserve type from enum ReserveType
-    /// @return isFeeAccounted Whether fees are to be charged for the trade for this reserve
+    /// @return isFeeAccountedFlags Whether fees are to be charged for the trade for this reserve
     function getReserveDetailsByAddress(address reserve)
         external
         view
         returns (
             bytes32 reserveId,
             ReserveType resType,
-            bool isFeeAccounted
+            bool isFeeAccountedFlags
         )
     {
         reserveId = reserveAddressToId[reserve];
         resType = ReserveType(reserveType[reserveId]);
-        isFeeAccounted = (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
+        isFeeAccountedFlags = (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
     }
 
     function getFeeAccountedData(bytes32[] calldata reserveIds)

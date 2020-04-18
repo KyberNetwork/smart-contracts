@@ -513,7 +513,7 @@ contract('KyberMatchingEngine', function(accounts) {
                     res = await storage.getReserveDetailsByAddress(reserve.address);
                     Helper.assertEqual(reserve.reserveId, res.reserveId);
                     Helper.assertEqual(reserve.onChainType, res.resType);
-                    Helper.assertEqual(true, res.isFeeAccounted);
+                    Helper.assertEqual(true, res.isFeeAccountedFlags);
                 }
             });
 
@@ -548,7 +548,7 @@ async function fetchReservesRatesFromRateHelper(matchingEngineInstance, rateHelp
         reserveAddress = reserves[i];
         reserve = Object.assign({}, reserveInstances[reserveAddress]);
         reserve.rate = rates[i];
-        reserve.isFeeAccounted = (await matchingEngineInstance.getReserveDetails(reserveAddress)).isFeeAccounted;
+        reserve.isFeeAccountedFlags = (await matchingEngineInstance.getReserveDetails(reserveAddress)).isFeeAccountedFlags;
         reservesArray.push(reserve);
     }
     return reservesArray;
@@ -632,7 +632,7 @@ function getTradeResult(
             destAmt = Helper.calcDstQty(splitAmount, srcDecimals, ethDecimals, t2eRates[i]);
             result.tradeWei = result.tradeWei.add(destAmt);
             amountSoFar = amountSoFar.add(splitAmount);
-            if (reserve.isFeeAccounted) {
+            if (reserve.isFeeAccountedFlags) {
                 result.feeAccountedReservesBps = result.feeAccountedReservesBps.add(t2eSplits[i]);
                 result.numFeeAccountedReserves = result.numFeeAccountedReserves.add(new BN(1));
             }
@@ -640,7 +640,7 @@ function getTradeResult(
     } else if (t2eReserves.length > 0) {
         reserve = t2eReserves[0];
         result.tradeWei = Helper.calcDstQty(srcQty, srcDecimals, ethDecimals, t2eRates[0]);
-        if (reserve.isFeeAccounted) {
+        if (reserve.isFeeAccountedFlags) {
             result.feeAccountedReservesBps = result.feeAccountedReservesBps.add(BPS);
             result.numFeeAccountedReserves = result.numFeeAccountedReserves.add(new BN(1));
         }
@@ -651,7 +651,7 @@ function getTradeResult(
     //add e2t reserve splits (doesn't matter if split or not, cos we already know best reserve)
     for (let i=0; i<e2tReserves.length; i++) {
         reserve = e2tReserves[i];
-        if (reserve.isFeeAccounted) {
+        if (reserve.isFeeAccountedFlags) {
             feeAccountedBps = (e2tSplits[i] == undefined) ? BPS : e2tSplits[i];
             result.feeAccountedReservesBps = result.feeAccountedReservesBps.add(feeAccountedBps);
             result.numFeeAccountedReserves = result.numFeeAccountedReserves.add(new BN(1));
@@ -699,7 +699,7 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
         'ids': [],
         'rates': [],
         'splitValuesBps': [],
-        'isFeeAccounted': []
+        'isFeeAccountedFlags': []
     }
 
     //tokenToEth
@@ -713,8 +713,8 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
             result.rates.concat(sellReserves.map(reserve => reserve.rateNoFee));
         result.rates = result.rates.concat(precisionUnits);
         result.splitValuesBps = sellSplits.concat(BPS);
-        result.isFeeAccounted = sellReserves.map(reserve => reserve.isFeeAccounted);
-        result.isFeeAccounted = result.isFeeAccounted.concat(false);
+        result.isFeeAccountedFlags = sellReserves.map(reserve => reserve.isFeeAccountedFlags);
+        result.isFeeAccountedFlags = result.isFeeAccountedFlags.concat(false);
     //ethToToken
     } else if (sellReserves.length == 0) {
         result.addresses = [zeroAddress];
@@ -727,8 +727,8 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
             result.rates.concat(buyReserves.map(reserve => reserve.rateNoFee));
         result.splitValuesBps = [BPS];
         result.splitValuesBps = result.splitValuesBps.concat(buySplits);
-        result.isFeeAccounted = [false];
-        result.isFeeAccounted = result.isFeeAccounted.concat(buyReserves.map(reserve => reserve.isFeeAccounted));
+        result.isFeeAccountedFlags = [false];
+        result.isFeeAccountedFlags = result.isFeeAccountedFlags.concat(buyReserves.map(reserve => reserve.isFeeAccountedFlags));
     //tokenToToken
     } else {
         result.addresses = sellReserves.map(reserve => reserve.address);
@@ -743,8 +743,8 @@ function getExpectedOutput(sellReserves, sellSplits, buyReserves, buySplits) {
             result.rates.concat(buyReserves.map(reserve => reserve.rateNoFee));
         result.splitValuesBps = sellSplits;
         result.splitValuesBps = result.splitValuesBps.concat(buySplits);
-        result.isFeeAccounted = sellReserves.map(reserve => reserve.isFeeAccounted);
-        result.isFeeAccounted = result.isFeeAccounted.concat(buyReserves.map(reserve => reserve.isFeeAccounted));
+        result.isFeeAccountedFlags = sellReserves.map(reserve => reserve.isFeeAccountedFlags);
+        result.isFeeAccountedFlags = result.isFeeAccountedFlags.concat(buyReserves.map(reserve => reserve.isFeeAccountedFlags));
     }
     return result;
 }
@@ -791,9 +791,9 @@ function compareResults(expectedTradeResult, expectedOutput, actualResult) {
     }
 
     //compare expectedFeeAccounted
-    for (let i=0; i<actualResult.isFeeAccounted.length; i++) {
-        expected = expectedOutput.isFeeAccounted[i];
-        actual = actualResult.isFeeAccounted[i];
+    for (let i=0; i<actualResult.isFeeAccountedFlags.length; i++) {
+        expected = expectedOutput.isFeeAccountedFlags[i];
+        actual = actualResult.isFeeAccountedFlags[i];
         Helper.assertEqual(expected, actual, "reserve fee accounted not the same");
     }
 }

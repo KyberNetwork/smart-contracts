@@ -9,9 +9,9 @@ import "./IKyberStorage.sol";
 
 /**
  *   @title Kyber matching engine contract
- *   Receives call from KyberNetwork for:
- *       - getting trading reserves
- *       - matching best reserve for trades
+ *   During getEcpectedRate / trade on kyber Network called twice:
+ *       - parse hint and return reserve list (function getTradingReserves)
+ *       - matching best reserves to trade with (function doMatch)
  */
 contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, WithdrawableNoModifiers {
     struct BestReserveInfo {
@@ -126,19 +126,18 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return negligibleRateDiffBps;
     }
 
-    // prettier-ignore
     /// @dev Returns the indexes of the best rate from the rates array for the t2e or e2t side
     /// @param src Source token (not needed in this matchingEngine version)
     /// @param dest Destination token (not needed in this matchingEngine version)
     /// @param srcAmounts Array of srcAmounts
-    /// @param feeAccountedBpsDest Fees charged in BPS, to be deducted from calculated destAmount
+    /// @param feesAccountedDestBps Fees charged in BPS, to be deducted from calculated destAmount
     /// @param rates Rates provided by reserves
     /// @return Return an array of the indexes most suited for the trade
     function doMatch(
         IERC20 src,
         IERC20 dest,
         uint256[] calldata srcAmounts,
-        uint256[] calldata feeAccountedBpsDest, // 0 for no fee, networkFeeBps when has fee
+        uint256[] calldata feesAccountedDestBps, // 0 for no fee, networkFeeBps when has fee
         uint256[] calldata rates
     ) external view returns (uint256[] memory reserveIndexes) {
         src;
@@ -160,9 +159,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint256 destAmount;
 
         for (uint256 i = 0; i < rates.length; i++) {
-            destAmount =
-                (srcAmounts[i] * rates[i] * (BPS - feeAccountedBpsDest[i])) /
-                BPS;
+            destAmount = (srcAmounts[i] * rates[i] * (BPS - feesAccountedDestBps[i])) / BPS;
             if (destAmount > bestReserve.destAmount) {
                 // best rate is highest rate
                 bestReserve.destAmount = destAmount;
@@ -180,9 +177,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         reserveCandidates[0] = bestReserve.index;
 
         // if this reserve pays fee its actual rate is less. so smallestRelevantRate is smaller.
-        bestReserve.destAmount =
-            (bestReserve.destAmount * BPS) /
-            (BPS + negligibleRateDiffBps);
+        bestReserve.destAmount = (bestReserve.destAmount * BPS) / (BPS + negligibleRateDiffBps);
 
         for (uint256 i = 0; i < rates.length; i++) {
             if (i == bestReserve.index) continue;
@@ -193,10 +188,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         if (bestReserve.numRelevantReserves > 1) {
             // when encountering small rate diff from bestRate. draw from relevant reserves
-            bestReserve.index = reserveCandidates[
-                uint256(blockhash(block.number - 1)) %
-                bestReserve.numRelevantReserves
-            ];
+            bestReserve.index = reserveCandidates[uint256(blockhash(block.number - 1)) %
+                bestReserve.numRelevantReserves];
         } else {
             bestReserve.index = reserveCandidates[0];
         }
