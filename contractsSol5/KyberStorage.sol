@@ -280,7 +280,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
             IKyberDAO[] memory daoAddresses,
             IKyberFeeHandler[] memory feeHandlerAddresses,
             IKyberMatchingEngine[] memory matchingEngineAddresses,
-            IKyberNetwork[] memory previousNetworks
+            IKyberNetwork[] memory previousNetworkContracts
         )
     {
         return (kyberDAO, feeHandler, matchingEngine, previousNetworks);
