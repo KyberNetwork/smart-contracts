@@ -6,7 +6,7 @@ import "./IKyberHint.sol";
 
 /**
  *   @title Kyber Hint Handler contract
- *   The contract provides the following functionalities:
+ *   The contract provides the following functionality:
  *       - building hints
  *       - parsing hints
  *
