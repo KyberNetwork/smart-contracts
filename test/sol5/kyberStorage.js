@@ -606,7 +606,7 @@ contract('KyberStorage', function(accounts) {
                     let details = await storage.getReserveDetailsByAddress(reserve.address);
                     Helper.assertEqual(reserve.reserveId, details.reserveId)
                     Helper.assertEqual(index + 1, details.resType)
-                    Helper.assertEqual(pay[index], details.isFeeAccounted);
+                    Helper.assertEqual(pay[index], details.isFeeAccountedFlags);
                     ++index;
                 }
             }

@@ -17,9 +17,10 @@ import "./IGasHelper.sol";
  *   @title Kyber Network main contract
  *   Interacts with contracts:
  *       KyberDao: to retrieve fee data
- *       KyberFeeHandler: accumulate fees for the trade
- *       KyberMatchingEngine: parse user hint and match reserves
+ *       KyberFeeHandler: accumulate network fees per trade
+ *       KyberMatchingEngine: parse user hint and run reserve matching algorithm
  *       KyberStorage: store / access reserves, token listings and contract addresses
+ *       Kyber Reserves: query rate and trade.
  */
 contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -34,7 +35,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     /// @param addresses List of reserve addresses selected for the trade
     /// @param ids List of reserve ids, to be used for KyberTrade event
     /// @param rates List of rates that were offered by the reserves
-    /// @param isFeeAccounted List of reserves requiring users to pay network fee, or not
+    /// @param isFeeAccountedFlags List of reserves requiring users to pay network fee, or not
     /// @param splitsBps List of proportions of trade amount allocated to the reserves.
     ///     If there is only 1 reserve, then it should have a value of 10000 bps
     /// @param decimals Token decimals. Src decimals when for src -> ETH, dest decimals when ETH -> dest
@@ -42,7 +43,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         IKyberReserve[] addresses;
         bytes32[] ids;
         uint256[] rates;
-        bool[] isFeeAccounted;
+        bool[] isFeeAccountedFlags;
         uint256[] splitsBps;
         uint256[] srcAmounts;
         uint256 decimals;
@@ -884,14 +885,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
                 (tradeData.input.dest != ETH_TOKEN_ADDRESS),
             hint
         );
-        reservesData.isFeeAccounted = kyberStorage.getFeeAccountedData(reservesData.ids);
+        reservesData.isFeeAccountedFlags = kyberStorage.getFeeAccountedData(reservesData.ids);
 
         require(reservesData.ids.length == reservesData.splitsBps.length, "bad split array");
-        require(reservesData.ids.length == reservesData.isFeeAccounted.length, "bad fee array");
+        require(reservesData.ids.length == reservesData.isFeeAccountedFlags.length, "bad fee array");
 
         // calculate src trade amount per reserve and query rates
         // set data in reservesData struct
-        uint256[] memory feeAccountedBpsDest = calcSrcAmountsAndGetRates(
+        uint256[] memory feesAccountedDestBps = calcSrcAmountsAndGetRates(
             reservesData,
             src,
             dest,
@@ -906,7 +907,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
                 src,
                 dest,
                 reservesData.srcAmounts,
-                feeAccountedBpsDest,
+                feesAccountedDestBps,
                 reservesData.rates
             );
 
@@ -925,13 +926,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         uint256 srcAmount,
         uint256 networkFeeBps,
         uint256 networkFeeValue
-    ) internal view returns (uint256[] memory feeAccountedBpsDest) {
+    ) internal view returns (uint256[] memory feesAccountedDestBps) {
         uint256 numReserves = reservesData.ids.length;
 
         reservesData.srcAmounts = new uint256[](numReserves);
         reservesData.rates = new uint256[](numReserves);
         reservesData.addresses = new IKyberReserve[](numReserves);
-        feeAccountedBpsDest = new uint256[](numReserves);
+        feesAccountedDestBps = new uint256[](numReserves);
 
         // iterate reserve list. validate data. calculate srcAmount according to splits and fee data.
         for (uint256 i = 0; i < numReserves; i++) {
@@ -943,7 +944,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
                 convertReserveIdToAddress(reservesData.ids[i])
             );
 
-            if (reservesData.isFeeAccounted[i]) {
+            if (reservesData.isFeeAccountedFlags[i]) {
                 if (src == ETH_TOKEN_ADDRESS) {
                     // reduce fee from srcAmount if fee paying.
                     reservesData.srcAmounts[i] =
@@ -951,7 +952,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
                         BPS;
                 } else {
                     reservesData.srcAmounts[i] = (srcAmount * reservesData.splitsBps[i]) / BPS;
-                    feeAccountedBpsDest[i] = networkFeeBps;
+                    feesAccountedDestBps[i] = networkFeeBps;
                 }
             } else {
                 reservesData.srcAmounts[i] = (srcAmount * reservesData.splitsBps[i]) / BPS;
@@ -1008,8 +1009,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     ) internal view returns (uint256) {
         uint256 _index = index;
 
-        for (uint256 i = 0; i < reservesData.isFeeAccounted.length; i++) {
-            if (reservesData.isFeeAccounted[i]) {
+        for (uint256 i = 0; i < reservesData.isFeeAccountedFlags.length; i++) {
+            if (reservesData.isFeeAccountedFlags[i]) {
                 rebateWallets[_index] = reserveRebateWallet[address(reservesData.addresses[i])];
                 rebatePercentBps[_index] = (reservesData.splitsBps[i] * BPS) / feeAccountedBps;
                 _index++;
@@ -1084,7 +1085,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         IKyberReserve[] memory reserveAddresses = new IKyberReserve[](numReserves);
         bytes32[] memory reserveIds = new bytes32[](numReserves);
         uint256[] memory splitsBps = new uint256[](numReserves);
-        bool[] memory isFeeAccounted = new bool[](numReserves);
+        bool[] memory isFeeAccountedFlags = new bool[](numReserves);
         uint256[] memory srcAmounts = new uint256[](numReserves);
         uint256[] memory rates = new uint256[](numReserves);
 
@@ -1093,7 +1094,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
             reserveAddresses[i] = reservesData.addresses[selectedIndexes[i]];
             reserveIds[i] = reservesData.ids[selectedIndexes[i]];
             splitsBps[i] = reservesData.splitsBps[selectedIndexes[i]];
-            isFeeAccounted[i] = reservesData.isFeeAccounted[selectedIndexes[i]];
+            isFeeAccountedFlags[i] = reservesData.isFeeAccountedFlags[selectedIndexes[i]];
             srcAmounts[i] = reservesData.srcAmounts[selectedIndexes[i]];
             rates[i] = reservesData.rates[selectedIndexes[i]];
         }
@@ -1102,7 +1103,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         reservesData.addresses = reserveAddresses;
         reservesData.ids = reserveIds;
         reservesData.splitsBps = splitsBps;
-        reservesData.isFeeAccounted = isFeeAccounted;
+        reservesData.isFeeAccountedFlags = isFeeAccountedFlags;
         reservesData.rates = rates;
         reservesData.srcAmounts = srcAmounts;
     }
@@ -1134,7 +1135,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
                 reservesData.rates[i]
             );
 
-            if (reservesData.isFeeAccounted[i]) {
+            if (reservesData.isFeeAccountedFlags[i]) {
                 tradeData.feeAccountedBps += reservesData.splitsBps[i];
                 tradeData.numFeeAccountedReserves++;
             }

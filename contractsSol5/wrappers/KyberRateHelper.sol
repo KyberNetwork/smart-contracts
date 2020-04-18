@@ -122,17 +122,17 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory buyReserves, uint256[] memory buyRates) {
         Amounts memory A;
-        bool[] memory isFeeAccounted;
+        bool[] memory isFeeAccountedFlags;
         address reserve;
 
         A.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
         (buyReserves, , ) = matchingEngine.getTradingReserves(ETH_TOKEN_ADDRESS, token, false, "");
-        isFeeAccounted = kyberStorage.getFeeAccountedData(buyReserves);
+        isFeeAccountedFlags = kyberStorage.getFeeAccountedData(buyReserves);
         buyRates = new uint256[](buyReserves.length);
 
         for (uint256 i = 0; i < buyReserves.length; i++) {
             (reserve, , ) = kyberStorage.getReserveDetailsById(buyReserves[i]);
-            if (networkFeeBps == 0 || !isFeeAccounted[i]) {
+            if (networkFeeBps == 0 || !isFeeAccountedFlags[i]) {
                 buyRates[i] = IKyberReserve(reserve).getConversionRate(
                     ETH_TOKEN_ADDRESS,
                     token,
@@ -171,7 +171,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory sellReserves, uint256[] memory sellRates) {
         Amounts memory A;
-        bool[] memory isFeeAccounted;
+        bool[] memory isFeeAccountedFlags;
         address reserve;
 
         A.srcAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
@@ -181,7 +181,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
             false,
             ""
         );
-        isFeeAccounted = kyberStorage.getFeeAccountedData(sellReserves);
+        isFeeAccountedFlags = kyberStorage.getFeeAccountedData(sellReserves);
         sellRates = new uint256[](sellReserves.length);
 
         for (uint256 i = 0; i < sellReserves.length; i++) {
@@ -192,7 +192,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
                 A.srcAmount,
                 block.number
             );
-            if (networkFeeBps == 0 || !isFeeAccounted[i]) {
+            if (networkFeeBps == 0 || !isFeeAccountedFlags[i]) {
                 continue;
             }
             A.destAmount = calcDstQty(A.srcAmount, getDecimals(token), ETH_DECIMALS, sellRates[i]);
