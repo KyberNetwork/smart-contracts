@@ -9,8 +9,8 @@ import "./IKyberStorage.sol";
 
 /**
  *   @title Kyber matching engine contract
- *   During getEcpectedRate / trade on kyber Network called twice:
- *       - parse hint and return reserve list (function getTradingReserves)
+ *   During getExpectedRate flow and trade flow this contract is called twice for:
+ *       - parsing hint and returning reserve list (function getTradingReserves)
  *       - matching best reserves to trade with (function doMatch)
  */
 contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, WithdrawableNoModifiers {
