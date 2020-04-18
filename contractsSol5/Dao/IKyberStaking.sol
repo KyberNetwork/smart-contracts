@@ -2,6 +2,10 @@ pragma solidity 0.5.11;
 
 
 interface IKyberStaking {
+    event Delegated(address indexed staker, address indexed delegatedAddress, uint256 indexed epoch, bool isDelegated);
+    event Deposited(uint256 curEpoch, address indexed staker, uint256 amount);
+    event Withdraw(uint256 indexed curEpoch, address indexed staker, uint256 amount);
+
     function epochPeriodInSeconds() external view returns (uint256);
 
     function firstEpochStartTimestamp() external view returns (uint256);

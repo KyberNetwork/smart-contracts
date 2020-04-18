@@ -2,6 +2,9 @@ pragma solidity 0.5.11;
 
 
 interface IKyberDAO {
+    event Voted(address indexed staker, uint indexed epoch, uint indexed campaignID, uint option);
+    event RewardClaimed(address indexed staker, uint256 indexed epoch, uint256 percentInPrecision);
+
     function claimReward(address staker, uint256 epoch) external;
 
     function getLatestNetworkFeeDataWithCache()

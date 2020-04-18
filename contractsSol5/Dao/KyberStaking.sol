@@ -7,8 +7,9 @@ import "../IKyberDAO.sol";
 import "./EpochUtils.sol";
 
 
-/*
- * This contract is using SafeMath for uint, which is inherited from EpochUtils
+/**
+ * @notice   This contract is using SafeMath for uint, which is inherited from EpochUtils
+ *           Some events are moved to interface, easier for public uses
  */
 contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     struct StakerData {
@@ -17,17 +18,22 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         address delegatedAddress;
     }
 
+    IERC20 public kncToken;
+    IKyberDAO public daoContract;
+    address public daoContractSetter;
+
     // staker data per epoch
     mapping(uint256 => mapping(address => StakerData)) internal stakerPerEpochData;
     // latest data of a staker, including stake, delegated stake, delegated address
     mapping(address => StakerData) internal stakerLatestData;
-
     // bool for control if we have init data for an epoch + an address
     mapping(uint256 => mapping(address => bool)) internal hasInited;
 
-    IERC20 public kncToken;
-    IKyberDAO public daoContract;
-    address public daoContractSetter;
+    event DAOAddressSet(address _daoAddress);
+    event DAOContractSetterRemoved();
+    // event is fired if something is wrong with withdrawal
+    // even though the withdrawal is still successful
+    event WithdrawDataUpdateFailed(uint256 curEpoch, address staker, uint256 amount);
 
     constructor(
         address _kncToken,
@@ -51,15 +57,11 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         _;
     }
 
-    event DAOAddressSet(address _daoAddress);
-
-    event DAOContractSetterRemoved();
-
     /**
      * @dev update DAO address and set daoSetter to zero address, can only call once
      * @param _daoAddress address of new DAO
      */
-    function updateDAOAddressAndRemoveSetter(address _daoAddress) public onlyDAOContractSetter {
+    function updateDAOAddressAndRemoveSetter(address _daoAddress) external onlyDAOContractSetter {
         require(_daoAddress != address(0), "updateDAO: DAO address is missing");
 
         daoContract = IKyberDAO(_daoAddress);
@@ -79,8 +81,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         daoContractSetter = address(0);
         emit DAOContractSetterRemoved();
     }
-
-    event Delegated(address indexed staker, address indexed delegatedAddress, uint256 indexed epoch, bool isDelegated);
 
     // prettier-ignore
     /**
@@ -132,8 +132,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         emit Delegated(staker, dAddr, curEpoch, true);
     }
 
-    event Deposited(uint256 curEpoch, address indexed staker, uint256 amount);
-
     // prettier-ignore
     /**
      * @dev call to stake more KNC for msg.sender
@@ -170,11 +168,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         emit Deposited(curEpoch, staker, amount);
     }
-
-    event Withdraw(uint256 indexed curEpoch, address indexed staker, uint256 amount);
-    // event is fired if something is wrong with withdrawal
-    // even though the withdrawal is still successful
-    event WithdrawDataUpdateFailed(uint256 curEpoch, address staker, uint256 amount);
 
     /**
      * @dev call to withdraw KNC from staking, it could affect reward when calling DAO handleWithdrawal
@@ -217,7 +210,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
      * @param staker - staker's address to init and get data for
      */
     function initAndReturnStakerDataForCurrentEpoch(address staker)
-        public
+        external
         returns (
             uint256 _stake,
             uint256 _delegatedStake,
@@ -238,66 +231,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         _delegatedAddress = stakerData.delegatedAddress;
     }
 
-    // prettier-ignore
     /**
-    * @dev  separate logics from withdraw, so staker can withdraw as long as amount <= staker's deposit amount
-            calling this function from withdraw function, ignore reverting
-    * @param staker staker that is withdrawing
-    * @param amount amount to withdraw
-    * @param curEpoch current epoch
-    */
-    function handleWithdrawal(
-        address staker,
-        uint256 amount,
-        uint256 curEpoch
-    ) public {
-        require(msg.sender == address(this), "only staking contract can call this function");
-        initDataIfNeeded(staker, curEpoch);
-        // update latest stake will be done after this function
-        stakerPerEpochData[curEpoch + 1][staker].stake =
-            stakerPerEpochData[curEpoch + 1][staker].stake.sub(amount);
-
-        address dAddr = stakerPerEpochData[curEpoch][staker].delegatedAddress;
-        uint256 curStake = stakerPerEpochData[curEpoch][staker].stake;
-        uint256 lStakeBal = stakerLatestData[staker].stake.sub(amount);
-        uint256 newStake = curStake.min(lStakeBal);
-        uint256 reduceAmount = curStake.sub(newStake); // newStake is always <= curStake
-
-        if (reduceAmount > 0) {
-            if (dAddr != staker) {
-                initDataIfNeeded(dAddr, curEpoch);
-                // S has delegated to dAddr, withdraw will affect his stakes + dAddr's delegated stakes
-                stakerPerEpochData[curEpoch][dAddr].delegatedStake =
-                    stakerPerEpochData[curEpoch][dAddr].delegatedStake.sub(reduceAmount);
-            }
-            stakerPerEpochData[curEpoch][staker].stake = newStake;
-            // call DAO to reduce reward, if staker has delegated, then pass his delegated address
-            if (address(daoContract) != address(0)) {
-                // don't revert if DAO revert so data will be updated correctly
-                (bool success, ) = address(daoContract).call(
-                    abi.encodeWithSignature(
-                        "handleWithdrawal(address,uint256)",
-                        dAddr,
-                        reduceAmount
-                    )
-                );
-                if (!success) {
-                    emit WithdrawDataUpdateFailed(curEpoch, staker, amount);
-                }
-            }
-        }
-        dAddr = stakerPerEpochData[curEpoch + 1][staker].delegatedAddress;
-        if (dAddr != staker) {
-            initDataIfNeeded(dAddr, curEpoch);
-            stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake =
-                stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake.sub(amount);
-            stakerLatestData[dAddr].delegatedStake =
-                stakerLatestData[dAddr].delegatedStake.sub(amount);
-        }
-    }
-
-    /**
-     * @dev  in DAO contract, if user wants to claim reward for past epoch, we must know the staker's data for that epoch
+     * @dev  in DAO contract, if user wants to claim reward for past epoch,
+     *       we must know the staker's data for that epoch
      *       if the data has not been inited, it means user hasn't done any action -> no reward
      */
     function getStakerDataForPastEpoch(address staker, uint256 epoch)
@@ -395,6 +331,64 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     function getLatestStakeBalance(address staker) external view returns (uint256) {
         return stakerLatestData[staker].stake;
+    }
+
+    // prettier-ignore
+    /**
+    * @dev  separate logics from withdraw, so staker can withdraw as long as amount <= staker's deposit amount
+            calling this function from withdraw function, ignore reverting
+    * @param staker staker that is withdrawing
+    * @param amount amount to withdraw
+    * @param curEpoch current epoch
+    */
+    function handleWithdrawal(
+        address staker,
+        uint256 amount,
+        uint256 curEpoch
+    ) public {
+        require(msg.sender == address(this), "only staking contract can call this function");
+        initDataIfNeeded(staker, curEpoch);
+        // update latest stake will be done after this function
+        stakerPerEpochData[curEpoch + 1][staker].stake =
+            stakerPerEpochData[curEpoch + 1][staker].stake.sub(amount);
+
+        address dAddr = stakerPerEpochData[curEpoch][staker].delegatedAddress;
+        uint256 curStake = stakerPerEpochData[curEpoch][staker].stake;
+        uint256 lStakeBal = stakerLatestData[staker].stake.sub(amount);
+        uint256 newStake = curStake.min(lStakeBal);
+        uint256 reduceAmount = curStake.sub(newStake); // newStake is always <= curStake
+
+        if (reduceAmount > 0) {
+            if (dAddr != staker) {
+                initDataIfNeeded(dAddr, curEpoch);
+                // S has delegated to dAddr, withdraw will affect his stakes + dAddr's delegated stakes
+                stakerPerEpochData[curEpoch][dAddr].delegatedStake =
+                    stakerPerEpochData[curEpoch][dAddr].delegatedStake.sub(reduceAmount);
+            }
+            stakerPerEpochData[curEpoch][staker].stake = newStake;
+            // call DAO to reduce reward, if staker has delegated, then pass his delegated address
+            if (address(daoContract) != address(0)) {
+                // don't revert if DAO revert so data will be updated correctly
+                (bool success, ) = address(daoContract).call(
+                    abi.encodeWithSignature(
+                        "handleWithdrawal(address,uint256)",
+                        dAddr,
+                        reduceAmount
+                    )
+                );
+                if (!success) {
+                    emit WithdrawDataUpdateFailed(curEpoch, staker, amount);
+                }
+            }
+        }
+        dAddr = stakerPerEpochData[curEpoch + 1][staker].delegatedAddress;
+        if (dAddr != staker) {
+            initDataIfNeeded(dAddr, curEpoch);
+            stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake =
+                stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake.sub(amount);
+            stakerLatestData[dAddr].delegatedStake =
+                stakerLatestData[dAddr].delegatedStake.sub(amount);
+        }
     }
 
     /**

@@ -235,6 +235,23 @@ contract('KyberDAO', function(accounts) {
     await Helper.mineNewBlockAt(daoStartTime);
   }
 
+  const checkLatestBrrData = async(reward, rebate, burn, epoch, expiryTime) => {
+	let latestBrrData = await daoContract.getLatestBRRDataWithCache.call();
+	Helper.assertEqual(reward, latestBrrData.rewardInBps);
+	Helper.assertEqual(rebate, latestBrrData.rebateInBps);
+	Helper.assertEqual(burn, latestBrrData.burnInBps);
+	Helper.assertEqual(epoch, latestBrrData.epoch);
+	Helper.assertEqual(expiryTime, latestBrrData.expiryTimestamp);
+	await daoContract.getLatestBRRDataWithCache();
+  }
+
+  const checkLatestNetworkFeeData = async(networkFee, expiryTime) => {
+	let result = await daoContract.getLatestNetworkFeeDataWithCache.call();
+	Helper.assertEqual(networkFee, result.feeInBps);
+	Helper.assertEqual(expiryTime, result.expiryTimestamp);
+	await daoContract.getLatestNetworkFeeDataWithCache()
+  }
+
   describe("#Handle Withdrawal tests", () => {
     it("Test handle withdrawal update correct points and vote count - no delegation", async function() {
       await deployContracts(20, currentBlock + 20, 10);
@@ -5161,7 +5178,7 @@ contract('KyberDAO', function(accounts) {
     it("Test get network fee with cache returns & records correct data", async function() {
       // test get at epoch 0
       await deployContracts(2, currentBlock + 5, 2);
-      await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, daoStartTime - 1);
+      await checkLatestNetworkFeeData(defaultNetworkFee, daoStartTime - 1);
 
       // simple setup to create camp with a winning option
       // mike: 410, victor: 410, loi 180, total stakes = 40% total supply
@@ -5169,7 +5186,7 @@ contract('KyberDAO', function(accounts) {
 
       // get at epoch 1, no camps
       await Helper.mineNewBlockAt(daoStartTime);
-      await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, blocksToSeconds(epochPeriod) + daoStartTime - 1);
+      await checkLatestNetworkFeeData(defaultNetworkFee, blocksToSeconds(epochPeriod) + daoStartTime - 1);
 
       // create camp, but not fee camp
       await updateCurrentBlockAndTimestamp();
@@ -5184,7 +5201,7 @@ contract('KyberDAO', function(accounts) {
       // delay to epoch 2
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
       // check data
-      await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1);
+      await checkLatestNetworkFeeData(defaultNetworkFee, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1);
 
        // create fee camp, but no winning
       await updateCurrentBlockAndTimestamp();
@@ -5199,7 +5216,7 @@ contract('KyberDAO', function(accounts) {
       // delay to epoch 3
       await Helper.mineNewBlockAt(blocksToSeconds(2 * epochPeriod) + daoStartTime);
       // check data
-      await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, blocksToSeconds(epochPeriod * 3) + daoStartTime - 1);
+      await checkLatestNetworkFeeData(defaultNetworkFee, blocksToSeconds(epochPeriod * 3) + daoStartTime - 1);
 
       // delay few epoch, to epoch 5
       await Helper.mineNewBlockAt(blocksToSeconds(4 * epochPeriod) + daoStartTime);
@@ -5215,17 +5232,17 @@ contract('KyberDAO', function(accounts) {
       await daoContract.vote(3, 3, {from: victor});
       // current epoch has network fee camp with a winning option
       // but getting network fee data for this epoch should still return previous epoch result
-      await daoContract.checkLatestNetworkFeeData(defaultNetworkFee, blocksToSeconds(epochPeriod * 5) + daoStartTime - 1);
+      await checkLatestNetworkFeeData(defaultNetworkFee, blocksToSeconds(epochPeriod * 5) + daoStartTime - 1);
 
       // delay to epoch 6
       await Helper.mineNewBlockAt(blocksToSeconds(5 * epochPeriod) + daoStartTime);
       // check data
-      await daoContract.checkLatestNetworkFeeData(1, blocksToSeconds(epochPeriod * 6) + daoStartTime - 1);
+      await checkLatestNetworkFeeData(1, blocksToSeconds(epochPeriod * 6) + daoStartTime - 1);
 
       // delay to next epoch
       await Helper.mineNewBlockAt(blocksToSeconds(6 * epochPeriod) + daoStartTime);
       // check data with no fee camp at previous epoch
-      await daoContract.checkLatestNetworkFeeData(1, blocksToSeconds(epochPeriod * 7) + daoStartTime - 1);
+      await checkLatestNetworkFeeData(1, blocksToSeconds(epochPeriod * 7) + daoStartTime - 1);
 
       await resetSetupForKNCToken();
     });
@@ -5253,7 +5270,7 @@ contract('KyberDAO', function(accounts) {
       let tx = await daoContract.getLatestBRRDataWithCache();
       logInfo("Get Brr: epoch = 0, gas used: " + tx.receipt.gasUsed);
 
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 0, daoStartTime - 1
       );
 
@@ -5263,7 +5280,7 @@ contract('KyberDAO', function(accounts) {
       await daoContract.setLatestBrrData(reward, rebate);
       Helper.assertEqual(newBrrData, await daoContract.latestBrrResult(), "brr default is wrong");
 
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 0, daoStartTime - 1
       );
       dataDecoded = await daoContract.getLatestBRRData();
@@ -5284,7 +5301,7 @@ contract('KyberDAO', function(accounts) {
 
       // delay to epoch 1
       await Helper.mineNewBlockAt(daoStartTime);
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
       let dataDecoded = await daoContract.getLatestBRRData();
@@ -5298,14 +5315,14 @@ contract('KyberDAO', function(accounts) {
       reward = 54;
       let newBrrData = getDataFromRebateAndReward(rebate, reward);
       await daoContract.setLatestBrrData(reward, rebate);
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
 
       // delay to epoch 4
       await Helper.mineNewBlockAt(blocksToSeconds(3 * epochPeriod) + daoStartTime);
       // get brr data for epoch 4
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 4, blocksToSeconds(epochPeriod * 4) + daoStartTime - 1
       );
 
@@ -5352,7 +5369,7 @@ contract('KyberDAO', function(accounts) {
 
       Helper.assertEqual(0, await daoContract.brrCampaigns(1), "shouldn't have brr camp for epoch 1");
 
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
       );
       let tx = await daoContract.getLatestBRRDataWithCache();
@@ -5388,7 +5405,7 @@ contract('KyberDAO', function(accounts) {
       await daoContract.vote(1, 2, {from: victor});
 
       // camp is not ended yet, so data shouldn't change
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
       Helper.assertEqual(1, await daoContract.brrCampaigns(1), "should have brr camp");
@@ -5409,7 +5426,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(2, dataDecoded.epoch, "epoch is wrong");
       Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry timestamp is wrong");
 
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         newReward, newRebate, 10000 - newRebate - newReward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
       );
       Helper.assertEqual(brrData, await daoContract.latestBrrResult(), "latest brr is wrong");
@@ -5454,7 +5471,7 @@ contract('KyberDAO', function(accounts) {
 
       Helper.assertEqual(1, await daoContract.brrCampaigns(1), "should have brr camp for epoch 1");
 
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
       );
       let dataDecoded = await daoContract.getLatestBRRData();
@@ -5495,7 +5512,7 @@ contract('KyberDAO', function(accounts) {
 
       Helper.assertEqual(2, await daoContract.brrCampaigns(2), "should have brr camp");
 
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 3, blocksToSeconds(epochPeriod * 3) + daoStartTime - 1
       );
 
@@ -5525,7 +5542,7 @@ contract('KyberDAO', function(accounts) {
 
       Helper.assertEqual(3, await daoContract.brrCampaigns(3), "should have brr camp");
 
-      await daoContract.checkLatestBrrData(
+      await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 4, blocksToSeconds(epochPeriod * 4) + daoStartTime - 1
       );
 
