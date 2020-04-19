@@ -294,6 +294,18 @@ const sol5SourceFiles = {
       "utf8"
     ),
   },
+  "IKyberStorage.sol": {
+    content: fs.readFileSync(
+      contractsSol5Path + "IKyberStorage.sol",
+      "utf8"
+    ),
+  },
+  "ISanityRate.sol": {
+    content: fs.readFileSync(
+      contractsSol5Path + "ISanityRate.sol",
+      "utf8"
+    ),
+  },
   "ISimpleKyberProxy.sol": {
     content: fs.readFileSync(
       contractsSol5Path + "ISimpleKyberProxy.sol",
@@ -306,6 +318,12 @@ const sol5SourceFiles = {
   "KyberFeeHandler.sol": {
     content: fs.readFileSync(
       contractsSol5Path + "Dao/KyberFeeHandler.sol",
+      "utf8"
+    ),
+  },
+  "KyberHintHandler.sol": {
+    content: fs.readFileSync(
+      contractsSol5Path + "KyberHintHandler.sol",
       "utf8"
     ),
   },
@@ -324,21 +342,27 @@ const sol5SourceFiles = {
       "utf8"
     ),
   },
-  "KyberHintHandler.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "KyberHintHandler.sol",
-      "utf8"
-    ),
-  },
   "KyberStaking.sol": {
     content: fs.readFileSync(
       contractsSol5Path + "Dao/KyberStaking.sol",
       "utf8"
     ),
   },
+  "KyberStorage.sol": {
+    content: fs.readFileSync(
+      contractsSol5Path + "KyberStorage.sol",
+      "utf8"
+    ),
+  },
   "PermissionGroups2.sol": {
     content: fs.readFileSync(
       contractsSol5Path + "utils/PermissionGroups2.sol",
+      "utf8"
+    ),
+  },
+  "PermissionGroupsNoModifiers.sol": {
+    content: fs.readFileSync(
+      contractsSol5Path + "utils/PermissionGroupsNoModifiers.sol",
       "utf8"
     ),
   },
@@ -372,12 +396,24 @@ const sol5SourceFiles = {
       "utf8"
     ),
   },
+  "utils/PermissionGroupsNoModifiers.sol": {
+    content: fs.readFileSync(
+      contractsSol5Path + "utils/PermissionGroupsNoModifiers.sol",
+      "utf8"
+    ),
+  },
   "utils/Utils4.sol": {
     content: fs.readFileSync(contractsSol5Path + "utils/Utils4.sol", "utf8"),
   },
   "utils/Withdrawable2.sol": {
     content: fs.readFileSync(
       contractsSol5Path + "utils/Withdrawable2.sol",
+      "utf8"
+    ),
+  },
+  "utils/WithdrawableNoModifiers.sol": {
+    content: fs.readFileSync(
+      contractsSol5Path + "utils/WithdrawableNoModifiers.sol",
       "utf8"
     ),
   },
@@ -408,6 +444,18 @@ const sol5SourceFiles = {
       "utf8"
     ),
   },
+  "Withdrawable2.sol": {
+    content: fs.readFileSync(
+      contractsSol5Path + "utils/Withdrawable2.sol",
+      "utf8"
+    ),
+  },
+  "WithdrawableNoModifiers.sol": {
+    content: fs.readFileSync(
+      contractsSol5Path + "utils/WithdrawableNoModifiers.sol",
+      "utf8"
+    ),
+  }
 };
 
 function compilingPreparations() {

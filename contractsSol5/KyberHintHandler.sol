@@ -200,7 +200,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             HintErrors valid
         )
     {
-        (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes32[], uint256[]));
+        (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes32[], uint256[])); // solhint-disable
         valid = verifyData(tradeType, reserveIds, splits);
 
         if (valid != HintErrors.NoError) {

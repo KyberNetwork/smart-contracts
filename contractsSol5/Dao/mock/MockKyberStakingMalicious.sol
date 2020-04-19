@@ -11,10 +11,6 @@ contract MockKyberStakingMalicious is KyberStaking {
         address _admin
     ) public KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) {}
 
-    function getHasInitedValue(address staker, uint256 epoch) public view returns (bool) {
-        return hasInited[epoch][staker];
-    }
-
     function setLatestStake(address staker, uint256 amount) public {
         stakerLatestData[staker].stake = amount;
     }
@@ -37,5 +33,9 @@ contract MockKyberStakingMalicious is KyberStaking {
         uint256 amount
     ) public {
         stakerPerEpochData[epoch][staker].delegatedStake = amount;
+    }
+
+    function getHasInitedValue(address staker, uint256 epoch) public view returns (bool) {
+        return hasInited[epoch][staker];
     }
 }
