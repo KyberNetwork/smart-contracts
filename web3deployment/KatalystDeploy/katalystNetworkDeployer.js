@@ -31,6 +31,7 @@ if (printPrivateKey) {
 
 //contract addresses: REPLACE IF SOMETHING BREAKS DURING DEPLOYMENT
 let matchingEngineAddress = "";
+let storageAddress = "";
 let networkAddress = "";
 let proxyAddress = "";
 let feeHandlerAddress = "";
@@ -108,27 +109,29 @@ async function deployContract(solcOutput, contractName, name, ctorArgs) {
 let kncTokenAddress;
 
 //contracts
+let feeHandlerContract;
 let matchingEngineContract;
 let networkContract;
 let proxyContract;
-let feeHandlerContract;
 let stakingContract;
+let storageContract;
 let DAOContract;
 
 //permissions
 let matchingEnginePermissions;
 let networkPermissions;
 let proxyPermissions;
+let storagePermissions;
 let daoCampaignCreator;
 let burnConfigSetter;
 
 //misc variables needed for contracts deployment, should be obtained from input json
-let isFeePaying;
+let isFeeAccounted;
 let maxGasPrice = (new BN(50).mul(new BN(10).pow(new BN(9)))).toString();
 let negDiffInBps;
 let burnBlockInterval;
 let epochPeriod;
-let startBlock;
+let startTimestamp;
 let networkFeeBps;
 let rewardFeeBps;
 let rebateFeeBps;
@@ -180,12 +183,12 @@ function parseInput( jsonInput ) {
     burnConfigSetter = jsonInput.permission["FeeHandler"]["BurnConfigSetter"];
 
     //constants
-    isFeePaying = jsonInput["isFeePaying"];
+    isFeeAccounted = jsonInput["isFeeAccounted"];
     maxGasPrice = jsonInput["max gas price"].toString();
     negDiffInBps = jsonInput["neg diff in bps"].toString();
     burnBlockInterval = jsonInput["burn block interval"].toString();
     epochPeriod = jsonInput["epoch period"].toString();
-    startBlock = jsonInput["start block"].toString();;
+    startTimestamp = jsonInput["start timestamp"].toString();;
     networkFeeBps = jsonInput["network fee bps"].toString();;
     rewardFeeBps = jsonInput["reward fee bps"].toString();;
     rebateFeeBps = jsonInput["rebate bps"].toString();;
@@ -197,20 +200,20 @@ function parseInput( jsonInput ) {
     outputFileName = jsonInput["output filename"];
 };
 
-async function setPermissions(contract, permJson) {
-    for(let i = 0 ; i < permJson.operators.length ; i++ ) {
-      const operator = permJson.operators[i];
+async function setPermissions(contract, contractPermissions) {
+    for(let i = 0 ; i < contractPermissions.operators.length ; i++ ) {
+      const operator = contractPermissions.operators[i];
       console.log(`adding operator: ${operator}`);
       await sendTx(contract.methods.addOperator(operator));
     }
   
-    for(let i = 0 ; i < permJson.alerters.length ; i++ ) {
-      const alerter = permJson.alerters[i];
+    for(let i = 0 ; i < contractPermissions.alerters.length ; i++ ) {
+      const alerter = contractPermissions.alerters[i];
       console.log(`adding alerter: ${alerter}`);
       await sendTx(contract.methods.addAlerter(alerter));
     }
   
-    const admin = permJson.admin;
+    const admin = contractPermissions.admin;
     console.log(`transferring admin to ${admin}`);
     await sendTx(contract.methods.transferAdminQuickly(admin));
   }
@@ -236,7 +239,6 @@ async function main() {
   console.log('chainId', chainId);
   console.log('starting compilation');
   output = await require("../compileContracts.js").compileContracts("sol5");
-  console.log(output);
   console.log("finished compilation");
 
   //reinstantiate web3 (solc overwrites something)
@@ -245,10 +247,13 @@ async function main() {
     await waitForEth();
   }
 
+  verifyInput();
+
   /////////////////////////////////////////
   // CONTRACT INSTANTIATION / DEPLOYMENT //
   /////////// DO NOT TOUCH ////////////////
-  await deploymatchingEngineContract(output);
+  await deployMatchingEngineContract(output);
+  await deployStorageContract(output);
   await deployNetworkContract(output);
   await deployProxyContract(output);
   await deployFeeHandlerContract(output);
@@ -266,22 +271,20 @@ async function main() {
   //////////////////
   // REDEPLOYMENT //
   //////////////////
-  // await redeployMatchingEngine();
-  // await redeployFeeHandler();
+  await setupMatchingEngine();
+  await setupDAOStuff();
 
   /////////////////////
   // ADDING RESERVES //
   /////////////////////
   // NOTE: Replace RESERVE_INDEX if continuing from specific index
-  // await addReservesToNetwork(RESERVE_INDEX);
-  // await addReservesToMatchingEngine(RESERVE_INDEX);
+  // await addReserves(RESERVE_INDEX);
 
   /////////////////////////
   // LISTING TOKEN PAIRS //
   /////////////////////////
   // NOTE: Replace RESERVE_INDEX & TOKEN_INDEX if process stopped halfway, and need to continue from specific index
-  // await listTokensForReservesNetwork(RESERVE_INDEX, TOKEN_INDEX);
-  // await listTokensForReservesMatchingEngine(RESERVE_INDEX, TOKEN_INDEX);
+  // await listTokensForReserves(RESERVE_INDEX, TOKEN_INDEX);
 
   console.log("last nonce is", nonce);
   lastFewThings();
@@ -294,7 +297,9 @@ async function main() {
 
 async function fullDeployment() {
   await setNetworkAddressInMatchingEngine();
-  await set_Fee_Logic_Gas_ContractsInNetwork();
+  await setNetworkAddressInStorage();
+  await setStorageAddressInMatchingEngine();
+  await set_Fee_MatchEngine_Gas_ContractsInNetwork();
   await setDAOInNetwork();
   await setDAOInFeeHandler();
   await setDAOInStaking();
@@ -306,9 +311,9 @@ async function fullDeployment() {
   // BREAK //
   ///////////
   await pressToContinue();
-  await setFeePayingDataInMatchingEngine();
-  await addReservesToNetwork();
-  await listTokensForReservesNetwork();
+  await setFeeAccountedDataInStorage();
+  await addReserves();
+  await listTokensForReserves();
   await configureAndEnableNetwork();
 
   ///////////
@@ -322,20 +327,8 @@ async function fullDeployment() {
   await setPermissionsInNetwork();
   await pressToContinue();
   await setPermissionsInMatchingEngine();
-}
-
-async function redeployMatchingEngine() {
-  await setNetworkAddressInMatchingEngine(sender); //use sender adding and listing reserve pair
-  await addReservesToMatchingEngine();
-  await listTokensForReservesMatchingEngine();
-  await removeTempOperator([matchingEngineContract]);
-  await setNetworkAddressInMatchingEngine(); //set to network address
-  await setPermissionsInMatchingEngine();
-  console.log(`Set FeeHandler contract to network by calling the setContracts() function!!!`);
-}
-
-async function redeployFeeHandler() {
-  await set_Fee_Logic_Gas_ContractsInNetwork();
+  await pressToContinue();
+  await setPermissionsInStorage();
 }
 
 function printParams(jsonInput) {
@@ -379,7 +372,14 @@ async function waitForEth() {
   }
 }
 
-async function deploymatchingEngineContract(output) {
+function verifyInput() {
+  if (startTimestamp <= Math.round((new Date()).getTime() / 1000)) {
+    console.log("start timestamp too early, increase its value");
+    process.exit(1);
+  }
+}
+
+async function deployMatchingEngineContract(output) {
   if (matchingEngineAddress == "") {
     console.log("deploying matching engine");
     [matchingEngineAddress, matchingEngineContract] = await deployContract(output, "KyberMatchingEngine.sol", "KyberMatchingEngine", [sender]);
@@ -392,10 +392,23 @@ async function deploymatchingEngineContract(output) {
   }
 }
 
+async function deployStorageContract(output) {
+  if (storageAddress == "") {
+    console.log("deploying storage");
+    [storageAddress, storageContract] = await deployContract(output, "KyberStorage.sol", "KyberStorage", [sender]);
+    console.log(`storage: ${storageAddress}`);
+  } else {
+    console.log("Instantiating storage...");
+    matchingEngineContract = new web3.eth.Contract(
+      output.contracts["KyberStorage.sol"]["KyberStorage"].abi, storageAddress
+    );
+  }
+}
+
 async function deployNetworkContract(output) {
   if (networkAddress == "") {
     console.log("deploying kyber network");
-    [networkAddress, networkContract] = await deployContract(output, "KyberNetwork.sol", "KyberNetwork", [sender]);
+    [networkAddress, networkContract] = await deployContract(output, "KyberNetwork.sol", "KyberNetwork", [sender, storageAddress]);
     console.log(`network: ${networkAddress}`);
   } else {
     console.log("Instantiating network...");
@@ -439,7 +452,7 @@ async function deployStakingContract(output) {
         console.log("deploying staking contract");
         [stakingAddress, stakingContract] = await deployContract(
             output, "KyberStaking.sol", "KyberStaking", 
-            [kncTokenAddress, epochPeriod, startBlock, sender]
+            [kncTokenAddress, epochPeriod, startTimestamp, sender]
         );
         console.log(`Staking: ${stakingAddress}`);
     } else {
@@ -456,7 +469,7 @@ async function deployDAOContract(output) {
         [daoAddress, DAOContract] = await deployContract(
             output, "KyberDAO.sol", "KyberDAO",
             [
-              epochPeriod, startBlock, stakingAddress, feeHandlerAddress, kncTokenAddress,
+              epochPeriod, startTimestamp, stakingAddress, feeHandlerAddress, kncTokenAddress,
               networkFeeBps, rewardFeeBps, rebateFeeBps, daoCampaignCreator
             ]
         );
@@ -470,7 +483,7 @@ async function deployDAOContract(output) {
 };
 
 async function setNetworkAddressInMatchingEngine(tempAddress) {
-  console.log("set network in trade logic");
+  console.log("set network in matching engine");
   if (tempAddress == undefined) {
     await sendTx(matchingEngineContract.methods.setNetworkContract(networkAddress));
   } else {
@@ -478,7 +491,25 @@ async function setNetworkAddressInMatchingEngine(tempAddress) {
   }
 }
 
-async function set_Fee_Logic_Gas_ContractsInNetwork() {
+async function setNetworkAddressInStorage(tempAddress) {
+  console.log("set network in storage");
+  if (tempAddress == undefined) {
+    await sendTx(storageContract.methods.setNetworkContract(networkAddress));
+  } else {
+    await sendTx(matchingEngineContract.methods.setNetworkContract(tempAddress));
+  }
+}
+
+async function setStorageAddressInMatchingEngine(tempAddress) {
+  console.log("set storage in matching engine");
+  if (tempAddress == undefined) {
+    await sendTx(matchingEngineContract.methods.setKyberStorage(storageAddress));
+  } else {
+    await sendTx(matchingEngineContract.methods.setKyberStorage(tempAddress));
+  }
+}
+
+async function set_Fee_MatchEngine_Gas_ContractsInNetwork() {
   console.log("set feeHandler, matchingEngine and gas helper in network");
   await sendTx(networkContract.methods.setContracts(
     feeHandlerAddress, matchingEngineAddress, gasHelperAddress,
@@ -516,14 +547,14 @@ async function setTempOperatorToNetwork() {
   await sendTx(networkContract.methods.addOperator(sender));
 }
 
-async function setFeePayingDataInMatchingEngine() {
+async function setFeeAccountedDataInStorage() {
   console.log("set fee paying data: matching engine");
-  await sendTx(matchingEngineContract.methods.setFeePayingPerReserveType(
-    isFeePaying["FPR"], isFeePaying["APR"], isFeePaying["BRIDGE"], isFeePaying["UTILITY"], isFeePaying["CUSTOM"], isFeePaying["ORDERBOOK"]
+  await sendTx(storageContract.methods.setFeeAccountedPerReserveType(
+    isFeeAccounted["FPR"], isFeeAccounted["APR"], isFeeAccounted["BRIDGE"], isFeeAccounted["UTILITY"], isFeeAccounted["CUSTOM"], isFeeAccounted["ORDERBOOK"]
   ));
 }
 
-async function addReservesToNetwork(reserveIndex) {
+async function addReserves(reserveIndex) {
   // add reserve to network
   console.log("Add reserves to network");
   reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
@@ -536,7 +567,7 @@ async function addReservesToNetwork(reserveIndex) {
   }
 }
 
-async function listTokensForReservesNetwork(reserveIndex, tokenIndex) {
+async function listTokensForReserves(reserveIndex, tokenIndex) {
   reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
   tokenIndex = (tokenIndex == undefined) ? 0 : tokenIndex;
   for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
@@ -581,35 +612,25 @@ async function setPermissionsInMatchingEngine() {
     await setPermissions(matchingEngineContract, matchingEnginePermissions);
 }
 
+async function setPermissionsInStorage() {
+  await setPermissions(storageContract, storagePermissions);
+}
+
+async function setupMatchingEngine() {
+  await setNetworkAddressInMatchingEngine();
+  await setStorageAddressInMatchingEngine();
+  await setPermissionsInMatchingEngine();
+  console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Set matching engine in network contract!!");
+};
+
+async function setupDAOStuff() {
+  await setDAOInFeeHandler();
+  await setDAOInStaking();
+  console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Set DAO in network contract!!");
+};
+
 function lastFewThings() {
   console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Don't forget to send DGX to network contract!!");
-}
-
-async function addReservesToMatchingEngine(reserveIndex) {
-  // add reserve to network
-  console.log("Add reserves to network");
-  reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
-  for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
-    const reserve = reserveDataArray[i];
-    console.log(`Reserve array index ${i}`);
-    console.log(`Adding reserve ${reserve.address}`);
-    await sendTx(matchingEngineContract.methods.addReserve(reserve.address, reserve.id, reserve.isFeePaying));
-  }
-}
-
-async function listTokensForReservesMatchingEngine(reserveIndex, tokenIndex) {
-  reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
-  tokenIndex = (tokenIndex == undefined) ? 0 : tokenIndex;
-  for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
-    const reserve = reserveDataArray[i];
-    const tokens = reserve.tokens;
-    for (let j = tokenIndex ; j < tokens.length ; j++) {
-        token = tokens[j];
-        console.log(`Reserve array index ${i}, token array index ${j}`);
-        console.log(`listing token ${token.address} for reserve ${reserve.address}`);
-    await sendTx(matchingEngineContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
-    }
-  }
 }
 
 let filename;

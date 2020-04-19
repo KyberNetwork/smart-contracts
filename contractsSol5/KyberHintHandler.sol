@@ -14,7 +14,7 @@ import "./IKyberHint.sol";
  *           - Will revert with error message if an error is found
  *           - parse*Hint() returns both reserveIds and reserveAddresses
  *       Internal functions unpackT2THint() and parseHint():
- *           - Are part of ger rate && trade flow
+ *           - Are part of get rate && trade flow
  *           - Don't revert if an error is found
  *           - If an error is found, return no data such that the trade flow
  *             returns 0 rate for bad hint values
