@@ -37,16 +37,22 @@ contract Utils4 {
     function setDecimals(IERC20 token) internal {
         if (decimals[address(token)] != 0) return; //already set
 
-        if (token == ETH_TOKEN_ADDRESS) decimals[address(token)] = ETH_DECIMALS;
-        else decimals[address(token)] = token.decimals();
+        if (token == ETH_TOKEN_ADDRESS) {
+            decimals[address(token)] = ETH_DECIMALS;
+        } else {
+            decimals[address(token)] = token.decimals();
+        }
     }
 
     /// @dev get the balance of a user.
     /// @param token The token type
     /// @return The balance
     function getBalance(IERC20 token, address user) internal view returns (uint256) {
-        if (token == ETH_TOKEN_ADDRESS) return user.balance;
-        else return token.balanceOf(user);
+        if (token == ETH_TOKEN_ADDRESS) {
+            return user.balance;
+        } else {
+            return token.balanceOf(user);
+        }
     }
 
     function getDecimals(IERC20 token) internal view returns (uint256) {
