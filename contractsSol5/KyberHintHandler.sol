@@ -14,7 +14,7 @@ import "./IKyberHint.sol";
  *           - Will revert with error message if an error is found
  *           - parse*Hint() returns both reserveIds and reserveAddresses
  *       Internal functions unpackT2THint() and parseHint():
- *           - Are part of ger rate && trade flow
+ *           - Are part of get rate && trade flow
  *           - Don't revert if an error is found
  *           - If an error is found, return no data such that the trade flow
  *             returns 0 rate for bad hint values
@@ -200,7 +200,7 @@ contract KyberHintHandler is IKyberHint, Utils4 {
             HintErrors valid
         )
     {
-        (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes32[], uint256[]));
+        (tradeType, reserveIds, splits) = abi.decode(hint, (TradeType, bytes32[], uint256[])); // solhint-disable
         valid = verifyData(tradeType, reserveIds, splits);
 
         if (valid != HintErrors.NoError) {

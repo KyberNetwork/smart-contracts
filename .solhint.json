@@ -1,0 +1,14 @@
+{
+  "extends": "solhint:default",
+  "rules": {
+    "indent": ["error", 4],
+    "quotes": ["error", "double"],
+    "avoid-suicide": "error",
+    "avoid-sha3": "warn",
+    "avoid-tx-origin:": "warn",
+    "const-name-snakecase": "off",
+    "func-order": "warn",
+    "not-rely-on-block-hash": "warn"
+  }
+}
+
