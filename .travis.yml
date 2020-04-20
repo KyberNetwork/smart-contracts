@@ -24,6 +24,7 @@ install:
   - npm ci
 
 script:
+  - npx solhint contractsSol5/**/**.sol
   - ./cmp.sh
   - .travis/test-part.sh
 
