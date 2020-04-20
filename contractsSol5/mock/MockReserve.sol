@@ -31,9 +31,11 @@ contract MockReserve is IKyberReserve, Utils4 {
         bool validate
     ) public payable returns (bool) {
         validate;
-        if (srcToken == ETH_TOKEN_ADDRESS)
+        if (srcToken == ETH_TOKEN_ADDRESS) {
             require(msg.value == srcAmount, "ETH sent != srcAmount");
-        else require(msg.value == 0, "ETH was sent for token -> ETH trade");
+        } else {
+            require(msg.value == 0, "ETH was sent for token -> ETH trade");
+        }
 
         uint256 srcDecimals = getDecimals(srcToken);
         uint256 destDecimals = getDecimals(destToken);

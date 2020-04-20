@@ -433,22 +433,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
         }
     }
 
-    function readBRRData()
-        public
-        view
-        returns (
-            uint256 rewardBps,
-            uint256 rebateBps,
-            uint256 expiryTimestamp,
-            uint256 epoch
-        )
-    {
-        rewardBps = uint256(brrAndEpochData.rewardBps);
-        rebateBps = uint256(brrAndEpochData.rebateBps);
-        epoch = uint256(brrAndEpochData.epoch);
-        expiryTimestamp = uint256(brrAndEpochData.expiryTimestamp);
-    }
-
     function getBRR()
         public
         returns (
@@ -475,6 +459,22 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils4, BurnConfigPermission {
             // Update brrAndEpochData
             updateBRRData(rewardBps, rebateBps, expiryTimestamp, epoch);
         }
+    }
+
+    function readBRRData()
+        public
+        view
+        returns (
+            uint256 rewardBps,
+            uint256 rebateBps,
+            uint256 expiryTimestamp,
+            uint256 epoch
+        )
+    {
+        rewardBps = uint256(brrAndEpochData.rewardBps);
+        rebateBps = uint256(brrAndEpochData.rebateBps);
+        epoch = uint256(brrAndEpochData.epoch);
+        expiryTimestamp = uint256(brrAndEpochData.expiryTimestamp);
     }
 
     function updateBRRData(

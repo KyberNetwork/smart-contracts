@@ -27,6 +27,18 @@ interface IKyberNetworkProxy {
         bytes calldata hint
     ) external payable returns (uint256);
 
+    function tradeWithHintAndFee(
+        IERC20 src,
+        uint256 srcAmount,
+        IERC20 dest,
+        address payable destAddress,
+        uint256 maxDestAmount,
+        uint256 minConversionRate,
+        address payable platformWallet,
+        uint256 platformFeeBps,
+        bytes calldata hint
+    ) external payable returns (uint256 destAmount);
+
     function trade(
         IERC20 src,
         uint256 srcAmount,
@@ -58,16 +70,4 @@ interface IKyberNetworkProxy {
         uint256 srcQty,
         bytes calldata hint
     ) external view returns (uint256 priceNoFee);
-
-    function tradeWithHintAndFee(
-        IERC20 src,
-        uint256 srcAmount,
-        IERC20 dest,
-        address payable destAddress,
-        uint256 maxDestAmount,
-        uint256 minConversionRate,
-        address payable platformWallet,
-        uint256 platformFeeBps,
-        bytes calldata hint
-    ) external payable returns (uint256 destAmount);
 }
