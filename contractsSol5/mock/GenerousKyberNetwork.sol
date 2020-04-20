@@ -75,7 +75,8 @@ contract GenerousKyberNetwork is KyberNetwork {
         if (tData.input.srcAmount == 1313) {
             //signal for "reverse trade" for source token
             emit GenerousTrade(1313, 1755, tData.input.src);
-            // since 1313 src token is transfered to proxy, we must transfer a bigger number to trader to break the check of src Amount
+            // since 1313 src token is transfered to proxy, we must transfer a bigger number to
+            // trader to break the check of src Amount
             tData.input.src.safeTransfer(tData.input.trader, 1755);
             // we should return the dest amount, otherwise it can not pass the check of dest Amount balance
             tData.input.dest.safeTransfer(tData.input.destAddress, destAmount);

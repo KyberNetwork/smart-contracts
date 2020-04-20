@@ -11,6 +11,10 @@ contract MockStakingContract is KyberStaking {
         address _admin
     ) public KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) {}
 
+    function setDAOAddressWithoutCheck(address dao) public {
+        daoContract = IKyberDAO(dao);
+    }
+
     function getHasInitedValue(address staker, uint256 epoch) public view returns (bool) {
         return hasInited[epoch][staker];
     }
@@ -29,9 +33,5 @@ contract MockStakingContract is KyberStaking {
         returns (address)
     {
         return stakerPerEpochData[epoch][staker].delegatedAddress;
-    }
-
-    function setDAOAddressWithoutCheck(address dao) public {
-        daoContract = IKyberDAO(dao);
     }
 }
