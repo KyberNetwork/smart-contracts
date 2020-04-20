@@ -4,8 +4,7 @@ import "./IERC20.sol";
 
 
 interface IKyberNetwork {
-
-        event KyberTrade(
+    event KyberTrade(
         address indexed trader,
         IERC20 indexed src,
         IERC20 indexed dest,
