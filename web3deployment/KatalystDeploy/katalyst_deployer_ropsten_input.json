@@ -17,7 +17,7 @@
         "KNC": {
             "name": "KyberNetwork",
             "decimals": 18,
-            "address": "0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6"
+            "address": "0x7b2810576aa1cce68f2b118cef1f36467c648f92"
         },
         "WBTC": {
             "name": "Wrapped BTC",
@@ -27,7 +27,7 @@
     },
 
     "addresses": {
-        "knc": "0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6",
+        "knc": "0x7b2810576aa1cce68f2b118cef1f36467c648f92",
         "gasHelper": "0x0000000000000000000000000000000000000000"
     },
 
@@ -53,7 +53,7 @@
                     "tokenToEth":true
                 },
                 {
-                    "address":"0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6",
+                    "address":"0x7b2810576aa1cce68f2b118cef1f36467c648f92",
                     "ethToToken":true,
                     "tokenToEth":true
                 },
@@ -76,7 +76,7 @@
                     "tokenToEth":true
                 },
                 {
-                    "address":"0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6",
+                    "address":"0x7b2810576aa1cce68f2b118cef1f36467c648f92",
                     "ethToToken":true,
                     "tokenToEth":true
                 },
@@ -94,7 +94,7 @@
             "rebateWallet": "0x7de9bC2cDfa6B7Ee7088a4f5848A86A26Cd5aFD1",
             "tokens": [
                 {
-                    "address":"0x4e470dc7321e84ca96fcaedd0c8abcebbaeb68c6",
+                    "address":"0x7b2810576aa1cce68f2b118cef1f36467c648f92",
                     "ethToToken":true,
                     "tokenToEth":true
                 }
@@ -122,14 +122,14 @@
             "alerters" : ["0xbDd33F411DA0B40018922a3BC69001B458227f5c","0xBE2F0354D970265BFc36D383af77F72736b81B54","0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA","0x6E4843E90ecacd3a3BBcED74A5235363762D5100"]
         },
         "Proxy" : {
-            "admin" : "0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA",
+            "admin" : "0xea058bEa72a251039C2c9C9C103fD2a9335a781F",
             "operators" : ["0xeAE89c711c02468deA8eE1AdE4fA78B79AC9379a",
                          "0x9224016462B204C57Eb70e1D69652f60bcAF53A8",
                         "0x7985405a348baa90c92164b86b383c8f43ad2d96"],
             "alerters" : []
         },
         "Storage" : {
-            "admin" : "0x46a77D03A76232211CD2eabaE3e10e0dfe71CddA",
+            "admin" : "0xea058bEa72a251039C2c9C9C103fD2a9335a781F",
             "operators" : [],
             "alerters" : []
         }
@@ -138,8 +138,8 @@
     "max gas price" : 50000000000,
     "neg diff in bps" : 20,
     
-    "epoch period": 200,
-    "start timestamp": 1587371500,
+    "epoch period": 10800,
+    "start timestamp": 1587367900,
     "network fee bps": 30,
     "reward fee bps": 3850,
     "rebate bps": 3000,

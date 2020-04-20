@@ -179,6 +179,7 @@ function parseInput( jsonInput ) {
     matchingEnginePermissions = jsonInput.permission["MatchingEngine"];
     networkPermissions = jsonInput.permission["Network"];
     proxyPermissions = jsonInput.permission["Proxy"];
+    storagePermissions = jsonInput.permission["Storage"];
     daoCampaignCreator = jsonInput.permission["DAO"]["CampaignCreator"]
     burnConfigSetter = jsonInput.permission["FeeHandler"]["BurnConfigSetter"];
 
@@ -399,7 +400,7 @@ async function deployStorageContract(output) {
     console.log(`storage: ${storageAddress}`);
   } else {
     console.log("Instantiating storage...");
-    matchingEngineContract = new web3.eth.Contract(
+    storageContract = new web3.eth.Contract(
       output.contracts["KyberStorage.sol"]["KyberStorage"].abi, storageAddress
     );
   }
@@ -496,7 +497,7 @@ async function setNetworkAddressInStorage(tempAddress) {
   if (tempAddress == undefined) {
     await sendTx(storageContract.methods.setNetworkContract(networkAddress));
   } else {
-    await sendTx(matchingEngineContract.methods.setNetworkContract(tempAddress));
+    await sendTx(storageContract.methods.setNetworkContract(tempAddress));
   }
 }
 
