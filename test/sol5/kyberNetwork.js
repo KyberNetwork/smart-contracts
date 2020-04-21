@@ -1950,9 +1950,11 @@ contract('KyberNetwork', function(accounts) {
     })
 
 
-    describe("test big rates", async() => {
+    describe("test big trade", async() => {
         let srcToken;
         let destToken;
+        let normalToken;
+        let normalToken2;
         let kyberProxy = accounts[0];
         let reserves;
         let reserveInstances;
@@ -1963,8 +1965,10 @@ contract('KyberNetwork', function(accounts) {
         const MAX_DST_QTY = Helper.calcDstQty(MAX_QTY, new BN(0), new BN(18), MAX_RATE);
         before("init token balance", async() => {
             srcToken = await TestToken.new("decimal 0", "0", new BN(0));
+            normalToken = await TestToken.new("decimal 18", "18", new BN(18));
+            normalToken2 = await TestToken.new("decimal 18", "18", new BN(18));
             destToken = await TestToken.new("decimal 36", "36", new BN(36));
-            let tokens = [srcToken, destToken];
+            let tokens = [srcToken, normalToken, normalToken2, destToken];
 
             let KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             //init network 
@@ -1977,6 +1981,9 @@ contract('KyberNetwork', function(accounts) {
             await matchingEngine.setNetworkContract(network.address, { from: admin });
             await matchingEngine.setKyberStorage(storage.address, {from : admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+            // setup DAO and feeHandler 
+            let DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+            await DAO.setNetworkFeeBps(new BN(0));
             let feeHandler = await FeeHandler.new(DAO.address, network.address, network.address, KNC.address, burnBlockInterval, DAO.address);
             await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
             // set DAO contract
@@ -1994,6 +2001,10 @@ contract('KyberNetwork', function(accounts) {
                 let reserve = value.instance;
                 await reserve.setRate(srcToken.address, MAX_RATE, MAX_RATE);
                 await reserve.setRate(destToken.address, MAX_RATE, MAX_RATE);
+                tokensPerEther = precisionUnits.mul(new BN(10));
+                ethersPerToken = precisionUnits.div(new BN(10));
+                await reserve.setRate(normalToken.address, tokensPerEther, ethersPerToken);
+                await reserve.setRate(normalToken2.address, tokensPerEther, ethersPerToken);
             }
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, DAO.address, storage.address, {from: admin});
@@ -2002,23 +2013,62 @@ contract('KyberNetwork', function(accounts) {
         beforeEach("ensure each reserve have max eth-token value", async() => {
             for (const [key, value] of Object.entries(reserveInstances)) {
                 let reserve = value.instance;
-                
-                let currentBalance = await srcToken.balanceOf(reserve.address);
-                if (MAX_DST_QTY.gt(currentBalance)) {
-                    await srcToken.transfer(reserve.address, MAX_DST_QTY.sub(currentBalance));
-                }
-
-                currentBalance = await destToken.balanceOf(reserve.address);
-                if (MAX_DST_QTY.gt(currentBalance)) {
-                    await destToken.transfer(reserve.address, MAX_DST_QTY.sub(currentBalance));
-                }
-
+                let tokens = [srcToken, destToken, normalToken, normalToken2]
+                await tokens.forEach(async (token) =>  {
+                    let currentBalance = await token.balanceOf(reserve.address);
+                    if (MAX_DST_QTY.gt(currentBalance)) {
+                        await token.transfer(reserve.address, MAX_DST_QTY.sub(currentBalance));
+                    }
+                });
                 currentBalance = await Helper.getBalancePromise(reserve.address);
                 if (MAX_QTY.gt(currentBalance)) {
                     await Helper.sendEtherWithPromise(accounts[3], reserve.address, MAX_QTY.sub(currentBalance));
                     await Helper.assertSameEtherBalance(reserve.address, MAX_QTY);
                 }
             }
+        });
+
+        it("test t2e success with max_qty", async() => {
+            let initBalance = await Helper.getBalancePromise(taker);
+            await normalToken.transfer(network.address, MAX_QTY);
+            await network.tradeWithHintAndFee(kyberProxy, normalToken.address, MAX_QTY, ethAddress, taker,
+                maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
+                { from: kyberProxy }
+            );
+            let afterBalance = await Helper.getBalancePromise(taker);
+            Helper.assertEqual(MAX_QTY.div(new BN(10)), afterBalance.sub(initBalance), "expected balance is not match");
+        });
+
+        it("test t2t success with max_qty", async() => {
+            let initBalance = await Helper.getBalancePromise(taker);
+            await normalToken.transfer(network.address, MAX_QTY);
+            await network.tradeWithHintAndFee(kyberProxy, normalToken.address, MAX_QTY, ethAddress, taker,
+                maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
+                { from: kyberProxy }
+            );
+            let afterBalance = await Helper.getBalancePromise(taker);
+            Helper.assertEqual(MAX_QTY.div(new BN(10)), afterBalance.sub(initBalance), "expected balance is not match");
+        });
+
+        it("test e2t success with max_qty", async() => {
+            let initBalance = await normalToken.balanceOf(taker);
+            await network.tradeWithHintAndFee(kyberProxy, ethAddress, MAX_QTY.div(new BN(10)), normalToken.address, taker,
+                maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
+                { value: MAX_QTY.div(new BN(10)), from: kyberProxy }
+            );
+            let afterBalance = await normalToken.balanceOf(taker);
+            Helper.assertEqual(MAX_QTY, afterBalance.sub(initBalance), "expected balance is not match");
+        });
+
+        it("test t2t success with max_qty", async() => {
+            let initBalance = await normalToken2.balanceOf(taker);
+            await normalToken.transfer(network.address, MAX_QTY);
+            await network.tradeWithHintAndFee(kyberProxy, normalToken.address, MAX_QTY, normalToken2.address, taker,
+                maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
+                { from: kyberProxy }
+            );
+            let afterBalance = await normalToken2.balanceOf(taker);
+            Helper.assertEqual(MAX_QTY, afterBalance.sub(initBalance), "expected balance is not match");
         });
 
         it("test e2t revert with max_rate max_qty empty hint", async() => {
