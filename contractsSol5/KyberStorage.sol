@@ -277,13 +277,29 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         external
         view
         returns (
-            IKyberDAO[] memory daoAddresses,
-            IKyberFeeHandler[] memory feeHandlerAddresses,
-            IKyberMatchingEngine[] memory matchingEngineAddresses,
-            IKyberNetwork[] memory previousNetworkContracts
+            address[] memory daoAddresses,
+            address[] memory feeHandlerAddresses,
+            address[] memory matchingEngineAddresses,
+            address[] memory previousNetworkContracts
         )
     {
-        return (kyberDAO, feeHandler, matchingEngine, previousNetworks);
+        daoAddresses = new address[](kyberDAO.length);
+        feeHandlerAddresses = new address[](feeHandler.length);
+        matchingEngineAddresses = new address[](matchingEngine.length);
+        previousNetworkContracts = new address[](previousNetworks.length);
+
+        for (uint256 i = 0; i < kyberDAO.length; i++) {
+            daoAddresses[i] = address(kyberDAO[i]);
+        }
+        for (uint256 i = 0; i < feeHandler.length; i++) {
+            feeHandlerAddresses[i] = address(feeHandler[i]);
+        }
+        for (uint256 i = 0; i < matchingEngine.length; i++) {
+            matchingEngineAddresses[i] = address(matchingEngine[i]);
+        }
+        for (uint256 i = 0; i < previousNetworks.length; i++) {
+            previousNetworkContracts[i] = address(previousNetworks[i]);
+        }
     }
 
     /// @notice Should be called off chain

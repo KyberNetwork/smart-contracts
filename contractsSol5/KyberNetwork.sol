@@ -482,21 +482,28 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         external
         view
         returns (
-            IKyberFeeHandler feeHandlerAddress,
-            IKyberDAO daoAddress,
-            IKyberMatchingEngine matchingEngineAddress,
-            IKyberStorage storageAddress,
-            IGasHelper gasHelperAddress,
-            IKyberNetworkProxy[] memory proxyAddresses
+            address feeHandlerAddress,
+            address daoAddress,
+            address matchingEngineAddress,
+            address storageAddress,
+            address gasHelperAddress,
+            address[] memory proxyAddresses
         )
     {
+        IKyberNetworkProxy[] memory kyberProxies = kyberStorage.getKyberProxies();
+        proxyAddresses = new address[](kyberProxies.length);
+
+        for (uint256 i = 0; i < kyberProxies.length; i++) {
+            proxyAddresses[i] = address(kyberProxies[i]);
+        }
+
         return (
-            feeHandler,
-            kyberDAO,
-            matchingEngine,
-            kyberStorage,
-            gasHelper,
-            kyberStorage.getKyberProxies()
+            address(feeHandler),
+            address(kyberDAO),
+            address(matchingEngine),
+            address(kyberStorage),
+            address(gasHelper),
+            proxyAddresses
         );
     }
 
@@ -888,7 +895,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         reservesData.isFeeAccountedFlags = kyberStorage.getFeeAccountedData(reservesData.ids);
 
         require(reservesData.ids.length == reservesData.splitsBps.length, "bad split array");
-        require(reservesData.ids.length == reservesData.isFeeAccountedFlags.length, "bad fee array");
+        require(
+            reservesData.ids.length == reservesData.isFeeAccountedFlags.length,
+            "bad fee array"
+        );
 
         // calculate src trade amount per reserve and query rates
         // set data in reservesData struct
