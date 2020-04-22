@@ -90,6 +90,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         network = await KyberNetwork.new(admin, networkStorage.address);
         await networkStorage.setNetworkContract(network.address, {from: admin});
         await networkStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+        await networkStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
         // init proxy
         networkProxy = await KyberNetworkProxy.new(admin);

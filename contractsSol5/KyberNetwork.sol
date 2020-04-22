@@ -36,6 +36,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     /// @param ids List of reserve ids, to be used for KyberTrade event
     /// @param rates List of rates that were offered by the reserves
     /// @param isFeeAccountedFlags List of reserves requiring users to pay network fee, or not
+    /// @param isEntitledRebateFlags List of reserves eligible for rebates, or not
     /// @param splitsBps List of proportions of trade amount allocated to the reserves.
     ///     If there is only 1 reserve, then it should have a value of 10000 bps
     /// @param decimals Token decimals. Src decimals when for src -> ETH, dest decimals when ETH -> dest
@@ -44,6 +45,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         bytes32[] ids;
         uint256[] rates;
         bool[] isFeeAccountedFlags;
+        bool[] isEntitledRebateFlags;
         uint256[] splitsBps;
         uint256[] srcAmounts;
         uint256 decimals;
@@ -57,9 +59,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     /// @param networkFeeWei Network fee in ether wei. For t2t trades, it can go up to 200% of networkFeeBps
     /// @param platformFeeWei Platform fee in ether wei
     /// @param networkFeeBps Network fee bps determined by DAO, or default value
-    /// @param numFeeAccountedReserves No. of reserves that are accounted for network fees
-    ///     Some reserve types don't require users to pay the network fee
+    /// @param numEntitledRebateReserves No. of reserves that are eligible for rebates
     /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * BPS
+    /// @param entitledRebateBps Proportion of reserve rebate entitlement, in BPS. Up to 2 * BPS
     /// @param rateWithNetworkFee src -> dest token rate, after accounting for only network fee
     struct TradeData {
         TradeInput input;
@@ -69,8 +71,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         uint256 networkFeeWei;
         uint256 platformFeeWei;
         uint256 networkFeeBps;
-        uint256 numFeeAccountedReserves;
+        uint256 numEntitledRebateReserves;
         uint256 feeAccountedBps; // what part of this trade is fee paying. for token to token - up to 200%
+        uint256 entitledRebateBps;
         uint256 rateWithNetworkFee;
     }
 
@@ -548,7 +551,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     ///     Transfers ETH and rebate wallet data to feeHandler
     function handleFees(TradeData memory tradeData) internal returns (bool) {
         //no need to handle fees if no fee paying reserves
-        if ((tradeData.numFeeAccountedReserves == 0) && (tradeData.platformFeeWei == 0))
+        if ((tradeData.numEntitledRebateReserves == 0) && (tradeData.platformFeeWei == 0))
             return true;
 
         // update reserve eligibility and rebate percentages
@@ -885,10 +888,12 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
                 (tradeData.input.dest != ETH_TOKEN_ADDRESS),
             hint
         );
-        reservesData.isFeeAccountedFlags = kyberStorage.getFeeAccountedData(reservesData.ids);
+        (reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags) = kyberStorage
+            .getFeeAccountedAndEntitledRebateData(reservesData.ids);
 
         require(reservesData.ids.length == reservesData.splitsBps.length, "bad split array");
         require(reservesData.ids.length == reservesData.isFeeAccountedFlags.length, "bad fee array");
+        require(reservesData.ids.length == reservesData.isEntitledRebateFlags.length, "bad rebate array");
 
         // calculate src trade amount per reserve and query rates
         // set data in reservesData struct
@@ -973,9 +978,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         view
         returns (address[] memory rebateWallets, uint256[] memory rebatePercentBps)
     {
-        rebateWallets = new address[](tradeData.numFeeAccountedReserves);
-        rebatePercentBps = new uint256[](tradeData.numFeeAccountedReserves);
-        if (tradeData.numFeeAccountedReserves == 0) {
+        rebateWallets = new address[](tradeData.numEntitledRebateReserves);
+        rebatePercentBps = new uint256[](tradeData.numEntitledRebateReserves);
+        if (tradeData.numEntitledRebateReserves == 0) {
             return (rebateWallets, rebatePercentBps);
         }
 
@@ -987,7 +992,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
             rebatePercentBps,
             tradeData.tokenToEth,
             index,
-            tradeData.feeAccountedBps
+            tradeData.entitledRebateBps
         );
 
         // ether to token
@@ -996,7 +1001,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
             rebatePercentBps,
             tradeData.ethToToken,
             index,
-            tradeData.feeAccountedBps
+            tradeData.entitledRebateBps
         );
     }
 
@@ -1005,14 +1010,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         uint256[] memory rebatePercentBps,
         ReservesData memory reservesData,
         uint256 index,
-        uint256 feeAccountedBps
+        uint256 entitledRebateBps
     ) internal view returns (uint256) {
         uint256 _index = index;
 
-        for (uint256 i = 0; i < reservesData.isFeeAccountedFlags.length; i++) {
-            if (reservesData.isFeeAccountedFlags[i]) {
+        for (uint256 i = 0; i < reservesData.isEntitledRebateFlags.length; i++) {
+            if (reservesData.isEntitledRebateFlags[i]) {
                 rebateWallets[_index] = reserveRebateWallet[address(reservesData.addresses[i])];
-                rebatePercentBps[_index] = (reservesData.splitsBps[i] * BPS) / feeAccountedBps;
+                rebatePercentBps[_index] = (reservesData.splitsBps[i] * BPS) / entitledRebateBps;
                 _index++;
             }
         }
@@ -1086,6 +1091,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         bytes32[] memory reserveIds = new bytes32[](numReserves);
         uint256[] memory splitsBps = new uint256[](numReserves);
         bool[] memory isFeeAccountedFlags = new bool[](numReserves);
+        bool[] memory isEntitledRebateFlags = new bool[](numReserves);
         uint256[] memory srcAmounts = new uint256[](numReserves);
         uint256[] memory rates = new uint256[](numReserves);
 
@@ -1095,6 +1101,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
             reserveIds[i] = reservesData.ids[selectedIndexes[i]];
             splitsBps[i] = reservesData.splitsBps[selectedIndexes[i]];
             isFeeAccountedFlags[i] = reservesData.isFeeAccountedFlags[selectedIndexes[i]];
+            isEntitledRebateFlags[i] = reservesData.isEntitledRebateFlags[selectedIndexes[i]];
             srcAmounts[i] = reservesData.srcAmounts[selectedIndexes[i]];
             rates[i] = reservesData.rates[selectedIndexes[i]];
         }
@@ -1104,6 +1111,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         reservesData.ids = reserveIds;
         reservesData.splitsBps = splitsBps;
         reservesData.isFeeAccountedFlags = isFeeAccountedFlags;
+        reservesData.isEntitledRebateFlags = isEntitledRebateFlags;
         reservesData.rates = rates;
         reservesData.srcAmounts = srcAmounts;
     }
@@ -1137,7 +1145,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
 
             if (reservesData.isFeeAccountedFlags[i]) {
                 tradeData.feeAccountedBps += reservesData.splitsBps[i];
-                tradeData.numFeeAccountedReserves++;
+
+                if (reservesData.isEntitledRebateFlags[i]) {
+                tradeData.entitledRebateBps += reservesData.splitsBps[i];
+                tradeData.numEntitledRebateReserves++;
+                }
             }
         }
 

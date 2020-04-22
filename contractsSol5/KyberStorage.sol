@@ -29,6 +29,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     mapping(address => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
 
     uint256 internal feeAccountedPerType = 0xffffffff;
+    uint256 internal entitledRebatePerType = 0xffffffff;
     mapping(bytes32 => uint256) internal reserveType; // type from enum ReserveType
 
     IKyberNetwork public kyberNetwork;
@@ -95,6 +96,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
             "bad reserve type"
         );
         require(feeAccountedPerType != 0xffffffff, "fee accounted data not set");
+        require(entitledRebatePerType != 0xffffffff, "entitled rebate data not set");
 
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
@@ -204,14 +206,42 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         onlyAdmin();
         uint256 feeAccountedData;
 
-        if (apr) feeAccountedData |= 1 << uint256(ReserveType.APR);
         if (fpr) feeAccountedData |= 1 << uint256(ReserveType.FPR);
+        if (apr) feeAccountedData |= 1 << uint256(ReserveType.APR);
         if (bridge) feeAccountedData |= 1 << uint256(ReserveType.BRIDGE);
         if (utility) feeAccountedData |= 1 << uint256(ReserveType.UTILITY);
         if (custom) feeAccountedData |= 1 << uint256(ReserveType.CUSTOM);
         if (orderbook) feeAccountedData |= 1 << uint256(ReserveType.ORDERBOOK);
 
         feeAccountedPerType = feeAccountedData;
+    }
+
+    function setEntitledRebatePerReserveType(
+        bool fpr,
+        bool apr,
+        bool bridge,
+        bool utility,
+        bool custom,
+        bool orderbook
+    ) external {
+        onlyAdmin();
+        require(feeAccountedPerType != 0xffffffff, "fee accounted data not set");
+        uint256 entitledRebateData;
+
+        if (fpr && (feeAccountedPerType & (1 << uint256(ReserveType.FPR))) > 0)
+            entitledRebateData |= 1 << uint256(ReserveType.FPR);
+        if (apr && (feeAccountedPerType & (1 << uint256(ReserveType.APR))) > 0)
+            entitledRebateData |= 1 << uint256(ReserveType.APR);
+        if (bridge && (feeAccountedPerType & (1 << uint256(ReserveType.BRIDGE))) > 0)
+            entitledRebateData |= 1 << uint256(ReserveType.BRIDGE);
+        if (utility && (feeAccountedPerType & (1 << uint256(ReserveType.UTILITY))) > 0)
+            entitledRebateData |= 1 << uint256(ReserveType.UTILITY);
+        if (custom && (feeAccountedPerType & (1 << uint256(ReserveType.CUSTOM))) > 0)
+            entitledRebateData |= 1 << uint256(ReserveType.CUSTOM);
+        if (orderbook && (feeAccountedPerType & (1 << uint256(ReserveType.ORDERBOOK))) > 0)
+            entitledRebateData |= 1 << uint256(ReserveType.ORDERBOOK);
+
+        entitledRebatePerType = entitledRebateData;
     }
 
     /// @notice Should be called off chain
@@ -299,37 +329,45 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     /// @notice Returns information about a reserve given its reserve ID
     /// @return reserveAddress Address of the reserve
     /// @return resType Reserve type from enum ReserveType
-    /// @return isFeeAccountedFlags Whether fees are to be charged for the trade for this reserve
+    /// @return isFeeAccountedFlag Whether fees are to be charged for the trade for this reserve
+    /// @return isEntitledRebateFlag Whether reserve is entitled rebate from the trade fees
     function getReserveDetailsById(bytes32 reserveId)
         external
         view
         returns (
             address reserveAddress,
             ReserveType resType,
-            bool isFeeAccountedFlags
+            bool isFeeAccountedFlag,
+            bool isEntitledRebateFlag
         )
     {
         reserveAddress = reserveIdToAddresses[reserveId][0];
-        resType = ReserveType(reserveType[reserveId]);
-        isFeeAccountedFlags = (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
+        uint256 resTypeUint = reserveType[reserveId];
+        resType = ReserveType(resTypeUint);
+        isFeeAccountedFlag = (feeAccountedPerType & (1 << resTypeUint)) > 0;
+        isEntitledRebateFlag = (entitledRebatePerType & (1 << resTypeUint)) > 0;
     }
 
     /// @notice Returns information about a reserve given its reserve ID
     /// @return reserveId The reserve ID in 32 bytes. 1st byte is reserve type
     /// @return resType Reserve type from enum ReserveType
-    /// @return isFeeAccountedFlags Whether fees are to be charged for the trade for this reserve
+    /// @return isFeeAccountedFlag Whether fees are to be charged for the trade for this reserve
+    /// @return isEntitledRebateFlag Whether reserve is entitled rebate from the trade fees
     function getReserveDetailsByAddress(address reserve)
         external
         view
         returns (
             bytes32 reserveId,
             ReserveType resType,
-            bool isFeeAccountedFlags
+            bool isFeeAccountedFlag,
+            bool isEntitledRebateFlag
         )
     {
         reserveId = reserveAddressToId[reserve];
-        resType = ReserveType(reserveType[reserveId]);
-        isFeeAccountedFlags = (feeAccountedPerType & (1 << reserveType[reserveId])) > 0;
+        uint256 resTypeUint = reserveType[reserveId];
+        resType = ReserveType(resTypeUint);
+        isFeeAccountedFlag = (feeAccountedPerType & (1 << resTypeUint)) > 0;
+        isEntitledRebateFlag = (entitledRebatePerType & (1 << resTypeUint)) > 0;
     }
 
     function getFeeAccountedData(bytes32[] calldata reserveIds)
@@ -343,6 +381,38 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
         for (uint256 i = 0; i < reserveIds.length; i++) {
             feeAccountedArr[i] = (feeAccountedData & (1 << reserveType[reserveIds[i]]) > 0);
+        }
+    }
+
+    function getEntitledRebateData(bytes32[] calldata reserveIds)
+        external
+        view
+        returns (bool[] memory entitledRebateArr)
+    {
+        entitledRebateArr = new bool[](reserveIds.length);
+
+        uint256 entitledRebateData = entitledRebatePerType;
+
+        for (uint256 i = 0; i < reserveIds.length; i++) {
+            entitledRebateArr[i] = (entitledRebateData & (1 << reserveType[reserveIds[i]]) > 0);
+        }
+    }
+
+    function getFeeAccountedAndEntitledRebateData(bytes32[] calldata reserveIds)
+        external
+        view
+        returns (bool[] memory feeAccountedArr, bool[] memory entitledRebateArr)
+    {
+        feeAccountedArr = new bool[](reserveIds.length);
+        entitledRebateArr = new bool[](reserveIds.length);
+
+        uint256 entitledRebateData = entitledRebatePerType;
+        uint256 feeAccountedData = feeAccountedPerType;
+
+        for (uint256 i = 0; i < reserveIds.length; i++) {
+            uint256 resTypeUint = reserveType[reserveIds[i]];
+            entitledRebateArr[i] = (entitledRebateData & (1 << resTypeUint) > 0);
+            feeAccountedArr[i] = (feeAccountedData & (1 << resTypeUint) > 0);
         }
     }
 
