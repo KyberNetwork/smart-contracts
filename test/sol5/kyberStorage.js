@@ -2,7 +2,6 @@ const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
 const MockStorage = artifacts.require("MockStorage.sol");
-const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
 
@@ -175,6 +174,10 @@ contract('KyberStorage', function(accounts) {
         it("should have network set contracts", async() => {
             await kyberStorage.setDAOContract(DAOAddr, { from: network});
             await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
+            let result= await kyberStorage.getContracts();
+            Helper.assertEqualArray(result.daoAddresses, [DAOAddr], "unexpected dao history");
+            Helper.assertEqualArray(result.matchingEngineAddresses, [matchingEngineAddr], "unexpected match engine history");
+            Helper.assertEqualArray(result.feeHandlerAddresses, [feeHandlerAddr], "unexpected fee handler history");
         });
     });
 
@@ -449,6 +452,23 @@ contract('KyberStorage', function(accounts) {
 
             //reset
             await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+        });
+
+        it("should list T2E side with 2 reserve", async() => {
+            let reserveIds = [];
+            for (let reserve of Object.values(reserveInstances)) {
+                await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, true, {from: network});
+                reserveIds.push(reserve.reserveId);
+            }
+            let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
+
+            result = await kyberStorage.getReservesPerTokenDest(token.address);
+            Helper.assertEqualArray(result, reserveIds, "T2E should be listed");
+            // delist for both side
+            for (let reserve of Object.values(reserveInstances)) {
+                await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: network});
+            }
         });
 
         it("should list T2E side only", async() => {
