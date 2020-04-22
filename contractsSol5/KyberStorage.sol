@@ -228,18 +228,35 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         require(feeAccountedPerType != 0xffffffff, "fee accounted data not set");
         uint256 entitledRebateData;
 
-        if (fpr && (feeAccountedPerType & (1 << uint256(ReserveType.FPR))) > 0)
+        if (fpr) {
+            require(feeAccountedPerType & (1 << uint256(ReserveType.FPR)) > 0, "fpr not fee accounted");
             entitledRebateData |= 1 << uint256(ReserveType.FPR);
-        if (apr && (feeAccountedPerType & (1 << uint256(ReserveType.APR))) > 0)
+        }
+
+        if (apr) {
+            require(feeAccountedPerType & (1 << uint256(ReserveType.APR)) > 0, "apr not fee accounted");
             entitledRebateData |= 1 << uint256(ReserveType.APR);
-        if (bridge && (feeAccountedPerType & (1 << uint256(ReserveType.BRIDGE))) > 0)
+        }
+
+        if (bridge) {
+            require(feeAccountedPerType & (1 << uint256(ReserveType.BRIDGE)) > 0, "bridge not fee accounted");
             entitledRebateData |= 1 << uint256(ReserveType.BRIDGE);
-        if (utility && (feeAccountedPerType & (1 << uint256(ReserveType.UTILITY))) > 0)
+        }
+
+        if (utility) {
+            require(feeAccountedPerType & (1 << uint256(ReserveType.UTILITY)) > 0, "utility not fee accounted");
             entitledRebateData |= 1 << uint256(ReserveType.UTILITY);
-        if (custom && (feeAccountedPerType & (1 << uint256(ReserveType.CUSTOM))) > 0)
+        }
+
+        if (custom) {
+            require(feeAccountedPerType & (1 << uint256(ReserveType.CUSTOM)) > 0, "custom not fee accounted");
             entitledRebateData |= 1 << uint256(ReserveType.CUSTOM);
-        if (orderbook && (feeAccountedPerType & (1 << uint256(ReserveType.ORDERBOOK))) > 0)
+        }
+
+        if (orderbook) {
+            require(feeAccountedPerType & (1 << uint256(ReserveType.ORDERBOOK)) > 0, "orderbook not fee accounted");
             entitledRebateData |= 1 << uint256(ReserveType.ORDERBOOK);
+        }
 
         entitledRebatePerType = entitledRebateData;
     }
