@@ -2,12 +2,14 @@ const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
 const MockStorage = artifacts.require("MockStorage.sol");
+const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
 
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const {zeroAddress, zeroBN} = require("../helper.js");
+const { ReserveType } = require('./networkHelper.js');
 
 //global variables
 //////////////////
@@ -20,8 +22,8 @@ let operator;
 let network;
 let kyberStorage;
 let user;
-let feeHandler;
-let kyberMatchingEngine;
+let feeHandlerAddr;
+let matchingEngineAddr;
 
 //reserve data
 //////////////
@@ -42,6 +44,8 @@ contract('KyberStorage', function(accounts) {
         operator = accounts[2];
         network = accounts[3];
         DAOAddr = accounts[4];
+        feeHandlerAddr = accounts[6];
+        matchingEngineAddr = accounts[7];
     });
 
     describe("test onlyAdmin and onlyNetwork permissions", async() => {
@@ -149,6 +153,29 @@ contract('KyberStorage', function(accounts) {
         it("should have network remove reserve", async() => {
             await kyberStorage.removeReserve(reserve.address, zeroBN, {from: network});
         });
+
+        it("should not have unauthorized personnel set contracts", async() => {
+            await expectRevert(
+                kyberStorage.setDAOContract(DAOAddr, { from: operator}), "only network"
+            );
+
+            await expectRevert(
+                kyberStorage.setDAOContract(DAOAddr, { from: admin}), "only network"
+            );
+
+            await expectRevert(
+                kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: operator}), "only network"
+            );
+
+            await expectRevert(
+                kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: admin}), "only network"
+            );
+        });
+
+        it("should have network set contracts", async() => {
+            await kyberStorage.setDAOContract(DAOAddr, { from: network});
+            await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
+        });
     });
 
     describe("test contract event", async() => {
@@ -168,8 +195,6 @@ contract('KyberStorage', function(accounts) {
         before("deploy and setup kyberStorage instance", async() => {
             kyberStorage = await KyberStorage.new(admin);
             await kyberStorage.setNetworkContract(network, {from: admin});
-            feeHandler = accounts[5];
-            kyberMatchingEngine = accounts[6];
         });
 
         it("should revert setting zero address for network", async() => {
@@ -180,14 +205,14 @@ contract('KyberStorage', function(accounts) {
 
         it("set empty fee handler contract", async function(){
             await expectRevert(
-                kyberStorage.setContracts(zeroAddress, kyberMatchingEngine, {from: network}),
+                kyberStorage.setContracts(zeroAddress, matchingEngineAddr, {from: network}),
                 "feeHandler 0"
             );
         });
 
         it("set empty matching engine contract", async function(){
             await expectRevert(
-                kyberStorage.setContracts(feeHandler, zeroAddress, {from: network}),
+                kyberStorage.setContracts(feeHandlerAddr, zeroAddress, {from: network}),
                 "matchingEngine 0"
             );
         });
@@ -197,6 +222,24 @@ contract('KyberStorage', function(accounts) {
                 kyberStorage.setDAOContract(zeroAddress, {from: network}),
                 "kyberDAO 0"
             );
+        });
+
+        it("set and get contracts history", async() =>{
+            await kyberStorage.setDAOContract(DAOAddr, { from: network});
+            await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
+            // get and set second dao, matchingEngine, feeHandler contracts
+
+            let DAOAddr2 = accounts[8];
+            let feeHandlerAddr2 = accounts[9];
+            let matchingEngineAddr2 = accounts[10];
+            await kyberStorage.setDAOContract(DAOAddr2, { from: network});
+            await kyberStorage.setContracts(feeHandlerAddr2, matchingEngineAddr2, { from: network });
+
+
+            let result= await kyberStorage.getContracts();
+            Helper.assertEqualArray(result.daoAddresses, [DAOAddr2, DAOAddr], "unexpected dao history");
+            Helper.assertEqualArray(result.matchingEngineAddresses, [matchingEngineAddr2, matchingEngineAddr], "unexpected match engine history");
+            Helper.assertEqualArray(result.feeHandlerAddresses, [feeHandlerAddr2, feeHandlerAddr], "unexpected fee handler history");
         });
     });
 
@@ -215,19 +258,25 @@ contract('KyberStorage', function(accounts) {
             await kyberStorage.addKyberProxy(proxy1, maxProxies, {from: network});
             await kyberStorage.addKyberProxy(proxy2, maxProxies, {from: network});
 
+            assert(await kyberStorage.isKyberProxyAdded(), "proxy is not added");
+
             await expectRevert(
                 kyberStorage.addKyberProxy(proxy3, maxProxies, {from: network}),
                 "max proxies limit reached"
             );
+
+            proxies = await kyberStorage.getKyberProxies();
+            Helper.assertEqualArray(proxies, [proxy1, proxy2], "unexpected proxies");
         });
 
-        if("test removeKyberProxy revert if not added", async() => {
+        it("test remove proxy revert if not added", async() => {
+            await kyberStorage.addKyberProxy(proxy2, maxProxies, {from: network});
             await expectRevert(
-                kyberStorage.removeKyberProxy(proxy1, maxProxies, {from: network}),
+                kyberStorage.removeKyberProxy(proxy1, {from: network}),
                 "proxy not found"
             );
             await kyberStorage.addKyberProxy(proxy1, maxProxies, {from: network});
-            await kyberStorage.removeKyberProxy(proxy1, maxProxies, {from: network});
+            await kyberStorage.removeKyberProxy(proxy1, {from: network});
         });
 
         it("test only admin can add proxies", async() => {
@@ -298,10 +347,47 @@ contract('KyberStorage', function(accounts) {
                 await kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, {from: network});
                 let actualNewReserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 0);
                 let actualOldReserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 1);
+                assert(await kyberStorage.convertReserveIdToAddress(reserve.reserveId) == newReserve.address, "new reserve address not equal to expected");
 
                 Helper.assertEqual(newReserve.address, actualNewReserveAddress, "new reserve address not equal to expected");
                 Helper.assertEqual(reserve.address, actualOldReserveAddress, "old reserve address not equal to expected");
             })
+        });
+
+        
+        it("test get reserve method", async() => {
+            // setup storage and reserve
+            let kyberStorage = await KyberStorage.new(admin);
+            await kyberStorage.setNetworkContract(network, {from: admin});
+            // set up 1 mock reserve and 1 fpr reserve, 1 with fee and 1 not
+            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            let result = await nwHelper.setupReserves({address: network}, [token], 1,1,0,0, accounts, admin, operator);
+            let reserveInstances = result.reserveInstances;
+            let reserveAddresses= [];
+            let reserveIds = [];
+            let reserveFeeData = [];
+            // add all reserve to network
+            for (const value of Object.values(reserveInstances)) {
+                let reserve = value;
+                if (reserve.type = "TYPE_MOCK") {
+                    reserve.onChainType = ReserveType.UTILITY;
+                }
+                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                reserveAddresses.push(reserve.address);
+                reserveIds.push(reserve.reserveId);
+                reserveFeeData.push(reserve.type != "TYPE_MOCK");
+
+                assert(await kyberStorage.convertReserveAddresstoId(reserve.address) == reserve.reserveId, "unexpected reserveId");
+                assert(await kyberStorage.convertReserveIdToAddress(reserve.reserveId) == reserve.address, "unexpected reserveId");
+                let reserveData = await kyberStorage.getReserveDetailsById(reserve.reserveId);
+                assert(reserveData.reserveAddress == reserve.address, "unexpected reserve address");
+                assert(reserveData.resType == reserve.onChainType, "unexpected reserve on chain type");
+                assert(reserveData.isFeeAccountedFlags == (reserve.type != "TYPE_MOCK"), "unexpected fee accounted flag");
+            }
+            Helper.assertEqualArray(await kyberStorage.getReserves(), reserveAddresses, "unexpected reserve addresses");
+            Helper.assertEqualArray(await kyberStorage.convertReserveAddressestoIds(reserveAddresses), reserveIds);
+            Helper.assertEqualArray(await kyberStorage.convertReserveIdsToAddresses(reserveIds), reserveAddresses);
+            Helper.assertEqualArray(await kyberStorage.getFeeAccountedData(reserveIds), reserveFeeData);
         });
     });
 
@@ -310,14 +396,14 @@ contract('KyberStorage', function(accounts) {
             kyberStorage = await KyberStorage.new(admin);
             await kyberStorage.setNetworkContract(network, {from: admin});
             await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-            //init 1 mock reserve
-            let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
+            //init 2 mock reserve
+            let result = await nwHelper.setupReserves(network, [], 2,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
             numReserves = result.numAddedReserves * 1;
             for (const value of Object.values(reserveInstances)) {
                 reserve = value;
+                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
             }
-            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
 
             //create token
             token = await TestToken.new("test", "tst", 18);
