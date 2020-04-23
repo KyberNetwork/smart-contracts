@@ -214,6 +214,7 @@ contract('KyberMatchingEngine', function(accounts) {
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             await storage.setNetworkContract(network, {from: admin});
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, accounts[9], storage.address, {from: admin});
@@ -233,6 +234,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 numReserves = result.numAddedReserves * 1;
 
                 await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+                await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -287,7 +289,7 @@ contract('KyberMatchingEngine', function(accounts) {
             });
         });
 
-        describe("3 mock reserves (all feeless)", async() => {
+        describe("3 mock reserves (all feeless and not entitled rebates)", async() => {
             before("setup reserves", async() => {
                 //init 3 mock reserves
                 let result = await nwHelper.setupReserves(network, [srcToken, destToken], 3,0,0,0, accounts, admin, operator);
@@ -296,6 +298,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
                 //set fee accounted to false
                 await storage.setFeeAccountedPerReserveType(false, false, false, false, false, false, {from: admin});
+                await storage.setEntitledRebatePerReserveType(false, false, false, false, false, false, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -358,6 +361,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 numReserves = result.numAddedReserves * 1;
 
                 await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+                await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
 
                 //set zero rates
                 for ([key, reserve] of Object.entries(reserveInstances)) {
@@ -416,6 +420,7 @@ contract('KyberMatchingEngine', function(accounts) {
             await matchingEngine.setNetworkContract(network, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             await storage.setNetworkContract(network, {from: admin});
 
             //init 2 tokens
@@ -425,7 +430,7 @@ contract('KyberMatchingEngine', function(accounts) {
             destToken = await TestToken.new("destToken", "DEST", destDecimals);
         });
 
-        describe("4 mock reserves, all feeAccounting by default", async() => {
+        describe("4 mock reserves, all feeAccounting and entitledRebate by default", async() => {
             before("setup reserves", async() => {
                 //init 3 mock reserves
                 let result = await nwHelper.setupReserves(network, [srcToken, destToken], 3,0,0,0, accounts, admin, operator);
@@ -433,6 +438,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 numReserves = result.numAddedReserves * 1;
 
                 await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+                await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -458,7 +464,6 @@ contract('KyberMatchingEngine', function(accounts) {
             });
 
             it("should get the reserve indexes for T2E", async() => {
-                // for (let i
             });
         });
     });
@@ -471,6 +476,7 @@ contract('KyberMatchingEngine', function(accounts) {
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
             await storage.setNetworkContract(network, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);
@@ -479,7 +485,7 @@ contract('KyberMatchingEngine', function(accounts) {
             destToken = await TestToken.new("destToken", "DEST", destDecimals);
         });
 
-        describe("3 mock reserves (all fee accounted)", async() => {
+        describe("3 mock reserves (all fee accounted and entitled rebates)", async() => {
             before("setup reserves", async() => {
                 //init 3 mock reserves
                 let result = await nwHelper.setupReserves(network, [srcToken, destToken], 3,0,0,0, accounts, admin, operator);
@@ -487,6 +493,7 @@ contract('KyberMatchingEngine', function(accounts) {
                 numReserves = result.numAddedReserves * 1;
 
                 await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+                await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
@@ -513,7 +520,8 @@ contract('KyberMatchingEngine', function(accounts) {
                     res = await storage.getReserveDetailsByAddress(reserve.address);
                     Helper.assertEqual(reserve.reserveId, res.reserveId);
                     Helper.assertEqual(reserve.onChainType, res.resType);
-                    Helper.assertEqual(true, res.isFeeAccountedFlags);
+                    Helper.assertEqual(true, res.isFeeAccountedFlag);
+                    Helper.assertEqual(true, res.isEntitledRebateFlag);
                 }
             });
 

@@ -73,7 +73,8 @@ contract IKyberStorage {
         returns (
             bytes32 reserveId,
             ReserveType resType,
-            bool isFeeAccountedFlags
+            bool isFeeAccountedFlag,
+            bool isEntitledRebateFlag
         );
 
     function getReserveDetailsById(bytes32 reserveId)
@@ -82,13 +83,24 @@ contract IKyberStorage {
         returns (
             address reserveAddress,
             ReserveType resType,
-            bool isFeeAccountedFlags
+            bool isFeeAccountedFlag,
+            bool isEntitledRebateFlag
         );
 
     function getFeeAccountedData(bytes32[] calldata reserveIds)
         external
         view
         returns (bool[] memory feeAccountedArr);
+
+    function getEntitledRebateData(bytes32[] calldata reserveIds)
+        external
+        view
+        returns (bool[] memory entitledRebateArr);
+
+    function getFeeAccountedAndEntitledRebateData(bytes32[] calldata reserveIds)
+        external
+        view
+        returns (bool[] memory feeAccountedArr, bool[] memory entitledRebateArr);
 
     function isKyberProxyAdded() external view returns (bool);
 }

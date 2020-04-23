@@ -180,6 +180,8 @@ async function setupNetwork
     await matchingEngine.setNetworkContract(network.address, { from: admin });
     await matchingEngine.setKyberStorage(storage.address, {from : admin});
     await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+    await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+
     let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
     await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
     // set DAO contract
