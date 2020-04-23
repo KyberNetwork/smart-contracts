@@ -13,13 +13,13 @@ module.exports = {
   },
 
   solc: {
-    version: "0.5.11",
+    version: "0.6.6",
     optimizer: require("./solcOptimiserSettings.js")
   },
 
   paths: {
-    sources: "./contractsSol5",
-    tests: "./test",
+    sources: "./contracts/sol6",
+    tests: "./test/sol6",
   },
 
   mocha: {

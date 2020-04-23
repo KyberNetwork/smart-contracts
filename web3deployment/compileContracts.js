@@ -1,17 +1,23 @@
 const fs = require("fs-extra");
 const path = require("path");
 const solc = require("solc");
-const contractsSol4Path = path.join(__dirname, "../contracts/");
-const contractsSol5Path = path.join(__dirname, "../contractsSol5/");
+const contractsSol4Path = path.join(__dirname, "../contracts/sol4/");
+const contractsSol5Path = path.join(__dirname, "../contracts/sol5/");
+const contractsSol6Path = path.join(__dirname, "../contracts/sol6/");
 const solc418 = "v0.4.18+commit.9cf6e910";
 const solc511 = "v0.5.11+commit.c082d0b4";
+const solc66 = "v0.6.6+commit.6c089d02";
 const solc418Path = path.join(
   __dirname,
-  "./compilers/soljson-v0.4.18+commit.9cf6e910.js"
+  "./compilers/soljson-" + solc418 + ".js"
 );
 const solc511Path = path.join(
   __dirname,
-  "./compilers/soljson-v0.5.11+commit.c082d0b4.js"
+  "./compilers/soljson-" + solc511 + ".js"
+);
+const solc66Path = path.join(
+  __dirname,
+  "./compilers/soljson-" + solc66 + ".js"
 );
 let compiler;
 
@@ -60,7 +66,8 @@ const sol4SourceFiles = {
     ),
   },
   "ERC20Interface.sol": {
-    content: fs.readFileSync(contractsSol4Path + "ERC20Interface.sol", "utf8"),
+    content: fs.readFileSync(
+      contractsSol4Path + "ERC20Interface.sol","utf8"),
   },
   "KyberNetworkInterface.sol": {
     content: fs.readFileSync(
@@ -231,128 +238,38 @@ const sol4SourceFiles = {
 };
 
 const sol5SourceFiles = {
-  "Address.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "utils/zeppelin/Address.sol",
-      "utf8"
-    ),
+  "Eth2DaiReserve.sol": {
+    content: fs.readFileSync(contractsSol5Path + "/bridges/eth2dai/Eth2DaiReserve.sol", "utf8"),
   },
-  "EpochUtils.sol": {
-    content: fs.readFileSync(contractsSol5Path + "Dao/EpochUtils.sol", "utf8"),
-  },
-  "GasHelper.sol": {
-    content: fs.readFileSync(contractsSol5Path + "mock/GasHelper.sol", "utf8"),
-  },
-  "IGasHelper.sol": {
-    content: fs.readFileSync(contractsSol5Path + "IGasHelper.sol", "utf8"),
+  "IBancorNetwork.sol": {
+    content: fs.readFileSync(contractsSol5Path + "/bridges/bancor/mock/IBancorNetwork.sol", "utf8"),
   },
   "IERC20.sol": {
     content: fs.readFileSync(contractsSol5Path + "IERC20.sol", "utf8"),
   },
-  "IBurnableToken.sol": {
-    content: fs.readFileSync(contractsSol5Path + "IBurnableToken.sol", "utf8"),
-  },
-  "IKyberFeeHandler.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "IKyberFeeHandler.sol",
-      "utf8"
-    ),
-  },
-  "IKyberDAO.sol": {
-    content: fs.readFileSync(contractsSol5Path + "IKyberDAO.sol", "utf8"),
-  },
-  "IKyberHint.sol": {
-    content: fs.readFileSync(contractsSol5Path + "IKyberHint.sol", "utf8"),
-  },
-  "IKyberNetwork.sol": {
-    content: fs.readFileSync(contractsSol5Path + "IKyberNetwork.sol", "utf8"),
-  },
-  "IKyberNetworkProxy.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "IKyberNetworkProxy.sol",
-      "utf8"
-    ),
-  },
-  "IKyberRateHelper.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "IKyberRateHelper.sol",
-      "utf8"
-    ),
-  },
   "IKyberReserve.sol": {
     content: fs.readFileSync(contractsSol5Path + "IKyberReserve.sol", "utf8"),
   },
-  "IKyberMatchingEngine.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "IKyberMatchingEngine.sol",
-      "utf8"
-    ),
+  "IOtc.sol": {
+    content: fs.readFileSync(contractsSol5Path + "/bridges/eth2dai/mock/IOtc.sol", "utf8"),
   },
-  "IKyberStaking.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "Dao/IKyberStaking.sol",
-      "utf8"
-    ),
+  "KyberBancorReserve.sol": {
+    content: fs.readFileSync(contractsSol5Path + "/bridges/bancor/KyberBancorReserve.sol", "utf8"),
   },
-  "IKyberStorage.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "IKyberStorage.sol",
-      "utf8"
-    ),
+  "mock/IBancorNetwork.sol": {
+    content: fs.readFileSync(contractsSol5Path + "/bridges/bancor/mock/IBancorNetwork.sol", "utf8"),
   },
-  "ISanityRate.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "ISanityRate.sol",
-      "utf8"
-    ),
+  "mock/IOtc.sol": {
+    content: fs.readFileSync(contractsSol5Path + "/bridges/eth2dai/mock/IOtc.sol", "utf8"),
   },
-  "ISimpleKyberProxy.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "ISimpleKyberProxy.sol",
-      "utf8"
-    ),
+  "mock/Token.sol": {
+    content: fs.readFileSync(contractsSol5Path + "/mock/Token.sol", "utf8"),
   },
-  "KyberDAO.sol": {
-    content: fs.readFileSync(contractsSol5Path + "Dao/KyberDAO.sol", "utf8"),
+  "MockBancorNetwork.sol": {
+    content: fs.readFileSync(contractsSol5Path + "/bridges/bancor/mock/MockBancorNetwork.sol", "utf8"),
   },
-  "KyberFeeHandler.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "Dao/KyberFeeHandler.sol",
-      "utf8"
-    ),
-  },
-  "KyberHintHandler.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "KyberHintHandler.sol",
-      "utf8"
-    ),
-  },
-  "KyberNetwork.sol": {
-    content: fs.readFileSync(contractsSol5Path + "KyberNetwork.sol", "utf8"),
-  },
-  "KyberNetworkProxy.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "KyberNetworkProxy.sol",
-      "utf8"
-    ),
-  },
-  "KyberMatchingEngine.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "KyberMatchingEngine.sol",
-      "utf8"
-    ),
-  },
-  "KyberStaking.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "Dao/KyberStaking.sol",
-      "utf8"
-    ),
-  },
-  "KyberStorage.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "KyberStorage.sol",
-      "utf8"
-    ),
+  "MockOtcOrderbook.sol": {
+    content: fs.readFileSync(contractsSol5Path + "/bridges/eth2dai/mock/MockOtcOrderbook.sol", "utf8"),
   },
   "PermissionGroups2.sol": {
     content: fs.readFileSync(
@@ -360,45 +277,9 @@ const sol5SourceFiles = {
       "utf8"
     ),
   },
-  "PermissionGroupsNoModifiers.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "utils/PermissionGroupsNoModifiers.sol",
-      "utf8"
-    ),
-  },
-  "ReentrancyGuard.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "utils/zeppelin/ReentrancyGuard.sol",
-      "utf8"
-    ),
-  },
-  "SafeERC20.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "utils/zeppelin/SafeERC20.sol",
-      "utf8"
-    ),
-  },
-  "SafeMath.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "utils/zeppelin/SafeMath.sol",
-      "utf8"
-    ),
-  },
-  "utils/zeppelin/Address.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "utils/zeppelin/Address.sol",
-      "utf8"
-    ),
-  },
   "utils/PermissionGroups2.sol": {
     content: fs.readFileSync(
       contractsSol5Path + "utils/PermissionGroups2.sol",
-      "utf8"
-    ),
-  },
-  "utils/PermissionGroupsNoModifiers.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "utils/PermissionGroupsNoModifiers.sol",
       "utf8"
     ),
   },
@@ -411,48 +292,213 @@ const sol5SourceFiles = {
       "utf8"
     ),
   },
+  "Utils4.sol": {
+    content: fs.readFileSync(contractsSol5Path + "utils/Utils4.sol", "utf8"),
+  },
+  "WethToken.sol": {
+    content: fs.readFileSync(contractsSol5Path + "/bridges/eth2dai/mock/WethToken.sol", "utf8"),
+  },
+  "Withdrawable2.sol": {
+    content: fs.readFileSync(
+      contractsSol5Path + "utils/Withdrawable2.sol",
+      "utf8"
+    ),
+  }
+};
+
+const sol6SourceFiles = {
+  "Address.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "utils/zeppelin/Address.sol",
+      "utf8"
+    ),
+  },
+  "EpochUtils.sol": {
+    content: fs.readFileSync(contractsSol6Path + "Dao/EpochUtils.sol", "utf8"),
+  },
+  "GasHelper.sol": {
+    content: fs.readFileSync(contractsSol6Path + "mock/GasHelper.sol", "utf8"),
+  },
+  "IGasHelper.sol": {
+    content: fs.readFileSync(contractsSol6Path + "IGasHelper.sol", "utf8"),
+  },
+  "IERC20.sol": {
+    content: fs.readFileSync(contractsSol6Path + "IERC20.sol", "utf8"),
+  },
+  "IBurnableToken.sol": {
+    content: fs.readFileSync(contractsSol6Path + "IBurnableToken.sol", "utf8"),
+  },
+  "IKyberFeeHandler.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "IKyberFeeHandler.sol",
+      "utf8"
+    ),
+  },
+  "IKyberDAO.sol": {
+    content: fs.readFileSync(contractsSol6Path + "IKyberDAO.sol", "utf8"),
+  },
+  "IKyberHint.sol": {
+    content: fs.readFileSync(contractsSol6Path + "IKyberHint.sol", "utf8"),
+  },
+  "IKyberNetwork.sol": {
+    content: fs.readFileSync(contractsSol6Path + "IKyberNetwork.sol", "utf8"),
+  },
+  "IKyberNetworkProxy.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "IKyberNetworkProxy.sol",
+      "utf8"
+    ),
+  },
+  "IKyberRateHelper.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "IKyberRateHelper.sol",
+      "utf8"
+    ),
+  },
+  "IKyberReserve.sol": {
+    content: fs.readFileSync(contractsSol6Path + "IKyberReserve.sol", "utf8"),
+  },
+  "IKyberMatchingEngine.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "IKyberMatchingEngine.sol",
+      "utf8"
+    ),
+  },
+  "IKyberStaking.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "Dao/IKyberStaking.sol",
+      "utf8"
+    ),
+  },
+  "IKyberStorage.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "IKyberStorage.sol",
+      "utf8"
+    ),
+  },
+  "ISanityRate.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "ISanityRate.sol",
+      "utf8"
+    ),
+  },
+  "ISimpleKyberProxy.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "ISimpleKyberProxy.sol",
+      "utf8"
+    ),
+  },
+  "KyberDAO.sol": {
+    content: fs.readFileSync(contractsSol6Path + "Dao/KyberDAO.sol", "utf8"),
+  },
+  "KyberFeeHandler.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "Dao/KyberFeeHandler.sol",
+      "utf8"
+    ),
+  },
+  "KyberHintHandler.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "KyberHintHandler.sol",
+      "utf8"
+    ),
+  },
+  "KyberNetwork.sol": {
+    content: fs.readFileSync(contractsSol6Path + "KyberNetwork.sol", "utf8"),
+  },
+  "KyberNetworkProxy.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "KyberNetworkProxy.sol",
+      "utf8"
+    ),
+  },
+  "KyberMatchingEngine.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "KyberMatchingEngine.sol",
+      "utf8"
+    ),
+  },
+  "KyberStaking.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "Dao/KyberStaking.sol",
+      "utf8"
+    ),
+  },
+  "KyberStorage.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "KyberStorage.sol",
+      "utf8"
+    ),
+  },
+  "PermissionGroupsNoModifiers.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "utils/PermissionGroupsNoModifiers.sol",
+      "utf8"
+    ),
+  },
+  "ReentrancyGuard.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "utils/zeppelin/ReentrancyGuard.sol",
+      "utf8"
+    ),
+  },
+  "SafeERC20.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "utils/zeppelin/SafeERC20.sol",
+      "utf8"
+    ),
+  },
+  "SafeMath.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "utils/zeppelin/SafeMath.sol",
+      "utf8"
+    ),
+  },
+  "utils/zeppelin/Address.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "utils/zeppelin/Address.sol",
+      "utf8"
+    ),
+  },
+  "utils/PermissionGroupsNoModifiers.sol": {
+    content: fs.readFileSync(
+      contractsSol6Path + "utils/PermissionGroupsNoModifiers.sol",
+      "utf8"
+    ),
+  },
+  "utils/Utils5.sol": {
+    content: fs.readFileSync(contractsSol6Path + "utils/Utils5.sol", "utf8"),
+  },
   "utils/WithdrawableNoModifiers.sol": {
     content: fs.readFileSync(
-      contractsSol5Path + "utils/WithdrawableNoModifiers.sol",
+      contractsSol6Path + "utils/WithdrawableNoModifiers.sol",
       "utf8"
     ),
   },
   "utils/zeppelin/SafeERC20.sol": {
     content: fs.readFileSync(
-      contractsSol5Path + "utils/zeppelin/SafeERC20.sol",
+      contractsSol6Path + "utils/zeppelin/SafeERC20.sol",
       "utf8"
     ),
   },
   "utils/zeppelin/SafeMath.sol": {
     content: fs.readFileSync(
-      contractsSol5Path + "utils/zeppelin/SafeMath.sol",
+      contractsSol6Path + "utils/zeppelin/SafeMath.sol",
       "utf8"
     ),
   },
   "utils/zeppelin/ReentrancyGuard.sol": {
     content: fs.readFileSync(
-      contractsSol5Path + "utils/zeppelin/ReentrancyGuard.sol",
+      contractsSol6Path + "utils/zeppelin/ReentrancyGuard.sol",
       "utf8"
     ),
   },
-  "Utils4.sol": {
-    content: fs.readFileSync(contractsSol5Path + "utils/Utils4.sol", "utf8"),
-  },
-  "Withdrawable2.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "utils/Withdrawable2.sol",
-      "utf8"
-    ),
-  },
-  "Withdrawable2.sol": {
-    content: fs.readFileSync(
-      contractsSol5Path + "utils/Withdrawable2.sol",
-      "utf8"
-    ),
+  "Utils5.sol": {
+    content: fs.readFileSync(contractsSol6Path + "utils/Utils5.sol", "utf8"),
   },
   "WithdrawableNoModifiers.sol": {
     content: fs.readFileSync(
-      contractsSol5Path + "utils/WithdrawableNoModifiers.sol",
+      contractsSol6Path + "utils/WithdrawableNoModifiers.sol",
       "utf8"
     ),
   }
@@ -525,6 +571,10 @@ async function compileContracts(versionNum) {
     solcVersionNum = solc511;
     solcPath = solc511Path;
     sourceFiles = sol5SourceFiles;
+  } else if (versionNum == "sol6") {
+    solcVersionNum = solc66;
+    solcPath = solc66Path;
+    sourceFiles = sol6SourceFiles;
   } else {
     console.log(`invalid version number ${versionNum}`);
     process.exit(0);
@@ -549,12 +599,18 @@ async function compileSol5Contracts() {
   return await compileContracts("sol5");
 }
 
+module.exports.compileSol6Contracts = compileSol6Contracts;
+async function compileSol6Contracts() {
+  return await compileContracts("sol6");
+}
+
 module.exports.compileAllContracts = main;
 async function main() {
   let output = {contracts: {}, sources: {}};
   let v4Output = await compileContracts("sol4");
   let v5Output = await compileContracts("sol5");
-  return [v4Output, v5Output];
+  let v6Output = await compileContracts("sol6");
+  return [v4Output, v5Output, v6Output];
 }
 
 main();

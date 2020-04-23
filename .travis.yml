@@ -16,15 +16,17 @@ env:
 matrix:
   include:
     - env:
-        - TEST_PART: Sol5
+        - TEST_PART: Sol6
     - env:
         - TEST_PART: Coverage
 
 install:
   - npm ci
 
+before script:
+  - npx solhint contracts/sol6/**/*.sol
+
 script:
-  - npx solhint contractsSol5/**/**.sol
   - ./cmp.sh
   - .travis/test-part.sh
 
