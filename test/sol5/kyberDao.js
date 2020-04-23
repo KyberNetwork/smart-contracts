@@ -2901,7 +2901,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
     });
 
-    it("Test vote before start block", async function() {
+    it("Test vote before start timestamp", async function() {
       await deployContracts(10, currentBlock + 40, 10);
       await setupSimpleStakingData();
       await stakingContract.delegate(poolMaster, {from: victor});

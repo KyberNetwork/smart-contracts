@@ -26,7 +26,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     mapping(uint256 => mapping(address => StakerData)) internal stakerPerEpochData;
     // latest data of a staker, including stake, delegated stake, delegated address
     mapping(address => StakerData) internal stakerLatestData;
-    // bool for control if we have init data for an epoch + an address
+    // true/false: if we have inited data at an epoch for a staker
     mapping(uint256 => mapping(address => bool)) internal hasInited;
 
     event DAOAddressSet(address _daoAddress);
@@ -102,7 +102,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         uint256 updatedStake = stakerPerEpochData[curEpoch + 1][staker].stake;
 
-        // reduce delegatedStake for curDelegatedAddr if needed
+        // reduce delegatedStake for curDAddr if needed
         if (curDAddr != staker) {
             initDataIfNeeded(curDAddr, curEpoch);
             // by right, delegatedStake should be greater than updatedStake
@@ -120,7 +120,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         stakerLatestData[staker].delegatedAddress = dAddr;
         stakerPerEpochData[curEpoch + 1][staker].delegatedAddress = dAddr;
 
-        // ignore if S delegated back to himself
+        // ignore if staker is delegating back to himself
         if (dAddr != staker) {
             initDataIfNeeded(dAddr, curEpoch);
             stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake =
@@ -139,11 +139,11 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
      */
     function deposit(uint256 amount) external {
         require(amount > 0, "deposit: amount to deposit should be positive");
-        // compute epoch number
+
         uint256 curEpoch = getCurrentEpochNumber();
         address staker = msg.sender;
 
-        // collect KNC token from sender
+        // collect KNC token from staker
         require(
             kncToken.transferFrom(staker, address(this), amount),
             "deposit: can not get token"
@@ -156,7 +156,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         stakerLatestData[staker].stake =
             stakerLatestData[staker].stake.add(amount);
 
-        // increase delegated stake for address that S has delegated to (if it is not S)
+        // increase delegated stake for address that staker has delegated to (if it is not staker)
         address dAddr = stakerPerEpochData[curEpoch + 1][staker].delegatedAddress;
         if (dAddr != staker) {
             initDataIfNeeded(dAddr, curEpoch);
@@ -199,7 +199,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         stakerLatestData[staker].stake = stakerLatestData[staker].stake.sub(amount);
 
-        // transfer KNC back to user
+        // transfer KNC back to staker
         require(kncToken.transfer(staker, amount), "withdraw: can not transfer knc to the sender");
         emit Withdraw(curEpoch, staker, amount);
     }
@@ -232,9 +232,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @dev  in DAO contract, if user wants to claim reward for past epoch,
+     * @dev  in DAO contract, if staker wants to claim reward for past epoch,
      *       we must know the staker's data for that epoch
-     *       if the data has not been inited, it means user hasn't done any action -> no reward
+     *       if the data has not been inited, it means staker hasn't done any action -> no reward
      */
     function getStakerDataForPastEpoch(address staker, uint256 epoch)
         external
@@ -348,7 +348,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     ) public {
         require(msg.sender == address(this), "only staking contract can call this function");
         initDataIfNeeded(staker, curEpoch);
-        // update latest stake will be done after this function
+        // Note: update latest stake will be done after this function
+        // update staker's data for next epoch
         stakerPerEpochData[curEpoch + 1][staker].stake =
             stakerPerEpochData[curEpoch + 1][staker].stake.sub(amount);
 
@@ -361,7 +362,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         if (reduceAmount > 0) {
             if (dAddr != staker) {
                 initDataIfNeeded(dAddr, curEpoch);
-                // S has delegated to dAddr, withdraw will affect his stakes + dAddr's delegated stakes
+                // staker has delegated to dAddr, withdraw will affect dAddr's delegated stakes
                 stakerPerEpochData[curEpoch][dAddr].delegatedStake =
                     stakerPerEpochData[curEpoch][dAddr].delegatedStake.sub(reduceAmount);
             }
@@ -392,7 +393,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @dev init data if it has not been init
+     * @dev init data if it has not been inited yet
      * @param staker staker's address to init
      * @param epoch should be current epoch
      */
@@ -415,8 +416,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
             stakerData.stake = lStakeBal;
         }
 
-        // whenever users deposit/withdraw/delegate, the current and next epoch data need to be updated
-        // as the result, we will also need to init data for staker at the next epoch
+        // whenever stakers deposit/withdraw/delegate, the current and next epoch data need to be updated
+        // as the result, we will also init data for staker at the next epoch
         if (!hasInited[epoch + 1][staker]) {
             hasInited[epoch + 1][staker] = true;
             StakerData storage nextEpochStakerData = stakerPerEpochData[epoch + 1][staker];
