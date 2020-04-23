@@ -1950,7 +1950,7 @@ contract('KyberNetwork', function(accounts) {
     })
 
 
-    describe("test big trade", async() => {
+    describe("test maximum trade quantity", async() => {
         let srcToken;
         let destToken;
         let normalToken;
@@ -2028,9 +2028,16 @@ contract('KyberNetwork', function(accounts) {
             }
         });
 
-        it("test t2e success with max_qty", async() => {
+        it("test t2e success with max_qty, normal rate", async() => {
             let initBalance = await Helper.getBalancePromise(taker);
-            await normalToken.transfer(network.address, MAX_QTY);
+            await normalToken.transfer(network.address, MAX_QTY.add(new BN(1)));
+            await expectRevert(
+                network.tradeWithHintAndFee(kyberProxy, normalToken.address, MAX_QTY.add(new BN(1)), ethAddress, taker,
+                    maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
+                    { from: kyberProxy }
+                ), "srcAmt > MAX_QTY"
+            );
+
             await network.tradeWithHintAndFee(kyberProxy, normalToken.address, MAX_QTY, ethAddress, taker,
                 maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
                 { from: kyberProxy }
@@ -2039,19 +2046,15 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(MAX_QTY.div(new BN(10)), afterBalance.sub(initBalance), "expected balance is not match");
         });
 
-        it("test t2t success with max_qty", async() => {
-            let initBalance = await Helper.getBalancePromise(taker);
-            await normalToken.transfer(network.address, MAX_QTY);
-            await network.tradeWithHintAndFee(kyberProxy, normalToken.address, MAX_QTY, ethAddress, taker,
-                maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
-                { from: kyberProxy }
-            );
-            let afterBalance = await Helper.getBalancePromise(taker);
-            Helper.assertEqual(MAX_QTY.div(new BN(10)), afterBalance.sub(initBalance), "expected balance is not match");
-        });
-
-        it("test e2t success with max_qty", async() => {
+        it("test e2t success with max_qty, normal rate", async() => {
             let initBalance = await normalToken.balanceOf(taker);
+            await expectRevert(
+                network.tradeWithHintAndFee(kyberProxy, ethAddress, MAX_QTY.div(new BN(10)).add(new BN(1)), normalToken.address, taker,
+                    maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
+                    { value: MAX_QTY.div(new BN(10)).add(new BN(1)), from: kyberProxy }
+                ), "destAmount > MAX_QTY"
+            );
+
             await network.tradeWithHintAndFee(kyberProxy, ethAddress, MAX_QTY.div(new BN(10)), normalToken.address, taker,
                 maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
                 { value: MAX_QTY.div(new BN(10)), from: kyberProxy }
@@ -2060,7 +2063,7 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(MAX_QTY, afterBalance.sub(initBalance), "expected balance is not match");
         });
 
-        it("test t2t success with max_qty", async() => {
+        it("test t2t success with max_qty, normal rate", async() => {
             let initBalance = await normalToken2.balanceOf(taker);
             await normalToken.transfer(network.address, MAX_QTY);
             await network.tradeWithHintAndFee(kyberProxy, normalToken.address, MAX_QTY, normalToken2.address, taker,
@@ -2072,6 +2075,8 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("test e2t revert with max_rate max_qty empty hint", async() => {
+            // here we reach max DestAmount because dstAmount = calcDestQty(maxQty, 18, 36, MaxRate)
+            // failed at calcRateFromQty for E2T
             await expectRevert(
                 network.tradeWithHintAndFee(kyberProxy, ethAddress, MAX_QTY, destToken.address, taker,
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
@@ -2083,7 +2088,8 @@ contract('KyberNetwork', function(accounts) {
 
         it("test t2e revert with max_rate max_qty empty hint", async() => {
             srcToken.transfer(network.address, MAX_QTY);
-            // failed at calDstQty for E2E
+            // here we reach max DestAmount because dstAmount = calcDestQty(maxQty, 0, 18, MaxRate)
+            // failed at calDstQty for destAmountWithNetworkFee
             await expectRevert(
                 network.tradeWithHintAndFee(kyberProxy, srcToken.address, MAX_QTY, ethAddress, taker,
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
@@ -2096,6 +2102,8 @@ contract('KyberNetwork', function(accounts) {
         it("test e2t revert with max_rate max_qty split trade", async() => {
             hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, 
                 ethAddress, destToken.address, MAX_QTY);
+            // here we reach max DestAmount because dstAmount = calcDestQty(maxQty, 18, 36, MaxRate)
+            // failed at calcRateFromQty for E2T
             await expectRevert(
                 network.tradeWithHintAndFee(kyberProxy, ethAddress, MAX_QTY, destToken.address, taker,
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), hint, 
@@ -2108,7 +2116,8 @@ contract('KyberNetwork', function(accounts) {
         it("test t2e revert with max_rate max_qty split trade", async() => {
             hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, 
                 srcToken.address, ethAddress, MAX_QTY);
-            // failed at calDstQty for E2E
+            // here we reach max DestAmount because dstAmount = calcDestQty(maxQty, 0, 18, MaxRate)
+            // failed at calDstQty for destAmountWithNetworkFee
             await expectRevert(
                 network.tradeWithHintAndFee(kyberProxy, srcToken.address, MAX_QTY, ethAddress, taker,
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), hint, 
@@ -2118,7 +2127,7 @@ contract('KyberNetwork', function(accounts) {
             );
         });
 
-        it("test t2e revert with max_rate max_qty split trade", async() => {
+        it("test t2t revert with max_rate max_qty split trade", async() => {
             hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, 
                 srcToken.address, destToken.address, new BN(2));
             srcToken.transfer(network.address, new BN(2));
