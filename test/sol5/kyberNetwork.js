@@ -1981,6 +1981,7 @@ contract('KyberNetwork', function(accounts) {
             await matchingEngine.setNetworkContract(network.address, { from: admin });
             await matchingEngine.setKyberStorage(storage.address, {from : admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+            await storage.setEntitledRebatePerReserveType(true, true, true, false, true, true, { from: admin });
             // setup DAO and feeHandler 
             let DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
             await DAO.setNetworkFeeBps(new BN(0));
