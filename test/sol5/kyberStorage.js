@@ -52,6 +52,7 @@ contract('KyberStorage', function(accounts) {
             kyberStorage = await KyberStorage.new(admin);
             await kyberStorage.setNetworkContract(network, { from: admin});
             await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             token = await TestToken.new("test", "tst", 18);
 
             //init 1 mock reserve
@@ -302,6 +303,7 @@ contract('KyberStorage', function(accounts) {
             kyberStorage = await KyberStorage.new(admin);
             await kyberStorage.setNetworkContract(network, {from: admin});
             await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
             numReserves = result.numAddedReserves * 1;
@@ -364,11 +366,14 @@ contract('KyberStorage', function(accounts) {
             await kyberStorage.setNetworkContract(network, {from: admin});
             // set up 1 mock reserve and 1 fpr reserve, 1 with fee and 1 not
             await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await kyberStorage.setEntitledRebatePerReserveType(true, true, true, false, true, true, {from: admin});
             let result = await nwHelper.setupReserves({address: network}, [token], 1,1,0,0, accounts, admin, operator);
             let reserveInstances = result.reserveInstances;
             let reserveAddresses= [];
             let reserveIds = [];
             let reserveFeeData = [];
+            let reserveRebateData = [];
+
             // add all reserve to network
             for (const value of Object.values(reserveInstances)) {
                 let reserve = value;
@@ -379,18 +384,24 @@ contract('KyberStorage', function(accounts) {
                 reserveAddresses.push(reserve.address);
                 reserveIds.push(reserve.reserveId);
                 reserveFeeData.push(reserve.type != "TYPE_MOCK");
+                reserveRebateData.push(reserve.type != "TYPE_MOCK");
 
                 assert(await kyberStorage.convertReserveAddresstoId(reserve.address) == reserve.reserveId, "unexpected reserveId");
                 assert(await kyberStorage.convertReserveIdToAddress(reserve.reserveId) == reserve.address, "unexpected reserveId");
                 let reserveData = await kyberStorage.getReserveDetailsById(reserve.reserveId);
                 assert(reserveData.reserveAddress == reserve.address, "unexpected reserve address");
                 assert(reserveData.resType == reserve.onChainType, "unexpected reserve on chain type");
-                assert(reserveData.isFeeAccountedFlags == (reserve.type != "TYPE_MOCK"), "unexpected fee accounted flag");
+                assert(reserveData.isFeeAccountedFlag == (reserve.type != "TYPE_MOCK"), "unexpected fee accounted flag");
+                assert(reserveData.isEntitledRebateFlag == (reserve.type != "TYPE_MOCK"), "unexpected entitled rebate flag");
             }
             Helper.assertEqualArray(await kyberStorage.getReserves(), reserveAddresses, "unexpected reserve addresses");
             Helper.assertEqualArray(await kyberStorage.convertReserveAddressestoIds(reserveAddresses), reserveIds);
             Helper.assertEqualArray(await kyberStorage.convertReserveIdsToAddresses(reserveIds), reserveAddresses);
             Helper.assertEqualArray(await kyberStorage.getFeeAccountedData(reserveIds), reserveFeeData);
+            Helper.assertEqualArray(await kyberStorage.getEntitledRebateData(reserveIds), reserveRebateData);
+            let feeAccountedAndRebateResult = await kyberStorage.getFeeAccountedAndEntitledRebateData(reserveIds);
+            Helper.assertEqualArray(feeAccountedAndRebateResult.feeAccountedArr, reserveFeeData);
+            Helper.assertEqualArray(feeAccountedAndRebateResult.entitledRebateArr, reserveRebateData);
         });
     });
 
@@ -399,6 +410,7 @@ contract('KyberStorage', function(accounts) {
             kyberStorage = await KyberStorage.new(admin);
             await kyberStorage.setNetworkContract(network, {from: admin});
             await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             //init 2 mock reserve
             let result = await nwHelper.setupReserves(network, [], 2,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
@@ -434,6 +446,7 @@ contract('KyberStorage', function(accounts) {
             let mockStorage = await MockStorage.new(admin);
             await mockStorage.setNetworkContract(network, {from: admin});
             await mockStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await mockStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             for (const value of Object.values(reserveInstances)) {
                 reserve = value;
             }
@@ -571,6 +584,22 @@ contract('KyberStorage', function(accounts) {
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
         });
 
+        it("should not have unauthorized personnel set entitled rebate data", async() => {
+            await expectRevert(
+                storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: operator}),
+                "only admin"
+            );
+
+            await expectRevert(
+                storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: network}),
+                "only admin"
+            );
+        });
+
+        it("should have admin set entitled rebate data", async() => {
+            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+        });
+
         it("should not have unauthorized personnel add reserve", async() => {
             await expectRevert(
                 storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: user}),
@@ -590,6 +619,7 @@ contract('KyberStorage', function(accounts) {
 
         it("should have network add reserve", async() => {
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
         });
 
@@ -617,8 +647,8 @@ contract('KyberStorage', function(accounts) {
 
     describe("test adding reserves", async() => {
         before("deploy and setup matchingEngine instance & 1 mock reserve", async() => {
-            tmpStorage = await KyberStorage.new(admin);
-            await tmpStorage.setNetworkContract(network, {from: admin});
+            tempStorage = await KyberStorage.new(admin);
+            await tempStorage.setNetworkContract(network, {from: admin});
 
             //init 1 mock reserve
             let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
@@ -632,35 +662,44 @@ contract('KyberStorage', function(accounts) {
         describe("test cases where reserve has never been added", async() => {
             it("should revert for NONE reserve type", async() => {
                 await expectRevert(
-                    tmpStorage.addReserve(reserve.address, reserve.reserveId, 0, {from: network}),
+                    tempStorage.addReserve(reserve.address, reserve.reserveId, 0, {from: network}),
                     "bad reserve type"
                 );
             });
 
             it("should revert for LAST reserve type", async() => {
                 await expectRevert(
-                    tmpStorage.addReserve(reserve.address, reserve.reserveId, 7, {from: network}),
+                    tempStorage.addReserve(reserve.address, reserve.reserveId, 7, {from: network}),
                     "bad reserve type"
                 );
             });
 
             it("should revert for valid reserve because fee accounted data not set", async() => {
                 await expectRevert(
-                    tmpStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
+                    tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
                     "fee accounted data not set"
+                );
+            });
+
+            it("should revert for valid reserve because entitled rebate data not set", async() => {
+                await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+                await expectRevert(
+                    tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
+                    "entitled rebate data not set"
                 );
             });
         });
 
         describe("test cases for an already added reserve", async() => {
-            before("add fee accounted type and add reserve", async() => {
-                await tmpStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-                await tmpStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            before("add fee accounted and entitled rebate data and add reserve", async() => {
+                await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+                await tempStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+                await tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
             });
 
             it("should be able to re-add a reserve after its removal", async() => {
-                await tmpStorage.removeReserve(reserve.address, 0, {from: network});
-                await tmpStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                await tempStorage.removeReserve(reserve.address, 0, {from: network});
+                await tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
             });
         });
     });
@@ -670,11 +709,13 @@ contract('KyberStorage', function(accounts) {
         let reserveInstances;
         let result;
         let totalReserveTypes = 6;
+        let allReserveIDs = [];
 
         before("setup matchingEngine instance reserve per each reserve type", async() => {
             storage = await KyberStorage.new(admin);
             await storage.setNetworkContract(network, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await storage.setEntitledRebatePerReserveType(true, true, true, false, true, true, {from: admin});
 
             //init token
             token = await TestToken.new("Token", "TOK", 18);
@@ -682,10 +723,11 @@ contract('KyberStorage', function(accounts) {
             result = await nwHelper.setupReserves(network, [token], totalReserveTypes, 0, 0, 0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
 
-            //add reserves for all types.
+            //add reserves for all types, store reserve IDs in array
             let type = 1;
             for (reserve of Object.values(reserveInstances)) {
                 await storage.addReserve(reserve.address, reserve.reserveId, type, {from: network});
+                allReserveIDs.push(reserve.reserveId);
                 type++;
             }
         });
@@ -709,11 +751,165 @@ contract('KyberStorage', function(accounts) {
                 await storage.setFeeAccountedPerReserveType(pay[0], pay[1], pay[2], pay[3], pay[4], pay[5], {from: admin});
                 let index = 0;
                 for (reserve of Object.values(reserveInstances)) {
-                    let details = await storage.getReserveDetailsByAddress(reserve.address);
-                    Helper.assertEqual(reserve.reserveId, details.reserveId)
-                    Helper.assertEqual(index + 1, details.resType)
-                    Helper.assertEqual(pay[index], details.isFeeAccountedFlags);
+                    let actualResult = await storage.getReserveDetailsByAddress(reserve.address);
+                    Helper.assertEqual(reserve.reserveId, actualResult.reserveId);
+                    Helper.assertEqual(index + 1, actualResult.resType);
+                    Helper.assertEqual(pay[index], actualResult.isFeeAccountedFlag);
+
+                    actualResult = await storage.getReserveDetailsById(reserve.reserveId);
+                    Helper.assertEqual(reserve.address, actualResult.reserveAddress);
+                    Helper.assertEqual(index + 1, actualResult.resType);
+                    Helper.assertEqual(pay[index], actualResult.isFeeAccountedFlag);
                     ++index;
+                }
+
+                actualResult = await storage.getFeeAccountedData(allReserveIDs);
+                for (let index = 0; index < pay.length; index++) {
+                    Helper.assertEqual(pay[index], actualResult[index]);
+                }
+                
+                actualResult = await storage.getFeeAccountedAndEntitledRebateData(allReserveIDs);
+                for (let index = 0; index < pay.length; index++) {
+                    Helper.assertEqual(pay[index], actualResult.feeAccountedArr[index]);
+                }
+            }
+        });
+    });
+
+    describe("test entitled rebate data per reserve", async() => {
+        let token;
+        let reserveInstances;
+        let result;
+        let totalReserveTypes = 6;
+        let allReserveIDs = [];
+
+        before("setup matchingEngine instance", async() => {
+            storage = await KyberStorage.new(admin);
+            await storage.setNetworkContract(network, {from: admin});
+        });
+
+        it("should revert when trying to set entitled rebate data if fee paying data not set yet", async() => {
+            await expectRevert(
+                storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin}),
+                "fee accounted data not set"
+            );
+        });
+
+        it("should revert if fpr is not fee accounted, but setting rebate entitlement to be true", async() => {
+            await storage.setFeeAccountedPerReserveType(false, true, true, true, true, true, {from: admin});
+            await expectRevert(
+                storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin}),
+                "fpr not fee accounted"
+            );
+        });
+
+        it("should revert if apr is not fee accounted, but setting rebate entitlement to be true", async() => {
+            await storage.setFeeAccountedPerReserveType(true, false, true, true, true, true, {from: admin});
+            await expectRevert(
+                storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin}),
+                "apr not fee accounted"
+            );
+        });
+        
+        it("should revert if bridge is not fee accounted, but setting rebate entitlement to be true", async() => {
+            await storage.setFeeAccountedPerReserveType(true, true, false, true, true, true, {from: admin});
+            await expectRevert(
+                storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin}),
+                "bridge not fee accounted"
+            );
+        });
+
+        it("should revert if utility is not fee accounted, but setting rebate entitlement to be true", async() => {
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await expectRevert(
+                storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin}),
+                "utility not fee accounted"
+            );
+        });
+
+        it("should revert if custom is not fee accounted, but setting rebate entitlement to be true", async() => {
+            await storage.setFeeAccountedPerReserveType(true, true, true, true, false, true, {from: admin});
+            await expectRevert(
+                storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin}),
+                "custom not fee accounted"
+            );
+        });
+        
+        it("should revert if orderbook is not fee accounted, but setting rebate entitlement to be true", async() => {
+            await storage.setFeeAccountedPerReserveType(true, true, true, true, true, false, {from: admin});
+            await expectRevert(
+                storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin}),
+                "orderbook not fee accounted"
+            );
+        });
+
+        it("get reserve details while modifying entitled rebate per type. see as expected", async() => {
+            await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+            await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
+
+            //init token
+            token = await TestToken.new("Token", "TOK", 18);
+
+            result = await nwHelper.setupReserves(network, [token], totalReserveTypes, 0, 0, 0, accounts, admin, operator);
+            reserveInstances = result.reserveInstances;
+
+            //add reserves for all types, store reserve IDs in array
+            let type = 1;
+            for (reserve of Object.values(reserveInstances)) {
+                await storage.addReserve(reserve.address, reserve.reserveId, type, {from: network});
+                allReserveIDs.push(reserve.reserveId);
+                type++;
+            }
+
+            let rebate = [];
+            let numCombinations = totalReserveTypes ** 2;
+            //generate different rebate combinations
+            for (let i = 0; i < numCombinations; i++) {
+                rebate = [];
+                let j = i;
+                for (let n = 1; j > 0; j = j >> 1, n = n * 2) {
+                    rebate.push(j % 2 == 1);
+                }
+                let originalResLength = result.length;
+                //append the rest of array with false values
+                for (let k = 0; k < totalReserveTypes - originalResLength; k++) {
+                    rebate = rebate.concat([false]);
+                }
+
+                await storage.setEntitledRebatePerReserveType(
+                    rebate[0],
+                    rebate[1],
+                    rebate[2],
+                    rebate[3],
+                    rebate[4],
+                    rebate[5],
+                    {from: admin}
+                );
+
+                let index = 0;
+                for (reserve of Object.values(reserveInstances)) {
+                    let actualResult = await storage.getReserveDetailsByAddress(reserve.address);
+                    Helper.assertEqual(reserve.reserveId, actualResult.reserveId);
+                    Helper.assertEqual(index + 1, actualResult.resType);
+                    Helper.assertEqual(true, actualResult.isFeeAccountedFlag);
+                    Helper.assertEqual(rebate[index], actualResult.isEntitledRebateFlag);
+
+                    actualResult = await storage.getReserveDetailsById(reserve.reserveId);
+                    Helper.assertEqual(reserve.address, actualResult.reserveAddress);
+                    Helper.assertEqual(index + 1, actualResult.resType);
+                    Helper.assertEqual(true, actualResult.isFeeAccountedFlag);
+                    Helper.assertEqual(rebate[index], actualResult.isEntitledRebateFlag);
+                    ++index;
+                }
+
+                actualResult = await storage.getEntitledRebateData(allReserveIDs);
+                for (let index = 0; index < rebate.length; index++) {
+                    Helper.assertEqual(rebate[index], actualResult[index]);
+                }
+                
+                actualResult = await storage.getFeeAccountedAndEntitledRebateData(allReserveIDs);
+                for (let index = 0; index < rebate.length; index++) {
+                    Helper.assertEqual(rebate[index], actualResult.entitledRebateArr[index]);
                 }
             }
         });
