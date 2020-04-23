@@ -25,7 +25,7 @@ function removeArtifactsDir(config) {
 
 module.exports = {
     providerOptions: {
-        "default_balance_ether": 50000,
+        "default_balance_ether": 100000000000000,
         "total_accounts": 20
     },
     istanbulReporter: ['html','json'],
