@@ -366,11 +366,14 @@ contract('KyberStorage', function(accounts) {
             await kyberStorage.setNetworkContract(network, {from: admin});
             // set up 1 mock reserve and 1 fpr reserve, 1 with fee and 1 not
             await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await kyberStorage.setEntitledRebatePerReserveType(true, true, true, false, true, true, {from: admin});
             let result = await nwHelper.setupReserves({address: network}, [token], 1,1,0,0, accounts, admin, operator);
             let reserveInstances = result.reserveInstances;
             let reserveAddresses= [];
             let reserveIds = [];
             let reserveFeeData = [];
+            let reserveRebateData = [];
+
             // add all reserve to network
             for (const value of Object.values(reserveInstances)) {
                 let reserve = value;
@@ -381,18 +384,24 @@ contract('KyberStorage', function(accounts) {
                 reserveAddresses.push(reserve.address);
                 reserveIds.push(reserve.reserveId);
                 reserveFeeData.push(reserve.type != "TYPE_MOCK");
+                reserveRebateData.push(reserve.type != "TYPE_MOCK");
 
                 assert(await kyberStorage.convertReserveAddresstoId(reserve.address) == reserve.reserveId, "unexpected reserveId");
                 assert(await kyberStorage.convertReserveIdToAddress(reserve.reserveId) == reserve.address, "unexpected reserveId");
                 let reserveData = await kyberStorage.getReserveDetailsById(reserve.reserveId);
                 assert(reserveData.reserveAddress == reserve.address, "unexpected reserve address");
                 assert(reserveData.resType == reserve.onChainType, "unexpected reserve on chain type");
-                assert(reserveData.isFeeAccountedFlags == (reserve.type != "TYPE_MOCK"), "unexpected fee accounted flag");
+                assert(reserveData.isFeeAccountedFlag == (reserve.type != "TYPE_MOCK"), "unexpected fee accounted flag");
+                assert(reserveData.isEntitledRebateFlag == (reserve.type != "TYPE_MOCK"), "unexpected entitled rebate flag");
             }
             Helper.assertEqualArray(await kyberStorage.getReserves(), reserveAddresses, "unexpected reserve addresses");
             Helper.assertEqualArray(await kyberStorage.convertReserveAddressestoIds(reserveAddresses), reserveIds);
             Helper.assertEqualArray(await kyberStorage.convertReserveIdsToAddresses(reserveIds), reserveAddresses);
             Helper.assertEqualArray(await kyberStorage.getFeeAccountedData(reserveIds), reserveFeeData);
+            Helper.assertEqualArray(await kyberStorage.getEntitledRebateData(reserveIds), reserveRebateData);
+            let feeAccountedAndRebateResult = await kyberStorage.getFeeAccountedAndEntitledRebateData(reserveIds);
+            Helper.assertEqualArray(feeAccountedAndRebateResult.feeAccountedArr, reserveFeeData);
+            Helper.assertEqualArray(feeAccountedAndRebateResult.entitledRebateArr, reserveRebateData);
         });
     });
 
