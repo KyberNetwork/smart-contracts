@@ -375,6 +375,7 @@ contract('KyberNetwork', function(accounts) {
             tempStorage = await KyberStorage.new(admin);
             tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempStorage.addOperator(operator, {from: admin});
             tempMatchingEngine = await MatchingEngine.new(admin);
             mockReserve = await MockReserve.new();
 
@@ -418,8 +419,8 @@ contract('KyberNetwork', function(accounts) {
 
         it("Add reserve", async() => {
             let anyWallet = taker;
-            let txResult = await tempNetwork.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
-            expectEvent(txResult, 'AddReserveToNetwork', {
+            let txResult = await tempStorage.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
+            expectEvent(txResult, 'AddReserveToStorage', {
                 reserve: mockReserve.address,
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
                 reserveType: new BN(ReserveType.FPR),
@@ -432,8 +433,8 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("Remove reserve", async() => {
-            let txResult = await tempNetwork.removeReserve(mockReserve.address, 0, {from: operator});
-            expectEvent(txResult, 'RemoveReserveFromNetwork', {
+            let txResult = await tempStorage.removeReserve(mockReserve.address, 0, {from: operator});
+            expectEvent(txResult, 'RemoveReserveFromStorage', {
                 reserve: mockReserve.address,
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase()
             });
@@ -442,8 +443,8 @@ contract('KyberNetwork', function(accounts) {
         it("List pair For reserve eth to token", async() => {
             let anyWallet = taker;
             let anotherMockReserve = await MockReserve.new();
-            await tempNetwork.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
-            let txResult = await tempNetwork.listPairForReserve(anotherMockReserve.address, KNC.address, true, false, true, {from: operator});
+            await tempStorage.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
+            let txResult = await tempStorage.listPairForReserve(anotherMockReserve.address, KNC.address, true, false, true, {from: operator});
             expectEvent(txResult, 'ListReservePairs', {
                 reserve: anotherMockReserve.address,
                 src: ethAddress,
@@ -455,8 +456,8 @@ contract('KyberNetwork', function(accounts) {
         it("List pair For reserve token to eth", async() => {
             let anyWallet = taker;
             let anotherMockReserve = await MockReserve.new();
-            await tempNetwork.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
-            let txResult = await tempNetwork.listPairForReserve(anotherMockReserve.address, KNC.address, false, true, true, {from: operator});
+            await tempStorage.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
+            let txResult = await tempStorage.listPairForReserve(anotherMockReserve.address, KNC.address, false, true, true, {from: operator});
             expectEvent(txResult, 'ListReservePairs', {
                 reserve: anotherMockReserve.address,
                 src: KNC.address,
@@ -564,6 +565,7 @@ contract('KyberNetwork', function(accounts) {
             tempStorage = await KyberStorage.new(admin);
             tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempStorage.addOperator(operator, {from: admin});
             tempMatchingEngine = await OtherMatchingEngine.new(admin);
             mockReserve = await MockReserve.new();
 
@@ -591,13 +593,13 @@ contract('KyberNetwork', function(accounts) {
             console.log("any wallet", anyWallet)
 
             await expectRevert.unspecified(
-                tempNetwork.addReserve(mockReserve.address, reserveID , ReserveType.NONE, anyWallet, {from: operator}),
+                tempStorage.addReserve(mockReserve.address, reserveID , ReserveType.NONE, anyWallet, {from: operator}),
             );
         });
 
         it("remove reserve revert", async function(){
             await expectRevert(
-                tempNetwork.removeReserve(ethAddress, 0, {from: operator}),
+                tempStorage.removeReserve(ethAddress, 0, {from: operator}),
                 "reserve not found"
             )
         });
@@ -605,7 +607,7 @@ contract('KyberNetwork', function(accounts) {
         it("List pair For unlisted reserve eth to token", async function() {
             let anotherMockReserve = await MockReserve.new();
             await expectRevert.unspecified(
-                tempNetwork.listPairForReserve(anotherMockReserve.address, KNC.address, true, true, true, {from: operator})
+                tempStorage.listPairForReserve(anotherMockReserve.address, KNC.address, true, true, true, {from: operator})
             );
         });
 
@@ -629,6 +631,7 @@ contract('KyberNetwork', function(accounts) {
             storage = await KyberStorage.new(admin);
             network = await KyberNetwork.new(admin, storage.address);
             await storage.setNetworkContract(network.address, {from: admin});
+            await storage.addOperator(operator, {from: admin});
 
             // set proxy same as network
             proxyForFeeHandler = network;
@@ -684,7 +687,7 @@ contract('KyberNetwork', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToNetwork(storage, reserveInstances, tokens, operator);
 
                 //set zero rates
                 for (const [key, value] of Object.entries(reserveInstances)) {
@@ -697,7 +700,7 @@ contract('KyberNetwork', function(accounts) {
             });
 
             after("unlist and remove reserve", async() => {
-                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromNetwork(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
 
@@ -800,14 +803,14 @@ contract('KyberNetwork', function(accounts) {
                     console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
                     let rebateWallet = (reserve.rebateWallet == zeroAddress || reserve.rebateWallet == undefined)
                         ? reserve.address : reserve.rebateWallet;
-                    await network.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
-                    await network.listPairForReserve(reserve.address, tokens[j%3].address, true, true, true, {from: operator});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
+                    await storage.listPairForReserve(reserve.address, tokens[j%3].address, true, true, true, {from: operator});
                     j++;
                 }
             });
 
             after("unlist and remove reserve", async() => {
-                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromNetwork(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
 
@@ -1358,6 +1361,32 @@ contract('KyberNetwork', function(accounts) {
                     });
                 };
             };
+
+            it(`Test maxDestAmount, new src amount is greater than current src amount`, async() => {
+                let platformFeeBps = new BN(10);
+                let actualSrcQty = new BN(0);
+                let hintType = SPLIT_HINTTYPE;
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+
+                expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                    srcToken.address, ethAddress, srcQty,
+                    srcDecimals, ethDecimals,
+                    networkFeeBps, platformFeeBps, hint);
+
+                let maxDestAmt = expectedResult.actualDestAmount.sub(new BN(2));
+
+                await srcToken.transfer(network.address, srcQty);
+                let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, ethAddress, expectedResult);
+                let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, ethAddress, taker, network.address);
+                info = [srcQty, networkFeeBps, platformFeeBps];
+                [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, ethAddress, expectedResult, info, maxDestAmt);
+
+                let txResult = await network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
+                    maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint);
+                console.log(`token -> ETH (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
+                await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, actualSrcQty,
+                    initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+            });
         });
 
         describe("test gas helper", async() => {
@@ -1369,17 +1398,18 @@ contract('KyberNetwork', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToNetwork(storage, reserveInstances, tokens, operator);
             });
 
             after("unlist and remove reserve", async() => {
-                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromNetwork(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
 
             it("test that gas helper can't revert trade even if it reverts", async() => {
                 platformFeeBps = new BN(50);
-                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, ethAddress, destToken.address, ethSrcQty);
+                let hintType = EMPTY_HINTTYPE;
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
 
                 // If any other wallet is used other than platformWallet, gasHelper will revert;
                 // Below will revert gasHelper internally because platformWallet is zeroAddress
@@ -1480,11 +1510,11 @@ contract('KyberNetwork', function(accounts) {
             reserveIdToWallet = result.reserveIdToRebateWallet;
 
             //add and list pair for reserve
-            await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+            await nwHelper.addReservesToNetwork(storage, reserveInstances, tokens, operator);
         });
 
         after("unlist and remove reserve", async() => {
-            await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+            await nwHelper.removeReservesFromNetwork(storage, reserveInstances, tokens, operator);
             reserveInstances = {};
         });
 
@@ -1546,6 +1576,7 @@ contract('KyberNetwork', function(accounts) {
             storage = await KyberStorage.new(admin);
             network = await KyberNetwork.new(admin, storage.address);
             await storage.setNetworkContract(network.address, {from: admin});
+            await storage.addOperator(operator, {from: admin});
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
@@ -1770,6 +1801,7 @@ contract('KyberNetwork', function(accounts) {
             tempStorage = await KyberStorage.new(admin);
             tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempStorage.addOperator(operator, {from: admin});
 
             // init matchingEngine
             matchingEngine = await MatchingEngine.new(admin);
@@ -1803,7 +1835,7 @@ contract('KyberNetwork', function(accounts) {
             reserveInstances = result.reserveInstances;
 
             //add and list pair for reserve
-            await nwHelper.addReservesToNetwork(tempNetwork, reserveInstances, tokens, operator);
+            await nwHelper.addReservesToNetwork(tempStorage, reserveInstances, tokens, operator);
 
             // set fixed rates
             fixedTokensPerEther = precisionUnits.mul(new BN(20));

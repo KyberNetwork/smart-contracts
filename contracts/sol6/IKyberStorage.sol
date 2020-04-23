@@ -3,34 +3,17 @@ pragma solidity 0.6.6;
 import "./IKyberFeeHandler.sol";
 import "./IKyberDAO.sol";
 import "./IKyberNetworkProxy.sol";
+import "./IKyberReserve.sol";
 
 
 interface IKyberStorage {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
-
-    function addReserve(
-        address reserve,
-        bytes32 reserveId,
-        ReserveType resType
-    ) external returns (bool);
-
-    function removeReserve(address reserve, uint256 startIndex)
-        external
-        returns (bytes32 reserveId);
 
     function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
         external
         returns (bool);
 
     function removeKyberProxy(address networkProxy) external returns (bool);
-
-    function listPairForReserve(
-        address reserve,
-        IERC20 token,
-        bool ethToToken,
-        bool tokenToEth,
-        bool add
-    ) external returns (bool);
 
     function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
         external
@@ -64,6 +47,16 @@ interface IKyberStorage {
         external
         view
         returns (bytes32[] memory reserveIds);
+
+    function getListReservesByIds(bytes32[] calldata reserveIds)
+        external
+        view
+        returns (IKyberReserve[] memory reserveAddresses);
+
+    function getRebateWallet(address reserveAddress)
+        external
+        view
+        returns (address rebateWallet);
 
     function getKyberProxies() external view returns (IKyberNetworkProxy[] memory);
 

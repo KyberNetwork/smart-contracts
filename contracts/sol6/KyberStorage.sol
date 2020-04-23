@@ -5,6 +5,7 @@ import "./IKyberFeeHandler.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
 import "./utils/PermissionGroupsNoModifiers.sol";
+import "./utils/Utils5.sol";
 
 
 /**
@@ -14,7 +15,7 @@ import "./utils/PermissionGroupsNoModifiers.sol";
  *   - Stores feeAccounted data for reserve types
  *   - Record contract changes for network, matchingEngine, feeHandler, reserves, network proxies and kyberDAO
  */
-contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
+contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     // store current and previous contracts.
     IKyberNetwork[] internal previousNetworks;
     IKyberFeeHandler[] internal feeHandler;
@@ -25,6 +26,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     mapping(bytes32 => address[]) public reserveIdToAddresses;
     mapping(address => bytes32) internal reserveAddressToId;
+    mapping(address => address) public reserveRebateWallet;
     mapping(address => bytes32[]) internal reservesPerTokenSrc; // reserves supporting token to eth
     mapping(address => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
 
@@ -37,6 +39,29 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     constructor(address _admin) public PermissionGroupsNoModifiers(_admin) {}
 
     event KyberNetworkUpdated(IKyberNetwork newNetwork);
+    event RemoveReserveFromStorage(address indexed reserve, bytes32 indexed reserveId);
+
+    event AddReserveToStorage(
+        address indexed reserve,
+        bytes32 indexed reserveId,
+        IKyberStorage.ReserveType reserveType,
+        address indexed rebateWallet,
+        bool add
+    );
+
+    event ListReservePairs(
+        address indexed reserve,
+        IERC20 indexed src,
+        IERC20 indexed dest,
+        bool add
+    );
+
+    event QuickListToken(
+        IKyberNetwork indexed network,
+        address[] indexed reserves,
+        IERC20 indexed token,
+        bool add
+    );
 
     function setNetworkContract(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
@@ -84,12 +109,19 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return true;
     }
 
+    /// @notice Can be called only by operator
+    /// @dev Adds a reserve to the storage
+    /// @param reserve The reserve address
+    /// @param reserveId The reserve ID in 32 bytes. 1st byte is reserve type
+    /// @param resType Type of the reserve out of enum ReserveType
+    /// @param rebateWallet Rebate wallet address for this reserve
     function addReserve(
         address reserve,
         bytes32 reserveId,
-        ReserveType resType
-    ) external override returns (bool) {
-        onlyNetwork();
+        ReserveType resType,
+        address payable rebateWallet
+    ) external returns (bool) {
+        onlyOperator();
         require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         require(
@@ -98,6 +130,9 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         );
         require(feeAccountedPerType != 0xffffffff, "fee accounted data not set");
         require(entitledRebatePerType != 0xffffffff, "entitled rebate data not set");
+        require(rebateWallet != address(0), "rebate wallet is 0");
+
+        reserveRebateWallet[reserve] = rebateWallet;
 
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
@@ -110,15 +145,19 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         reserveAddressToId[reserve] = reserveId;
         reserveType[reserveId] = uint256(resType);
 
+        emit AddReserveToStorage(reserve, reserveId, resType, rebateWallet, true);
         return true;
     }
 
+    /// @notice Can be called only by operator
+    /// @dev Removes a reserve from the network
+    /// @param reserve The reserve address
+    /// @param startIndex Index to start searching from in reserve array
     function removeReserve(address reserve, uint256 startIndex)
         external
-        override
         returns (bytes32 reserveId)
     {
-        onlyNetwork();
+        onlyOperator();
         uint256 reserveIndex = 2**255;
         for (uint256 i = startIndex; i < reserves.length; i++) {
             if (reserves[i] == IKyberReserve(reserve)) {
@@ -140,27 +179,80 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
         reserveType[reserveId] = uint256(ReserveType.NONE);
 
+        reserveRebateWallet[reserve] = address(0);
+
+        emit RemoveReserveFromStorage(reserve, reserveId);
         return reserveId;
     }
 
+    /// @notice Can be called only by operator
+    /// @dev Allow or prevent a specific reserve to trade a pair of tokens
+    /// @param reserve The reserve address
+    /// @param token Token address
+    /// @param ethToToken Will it support ether to token trade
+    /// @param tokenToEth Will it support token to ether trade
+    /// @param add If true then list this pair, otherwise unlist it
     function listPairForReserve(
         address reserve,
         IERC20 token,
         bool ethToToken,
         bool tokenToEth,
         bool add
-    ) external override returns (bool) {
-        onlyNetwork();
+    ) external returns (bool) {
+        onlyOperator();
+
         bytes32 reserveId = reserveAddressToId[reserve];
         require(reserveId != bytes32(0), "reserveId = 0");
 
         if (ethToToken) {
             listPairs(reserveId, token, false, add);
+            emit ListReservePairs(reserve, ETH_TOKEN_ADDRESS, token, add);
         }
 
         if (tokenToEth) {
+            address[] memory reserveAddresses = new address[](1);
+            reserveAddresses[0] = reserve;
+            require(
+                kyberNetwork.listTokenForReserves(
+                    reserveAddresses, token, add
+                ),
+                "network failed to list token"
+            );
             listPairs(reserveId, token, true, add);
+            emit ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
         }
+
+        return true;
+    }
+
+    /// @notice Can be called only by operator
+    /// @dev Quick allow or prevent to trade token -> eth for list of reserves
+    ///      Useful when migrating new network contract
+    /// @param token Token address
+    /// @param add If true then list all reserves that have supported token->eth pair, otherwise unlist it
+    function quickListToken2Eth(
+        IERC20 token,
+        bool add
+    ) external returns (bool) {
+        onlyOperator();
+
+        bytes32[] memory reserveIds = reservesPerTokenSrc[address(token)];
+
+        require(reserveIds.length > 0, "reserve list empty");
+
+        address[] memory reserveAddresses = new address[](reserveIds.length);
+        for(uint i = 0; i < reserveAddresses.length; i++) {
+            reserveAddresses[i] = reserveIdToAddresses[reserveIds[i]][0];
+        }
+
+        require(
+            kyberNetwork.listTokenForReserves(
+                reserveAddresses, token, add
+            ),
+            "network failed to list token"
+        );
+
+        emit QuickListToken(kyberNetwork, reserveAddresses, token, add);
 
         return true;
     }
@@ -322,6 +414,27 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         returns (bytes32[] memory reserveIds)
     {
         return reservesPerTokenDest[token];
+    }
+
+    function getListReservesByIds(bytes32[] calldata reserveIds)
+        external
+        view
+        override
+        returns (IKyberReserve[] memory reserveAddresses)
+    {
+        reserveAddresses = new IKyberReserve[](reserveIds.length);
+        for(uint i = 0; i < reserveAddresses.length; i++) {
+            reserveAddresses[i] = IKyberReserve(reserveIdToAddresses[reserveIds[i]][0]);
+        }
+    }
+
+    function getRebateWallet(address reserveAddress)
+        external
+        view
+        override
+        returns (address rebateWallet)
+    {
+        rebateWallet = reserveRebateWallet[reserveAddress];
     }
 
     /// @notice Should be called off chain

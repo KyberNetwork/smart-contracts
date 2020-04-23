@@ -32,6 +32,12 @@ interface IKyberNetwork {
         bytes calldata hint
     ) external payable returns (uint256 destAmount);
 
+    function listTokenForReserves(
+        address[] calldata reserves,
+        IERC20 token,
+        bool add
+    ) external returns (bool);
+
     function enabled() external view returns (bool);
 
     function getExpectedRateWithHintAndFee(

@@ -376,15 +376,15 @@ async function setupAprPricing(token, p0, admin, operator) {
 }
 
 module.exports.addReservesToNetwork = addReservesToNetwork;
-async function addReservesToNetwork(networkInstance, reserveInstances, tokens, operator) {
+async function addReservesToNetwork(storageInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
         console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
         let rebateWallet = (reserve.rebateWallet == zeroAddress || reserve.rebateWallet == undefined)
              ? reserve.address : reserve.rebateWallet;
-        await networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
+        await storageInstance.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
         for (let j = 0; j < tokens.length; j++) {
-            await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
+            await storageInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
         }
     }
 }
@@ -402,14 +402,14 @@ module.exports.getEt2ReservesFromTradeTx = function(tradeTx) {
     }
 }
 
-module.exports.removeReservesFromNetwork = async function (networkInstance, reserveInstances, tokens, operator) {
+module.exports.removeReservesFromNetwork = async function (storageInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
         console.log("removing reserve type: " + reserve.type + " address: " + reserve.address + " pricing: " + reserve.pricing);
         for (let j = 0; j < tokens.length; j++) {
-            await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, false, {from: operator});
+            await storageInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, false, {from: operator});
         }
-        await networkInstance.rmReserve(reserve.address, {from: operator});
+        await storageInstance.removeReserve(reserve.address, 0, {from: operator});
     }
 }
 
