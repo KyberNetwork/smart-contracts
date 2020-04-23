@@ -115,6 +115,12 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     event KyberProxyAdded(address proxy);
     event KyberProxyRemoved(address proxy);
 
+    event ListReservesForToken(
+        IERC20 indexed token,
+        address[] indexed reserves,
+        bool add
+    );
+
     constructor(address _admin, IKyberStorage _kyberStorage)
         public
         WithdrawableNoModifiers(_admin)
@@ -209,31 +215,50 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Can be called only by storage
-    /// @dev Quick allow or prevent to trade token -> eth for list of reserves
-    ///      Useful when migrating new network contract
-    /// @param reserves The list of reserves address
+    /// @dev Allow or prevent to trade token -> eth for a reserve
+    /// @param reserve The reserve address
     /// @param token Token address
     /// @param add If true then list token->eth pair, otherwise unlist it
-    function listTokenForReserves(
-        address[] calldata reserves,
+    function listTokenForReserve(
+        address reserve,
         IERC20 token,
         bool add
     ) external override returns (bool) {
         require(msg.sender == address(kyberStorage), "only kyber storage");
 
-        address reserve;
-        for(uint i = 0; i < reserves.length; i++) {
-            reserve = reserves[i];
-            if (add) {
-                token.safeApprove(reserve, 2**255);
-            } else {
-                token.safeApprove(reserve, 0);
-            }
+        if (add) {
+            token.safeApprove(reserve, 2**255);
+        } else {
+            token.safeApprove(reserve, 0);
         }
 
         setDecimals(token);
 
         return true;
+    }
+
+    /// @notice Can be called only by operator
+    /// @dev Allow or prevent to trade token -> eth for list of reserves
+    ///      Useful for migration new network
+    ///      Call storage to get list of reserves that are supported token->eth
+    /// @param token Token address
+    /// @param add If true then list token->eth pair, otherwise unlist it
+    function listReservesForToken(
+        IERC20 token,
+        bool add
+    ) external returns (bool) {
+        onlyOperator();
+
+        address[] memory reserves = kyberStorage.getReserveAddressesPerTokenSrc(address(token));
+        for(uint i = 0; i < reserves.length; i++) {
+            if (add) {
+                token.safeApprove(reserves[i], 2**255);
+            } else {
+                token.safeApprove(reserves[i], 0);
+            }
+        }
+
+        emit ListReservesForToken(token, reserves, add);
     }
 
     function setContracts(
@@ -817,8 +842,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             (tradeData.input.src != ETH_TOKEN_ADDRESS) && (tradeData.input.dest != ETH_TOKEN_ADDRESS),
             hint
         );
-        (reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags) =
-            kyberStorage.getFeeAccountedAndEntitledRebateData(reservesData.ids);
+        (reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags, reservesData.addresses)
+            = kyberStorage.getReserveData(reservesData.ids);
 
         require(reservesData.ids.length == reservesData.splitsBps.length, "bad split array");
         require(reservesData.ids.length == reservesData.isFeeAccountedFlags.length, "bad fee array");
@@ -866,7 +891,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         reservesData.srcAmounts = new uint256[](numReserves);
         reservesData.rates = new uint256[](numReserves);
         feesAccountedDestBps = new uint256[](numReserves);
-        reservesData.addresses = kyberStorage.getListReservesByIds(reservesData.ids);
 
         // iterate reserve list. validate data. calculate srcAmount according to splits and fee data.
         for (uint256 i = 0; i < numReserves; i++) {
@@ -911,10 +935,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
 
         uint256 index;
+        bytes32[] memory rebateReserveIds = new bytes32[](tradeData.numEntitledRebateReserves);
 
         // token to ether
         index = populateRebateWalletList(
-            rebateWallets,
+            rebateReserveIds,
             rebatePercentBps,
             tradeData.tokenToEth,
             index,
@@ -923,26 +948,28 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         // ether to token
         populateRebateWalletList(
-            rebateWallets,
+            rebateReserveIds,
             rebatePercentBps,
             tradeData.ethToToken,
             index,
             tradeData.entitledRebateBps
         );
+
+        rebateWallets = kyberStorage.getRebateWallets(rebateReserveIds);
     }
 
     function populateRebateWalletList(
-        address[] memory rebateWallets,
+        bytes32[] memory rebateReserveIds,
         uint256[] memory rebatePercentBps,
         ReservesData memory reservesData,
         uint256 index,
         uint256 entitledRebateBps
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         uint256 _index = index;
 
         for (uint256 i = 0; i < reservesData.isEntitledRebateFlags.length; i++) {
             if (reservesData.isEntitledRebateFlags[i]) {
-                rebateWallets[_index] = kyberStorage.getRebateWallet(address(reservesData.addresses[i]));
+                rebateReserveIds[_index] = reservesData.ids[i];
                 rebatePercentBps[_index] = (reservesData.splitsBps[i] * BPS) / entitledRebateBps;
                 _index++;
             }

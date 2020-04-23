@@ -1,6 +1,7 @@
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
+const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockStorage = artifacts.require("MockStorage.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -41,16 +42,17 @@ contract('KyberStorage', function(accounts) {
         user = accounts[0];
         admin = accounts[1];
         operator = accounts[2];
-        network = accounts[3];
         DAOAddr = accounts[4];
         feeHandlerAddr = accounts[6];
         matchingEngineAddr = accounts[7];
     });
 
-    describe("test onlyAdmin and onlyNetwork permissions", async() => {
+    describe("test onlyAdmin and onlyOperator permissions", async() => {
         before("deploy KyberStorage instance, 1 mock reserve and 1 mock token", async() => {
             kyberStorage = await KyberStorage.new(admin);
-            await kyberStorage.setNetworkContract(network, { from: admin});
+            network = await KyberNetwork.new(admin, kyberStorage.address);
+            await kyberStorage.addOperator(operator, {from: admin});
+            await kyberStorage.setNetworkContract(network.address, { from: admin});
             await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             token = await TestToken.new("test", "tst", 18);
@@ -66,41 +68,36 @@ contract('KyberStorage', function(accounts) {
 
         it("should not have unauthorized personnel set network contract", async() => {
             await expectRevert(
-                kyberStorage.setNetworkContract(network, {from: user}),
+                kyberStorage.setNetworkContract(network.address, {from: user}),
                 "only admin"
             );
 
             await expectRevert(
-                kyberStorage.setNetworkContract(network, {from: operator}),
+                kyberStorage.setNetworkContract(network.address, {from: operator}),
                 "only admin"
             );
         });
 
         it("should have admin set network contract", async() => {
-            await kyberStorage.setNetworkContract(network, {from: admin});
+            await kyberStorage.setNetworkContract(network.address, {from: admin});
             let result = await kyberStorage.kyberNetwork();
-            Helper.assertEqual(network, result, "network not set by admin");
+            Helper.assertEqual(network.address, result, "network not set by admin");
         });
 
         it("should not have unauthorized personnel add reserve", async() => {
             await expectRevert(
-                kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: user}),
-                "only network"
+                kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: user}),
+                "only operator"
             );
 
             await expectRevert(
-                kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: operator}),
-                "only network"
-            );
-
-            await expectRevert(
-                kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: admin}),
-                "only network"
+                kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: admin}),
+                "only operator"
             );
         });
 
-        it("should have network add reserve", async() => {
-            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+        it("should have operator add reserve", async() => {
+            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             let reserveId = await kyberStorage.getReserveID(reserve.address);
 
             let reserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 0);
@@ -111,22 +108,17 @@ contract('KyberStorage', function(accounts) {
         it("should not have unauthorized personnel list token pair for reserve", async() => {
             await expectRevert(
                 kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: user}),
-                "only network"
-            );
-
-            await expectRevert(
-                kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator}),
-                "only network"
+                "only operator"
             );
 
             await expectRevert(
                 kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: admin}),
-                "only network"
+                "only operator"
             );
         });
 
-        it("should have network list pair for reserve", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
+        it("should have operator list pair for reserve", async() => {
+            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "reserve should have supported token");
             result = await kyberStorage.getReservesPerTokenDest(token.address);
@@ -136,22 +128,17 @@ contract('KyberStorage', function(accounts) {
         it("should not have unauthorized personnel remove reserve", async() => {
             await expectRevert(
                 kyberStorage.removeReserve(reserve.address, zeroBN, {from: user}),
-                "only network"
-            );
-
-            await expectRevert(
-                kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator}),
-                "only network"
+                "only operator"
             );
 
             await expectRevert(
                 kyberStorage.removeReserve(reserve.address, zeroBN, {from: admin}),
-                "only network"
+                "only operator"
             );
         });
 
-        it("should have network remove reserve", async() => {
-            await kyberStorage.removeReserve(reserve.address, zeroBN, {from: network});
+        it("should have operator removes reserve", async() => {
+            await kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator});
         });
 
         it("should not have unauthorized personnel set contracts", async() => {
@@ -173,6 +160,8 @@ contract('KyberStorage', function(accounts) {
         });
 
         it("should have network set contracts", async() => {
+            network = accounts[3];
+            await kyberStorage.setNetworkContract(network, { from: admin});
             await kyberStorage.setDAOContract(DAOAddr, { from: network});
             await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
             let result= await kyberStorage.getContracts();
@@ -185,6 +174,7 @@ contract('KyberStorage', function(accounts) {
     describe("test contract event", async() => {
         before("deploy and setup kyberStorage instance", async() => {
             kyberStorage = await KyberStorage.new(admin);
+            await kyberStorage.addOperator(operator, {from: admin});
         });
 
         it("shoud test set network event", async() => {
@@ -198,7 +188,9 @@ contract('KyberStorage', function(accounts) {
     describe("test setting contracts and params", async() => {
         before("deploy and setup kyberStorage instance", async() => {
             kyberStorage = await KyberStorage.new(admin);
+            network = accounts[3];
             await kyberStorage.setNetworkContract(network, {from: admin});
+            await kyberStorage.addOperator(operator, {from: admin});
         });
 
         it("should revert setting zero address for network", async() => {
@@ -251,6 +243,7 @@ contract('KyberStorage', function(accounts) {
         let proxy1 = accounts[9];
         let proxy2 = accounts[8];
         let proxy3 = accounts[7];
+        let network = accounts[3];
         let tempStorage;
 
         beforeEach("create storage", async() => {
@@ -301,7 +294,9 @@ contract('KyberStorage', function(accounts) {
     describe("test adding reserves", async() => {
         before("deploy and setup kyberStorage instance & 1 mock reserve", async() => {
             kyberStorage = await KyberStorage.new(admin);
-            await kyberStorage.setNetworkContract(network, {from: admin});
+            network = await KyberNetwork.new(admin, kyberStorage.address);
+            await kyberStorage.addOperator(operator, {from: admin});
+            await kyberStorage.setNetworkContract(network.address, {from: admin});
             await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
@@ -315,7 +310,7 @@ contract('KyberStorage', function(accounts) {
         describe("test cases where reserve has never been added", async() => {
             it("should revert for zero reserve id", async() => {
                 await expectRevert(
-                    kyberStorage.addReserve(reserve.address, nwHelper.ZERO_RESERVE_ID, reserve.onChainType, {from: network}),
+                    kyberStorage.addReserve(reserve.address, nwHelper.ZERO_RESERVE_ID, reserve.onChainType, reserve.rebateWallet, {from: operator}),
                     "reserveId = 0"
                 );
             });
@@ -323,12 +318,12 @@ contract('KyberStorage', function(accounts) {
 
         describe("test cases for an already added reserve", async() => {
             before("add reserve", async() => {
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             });
 
             it("should revert for adding an existing reserve", async() => {
                 await expectRevert(
-                    kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
+                    kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator}),
                     "reserve has id"
                 );
             });
@@ -336,20 +331,20 @@ contract('KyberStorage', function(accounts) {
             it("should revert for a new reserve with an already taken reserve id", async() => {
                 let newReserve = await MockReserve.new();
                 await expectRevert(
-                    kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
+                    kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator}),
                     "reserveId taken"
                 );
             });
 
             it("should be able to re-add a reserve after its removal", async() => {
-                await kyberStorage.removeReserve(reserve.address, zeroBN, {from: network});
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                await kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator});
+                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             });
 
             it("should be able to add a new reserve address for an existing id after removing an old one", async() => {
                 let newReserve = await MockReserve.new();
-                await kyberStorage.removeReserve(reserve.address, zeroBN, {from: network});
-                await kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                await kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator});
+                await kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
                 let actualNewReserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 0);
                 let actualOldReserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 1);
                 assert(await kyberStorage.convertReserveIdToAddress(reserve.reserveId) == newReserve.address, "new reserve address not equal to expected");
@@ -363,16 +358,19 @@ contract('KyberStorage', function(accounts) {
         it("test get reserve method", async() => {
             // setup storage and reserve
             let kyberStorage = await KyberStorage.new(admin);
-            await kyberStorage.setNetworkContract(network, {from: admin});
+            let network = await KyberNetwork.new(admin, kyberStorage.address);
+            await kyberStorage.addOperator(operator, {from: admin});
+            await kyberStorage.setNetworkContract(network.address, {from: admin});
             // set up 1 mock reserve and 1 fpr reserve, 1 with fee and 1 not
             await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await kyberStorage.setEntitledRebatePerReserveType(true, true, true, false, true, true, {from: admin});
-            let result = await nwHelper.setupReserves({address: network}, [token], 1,1,0,0, accounts, admin, operator);
+            let result = await nwHelper.setupReserves(network, [token], 1,1,0,0, accounts, admin, operator);
             let reserveInstances = result.reserveInstances;
             let reserveAddresses= [];
             let reserveIds = [];
             let reserveFeeData = [];
             let reserveRebateData = [];
+            let reserveRebateWalletData = [];
 
             // add all reserve to network
             for (const value of Object.values(reserveInstances)) {
@@ -380,10 +378,11 @@ contract('KyberStorage', function(accounts) {
                 if (reserve.type = "TYPE_MOCK") {
                     reserve.onChainType = ReserveType.UTILITY;
                 }
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
                 reserveAddresses.push(reserve.address);
                 reserveIds.push(reserve.reserveId);
                 reserveFeeData.push(reserve.type != "TYPE_MOCK");
+                reserveRebateWalletData.push(reserve.rebateWallet);
                 reserveRebateData.push(reserve.type != "TYPE_MOCK");
 
                 assert(await kyberStorage.convertReserveAddresstoId(reserve.address) == reserve.reserveId, "unexpected reserveId");
@@ -399,7 +398,7 @@ contract('KyberStorage', function(accounts) {
             Helper.assertEqualArray(await kyberStorage.convertReserveIdsToAddresses(reserveIds), reserveAddresses);
             Helper.assertEqualArray(await kyberStorage.getFeeAccountedData(reserveIds), reserveFeeData);
             Helper.assertEqualArray(await kyberStorage.getEntitledRebateData(reserveIds), reserveRebateData);
-            let feeAccountedAndRebateResult = await kyberStorage.getFeeAccountedAndEntitledRebateData(reserveIds);
+            let feeAccountedAndRebateResult = await kyberStorage.getReserveData(reserveIds);
             Helper.assertEqualArray(feeAccountedAndRebateResult.feeAccountedArr, reserveFeeData);
             Helper.assertEqualArray(feeAccountedAndRebateResult.entitledRebateArr, reserveRebateData);
         });
@@ -408,7 +407,9 @@ contract('KyberStorage', function(accounts) {
     describe("test listing token pair and removing reserve", async() => {
         before("deploy and setup kyberStorage instance & add 1 mock reserve, & 1 mock token", async() => {
             kyberStorage = await KyberStorage.new(admin);
-            await kyberStorage.setNetworkContract(network, {from: admin});
+            network = await KyberNetwork.new(admin, kyberStorage.address);
+            await kyberStorage.addOperator(operator, {from: admin});
+            await kyberStorage.setNetworkContract(network.address, {from: admin});
             await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             //init 2 mock reserve
@@ -417,7 +418,7 @@ contract('KyberStorage', function(accounts) {
             numReserves = result.numAddedReserves * 1;
             for (const value of Object.values(reserveInstances)) {
                 reserve = value;
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             }
 
             //create token
@@ -425,52 +426,54 @@ contract('KyberStorage', function(accounts) {
         });
 
         beforeEach("delist token pair on both sides", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: network});
+            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: operator});
         });
 
         it("should revert when listing token for non-reserve", async() => {
             await expectRevert(
-                kyberStorage.listPairForReserve(user, token.address, true, true, true, {from: network}),
+                kyberStorage.listPairForReserve(user, token.address, true, true, true, {from: operator}),
                 "reserveId = 0"
            );
         });
 
         it("should revert when removing non-reserve", async() => {
             await expectRevert(
-                kyberStorage.removeReserve(user, zeroBN, {from : network}),
+                kyberStorage.removeReserve(user, zeroBN, {from : operator}),
                 "reserve not found"
            );
         });
 
         it("should revert if reserveId is 0 when removing reserve", async() => {
             let mockStorage = await MockStorage.new(admin);
-            await mockStorage.setNetworkContract(network, {from: admin});
+            let mockNetwork = await KyberNetwork.new(admin, mockStorage.address);
+            await mockStorage.addOperator(operator, {from: admin});
+            await mockStorage.setNetworkContract(mockNetwork.address, {from: admin});
             await mockStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await mockStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             for (const value of Object.values(reserveInstances)) {
                 reserve = value;
             }
-            await mockStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            await mockStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             await mockStorage.setReserveId(reserve.address, nwHelper.ZERO_RESERVE_ID);
             await expectRevert(
-                mockStorage.removeReserve(reserve.address,zeroBN, {from: network}),
+                mockStorage.removeReserve(reserve.address,zeroBN, {from: operator}),
                 "reserve's existing reserveId is 0"
             );
         });
 
         it("should have reserveId reset to zero after removal", async() => {
-            await kyberStorage.removeReserve(reserve.address, zeroBN, {from: network});
+            await kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator});
             let reserveId = await kyberStorage.getReserveID(reserve.address);
             Helper.assertEqual(reserveId, nwHelper.ZERO_RESERVE_ID, "reserve id was not reset to zero");
 
             //reset
-            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
         });
 
         it("should list T2E side with 2 reserve", async() => {
             let reserveIds = [];
             for (let reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, true, {from: network});
+                await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, true, {from: operator});
                 reserveIds.push(reserve.reserveId);
             }
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
@@ -480,12 +483,12 @@ contract('KyberStorage', function(accounts) {
             Helper.assertEqualArray(result, reserveIds, "T2E should be listed");
             // delist for both side
             for (let reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: network});
+                await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: operator});
             }
         });
 
         it("should list T2E side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, true, {from: network});
+            await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, true, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
 
@@ -494,7 +497,7 @@ contract('KyberStorage', function(accounts) {
         });
 
         it("should list E2T side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, false, true, true, {from: network});
+            await kyberStorage.listPairForReserve(reserve.address, token.address, false, true, true, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
 
@@ -503,7 +506,7 @@ contract('KyberStorage', function(accounts) {
         });
 
         it("should list both T2E and E2T", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
+            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
 
@@ -512,8 +515,8 @@ contract('KyberStorage', function(accounts) {
         });
 
         it("should delist T2E side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
-            await kyberStorage.listPairForReserve(reserve.address, token.address, false, true, false, {from: network});
+            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
+            await kyberStorage.listPairForReserve(reserve.address, token.address, false, true, false, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
 
@@ -522,8 +525,8 @@ contract('KyberStorage', function(accounts) {
         });
 
         it("should delist E2T side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, false, {from: network});
+            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
+            await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, false, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
 
@@ -532,8 +535,8 @@ contract('KyberStorage', function(accounts) {
         });
 
         it("should delist both T2E and E2T", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: network});
+            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
+            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
 
@@ -541,9 +544,11 @@ contract('KyberStorage', function(accounts) {
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
         });
 
-        it("should do nothing for listing twice", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: network});
+        it("should revert for listing twice (approving)", async() => {
+            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
+            await expectRevert.unspecified(
+                kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator})
+            )
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
 
@@ -553,10 +558,12 @@ contract('KyberStorage', function(accounts) {
     });
 
 
-    describe("test onlyAdmin and onlyNetwork permissions", async() => {
+    describe("test onlyAdmin and onlyOperator permissions", async() => {
         before("deploy storage instance, 1 mock reserve and 1 mock token", async() => {
             storage = await KyberStorage.new(admin);
-            await storage.setNetworkContract(network, {from:admin});
+            network = await KyberNetwork.new(admin, storage.address);
+            await storage.addOperator(operator, {from: admin});
+            await storage.setNetworkContract(network.address, {from:admin});
             token = await TestToken.new("test", "tst", 18);
 
             //init 1 mock reserve
@@ -602,56 +609,49 @@ contract('KyberStorage', function(accounts) {
 
         it("should not have unauthorized personnel add reserve", async() => {
             await expectRevert(
-                storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: user}),
-                "only network"
+                storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: user}),
+                "only operator"
             );
 
             await expectRevert(
-                storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: operator}),
-                "only network"
-            );
-
-            await expectRevert(
-                storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: admin}),
-                "only network"
+                storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: admin}),
+                "only operator"
             );
         });
 
-        it("should have network add reserve", async() => {
+        it("should have operator adds reserve", async() => {
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
-            await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+            await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
         });
 
         it("should not have unauthorized personnel remove reserve", async() => {
             await expectRevert(
                 storage.removeReserve(reserve.address, 0, {from: user}),
-                "only network"
-            );
-
-            await expectRevert(
-                storage.removeReserve(reserve.address, 0, {from: operator}),
-                "only network"
+                "only operator"
             );
 
             await expectRevert(
                 storage.removeReserve(reserve.address, 0, {from: admin}),
-                "only network"
+                "only operator"
             );
         });
 
-        it("should have network remove reserve", async() => {
-            await storage.removeReserve(reserve.address, 0, {from: network});
+        it("should have operator removes reserve", async() => {
+            await storage.removeReserve(reserve.address, 0, {from: operator});
         });
     });
 
     describe("test adding reserves", async() => {
+        let tempNetwork;
         before("deploy and setup matchingEngine instance & 1 mock reserve", async() => {
             tempStorage = await KyberStorage.new(admin);
-            await tempStorage.setNetworkContract(network, {from: admin});
+            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
+            await tempStorage.addOperator(operator, {from: admin});
+            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
 
             //init 1 mock reserve
-            let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
+            let result = await nwHelper.setupReserves(tempNetwork, [], 1,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
             numReserves = result.numAddedReserves * 1;
             for (const value of Object.values(reserveInstances)) {
@@ -662,29 +662,37 @@ contract('KyberStorage', function(accounts) {
         describe("test cases where reserve has never been added", async() => {
             it("should revert for NONE reserve type", async() => {
                 await expectRevert(
-                    tempStorage.addReserve(reserve.address, reserve.reserveId, 0, {from: network}),
+                    tempStorage.addReserve(reserve.address, reserve.reserveId, 0, reserve.rebateWallet, {from: operator}),
                     "bad reserve type"
                 );
             });
 
             it("should revert for LAST reserve type", async() => {
                 await expectRevert(
-                    tempStorage.addReserve(reserve.address, reserve.reserveId, 7, {from: network}),
+                    tempStorage.addReserve(reserve.address, reserve.reserveId, 7, reserve.rebateWallet, {from: operator}),
                     "bad reserve type"
                 );
             });
 
             it("should revert for valid reserve because fee accounted data not set", async() => {
                 await expectRevert(
-                    tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
+                    tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator}),
                     "fee accounted data not set"
+                );
+            });
+
+            it("should revert when rebate is 0", async() => {
+                let newReserve = await MockReserve.new();
+                await expectRevert(
+                    kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, zeroAddress, {from: operator}),
+                    "rebate wallet is 0"
                 );
             });
 
             it("should revert for valid reserve because entitled rebate data not set", async() => {
                 await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
                 await expectRevert(
-                    tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network}),
+                    tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator}),
                     "entitled rebate data not set"
                 );
             });
@@ -694,12 +702,12 @@ contract('KyberStorage', function(accounts) {
             before("add fee accounted and entitled rebate data and add reserve", async() => {
                 await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
                 await tempStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
-                await tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                await tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             });
 
             it("should be able to re-add a reserve after its removal", async() => {
-                await tempStorage.removeReserve(reserve.address, 0, {from: network});
-                await tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                await tempStorage.removeReserve(reserve.address, 0, {from: operator});
+                await tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             });
         });
     });
@@ -713,7 +721,9 @@ contract('KyberStorage', function(accounts) {
 
         before("setup matchingEngine instance reserve per each reserve type", async() => {
             storage = await KyberStorage.new(admin);
-            await storage.setNetworkContract(network, {from: admin});
+            network = await KyberNetwork.new(admin, storage.address);
+            await storage.addOperator(operator, {from: admin});
+            await storage.setNetworkContract(network.address, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await storage.setEntitledRebatePerReserveType(true, true, true, false, true, true, {from: admin});
 
@@ -726,7 +736,7 @@ contract('KyberStorage', function(accounts) {
             //add reserves for all types, store reserve IDs in array
             let type = 1;
             for (reserve of Object.values(reserveInstances)) {
-                await storage.addReserve(reserve.address, reserve.reserveId, type, {from: network});
+                await storage.addReserve(reserve.address, reserve.reserveId, type, reserve.rebateWallet, {from: operator});
                 allReserveIDs.push(reserve.reserveId);
                 type++;
             }
@@ -768,7 +778,7 @@ contract('KyberStorage', function(accounts) {
                     Helper.assertEqual(pay[index], actualResult[index]);
                 }
                 
-                actualResult = await storage.getFeeAccountedAndEntitledRebateData(allReserveIDs);
+                actualResult = await storage.getReserveData(allReserveIDs);
                 for (let index = 0; index < pay.length; index++) {
                     Helper.assertEqual(pay[index], actualResult.feeAccountedArr[index]);
                 }
@@ -785,7 +795,9 @@ contract('KyberStorage', function(accounts) {
 
         before("setup matchingEngine instance", async() => {
             storage = await KyberStorage.new(admin);
-            await storage.setNetworkContract(network, {from: admin});
+            network = await KyberNetwork.new(admin, storage.address);
+            await storage.setNetworkContract(network.address, {from: admin});
+            await storage.addOperator(operator, {from: admin});
         });
 
         it("should revert when trying to set entitled rebate data if fee paying data not set yet", async() => {
@@ -856,7 +868,7 @@ contract('KyberStorage', function(accounts) {
             //add reserves for all types, store reserve IDs in array
             let type = 1;
             for (reserve of Object.values(reserveInstances)) {
-                await storage.addReserve(reserve.address, reserve.reserveId, type, {from: network});
+                await storage.addReserve(reserve.address, reserve.reserveId, type, reserve.rebateWallet, {from: operator});
                 allReserveIDs.push(reserve.reserveId);
                 type++;
             }
@@ -907,7 +919,7 @@ contract('KyberStorage', function(accounts) {
                     Helper.assertEqual(rebate[index], actualResult[index]);
                 }
                 
-                actualResult = await storage.getFeeAccountedAndEntitledRebateData(allReserveIDs);
+                actualResult = await storage.getReserveData(allReserveIDs);
                 for (let index = 0; index < rebate.length; index++) {
                     Helper.assertEqual(rebate[index], actualResult.entitledRebateArr[index]);
                 }

@@ -69,7 +69,7 @@ async function setupReserves
         let reserveId = (genReserveID(MOCK_ID, reserve.address)).toLowerCase();
         let rebateWallet;
         if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
-            rebateWallet = zeroAddress;
+            rebateWallet = reserve.address;
         } else {
             rebateWallet = rebateWallets[i];
         }
@@ -119,7 +119,7 @@ async function setupReserves
         let reserveId = (genReserveID(FPR_ID, reserve.address)).toLowerCase();
         let rebateWallet;
         if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
-            rebateWallet = zeroAddress;
+            rebateWallet = reserve.address;
         } else {
             rebateWallet = rebateWallets[i];
         }
@@ -147,7 +147,7 @@ async function setupReserves
         let reserveId = (genReserveID(FPR_ID, reserve.address)).toLowerCase();
         let rebateWallet;
         if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
-            rebateWallet = zeroAddress;
+            rebateWallet = reserve.address;
         } else {
             rebateWallet = rebateWallets[i];
         }

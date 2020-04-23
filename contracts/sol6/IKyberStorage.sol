@@ -43,20 +43,20 @@ interface IKyberStorage {
         view
         returns (bytes32[] memory reserveIds);
 
+    function getReserveAddressesPerTokenSrc(address token)
+        external
+        view
+        returns (address[] memory reserveAddresses);
+
     function getReservesPerTokenDest(address token)
         external
         view
         returns (bytes32[] memory reserveIds);
 
-    function getListReservesByIds(bytes32[] calldata reserveIds)
+    function getRebateWallets(bytes32[] calldata reserveIds)
         external
         view
-        returns (IKyberReserve[] memory reserveAddresses);
-
-    function getRebateWallet(address reserveAddress)
-        external
-        view
-        returns (address rebateWallet);
+        returns (address[] memory rebateWallets);
 
     function getKyberProxies() external view returns (IKyberNetworkProxy[] memory);
 
@@ -90,10 +90,13 @@ interface IKyberStorage {
         view
         returns (bool[] memory entitledRebateArr);
 
-    function getFeeAccountedAndEntitledRebateData(bytes32[] calldata reserveIds)
+    function getReserveData(bytes32[] calldata reserveIds)
         external
         view
-        returns (bool[] memory feeAccountedArr, bool[] memory entitledRebateArr);
+        returns (
+            bool[] memory feeAccountedArr,
+            bool[] memory entitledRebateArr,
+            IKyberReserve[] memory reserveAddresses);
 
     function isKyberProxyAdded() external view returns (bool);
 }

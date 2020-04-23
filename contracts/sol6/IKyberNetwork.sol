@@ -32,8 +32,8 @@ interface IKyberNetwork {
         bytes calldata hint
     ) external payable returns (uint256 destAmount);
 
-    function listTokenForReserves(
-        address[] calldata reserves,
+    function listTokenForReserve(
+        address reserve,
         IERC20 token,
         bool add
     ) external returns (bool);
