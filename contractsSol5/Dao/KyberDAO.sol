@@ -126,8 +126,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     // use to generate increasing campaign ID
     uint256 public numberCampaigns = 0;
     mapping(uint256 => Campaign) internal campaignData;
-    /** Mapping from epoch => data */
 
+    /** Mapping from epoch => data */
     // epochCampaigns[epoch]: list campaign IDs for each epoch (epoch => campaign IDs)
     mapping(uint256 => uint256[]) internal epochCampaigns;
     // totalEpochPoints[epoch]: total points for an epoch (epoch => total points)
@@ -140,7 +140,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     mapping(address => mapping(uint256 => uint256)) public stakerVotedOption;
 
     /* Configuration Campaign Data */
-    uint256 internal latestNetworkFeeResult = 25; // 0.25%
+    uint256 internal latestNetworkFeeResult;
     // epoch => campaignID for network fee campaigns
     mapping(uint256 => uint256) public networkFeeCampaigns;
     // latest BRR data (reward and rebate in bps)
@@ -194,10 +194,12 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         firstEpochStartTimestamp = _startTimestamp;
         feeHandler = IFeeHandler(_feeHandler);
         kncToken = IERC20(_knc);
+
         latestNetworkFeeResult = _defaultNetworkFeeBps;
-        // reward + rebate will be validated inside get func here
-        latestBrrData.rewardInBps = _defaultRewardBps;
-        latestBrrData.rebateInBps = _defaultRebateBps;
+        latestBrrData = BRRData({
+            rewardInBps: _defaultRewardBps,
+            rebateInBps: _defaultRebateBps
+        });
     }
 
     modifier onlyStakingContract {
@@ -219,7 +221,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         // update total points for epoch
         uint256 numVotes = numberVotes[staker][curEpoch];
-        // if no votes, no need to deduce points, but it should still return true to allow withdraw
+        // staker has not participated in any campaigns at the current epoch
         if (numVotes == 0) {
             return;
         }
@@ -238,23 +240,20 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             } // staker has not voted yet
 
             Campaign storage campaign = campaignData[campaignID];
-            // deduce vote count for current running campaign that this staker has voted
             if (campaign.endTimestamp >= now) {
-                // user already voted for this campaign and the campaign is not ended
-                campaign.campaignVoteData.totalVotes = campaign.campaignVoteData.totalVotes.sub(
-                    reduceAmount
-                );
-                campaign.campaignVoteData.votePerOption[votedOption - 1] = campaign
-                    .campaignVoteData
-                    .votePerOption[votedOption - 1]
-                    .sub(reduceAmount);
+                // the staker has voted for this campaign and the campaign has not ended yet
+                // reduce total votes and vote count of staker's voted option
+                campaign.campaignVoteData.totalVotes =
+                    campaign.campaignVoteData.totalVotes.sub(reduceAmount);
+                campaign.campaignVoteData.votePerOption[votedOption - 1] =
+                    campaign.campaignVoteData.votePerOption[votedOption - 1].sub(reduceAmount);
             }
         }
     }
 
     /**
-     * @dev create new campaign, only called by admin
-     * @param campaignType type of campaign (network fee, brr, general)
+     * @dev create new campaign, only called by campaignCreator
+     * @param campaignType type of campaign (General, NetworkFee, FeeHandlerBRR)
      * @param startTimestamp timestamp to start running the campaign
      * @param endTimestamp timestamp to end this campaign
      * @param minPercentageInPrecision min percentage (in precision) for formula to conclude campaign
@@ -275,10 +274,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     ) external onlyCampaignCreator returns (uint256 campaignID) {
         // campaign epoch could be different from current epoch
         // as we allow to create campaign of next epoch as well
-        uint256 campEpoch = getEpochNumber(startTimestamp);
+        uint256 campaignEpoch = getEpochNumber(startTimestamp);
 
         require(
-            epochCampaigns[campEpoch].length < MAX_EPOCH_CAMPAIGNS,
+            epochCampaigns[campaignEpoch].length < MAX_EPOCH_CAMPAIGNS,
             "newCampaign: too many campaigns"
         );
 
@@ -287,7 +286,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                 campaignType,
                 startTimestamp,
                 endTimestamp,
-                campEpoch,
+                campaignEpoch,
                 minPercentageInPrecision,
                 cInPrecision,
                 tInPrecision,
@@ -298,23 +297,26 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         if (campaignType == CampaignType.NetworkFee) {
             require(
-                networkFeeCampaigns[campEpoch] == 0,
+                networkFeeCampaigns[campaignEpoch] == 0,
                 "newCampaign: already had network fee for this epoch"
             );
         } else if (campaignType == CampaignType.FeeHandlerBRR) {
-            require(brrCampaigns[campEpoch] == 0, "newCampaign: already had brr for this epoch");
+            require(
+                brrCampaigns[campaignEpoch] == 0,
+                "newCampaign: already had brr for this epoch"
+            );
         }
 
         numberCampaigns = numberCampaigns.add(1);
         campaignID = numberCampaigns;
 
-        // add campaignID into this current epoch campaign IDs
-        epochCampaigns[campEpoch].push(campaignID);
-        // update network fee or brr campaigns
+        // add campaignID into the list campaign IDs
+        epochCampaigns[campaignEpoch].push(campaignID);
+        // update network fee or fee handler brr campaigns
         if (campaignType == CampaignType.NetworkFee) {
-            networkFeeCampaigns[campEpoch] = campaignID;
+            networkFeeCampaigns[campaignEpoch] = campaignID;
         } else if (campaignType == CampaignType.FeeHandlerBRR) {
-            brrCampaigns[campEpoch] = campaignID;
+            brrCampaigns[campaignEpoch] = campaignID;
         }
 
         FormulaData memory formulaData = FormulaData({
@@ -353,7 +355,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-     * @dev  cancel a campaign with given id, called by admin only
+     * @dev  cancel a campaign with given id, called by campaignCreator only
      *       only can cancel campaigns that have not started yet
      * @param campaignID id of the campaign to cancel
      */
@@ -399,8 +401,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         address staker = msg.sender;
 
         uint256 curEpoch = getCurrentEpochNumber();
-        (uint256 stake, uint256 dStake, address dAddress) = staking
-            .initAndReturnStakerDataForCurrentEpoch(staker);
+        (uint256 stake, uint256 dStake, address dAddress) =
+            staking.initAndReturnStakerDataForCurrentEpoch(staker);
 
         uint256 totalStake = dAddress == staker ? stake.add(dStake) : dStake;
         uint256 lastVotedOption = stakerVotedOption[staker][campaignID];
@@ -408,13 +410,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         CampaignVoteData storage voteData = campaignData[campaignID].campaignVoteData;
 
         if (lastVotedOption == 0) {
-            // increase number campaigns that the staker has voted for first time voted
+            // increase number campaigns that the staker has voted at the current epoch
             numberVotes[staker][curEpoch]++;
 
             totalEpochPoints[curEpoch] = totalEpochPoints[curEpoch].add(totalStake);
-            // increase voted points for this option
-            voteData.votePerOption[option - 1] = voteData.votePerOption[option - 1]
-                .add(totalStake);
+            // increase voted count for this option
+            voteData.votePerOption[option - 1] =
+                voteData.votePerOption[option - 1].add(totalStake);
             // increase total votes
             voteData.totalVotes = voteData.totalVotes.add(totalStake);
         } else if (lastVotedOption != option) {
@@ -422,8 +424,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             voteData.votePerOption[lastVotedOption - 1] =
                 voteData.votePerOption[lastVotedOption - 1].sub(totalStake);
             // increase new option voted count
-            voteData.votePerOption[option - 1] = voteData.votePerOption[option - 1]
-                .add(totalStake);
+            voteData.votePerOption[option - 1] =
+                voteData.votePerOption[option - 1].add(totalStake);
         }
 
         stakerVotedOption[staker][campaignID] = option;
@@ -503,7 +505,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     // return list campaign ids for epoch, excluding non-existed ones
     function getListCampIDs(uint256 epoch) external view returns (uint256[] memory campaignIDs) {
-        return epochCampaigns[epoch];
+        campaignIDs = epochCampaigns[epoch];
     }
 
     // return total points for an epoch
@@ -565,8 +567,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             return (0, 0);
         } // not exist
 
-        // not found or not ended yet, return 0 as winning option
-        if (campaign.endTimestamp == 0 || campaign.endTimestamp > now) {
+        // campaign has not ended yet, return 0 as winning option
+        if (campaign.endTimestamp > now) {
             return (0, 0);
         }
 
@@ -622,7 +624,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-     * @dev return latest network fee with expiry timestamp
+     * @dev return latest network fee and expiry timestamp
      */
     function getLatestNetworkFeeData()
         public
@@ -672,8 +674,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             return 0;
         }
 
-        (uint256 stake, uint256 delegatedStake, address delegatedAddr) = staking
-            .getStakerDataForPastEpoch(staker, epoch);
+        (uint256 stake, uint256 delegatedStake, address delegatedAddr) =
+            staking.getStakerDataForPastEpoch(staker, epoch);
+
         uint256 totalStake = delegatedAddr == staker ? stake.add(delegatedStake) : delegatedStake;
         if (totalStake == 0) {
             return 0;
@@ -786,10 +789,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         } else {
             // brr fee handler campaign, option must be combined for reward + rebate %
             for (uint256 i = 0; i < options.length; i++) {
-                // first 128 bits is rebate, last 128 bits is reward
-                (uint256 rebateInBps, uint256 rewardInBps) = getRebateAndRewardFromData(
-                    options[i]
-                );
+                // rebate (left most 128 bits) + reward (right most 128 bits)
+                (uint256 rebateInBps, uint256 rewardInBps) =
+                    getRebateAndRewardFromData(options[i]);
                 require(
                     rewardInBps.add(rebateInBps) <= BPS,
                     "validateParams: RR values are too high"

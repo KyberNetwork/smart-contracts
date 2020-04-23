@@ -5,7 +5,7 @@ import "./IKyberDAO.sol";
 import "./IKyberNetworkProxy.sol";
 
 
-contract IKyberStorage {
+interface IKyberStorage {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
 
     function addReserve(
