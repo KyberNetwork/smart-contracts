@@ -905,7 +905,7 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(mulPrecision(550), await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake should be correct");
     });
 
-    it("Test withdraw right before starting new epoch", async function() {
+    it("Test withdraw at end and beginning of an epoch", async function() {
       await deployStakingContract(10, currentBlock + 20);
 
       await kncToken.transfer(victor, mulPrecision(100));
@@ -1528,7 +1528,7 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(mulPrecision(140), await stakingContract.getLatestDelegatedStake(loi), "delegated stake is not correct");
     });
 
-    it("Test delegate at end and begin of an epoch", async function() {
+    it("Test delegate at end and beginning of an epoch", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(400));
@@ -1813,7 +1813,7 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(zeroAddress, await stakingContract.getDelegatedAddress(victor, 100), "get stakes should return 0");
     });
 
-    it("Test getStakes return correct data", async function() {
+    it("Test getStake returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(200));
@@ -1855,7 +1855,7 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(0, await stakingContract.getStake(victor, 100), "get stake should return correct data");
     });
 
-    it("Test getDelegatedStakes return correct data", async function() {
+    it("Test getDelegatedStake returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(200));
@@ -1910,7 +1910,7 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(0, await stakingContract.getDelegatedStake(victor, 100), "get delegated stake should return correct data");
     });
 
-    it("Test getDelegatedAddress return correct data", async function() {
+    it("Test getDelegatedAddress returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
       Helper.assertEqual(mike, await stakingContract.getDelegatedAddress(mike, 0), "get delegated address should return correct data");
@@ -1952,7 +1952,7 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(zeroAddress, await stakingContract.getDelegatedAddress(victor, 100), "get delegated address should return correct data");
     });
 
-    it("Test getStakes return correct data", async function() {
+    it("Test getStake returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(200));
@@ -2055,7 +2055,7 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(loi, data[2], "delegated address is wrong");
     });
 
-    it("Test get latest stakes returns correct data", async function() {
+    it("Test get latest stake returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(200));
@@ -2102,7 +2102,7 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(0, await stakingContract.getLatestStakeBalance(mike), "latest stake is wrong");
     });
 
-    it("Test get latest delegated stakes returns correct data", async function() {
+    it("Test get latest delegated stake returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2174,7 +2174,7 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(mulPrecision(50), await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake is wrong");
     });
 
-    it("Test get delegated address should return correct data", async function() {
+    it("Test get delegated address returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
       Helper.assertEqual(mike, await stakingContract.getLatestDelegatedAddress(mike), "latest delegated address is wrong");
