@@ -35,8 +35,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
     /// @param addresses List of reserve addresses selected for the trade
     /// @param ids List of reserve ids, to be used for KyberTrade event
     /// @param rates List of rates that were offered by the reserves
-    /// @param isFeeAccountedFlags List of reserves requiring users to pay network fee, or not
-    /// @param isEntitledRebateFlags List of reserves eligible for rebates, or not
+    /// @param isFeeAccountedFlags List of reserves requiring users to pay network fee
+    /// @param isEntitledRebateFlags List of reserves eligible for rebates
     /// @param splitsBps List of proportions of trade amount allocated to the reserves.
     ///     If there is only 1 reserve, then it should have a value of 10000 bps
     /// @param decimals Token decimals. Src decimals when for src -> ETH, dest decimals when ETH -> dest
@@ -880,16 +880,15 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
         IKyberMatchingEngine.ProcessWithRate processWithRate;
 
         // get reserve list from matching engine.
-        (reservesData.ids, reservesData.splitsBps, processWithRate) = matchingEngine
-            .getTradingReserves(
+        (reservesData.ids, reservesData.splitsBps, processWithRate) =
+            matchingEngine.getTradingReserves(
             src,
             dest,
-            (tradeData.input.src != ETH_TOKEN_ADDRESS) &&
-                (tradeData.input.dest != ETH_TOKEN_ADDRESS),
+            (tradeData.input.src != ETH_TOKEN_ADDRESS) && (tradeData.input.dest != ETH_TOKEN_ADDRESS),
             hint
         );
-        (reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags) = kyberStorage
-            .getFeeAccountedAndEntitledRebateData(reservesData.ids);
+        (reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags) =
+            kyberStorage.getFeeAccountedAndEntitledRebateData(reservesData.ids);
 
         require(reservesData.ids.length == reservesData.splitsBps.length, "bad split array");
         require(reservesData.ids.length == reservesData.isFeeAccountedFlags.length, "bad fee array");
@@ -1147,8 +1146,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils4, IKyberNetwork, Reentra
                 tradeData.feeAccountedBps += reservesData.splitsBps[i];
 
                 if (reservesData.isEntitledRebateFlags[i]) {
-                tradeData.entitledRebateBps += reservesData.splitsBps[i];
-                tradeData.numEntitledRebateReserves++;
+                    tradeData.entitledRebateBps += reservesData.splitsBps[i];
+                    tradeData.numEntitledRebateReserves++;
                 }
             }
         }
