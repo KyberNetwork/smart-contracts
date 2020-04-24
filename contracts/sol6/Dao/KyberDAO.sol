@@ -16,61 +16,6 @@ interface IFeeHandler {
     ) external returns (bool);
 }
 
-
-contract CampPermissionGroups {
-    address public campaignCreator;
-    address public pendingCampaignCreator;
-
-    event TransferCampaignCreatorPending(address pendingCampaignCreator);
-    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
-
-    constructor(address _campaignCreator) public {
-        require(_campaignCreator != address(0), "campaignCreator is 0");
-        campaignCreator = _campaignCreator;
-    }
-
-    modifier onlyCampaignCreator() {
-        require(msg.sender == campaignCreator, "only campaign creator");
-        _;
-    }
-
-    /**
-     * @dev Allows the current campaignCreator to set the pendingCampaignCreator address.
-     * @param newCampaignCreator The address to transfer ownership to.
-     */
-    function transferCampaignCreator(address newCampaignCreator) external onlyCampaignCreator {
-        require(newCampaignCreator != address(0), "newCampaignCreator is 0");
-        emit TransferCampaignCreatorPending(newCampaignCreator);
-        pendingCampaignCreator = newCampaignCreator;
-    }
-
-    /**
-     * @dev Allows the current campCcampaignCreatorreator to set the campaignCreator in one tx.
-            Useful initial deployment.
-     * @param newCampaignCreator The address to transfer ownership to.
-     */
-    function transferCampaignCreatorQuickly(address newCampaignCreator)
-        external
-        onlyCampaignCreator
-    {
-        require(newCampaignCreator != address(0), "newCampaignCreator is 0");
-        emit TransferCampaignCreatorPending(newCampaignCreator);
-        emit CampaignCreatorClaimed(newCampaignCreator, campaignCreator);
-        campaignCreator = newCampaignCreator;
-    }
-
-    /**
-     * @dev Allows the pendingCampaignCreator address to finalize the change campaign creator process.
-     */
-    function claimCampaignCreator() external {
-        require(pendingCampaignCreator == msg.sender, "only pending campaign creator");
-        emit CampaignCreatorClaimed(pendingCampaignCreator, campaignCreator);
-        campaignCreator = pendingCampaignCreator;
-        pendingCampaignCreator = address(0);
-    }
-}
-
-
 /**
  * @notice  This contract is using SafeMath for uint, which is inherited from EpochUtils
             Some events are moved to interface, easier for public uses
@@ -78,7 +23,7 @@ contract CampPermissionGroups {
  *      BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
  *      General campaign: options are from 1 to num_options
  */
-contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroups, Utils5 {
+contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
     /* Constants */
     // max number of campaigns for each epoch
     uint256 public   constant MAX_EPOCH_CAMPAIGNS = 10;
@@ -122,6 +67,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     IKyberStaking public staking;
     IFeeHandler public feeHandler;
 
+    // campaign creator permissions
+    address public campaignCreator;
+    address public pendingCampaignCreator;
+
     /* Mapping from campaign ID => data */
     // use to generate increasing campaign ID
     uint256 public numberCampaigns = 0;
@@ -148,6 +97,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     // epoch => campaignID for brr campaigns
     mapping(uint256 => uint256) public brrCampaigns;
 
+    event TransferCampaignCreatorPending(address pendingCampaignCreator);
+    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
+
     event NewCampaignCreated(
         CampaignType campaignType,
         uint256 indexed campaignID,
@@ -172,12 +124,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint256 _defaultRewardBps,
         uint256 _defaultRebateBps,
         address _campaignCreator
-    ) public CampPermissionGroups(_campaignCreator) {
+    ) public {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
         require(_staking != address(0), "ctor: staking is missing");
         require(_feeHandler != address(0), "ctor: feeHandler is missing");
         require(_knc != address(0), "ctor: knc token is missing");
+        require(_campaignCreator != address(0), "campaignCreator is 0");
         // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
         // so network fee should be less than 50%
         require(_defaultNetworkFeeBps < BPS / 2, "ctor: network fee high");
@@ -200,11 +153,52 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             rewardInBps: _defaultRewardBps,
             rebateInBps: _defaultRebateBps
         });
+        campaignCreator = _campaignCreator;
+    }
+
+    modifier onlyCampaignCreator() {
+        require(msg.sender == campaignCreator, "only campaign creator");
+        _;
     }
 
     modifier onlyStakingContract {
         require(msg.sender == address(staking), "only staking contract");
         _;
+    }
+
+    /**
+     * @dev Allows the current campaignCreator to set the pendingCampaignCreator address.
+     * @param newCampaignCreator The address to transfer ownership to.
+     */
+    function transferCampaignCreator(address newCampaignCreator) external onlyCampaignCreator {
+        require(newCampaignCreator != address(0), "newCampaignCreator is 0");
+        emit TransferCampaignCreatorPending(newCampaignCreator);
+        pendingCampaignCreator = newCampaignCreator;
+    }
+
+    /**
+     * @dev Allows the current campCcampaignCreatorreator to set the campaignCreator in one tx.
+            Useful initial deployment.
+     * @param newCampaignCreator The address to transfer ownership to.
+     */
+    function transferCampaignCreatorQuickly(address newCampaignCreator)
+        external
+        onlyCampaignCreator
+    {
+        require(newCampaignCreator != address(0), "newCampaignCreator is 0");
+        emit TransferCampaignCreatorPending(newCampaignCreator);
+        emit CampaignCreatorClaimed(newCampaignCreator, campaignCreator);
+        campaignCreator = newCampaignCreator;
+    }
+
+    /**
+     * @dev Allows the pendingCampaignCreator address to finalize the change campaign creator process.
+     */
+    function claimCampaignCreator() external {
+        require(pendingCampaignCreator == msg.sender, "only pending campaign creator");
+        emit CampaignCreatorClaimed(pendingCampaignCreator, campaignCreator);
+        campaignCreator = pendingCampaignCreator;
+        pendingCampaignCreator = address(0);
     }
 
     /**
