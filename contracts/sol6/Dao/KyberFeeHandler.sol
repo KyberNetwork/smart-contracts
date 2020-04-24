@@ -4,6 +4,7 @@ import "../utils/Utils5.sol";
 import "../IKyberDAO.sol";
 import "../IKyberFeeHandler.sol";
 import "../IKyberNetworkProxy.sol";
+import "../ISimpleKyberProxy.sol";
 import "../IBurnableToken.sol";
 import "./ISanityRate.sol";
 import "../utils/zeppelin/SafeMath.sol";
@@ -31,6 +32,11 @@ import "../utils/zeppelin/SafeMath.sol";
  *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO.
  *          Expiry timestamp for data is set. when data expires. Fee handler reads new data from DAO.
  */
+
+interface IKyberProxy is IKyberNetworkProxy, ISimpleKyberProxy {
+    function kyberNetwork() external view returns (address);
+}
+
 contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
     using SafeMath for uint256;
 
@@ -47,7 +53,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
     }
 
     IKyberDAO public kyberDAO;
-    IKyberNetworkProxy public networkProxy;
+    IKyberProxy public networkProxy;
     address public kyberNetwork;
     IERC20 public knc;
 
@@ -96,10 +102,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
     event RewardsRemovedToBurn(uint256 indexed epoch, uint256 rewardsWei);
     event TransferBurnConfigSetter(address pendingBurnConfigSetter);
     event BurnConfigSetterClaimed(address newBurnConfigSetter, address previousBurnConfigSetter);
+    event KyberNetworkUpdated(address kyberNetwork);
 
     constructor(
         address _daoSetter,
-        IKyberNetworkProxy _networkProxy,
+        IKyberProxy _networkProxy,
         address _kyberNetwork,
         IERC20 _knc,
         uint256 _burnBlockInterval,
@@ -314,6 +321,14 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
         daoSetter = address(0);
     }
 
+    /// @dev update kyber network contract address via kyber proxy.
+    function updateNetworkContract() external onlyBurnConfigSetter{
+        address _kyberNetwork = networkProxy.kyberNetwork();
+        require(_kyberNetwork != address(0), "KyberNetwork 0");
+        kyberNetwork = _kyberNetwork;
+        emit KyberNetworkUpdated(kyberNetwork);
+    }
+
     /// @dev set burn KNC sanity rate contract and amount wei to burn
     /// @param _sanityRate new sanity rate contract
     /// @param _weiToBurn new amount of wei to burn
@@ -364,20 +379,12 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
             0,
             ""
         );
-
         require(validateEthToKncRateToBurn(kyberEthKncRate), "Kyber knc rate invalid");
 
         // Buy some KNC and burn
-        uint256 destQty = networkProxy.tradeWithHintAndFee{value: srcQty}(
-            ETH_TOKEN_ADDRESS,
-            srcQty,
+        uint256 destQty = networkProxy.swapEtherToToken{value: srcQty}(
             knc,
-            address(uint160(address(this))), // Convert this address into address payable
-            MAX_QTY,
-            kyberEthKncRate,
-            address(0), // platform wallet
-            0, // platformFeeBps
-            "" // hint
+            kyberEthKncRate
         );
 
         require(IBurnableToken(address(knc)).burn(destQty), "knc burn failed");
