@@ -115,7 +115,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     event KyberProxyAdded(address proxy);
     event KyberProxyRemoved(address proxy);
 
-    event ListReservesForToken(
+    event ListedReservesForToken(
         IERC20 indexed token,
         address[] indexed reserves,
         bool add
@@ -244,7 +244,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     function listReservesForToken(
         IERC20 token,
         bool add
-    ) external returns (bool) {
+    ) external {
         onlyOperator();
 
         address[] memory reserves = kyberStorage.getReserveAddressesPerTokenSrc(address(token));
@@ -256,7 +256,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             }
         }
 
-        emit ListReservesForToken(token, reserves, add);
+        emit ListedReservesForToken(token, reserves, add);
     }
 
     function setContracts(

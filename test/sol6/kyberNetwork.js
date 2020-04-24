@@ -490,6 +490,126 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
+    describe.only("test list reserves", async function() {
+        let tempNetwork;
+        let tempStorage;
+        let mockReserve;
+        let token;
+        let reserveInstances;
+
+        before("global setup", async function(){
+            tempStorage = accounts[1];
+            tempNetwork = await KyberNetwork.new(admin, tempStorage);
+
+            mockReserve = await MockReserve.new();
+
+            await tempNetwork.addOperator(operator, {from: admin});
+
+            //init feeHandler
+            token = await TestToken.new("kyber network crystal", "KNC", 18);
+        });
+
+        it("test can not list token with unauthorized personnel", async function() {
+            await expectRevert(
+                tempNetwork.listTokenForReserve(
+                    mockReserve.address,
+                    token.address,
+                    true,
+                    {from: accounts[0]}
+                ),
+                "only kyber storage"
+            );
+        });
+
+        it("test can list token, allowance changes as expected", async function() {
+            await tempNetwork.listTokenForReserve(
+                mockReserve.address,
+                token.address,
+                true,
+                {from: tempStorage}
+            );
+            Helper.assertEqual(
+                new BN(2).pow(new BN(255)),
+                await token.allowance(tempNetwork.address, mockReserve.address)
+            );
+        });
+
+        it("test can unlist token, allowance changes as expected", async function() {
+            await tempNetwork.listTokenForReserve(
+                mockReserve.address,
+                token.address,
+                false,
+                {from: tempStorage}
+            );
+            Helper.assertEqual(
+                zeroBN,
+                await token.allowance(tempNetwork.address, mockReserve.address)
+            );
+        });
+
+        it("test list reserves for token from unauthorized personnel", async() => {
+            await expectRevert(
+                tempNetwork.listReservesForToken(
+                    token.address,
+                    true, {from: accounts[0]}
+                ),
+                "only operator"
+            )
+        });
+
+        it("test list/unlist reserves for token, allowances change as expected", async() => {
+            tempStorage = await KyberStorage.new(admin);
+            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
+            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
+            await tempStorage.addOperator(operator, {from: admin});
+            mockReserve = await MockReserve.new();
+
+            let result = await nwHelper.setupReserves(network, [token], 2,0,0,0, accounts, admin, operator);
+
+            reserveInstances = result.reserveInstances;
+
+            await tempNetwork.addOperator(operator, {from: admin});
+            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await tempStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+            await nwHelper.addReservesToNetwork(tempStorage, reserveInstances, [token], operator);
+
+            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
+            await tempNetwork.addOperator(operator, {from: admin});
+
+            // list reserves
+            await tempNetwork.listReservesForToken(
+                token.address,
+                true,
+                {from: operator}
+            )
+
+            for (const [key, value] of Object.entries(reserveInstances)) {
+                reserve = value.instance;
+                Helper.assertEqual(
+                    new BN(2).pow(new BN(255)),
+                    await token.allowance(tempNetwork.address, reserve.address)
+                )
+            }
+
+            // unlist reserves
+            await tempNetwork.listReservesForToken(
+                token.address,
+                false,
+                {from: operator}
+            )
+
+            for (const [key, value] of Object.entries(reserveInstances)) {
+                reserve = value.instance;
+                Helper.assertEqual(
+                    zeroBN,
+                    await token.allowance(tempNetwork.address, reserve.address)
+                )
+            }
+        });
+
+        // TODO: add trade tests after changing network
+    });
+
     describe("test enable network", async function(){
         let tempNetwork;
         let tempMatchingEngine;
