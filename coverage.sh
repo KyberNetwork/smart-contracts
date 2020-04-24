@@ -10,7 +10,7 @@ npx buidler compile --config ./buidlerCoverageSol4.js
 
 if [ -n "$FILE" ]
 then
-    npx buidler coverage --config ./buidlerConfigSol5.js --testfiles $FILE --solcoverjs ".solcover.js" --temp ""
+    npx buidler coverage --config ./buidlerConfigSol6.js --testfiles $FILE --solcoverjs ".solcover.js" --temp ""
 else
-    npx buidler coverage --config ./buidlerConfigSol5.js --testfiles "" --solcoverjs ".solcover.js" --temp ""
+    npx buidler coverage --config ./buidlerConfigSol6.js --testfiles "" --solcoverjs ".solcover.js" --temp ""
 fi
