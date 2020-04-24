@@ -147,8 +147,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
         emit EthReceived(msg.value);
     }
 
-    fallback() external {}
-
     /// @dev handleFees function is called per trade on KyberNetwork. unless the trade is not involving any fees.
     /// @param rebateWallets a list of rebate wallets that are entitiled for fee with this trade.
     /// @param rebateBpsPerWallet percentage of rebate for each wallet, out of total rebate. BPS uints: 10000 = 100%
