@@ -582,7 +582,7 @@ contract('KyberStorage', function(accounts) {
             );
 
             await expectRevert(
-                storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: network}),
+                storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: user}),
                 "only admin"
             );
         });
@@ -598,7 +598,7 @@ contract('KyberStorage', function(accounts) {
             );
 
             await expectRevert(
-                storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: network}),
+                storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: user}),
                 "only admin"
             );
         });
