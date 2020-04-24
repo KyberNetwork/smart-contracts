@@ -133,8 +133,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         emit EtherReceival(msg.sender, msg.value);
     }
 
-    fallback() external payable {}
-
     /// @notice Backward compatible function
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
     /// @dev Trade from src to dest token and sends dest token to destAddress
