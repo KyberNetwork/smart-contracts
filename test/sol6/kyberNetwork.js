@@ -551,90 +551,176 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert(
                 tempNetwork.listReservesForToken(
                     token.address,
+                    0,
+                    0,
                     true, {from: accounts[0]}
                 ),
                 "only operator"
             )
         });
 
-        it("test list/unlist reserves for token, allowances change as expected", async() => {
-            tempStorage = await KyberStorage.new(admin);
-            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
-            await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempStorage.addOperator(operator, {from: admin});
-            mockReserve = await MockReserve.new();
+        describe("test list and unlist reserves for token", async function() {
+            let tempStorage;
+            let tempNetwork;
+            let reserveAddresses;
 
-            let result = await nwHelper.setupReserves(network, [token], 2,0,0,0, accounts, admin, operator);
+            beforeEach("setup data", async() => {
+                tempStorage = await KyberStorage.new(admin);
+                tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
+                await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
+                await tempStorage.addOperator(operator, {from: admin});
 
-            reserveInstances = result.reserveInstances;
+                let result = await nwHelper.setupReserves(network, [token], 2,0,0,0, accounts, admin, operator);
 
-            await tempNetwork.addOperator(operator, {from: admin});
-            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-            await tempStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
-            await nwHelper.addReservesToStorage(tempStorage, reserveInstances, [token], operator);
+                reserveInstances = result.reserveInstances;
+                reserveAddresses = [];
 
-            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
-            await tempNetwork.addOperator(operator, {from: admin});
+                await tempNetwork.addOperator(operator, {from: admin});
+                await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+                await tempStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+                await nwHelper.addReservesToStorage(tempStorage, reserveInstances, [token], operator);
 
-            // list reserves
-            let txResult = await tempNetwork.listReservesForToken(
-                token.address,
-                true,
-                {from: operator}
-            )
-            expectEvent(txResult, 'ListedReservesForToken', {
-                token: token.address,
-                add: true
-            })
-            var eventLogs;
-            for (let i = 0; i < txResult.logs.length; i++) {
-                if (txResult.logs[i].event == 'ListedReservesForToken') {
-                    eventLogs = txResult.logs[i];
-                    break;
+                tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
+                await tempNetwork.addOperator(operator, {from: admin});
+
+                for (const [key, value] of Object.entries(reserveInstances)) {
+                    reserve = value.instance;
+                    reserveAddresses.push(reserve.address);
                 }
-            }
-            Helper.assertEqual(eventLogs.args.reserves.length, 2);
-            var index = 0
+            });
 
-            for (const [key, value] of Object.entries(reserveInstances)) {
-                reserve = value.instance;
+            it("test list reserves start index > end index", async() => {
+                await expectRevert(
+                    tempNetwork.listReservesForToken(
+                        token.address, 1, 0, true, {from: operator}
+                    ),
+                    "invalid indices"
+                )
+            });
+
+            it("test list reserves token is not listed", async() => {
+                let newToken = await TestToken.new("test token", "tst", 18);
+                await expectRevert(
+                    tempNetwork.listReservesForToken(
+                        newToken.address, 0, 0, true, {from: operator}
+                    ),
+                    "reserve list is empty"
+                )
+            });
+
+            it("test list reserves empty as wrong indices", async() => {
+                let newToken = await TestToken.new("test token", "tst", 18);
+                // start + end out of bound
+                await expectRevert(
+                    tempNetwork.listReservesForToken(
+                        newToken.address, 4, 5, true, {from: operator}
+                    ),
+                    "reserve list is empty"
+                )
+                await expectRevert(
+                    tempNetwork.listReservesForToken(
+                        newToken.address, 4, 4, true, {from: operator}
+                    ),
+                    "reserve list is empty"
+                )
+            });
+
+            it("test list/unlist 1 reserve", async() => {
+                // list 1 reserve
+                let txResult = await tempNetwork.listReservesForToken(
+                    token.address, 0, 0, true, {from: operator}
+                )
+                expectEvent(txResult, 'ListedReservesForToken', {
+                    token: token.address,
+                    add: true
+                })
+                var eventLogs;
+                for (let i = 0; i < txResult.logs.length; i++) {
+                    if (txResult.logs[i].event == 'ListedReservesForToken') {
+                        eventLogs = txResult.logs[i];
+                        break;
+                    }
+                }
+                Helper.assertEqual(eventLogs.args.reserves.length, 1);
+                Helper.assertEqual(reserveAddresses[0], eventLogs.args.reserves[0]);
                 Helper.assertEqual(
                     new BN(2).pow(new BN(255)),
-                    await token.allowance(tempNetwork.address, reserve.address)
+                    await token.allowance(tempNetwork.address, reserveAddresses[0])
+                );
+                // unlist reserves
+                txResult = await tempNetwork.listReservesForToken(
+                    token.address, 0, 0, false, {from: operator}
                 )
-                Helper.assertEqual(eventLogs.args.reserves[index], reserve.address);
-                index++;
-            }
-
-            // unlist reserves
-            txResult = await tempNetwork.listReservesForToken(
-                token.address,
-                false,
-                {from: operator}
-            )
-            expectEvent(txResult, 'ListedReservesForToken', {
-                token: token.address,
-                add: false
-            })
-            for (let i = 0; i < txResult.logs.length; i++) {
-                if (txResult.logs[i].event == 'ListedReservesForToken') {
-                    eventLogs = txResult.logs[i];
-                    break;
+                expectEvent(txResult, 'ListedReservesForToken', {
+                    token: token.address,
+                    add: false
+                })
+                for (let i = 0; i < txResult.logs.length; i++) {
+                    if (txResult.logs[i].event == 'ListedReservesForToken') {
+                        eventLogs = txResult.logs[i];
+                        break;
+                    }
                 }
-            }
-            Helper.assertEqual(eventLogs.args.reserves.length, 2);
-            index = 0;
-            for (const [key, value] of Object.entries(reserveInstances)) {
-                reserve = value.instance;
+                Helper.assertEqual(eventLogs.args.reserves.length, 1);
+                Helper.assertEqual(reserveAddresses[0], eventLogs.args.reserves[0]);
                 Helper.assertEqual(
-                    zeroBN,
-                    await token.allowance(tempNetwork.address, reserve.address)
+                    0,
+                    await token.allowance(tempNetwork.address, reserveAddresses[0])
+                );
+                // unlist reserve that already unlisted
+                txResult = await tempNetwork.listReservesForToken(
+                    token.address, 0, 0, false, {from: operator}
                 )
-                Helper.assertEqual(eventLogs.args.reserves[index], reserve.address);
-                index++;
-            }
-        });
+            });
 
+            it("test list/unlist with end index out of bound", async() => {
+                // list 1 reserve
+                let txResult = await tempNetwork.listReservesForToken(
+                    token.address, 0, 2, true, {from: operator}
+                )
+                expectEvent(txResult, 'ListedReservesForToken', {
+                    token: token.address,
+                    add: true
+                })
+                var eventLogs;
+                for (let i = 0; i < txResult.logs.length; i++) {
+                    if (txResult.logs[i].event == 'ListedReservesForToken') {
+                        eventLogs = txResult.logs[i];
+                        break;
+                    }
+                }
+                Helper.assertEqual(eventLogs.args.reserves.length, 2);
+                for(let i = 0; i < 1; i++) {
+                    Helper.assertEqual(reserveAddresses[i], eventLogs.args.reserves[i]);
+                    Helper.assertEqual(
+                        new BN(2).pow(new BN(255)),
+                        await token.allowance(tempNetwork.address, reserveAddresses[i])
+                    );
+                }
+                // unlist reserves
+                txResult = await tempNetwork.listReservesForToken(
+                    token.address, 0, 2, false, {from: operator}
+                )
+                expectEvent(txResult, 'ListedReservesForToken', {
+                    token: token.address,
+                    add: false
+                })
+                for (let i = 0; i < txResult.logs.length; i++) {
+                    if (txResult.logs[i].event == 'ListedReservesForToken') {
+                        eventLogs = txResult.logs[i];
+                        break;
+                    }
+                }
+                Helper.assertEqual(eventLogs.args.reserves.length, 2);
+                for(let i = 0; i < 1; i++) {
+                    Helper.assertEqual(reserveAddresses[i], eventLogs.args.reserves[i]);
+                    Helper.assertEqual(
+                        0,
+                        await token.allowance(tempNetwork.address, reserveAddresses[i])
+                    );
+                }
+            });
+        });
         // TODO: add trade tests after changing network
     });
 

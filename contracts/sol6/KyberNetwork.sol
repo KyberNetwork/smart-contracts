@@ -240,14 +240,25 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     ///      Useful for migration new network
     ///      Call storage to get list of reserves that are supported token->eth
     /// @param token Token address
+    /// @param startIndex start index in list reserves
+    /// @param endIndex end index in list reserves
     /// @param add If true then list token->eth pair, otherwise unlist it
     function listReservesForToken(
         IERC20 token,
+        uint256 startIndex,
+        uint256 endIndex,
         bool add
     ) external {
         onlyOperator();
 
-        address[] memory reserves = kyberStorage.getReserveAddressesPerTokenSrc(address(token));
+        require(startIndex <= endIndex, "invalid indices");
+
+        address[] memory reserves = kyberStorage.getReserveAddressesPerTokenSrc(
+            address(token), startIndex, endIndex
+        );
+
+        require(reserves.length > 0, "reserve list is empty");
+
         for(uint i = 0; i < reserves.length; i++) {
             if (add) {
                 token.safeApprove(reserves[i], 2**255);

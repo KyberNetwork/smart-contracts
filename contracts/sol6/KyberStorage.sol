@@ -375,16 +375,23 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         reserveIds = reservesPerTokenSrc[token];
     }
 
-    function getReserveAddressesPerTokenSrc(address token)
+    function getReserveAddressesPerTokenSrc(address token, uint256 startIndex, uint256 endIndex)
         external
         view
         override
         returns (address[] memory reserveAddresses)
     {
         bytes32[] memory reserveIds = reservesPerTokenSrc[token];
-        reserveAddresses = new address[](reserveIds.length);
-        for(uint i = 0; i < reserveAddresses.length; i++) {
-            reserveAddresses[i] = reserveIdToAddresses[reserveIds[i]][0];
+        if (reserveIds.length == 0) {
+            return reserveAddresses ;
+        }
+        uint256 endId = (endIndex >= reserveIds.length) ? (reserveIds.length - 1) : endIndex;
+        if (endId < startIndex) {
+            return reserveAddresses;
+        }
+        reserveAddresses = new address[](endId - startIndex + 1);
+        for(uint i = startIndex; i <= endId; i++) {
+            reserveAddresses[i - startIndex] = reserveIdToAddresses[reserveIds[i]][0];
         }
     }
 

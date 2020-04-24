@@ -38,7 +38,7 @@ interface IKyberStorage {
         view
         returns (bytes32[] memory reserveIds);
 
-    function getReserveAddressesPerTokenSrc(address token)
+    function getReserveAddressesPerTokenSrc(address token, uint256 startIndex, uint256 endIndex)
         external
         view
         returns (address[] memory reserveAddresses);
