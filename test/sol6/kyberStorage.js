@@ -100,9 +100,9 @@ contract('KyberStorage', function(accounts) {
             await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             let reserveId = await kyberStorage.getReserveID(reserve.address);
 
-            let reserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 0);
+            let reserveAddress = await kyberStorage.getReservesByReserveId(reserve.reserveId);
             Helper.assertEqual(reserve.reserveId, reserveId, "wrong address to ID");
-            Helper.assertEqual(reserve.address, reserveAddress, "wrong ID to address");
+            Helper.assertEqual(reserve.address, reserveAddress[0], "wrong ID to address");
         });
 
         it("should not have unauthorized personnel list token pair for reserve", async() => {
@@ -374,9 +374,11 @@ contract('KyberStorage', function(accounts) {
                 let newReserve = await MockReserve.new();
                 await kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator});
                 await kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
-                let actualNewReserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 0);
-                let actualOldReserveAddress = await kyberStorage.reserveIdToAddresses(reserve.reserveId, 1);
-                assert(await kyberStorage.convertReserveIdToAddress(reserve.reserveId) == newReserve.address, "new reserve address not equal to expected");
+                let reserves = await kyberStorage.getReservesByReserveId(reserve.reserveId);
+                let actualNewReserveAddress = reserves[0];
+                let actualOldReserveAddress = reserves[1];
+                let reserveData = await kyberStorage.getReserveDetailsById(reserve.reserveId);
+                assert(reserveData.reserveAddress == newReserve.address, "new reserve address not equal to expected");
 
                 Helper.assertEqual(newReserve.address, actualNewReserveAddress, "new reserve address not equal to expected");
                 Helper.assertEqual(reserve.address, actualOldReserveAddress, "old reserve address not equal to expected");
@@ -414,10 +416,10 @@ contract('KyberStorage', function(accounts) {
                 reserveRebateWalletData.push(reserve.rebateWallet);
                 reserveRebateData.push(reserve.type != "TYPE_MOCK");
 
-                assert(await kyberStorage.convertReserveAddresstoId(reserve.address) == reserve.reserveId, "unexpected reserveId");
-                assert(await kyberStorage.convertReserveIdToAddress(reserve.reserveId) == reserve.address, "unexpected reserveId");
+                assert(await kyberStorage.getReserveID(reserve.address) == reserve.reserveId, "unexpected reserveId");
                 let reserveData = await kyberStorage.getReserveDetailsById(reserve.reserveId);
                 assert(reserveData.reserveAddress == reserve.address, "unexpected reserve address");
+                assert(reserveData.rebateWallet == reserve.rebateWallet, "unexpected rebate address");
                 assert(reserveData.resType == reserve.onChainType, "unexpected reserve on chain type");
                 assert(reserveData.isFeeAccountedFlag == (reserve.type != "TYPE_MOCK"), "unexpected fee accounted flag");
                 assert(reserveData.isEntitledRebateFlag == (reserve.type != "TYPE_MOCK"), "unexpected entitled rebate flag");
@@ -808,11 +810,13 @@ contract('KyberStorage', function(accounts) {
                 for (reserve of Object.values(reserveInstances)) {
                     let actualResult = await storage.getReserveDetailsByAddress(reserve.address);
                     Helper.assertEqual(reserve.reserveId, actualResult.reserveId);
+                    Helper.assertEqual(reserve.rebateWallet, actualResult.rebateWallet);
                     Helper.assertEqual(index + 1, actualResult.resType);
                     Helper.assertEqual(pay[index], actualResult.isFeeAccountedFlag);
 
                     actualResult = await storage.getReserveDetailsById(reserve.reserveId);
                     Helper.assertEqual(reserve.address, actualResult.reserveAddress);
+                    Helper.assertEqual(reserve.rebateWallet, actualResult.rebateWallet);
                     Helper.assertEqual(index + 1, actualResult.resType);
                     Helper.assertEqual(pay[index], actualResult.isFeeAccountedFlag);
                     ++index;
@@ -947,12 +951,14 @@ contract('KyberStorage', function(accounts) {
                 for (reserve of Object.values(reserveInstances)) {
                     let actualResult = await storage.getReserveDetailsByAddress(reserve.address);
                     Helper.assertEqual(reserve.reserveId, actualResult.reserveId);
+                    Helper.assertEqual(reserve.rebateWallet, actualResult.rebateWallet);
                     Helper.assertEqual(index + 1, actualResult.resType);
                     Helper.assertEqual(true, actualResult.isFeeAccountedFlag);
                     Helper.assertEqual(rebate[index], actualResult.isEntitledRebateFlag);
 
                     actualResult = await storage.getReserveDetailsById(reserve.reserveId);
                     Helper.assertEqual(reserve.address, actualResult.reserveAddress);
+                    Helper.assertEqual(reserve.rebateWallet, actualResult.rebateWallet);
                     Helper.assertEqual(index + 1, actualResult.resType);
                     Helper.assertEqual(true, actualResult.isFeeAccountedFlag);
                     Helper.assertEqual(rebate[index], actualResult.isEntitledRebateFlag);

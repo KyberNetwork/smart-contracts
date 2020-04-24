@@ -203,11 +203,13 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     function convertReserveIdToAddress(bytes32 reserveId) internal view override returns (address) {
-        return kyberStorage.convertReserveIdToAddress(reserveId);
+        address reserveAddress;
+        (reserveAddress, , , ,) = kyberStorage.getReserveDetailsById(reserveId);
+        return reserveAddress;
     }
 
     function convertAddressToReserveId(address reserveAddress) internal view override returns (bytes32) {
-        return kyberStorage.convertReserveAddresstoId(reserveAddress);
+        return kyberStorage.getReserveID(reserveAddress);
     }
 
     /// @notice Logic for masking out reserves

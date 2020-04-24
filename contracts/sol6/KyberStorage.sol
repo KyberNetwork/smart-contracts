@@ -26,8 +26,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     IKyberReserve[] internal reserves;
     IKyberNetworkProxy[] internal kyberProxyArray;
 
-    mapping(bytes32 => address[]) public reserveIdToAddresses;
-    mapping(bytes32 => address) public reserveRebateWallet;
+    mapping(bytes32 => address[]) internal reserveIdToAddresses;
+    mapping(bytes32 => address) internal reserveRebateWallet;
     mapping(address => bytes32) internal reserveAddressToId;
     mapping(address => bytes32[]) internal reservesPerTokenSrc; // reserves supporting token to eth
     mapping(address => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
@@ -338,16 +338,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return reserves;
     }
 
-    function getReserveID(address reserve) external view returns (bytes32) {
+    function getReserveID(address reserve) external view override returns (bytes32) {
         return reserveAddressToId[reserve];
-    }
-
-    function convertReserveAddresstoId(address reserve) external view override returns (bytes32 reserveId) {
-        return reserveAddressToId[reserve];
-    }
-
-    function convertReserveIdToAddress(bytes32 reserveId) external view override returns (address reserve) {
-        return reserveIdToAddresses[reserveId][0];
     }
 
     function convertReserveAddressestoIds(address[] calldata reserveAddresses)
@@ -380,7 +372,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         override
         returns (bytes32[] memory reserveIds)
     {
-        return reservesPerTokenSrc[token];
+        reserveIds = reservesPerTokenSrc[token];
     }
 
     function getReserveAddressesPerTokenSrc(address token)
@@ -402,7 +394,16 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         override
         returns (bytes32[] memory reserveIds)
     {
-        return reservesPerTokenDest[token];
+        reserveIds = reservesPerTokenDest[token];
+    }
+
+    function getReservesByReserveId(bytes32 reserveId)
+        external
+        view
+        override
+        returns (address[] memory reserveAddresses)
+    {
+        reserveAddresses = reserveIdToAddresses[reserveId];
     }
 
     function getRebateWallets(bytes32[] calldata reserveIds)
@@ -445,6 +446,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     /// @notice Returns information about a reserve given its reserve ID
     /// @return reserveAddress Address of the reserve
+    /// @return rebateWallet address of rebate wallet of this reserve
     /// @return resType Reserve type from enum ReserveType
     /// @return isFeeAccountedFlag Whether fees are to be charged for the trade for this reserve
     /// @return isEntitledRebateFlag Whether reserve is entitled rebate from the trade fees
@@ -454,12 +456,14 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         override
         returns (
             address reserveAddress,
+            address rebateWallet,
             ReserveType resType,
             bool isFeeAccountedFlag,
             bool isEntitledRebateFlag
         )
     {
         reserveAddress = reserveIdToAddresses[reserveId][0];
+        rebateWallet = reserveRebateWallet[reserveId];
         uint256 resTypeUint = reserveType[reserveId];
         resType = ReserveType(resTypeUint);
         isFeeAccountedFlag = (feeAccountedPerType & (1 << resTypeUint)) > 0;
@@ -468,6 +472,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     /// @notice Returns information about a reserve given its reserve ID
     /// @return reserveId The reserve ID in 32 bytes. 1st byte is reserve type
+    /// @return rebateWallet address of rebate wallet of this reserve
     /// @return resType Reserve type from enum ReserveType
     /// @return isFeeAccountedFlag Whether fees are to be charged for the trade for this reserve
     /// @return isEntitledRebateFlag Whether reserve is entitled rebate from the trade fees
@@ -477,12 +482,14 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         override
         returns (
             bytes32 reserveId,
+            address rebateWallet,
             ReserveType resType,
             bool isFeeAccountedFlag,
             bool isEntitledRebateFlag
         )
     {
         reserveId = reserveAddressToId[reserve];
+        rebateWallet = reserveRebateWallet[reserveId];
         uint256 resTypeUint = reserveType[reserveId];
         resType = ReserveType(resTypeUint);
         isFeeAccountedFlag = (feeAccountedPerType & (1 << resTypeUint)) > 0;

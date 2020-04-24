@@ -21,12 +21,7 @@ interface IKyberStorage {
 
     function setDAOContract(IKyberDAO _kyberDAO) external returns (bool);
 
-    function convertReserveAddresstoId(address reserve) external view returns (bytes32 reserveId);
-
-    function convertReserveIdToAddress(bytes32 reserveId)
-        external
-        view
-        returns (address reserveAddress);
+    function getReserveID(address reserve) external view returns (bytes32 reserveId);
 
     function convertReserveAddressestoIds(address[] calldata reserveAddresses)
         external
@@ -53,6 +48,11 @@ interface IKyberStorage {
         view
         returns (bytes32[] memory reserveIds);
 
+    function getReservesByReserveId(bytes32 reserveId)
+        external
+        view
+        returns (address[] memory reserveAddresses);
+
     function getRebateWallets(bytes32[] calldata reserveIds)
         external
         view
@@ -65,6 +65,7 @@ interface IKyberStorage {
         view
         returns (
             bytes32 reserveId,
+            address rebateWallet,
             ReserveType resType,
             bool isFeeAccountedFlag,
             bool isEntitledRebateFlag
@@ -75,6 +76,7 @@ interface IKyberStorage {
         view
         returns (
             address reserveAddress,
+            address rebateWallet,
             ReserveType resType,
             bool isFeeAccountedFlag,
             bool isEntitledRebateFlag
