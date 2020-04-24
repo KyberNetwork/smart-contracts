@@ -440,32 +440,6 @@ contract('KyberNetwork', function(accounts) {
             });
         });
 
-        it("List pair For reserve eth to token", async() => {
-            let anyWallet = taker;
-            let anotherMockReserve = await MockReserve.new();
-            await tempStorage.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
-            let txResult = await tempStorage.listPairForReserve(anotherMockReserve.address, KNC.address, true, false, true, {from: operator});
-            expectEvent(txResult, 'ListReservePairs', {
-                reserve: anotherMockReserve.address,
-                src: ethAddress,
-                dest: KNC.address,
-                add: true
-            });
-        });
-
-        it("List pair For reserve token to eth", async() => {
-            let anyWallet = taker;
-            let anotherMockReserve = await MockReserve.new();
-            await tempStorage.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
-            let txResult = await tempStorage.listPairForReserve(anotherMockReserve.address, KNC.address, false, true, true, {from: operator});
-            expectEvent(txResult, 'ListReservePairs', {
-                reserve: anotherMockReserve.address,
-                src: KNC.address,
-                dest: ethAddress,
-                add: true
-            });
-        });
-
         it("Add DAO contract", async() => {
             let fakeDAO = accounts[3];
             let txResult = await tempNetwork.setDAOContract(fakeDAO, {from: admin});

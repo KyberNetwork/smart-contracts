@@ -8,8 +8,8 @@ const nwHelper = require("./networkHelper.js");
 
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
-const {zeroAddress, zeroBN} = require("../helper.js");
-const { ReserveType } = require('./networkHelper.js');
+const {zeroAddress, zeroBN, ethAddress} = require("../helper.js");
+const { ReserveType, MOCK_ID } = require('./networkHelper.js');
 
 //global variables
 //////////////////
@@ -174,13 +174,42 @@ contract('KyberStorage', function(accounts) {
     describe("test contract event", async() => {
         before("deploy and setup kyberStorage instance", async() => {
             kyberStorage = await KyberStorage.new(admin);
+            network = await KyberNetwork.new(admin, kyberStorage.address);
             await kyberStorage.addOperator(operator, {from: admin});
+            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
         });
 
         it("shoud test set network event", async() => {
-            txResult = await kyberStorage.setNetworkContract(network, {from: admin});
+            txResult = await kyberStorage.setNetworkContract(network.address, {from: admin});
             expectEvent(txResult, "KyberNetworkUpdated", {
-                newNetwork: network
+                newNetwork: network.address
+            });
+        });
+
+        it("List pair For reserve eth to token", async() => {
+            let anyWallet = accounts[0];
+            let anotherMockReserve = await MockReserve.new();
+            await kyberStorage.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
+            let txResult = await kyberStorage.listPairForReserve(anotherMockReserve.address, token.address, true, false, true, {from: operator});
+            expectEvent(txResult, 'ListReservePairs', {
+                reserve: anotherMockReserve.address,
+                src: ethAddress,
+                dest: token.address,
+                add: true
+            });
+        });
+
+        it("List pair For reserve token to eth", async() => {
+            let anyWallet = accounts[0];
+            let anotherMockReserve = await MockReserve.new();
+            await kyberStorage.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
+            let txResult = await kyberStorage.listPairForReserve(anotherMockReserve.address, token.address, false, true, true, {from: operator});
+            expectEvent(txResult, 'ListReservePairs', {
+                reserve: anotherMockReserve.address,
+                src: token.address,
+                dest: ethAddress,
+                add: true
             });
         });
     });
@@ -478,6 +507,8 @@ contract('KyberStorage', function(accounts) {
             }
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
+            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address);
+            Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
 
             result = await kyberStorage.getReservesPerTokenDest(token.address);
             Helper.assertEqualArray(result, reserveIds, "T2E should be listed");
@@ -491,6 +522,8 @@ contract('KyberStorage', function(accounts) {
             await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, true, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
+            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address);
+            Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
 
             result = await kyberStorage.getReservesPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
@@ -500,6 +533,8 @@ contract('KyberStorage', function(accounts) {
             await kyberStorage.listPairForReserve(reserve.address, token.address, false, true, true, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
+            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address);
+            Helper.assertEqual(result[0], reserve.address, "E2T should be listed");
 
             result = await kyberStorage.getReservesPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
@@ -508,16 +543,20 @@ contract('KyberStorage', function(accounts) {
         it("should list both T2E and E2T", async() => {
             await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
-            Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
+            Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
+            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address);
+            Helper.assertEqual(result[0], reserve.address, "E2T should be listed");
 
             result = await kyberStorage.getReservesPerTokenDest(token.address);
-            Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
+            Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
         });
 
         it("should delist T2E side only", async() => {
             await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
             await kyberStorage.listPairForReserve(reserve.address, token.address, false, true, false, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
+            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
 
             result = await kyberStorage.getReservesPerTokenDest(token.address);
@@ -529,6 +568,8 @@ contract('KyberStorage', function(accounts) {
             await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, false, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
+            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address);
+            Helper.assertEqual(result[0], reserve.address, "E2T should be listed");
 
             result = await kyberStorage.getReservesPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
@@ -539,6 +580,8 @@ contract('KyberStorage', function(accounts) {
             await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: operator});
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
+            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address);
+            Helper.assertEqual(result[0], zeroBN, "E2T should not be listed");
 
             result = await kyberStorage.getReservesPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
@@ -551,6 +594,8 @@ contract('KyberStorage', function(accounts) {
             )
             let result = await kyberStorage.getReservesPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
+            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address);
+            Helper.assertEqual(result[0], reserve.address, "E2T should be listed");
 
             result = await kyberStorage.getReservesPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
