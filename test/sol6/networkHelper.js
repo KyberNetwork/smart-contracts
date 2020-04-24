@@ -174,6 +174,7 @@ async function setupNetwork
     const storage =  await KyberStorage.new(admin);
     const network = await NetworkArtifact.new(admin, storage.address);
     await storage.setNetworkContract(network.address, {from: admin});
+    await storage.addOperator(operator, {from: admin});
     await network.addOperator(operator, { from: admin });
     //init matchingEngine, feeHandler
     const matchingEngine = await MatchingEngine.new(admin);
@@ -191,7 +192,7 @@ async function setupNetwork
     //set params, enable network
     await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
     await network.setEnable(true, { from: admin });
-    return network;
+    return [network, storage];
 }
 
 module.exports.setupFprReserve = setupFprReserve;
@@ -375,8 +376,8 @@ async function setupAprPricing(token, p0, admin, operator) {
     return pricing;
 }
 
-module.exports.addReservesToNetwork = addReservesToNetwork;
-async function addReservesToNetwork(storageInstance, reserveInstances, tokens, operator) {
+module.exports.addReservesToStorage = addReservesToStorage;
+async function addReservesToStorage(storageInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
         console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
@@ -402,7 +403,7 @@ module.exports.getEt2ReservesFromTradeTx = function(tradeTx) {
     }
 }
 
-module.exports.removeReservesFromNetwork = async function (storageInstance, reserveInstances, tokens, operator) {
+module.exports.removeReservesFromStorage = async function (storageInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
         console.log("removing reserve type: " + reserve.type + " address: " + reserve.address + " pricing: " + reserve.pricing);

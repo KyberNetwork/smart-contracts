@@ -427,7 +427,7 @@ contract('KyberStorage', function(accounts) {
             Helper.assertEqualArray(await kyberStorage.convertReserveIdsToAddresses(reserveIds), reserveAddresses);
             Helper.assertEqualArray(await kyberStorage.getFeeAccountedData(reserveIds), reserveFeeData);
             Helper.assertEqualArray(await kyberStorage.getEntitledRebateData(reserveIds), reserveRebateData);
-            let feeAccountedAndRebateResult = await kyberStorage.getReserveData(reserveIds);
+            let feeAccountedAndRebateResult = await kyberStorage.getReservesData(reserveIds);
             Helper.assertEqualArray(feeAccountedAndRebateResult.feeAccountedArr, reserveFeeData);
             Helper.assertEqualArray(feeAccountedAndRebateResult.entitledRebateArr, reserveRebateData);
         });
@@ -823,7 +823,7 @@ contract('KyberStorage', function(accounts) {
                     Helper.assertEqual(pay[index], actualResult[index]);
                 }
                 
-                actualResult = await storage.getReserveData(allReserveIDs);
+                actualResult = await storage.getReservesData(allReserveIDs);
                 for (let index = 0; index < pay.length; index++) {
                     Helper.assertEqual(pay[index], actualResult.feeAccountedArr[index]);
                 }
@@ -964,7 +964,7 @@ contract('KyberStorage', function(accounts) {
                     Helper.assertEqual(rebate[index], actualResult[index]);
                 }
                 
-                actualResult = await storage.getReserveData(allReserveIDs);
+                actualResult = await storage.getReservesData(allReserveIDs);
                 for (let index = 0; index < rebate.length; index++) {
                     Helper.assertEqual(rebate[index], actualResult.entitledRebateArr[index]);
                 }

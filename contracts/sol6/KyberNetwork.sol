@@ -841,7 +841,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             hint
         );
         (reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags, reservesData.addresses)
-            = kyberStorage.getReserveData(reservesData.ids);
+            = kyberStorage.getReservesData(reservesData.ids);
 
         require(reservesData.ids.length == reservesData.splitsBps.length, "bad split array");
         require(reservesData.ids.length == reservesData.isFeeAccountedFlags.length, "bad fee array");

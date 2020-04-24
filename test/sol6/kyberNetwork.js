@@ -571,7 +571,7 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addOperator(operator, {from: admin});
             await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await tempStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
-            await nwHelper.addReservesToNetwork(tempStorage, reserveInstances, [token], operator);
+            await nwHelper.addReservesToStorage(tempStorage, reserveInstances, [token], operator);
 
             tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempNetwork.addOperator(operator, {from: admin});
@@ -796,7 +796,7 @@ contract('KyberNetwork', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(storage, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
 
                 //set zero rates
                 for (const [key, value] of Object.entries(reserveInstances)) {
@@ -809,7 +809,7 @@ contract('KyberNetwork', function(accounts) {
             });
 
             after("unlist and remove reserve", async() => {
-                await nwHelper.removeReservesFromNetwork(storage, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
 
@@ -919,7 +919,7 @@ contract('KyberNetwork', function(accounts) {
             });
 
             after("unlist and remove reserve", async() => {
-                await nwHelper.removeReservesFromNetwork(storage, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
 
@@ -1507,11 +1507,11 @@ contract('KyberNetwork', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(storage, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
             });
 
             after("unlist and remove reserve", async() => {
-                await nwHelper.removeReservesFromNetwork(storage, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
 
@@ -1619,11 +1619,11 @@ contract('KyberNetwork', function(accounts) {
             reserveIdToWallet = result.reserveIdToRebateWallet;
 
             //add and list pair for reserve
-            await nwHelper.addReservesToNetwork(storage, reserveInstances, tokens, operator);
+            await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
         });
 
         after("unlist and remove reserve", async() => {
-            await nwHelper.removeReservesFromNetwork(storage, reserveInstances, tokens, operator);
+            await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
             reserveInstances = {};
         });
 
@@ -1944,7 +1944,7 @@ contract('KyberNetwork', function(accounts) {
             reserveInstances = result.reserveInstances;
 
             //add and list pair for reserve
-            await nwHelper.addReservesToNetwork(tempStorage, reserveInstances, tokens, operator);
+            await nwHelper.addReservesToStorage(tempStorage, reserveInstances, tokens, operator);
 
             // set fixed rates
             fixedTokensPerEther = precisionUnits.mul(new BN(20));
@@ -2140,7 +2140,7 @@ contract('KyberNetwork', function(accounts) {
             // setup reserve
             reserves = await nwHelper.setupReserves(network, tokens, 2, 0, 0, 0, accounts, admin, operator);
             reserveInstances = reserves.reserveInstances;
-            await nwHelper.addReservesToNetwork(storage, reserveInstances, tokens, operator);
+            await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
             for (const [key, value] of Object.entries(reserveInstances)) {
                 let reserve = value.instance;
                 await reserve.setRate(srcToken.address, MAX_RATE, MAX_RATE);

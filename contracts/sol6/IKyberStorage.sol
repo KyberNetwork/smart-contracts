@@ -90,7 +90,7 @@ interface IKyberStorage {
         view
         returns (bool[] memory entitledRebateArr);
 
-    function getReserveData(bytes32[] calldata reserveIds)
+    function getReservesData(bytes32[] calldata reserveIds)
         external
         view
         returns (

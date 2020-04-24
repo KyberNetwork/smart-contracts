@@ -5,7 +5,6 @@ import "./IKyberFeeHandler.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
 import "./utils/PermissionGroupsNoModifiers.sol";
-import "./utils/Utils5.sol";
 
 
 /**
@@ -15,7 +14,10 @@ import "./utils/Utils5.sol";
  *   - Stores feeAccounted data for reserve types
  *   - Record contract changes for network, matchingEngine, feeHandler, reserves, network proxies and kyberDAO
  */
-contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
+contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
+    IERC20 internal constant ETH_TOKEN_ADDRESS = IERC20(
+        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+    );
     // store current and previous contracts.
     IKyberNetwork[] internal previousNetworks;
     IKyberFeeHandler[] internal feeHandler;
@@ -517,7 +519,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
     }
 
-    function getReserveData(bytes32[] calldata reserveIds)
+    function getReservesData(bytes32[] calldata reserveIds)
         external
         view
         override
