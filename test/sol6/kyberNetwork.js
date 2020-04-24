@@ -586,7 +586,14 @@ contract('KyberNetwork', function(accounts) {
                 token: token.address,
                 add: true
             })
-            Helper.assertEqual(txResult.logs[0].args.reserves.length, 2);
+            var eventLogs;
+            for (let i = 0; i < txResult.logs.length; i++) {
+                if (txResult.logs[i].event == 'ListedReservesForToken') {
+                    eventLogs = txResult.logs[i];
+                    break;
+                }
+            }
+            Helper.assertEqual(eventLogs.args.reserves.length, 2);
             var index = 0
 
             for (const [key, value] of Object.entries(reserveInstances)) {
@@ -595,7 +602,7 @@ contract('KyberNetwork', function(accounts) {
                     new BN(2).pow(new BN(255)),
                     await token.allowance(tempNetwork.address, reserve.address)
                 )
-                Helper.assertEqual(txResult.logs[0].args.reserves[index], reserve.address);
+                Helper.assertEqual(eventLogs.args.reserves[index], reserve.address);
                 index++;
             }
 
@@ -609,7 +616,13 @@ contract('KyberNetwork', function(accounts) {
                 token: token.address,
                 add: false
             })
-            Helper.assertEqual(txResult.logs[0].args.reserves.length, 2);
+            for (let i = 0; i < txResult.logs.length; i++) {
+                if (txResult.logs[i].event == 'ListedReservesForToken') {
+                    eventLogs = txResult.logs[i];
+                    break;
+                }
+            }
+            Helper.assertEqual(eventLogs.args.reserves.length, 2);
             index = 0;
             for (const [key, value] of Object.entries(reserveInstances)) {
                 reserve = value.instance;
@@ -617,7 +630,7 @@ contract('KyberNetwork', function(accounts) {
                     zeroBN,
                     await token.allowance(tempNetwork.address, reserve.address)
                 )
-                Helper.assertEqual(txResult.logs[0].args.reserves[index], reserve.address);
+                Helper.assertEqual(eventLogs.args.reserves[index], reserve.address);
                 index++;
             }
         });
