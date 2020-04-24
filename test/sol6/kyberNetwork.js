@@ -490,7 +490,7 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
-    describe.only("test list reserves", async function() {
+    describe("test list reserves", async function() {
         let tempNetwork;
         let tempStorage;
         let mockReserve;
@@ -577,11 +577,17 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addOperator(operator, {from: admin});
 
             // list reserves
-            await tempNetwork.listReservesForToken(
+            let txResult = await tempNetwork.listReservesForToken(
                 token.address,
                 true,
                 {from: operator}
             )
+            expectEvent(txResult, 'ListedReservesForToken', {
+                token: token.address,
+                add: true
+            })
+            Helper.assertEqual(txResult.logs[0].args.reserves.length, 2);
+            var index = 0
 
             for (const [key, value] of Object.entries(reserveInstances)) {
                 reserve = value.instance;
@@ -589,21 +595,30 @@ contract('KyberNetwork', function(accounts) {
                     new BN(2).pow(new BN(255)),
                     await token.allowance(tempNetwork.address, reserve.address)
                 )
+                Helper.assertEqual(txResult.logs[0].args.reserves[index], reserve.address);
+                index++;
             }
 
             // unlist reserves
-            await tempNetwork.listReservesForToken(
+            txResult = await tempNetwork.listReservesForToken(
                 token.address,
                 false,
                 {from: operator}
             )
-
+            expectEvent(txResult, 'ListedReservesForToken', {
+                token: token.address,
+                add: false
+            })
+            Helper.assertEqual(txResult.logs[0].args.reserves.length, 2);
+            index = 0;
             for (const [key, value] of Object.entries(reserveInstances)) {
                 reserve = value.instance;
                 Helper.assertEqual(
                     zeroBN,
                     await token.allowance(tempNetwork.address, reserve.address)
                 )
+                Helper.assertEqual(txResult.logs[0].args.reserves[index], reserve.address);
+                index++;
             }
         });
 

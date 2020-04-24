@@ -117,7 +117,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
     event ListedReservesForToken(
         IERC20 indexed token,
-        address[] indexed reserves,
+        address[] reserves,
         bool add
     );
 
