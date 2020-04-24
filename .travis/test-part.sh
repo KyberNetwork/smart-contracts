@@ -6,8 +6,8 @@ set -euxo pipefail
 readonly test_part=${TEST_PART:-}
 
 case "$test_part" in
-Sol5)
-    npx buidler test --no-compile --config buidlerConfigSol5.js
+Sol6)
+    npx buidler test --no-compile --config buidlerConfigSol6.js
     ;;
 Coverage)
     if [[ $TRAVIS_EVENT_TYPE != "push" ]]; then
