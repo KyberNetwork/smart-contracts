@@ -31,46 +31,7 @@ import "../utils/zeppelin/SafeMath.sol";
  *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO.
  *          Expiry timestamp for data is set. when data expires. Fee handler reads new data from DAO.
  */
-contract BurnConfigPermission {
-    address public burnConfigSetter;
-    address public pendingBurnConfigSetter;
-
-    event TransferBurnConfigSetter(address pendingBurnConfigSetter);
-    event BurnConfigSetterClaimed(address newBurnConfigSetter, address previousBurnConfigSetter);
-
-    constructor(address _burnConfigSetter) public {
-        require(_burnConfigSetter != address(0), "burnConfigSetter is 0");
-        burnConfigSetter = _burnConfigSetter;
-    }
-
-    modifier onlyBurnConfigSetter() {
-        require(msg.sender == burnConfigSetter, "only burnConfigSetter");
-        _;
-    }
-
-    /**
-     * @dev Allows the current burnConfigSetter to set the pendingBurnConfigSetter address.
-     * @param newSetter The address to transfer ownership to.
-     */
-    function transferBurnConfigSetter(address newSetter) external onlyBurnConfigSetter {
-        require(newSetter != address(0), "newSetter is 0");
-        emit TransferBurnConfigSetter(newSetter);
-        pendingBurnConfigSetter = newSetter;
-    }
-
-    /**
-     * @dev Allows the pendingBurnConfigSetter address to finalize the change burn config setter process.
-     */
-    function claimBurnConfigSetter() external {
-        require(pendingBurnConfigSetter == msg.sender, "only pending burn config setter");
-        emit BurnConfigSetterClaimed(pendingBurnConfigSetter, burnConfigSetter);
-        burnConfigSetter = pendingBurnConfigSetter;
-        pendingBurnConfigSetter = address(0);
-    }
-}
-
-
-contract KyberFeeHandler is IKyberFeeHandler, Utils5, BurnConfigPermission {
+contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
     using SafeMath for uint256;
 
     uint256 internal constant BITS_PER_PARAM = 64;
@@ -94,7 +55,9 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, BurnConfigPermission {
     uint256 public lastBurnBlock;
 
     BRRData public brrAndEpochData;
+    address public burnConfigSetter;
     address public daoSetter;
+    address public pendingBurnConfigSetter;
 
     /// @dev amount of eth to burn for each burn KNC call
     uint256 public weiToBurn = 2 * 10**ETH_DECIMALS;
@@ -131,6 +94,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, BurnConfigPermission {
     event KyberDaoAddressSet(IKyberDAO kyberDAO);
     event BurnConfigSet(ISanityRate sanityRate, uint256 weiToBurn);
     event RewardsRemovedToBurn(uint256 indexed epoch, uint256 rewardsWei);
+    event TransferBurnConfigSetter(address pendingBurnConfigSetter);
+    event BurnConfigSetterClaimed(address newBurnConfigSetter, address previousBurnConfigSetter);
 
     constructor(
         address _daoSetter,
@@ -139,13 +104,15 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, BurnConfigPermission {
         IERC20 _knc,
         uint256 _burnBlockInterval,
         address _burnConfigSetter
-    ) public BurnConfigPermission(_burnConfigSetter) {
-        require(address(_daoSetter) != address(0), "daoSetter 0");
+    ) public {
+        require(_burnConfigSetter != address(0), "burnConfigSetter is 0");
+        require(_daoSetter != address(0), "daoSetter 0");
         require(address(_networkProxy) != address(0), "KyberNetworkProxy 0");
-        require(address(_kyberNetwork) != address(0), "KyberNetwork 0");
+        require(_kyberNetwork != address(0), "KyberNetwork 0");
         require(address(_knc) != address(0), "knc 0");
         require(_burnBlockInterval != 0, "_burnBlockInterval 0");
 
+        burnConfigSetter = _burnConfigSetter;
         daoSetter = _daoSetter;
         networkProxy = _networkProxy;
         kyberNetwork = _kyberNetwork;
@@ -154,6 +121,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, BurnConfigPermission {
 
         //start with epoch 0
         updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, now, 0);
+    }
+
+    modifier onlyBurnConfigSetter() {
+        require(msg.sender == burnConfigSetter, "only burnConfigSetter");
+        _;
     }
 
     modifier onlyDAO {
@@ -313,6 +285,22 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, BurnConfigPermission {
 
         emit PlatformFeePaid(platformWallet, amount);
         return amount;
+    }
+
+    /// @dev Allows the pendingBurnConfigSetter address to finalize the change burn config setter process.
+    function claimBurnConfigSetter() external {
+        require(pendingBurnConfigSetter == msg.sender, "only pending burn config setter");
+        emit BurnConfigSetterClaimed(pendingBurnConfigSetter, burnConfigSetter);
+        burnConfigSetter = pendingBurnConfigSetter;
+        pendingBurnConfigSetter = address(0);
+    }
+
+    /// @dev Allows the current burnConfigSetter to set the pendingBurnConfigSetter address.
+    /// @param newSetter The address to transfer ownership to.
+    function transferBurnConfigSetter(address newSetter) external onlyBurnConfigSetter {
+        require(newSetter != address(0), "newSetter is 0");
+        emit TransferBurnConfigSetter(newSetter);
+        pendingBurnConfigSetter = newSetter;
     }
 
     /// @dev set dao contract address once and set setter address to zero.
