@@ -28,6 +28,7 @@ module.exports = {
         "default_balance_ether": 100000000000000,
         "total_accounts": 20
     },
+    skipFiles: ['Dao/mock/', 'mock/', 'utils/zeppelin/'],
     istanbulReporter: ['html','json'],
     onCompileComplete: moveFiles,
     onIstanbulComplete: removeArtifactsDir
