@@ -510,7 +510,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         (
             address[] memory rebateWallets,
             uint256[] memory rebatePercentBps
-        ) = calculateRebateSplitPerWallet(tradeData);
+        ) = calculateRebates(tradeData);
 
         uint256 sentFee = tradeData.networkFeeWei + tradeData.platformFeeWei;
 
@@ -921,7 +921,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
     }
 
-    function calculateRebateSplitPerWallet(TradeData memory tradeData)
+    function calculateRebates(TradeData memory tradeData)
         internal
         view
         returns (address[] memory rebateWallets, uint256[] memory rebatePercentBps)
@@ -936,7 +936,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         bytes32[] memory rebateReserveIds = new bytes32[](tradeData.numEntitledRebateReserves);
 
         // token to ether
-        index = populateRebateWalletList(
+        index = createRebateEntitledList(
             rebateReserveIds,
             rebatePercentBps,
             tradeData.tokenToEth,
@@ -945,7 +945,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         );
 
         // ether to token
-        populateRebateWalletList(
+        createRebateEntitledList(
             rebateReserveIds,
             rebatePercentBps,
             tradeData.ethToToken,
@@ -956,7 +956,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         rebateWallets = kyberStorage.getRebateWallets(rebateReserveIds);
     }
 
-    function populateRebateWalletList(
+    function createRebateEntitledList(
         bytes32[] memory rebateReserveIds,
         uint256[] memory rebatePercentBps,
         ReservesData memory reservesData,
