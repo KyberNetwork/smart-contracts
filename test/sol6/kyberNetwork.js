@@ -2008,6 +2008,7 @@ contract('KyberNetwork', function(accounts) {
             const storage =  await KyberStorage.new(admin);
             network = await KyberNetwork.new(admin, storage.address);
             await storage.setNetworkContract(network.address, {from: admin});
+            await storage.addOperator(operator, { from: admin });
             await network.addOperator(operator, { from: admin });
             //init matchingEngine, feeHandler
             matchingEngine = await MatchingEngine.new(admin);
@@ -2030,7 +2031,7 @@ contract('KyberNetwork', function(accounts) {
             // setup reserve
             reserves = await nwHelper.setupReserves(network, tokens, 2, 0, 0, 0, accounts, admin, operator);
             reserveInstances = reserves.reserveInstances;
-            await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+            await nwHelper.addReservesToNetwork(storage, reserveInstances, tokens, operator);
             for (const [key, value] of Object.entries(reserveInstances)) {
                 let reserve = value.instance;
                 await reserve.setRate(srcToken.address, MAX_RATE, MAX_RATE);
