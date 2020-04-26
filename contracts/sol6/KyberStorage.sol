@@ -375,6 +375,10 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         reserveIds = reservesPerTokenSrc[token];
     }
 
+    /// @dev Network is calling this function to approve (allowance) for list of reserves for a token
+    ///      in case we have a long list of reserves, approving all of them could run out of gas
+    ///      using startIndex and endIndex to prevent above scenario
+    ///      also enable us to approve reserve one by one
     function getReserveAddressesPerTokenSrc(address token, uint256 startIndex, uint256 endIndex)
         external
         view
