@@ -417,21 +417,6 @@ contract('KyberNetwork', function(accounts) {
             });
         });
 
-        it("Add reserve", async() => {
-            let anyWallet = taker;
-            let txResult = await tempStorage.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
-            expectEvent(txResult, 'AddReserveToStorage', {
-                reserve: mockReserve.address,
-                reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
-                reserveType: new BN(ReserveType.FPR),
-                rebateWallet: taker,
-                add: true
-            });
-            reserves = await tempStorage.getReserves();
-            Helper.assertEqual(reserves.length, 1, "number of reserve is not expected");
-            Helper.assertEqual(reserves[0], mockReserve.address, "reserve addr is not expected");
-        });
-
         it("Remove reserve", async() => {
             let txResult = await tempStorage.removeReserve(mockReserve.address, 0, {from: operator});
             expectEvent(txResult, 'RemoveReserveFromStorage', {
@@ -634,7 +619,7 @@ contract('KyberNetwork', function(accounts) {
                     token: token.address,
                     add: true
                 })
-                var eventLogs;
+                let eventLogs;
                 for (let i = 0; i < txResult.logs.length; i++) {
                     if (txResult.logs[i].event == 'ListedReservesForToken') {
                         eventLogs = txResult.logs[i];
@@ -682,7 +667,7 @@ contract('KyberNetwork', function(accounts) {
                     token: token.address,
                     add: true
                 })
-                var eventLogs;
+                let eventLogs;
                 for (let i = 0; i < txResult.logs.length; i++) {
                     if (txResult.logs[i].event == 'ListedReservesForToken') {
                         eventLogs = txResult.logs[i];

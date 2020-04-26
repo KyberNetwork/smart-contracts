@@ -5,6 +5,7 @@ import "./IKyberFeeHandler.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
 import "./utils/PermissionGroupsNoModifiers.sol";
+import "./utils/Utils5.sol";
 
 
 /**
@@ -14,10 +15,7 @@ import "./utils/PermissionGroupsNoModifiers.sol";
  *   - Stores feeAccounted data for reserve types
  *   - Record contract changes for network, matchingEngine, feeHandler, reserves, network proxies and kyberDAO
  */
-contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
-    IERC20 internal constant ETH_TOKEN_ADDRESS = IERC20(
-        0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-    );
+contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     // store current and previous contracts.
     IKyberNetwork[] internal previousNetworks;
     IKyberFeeHandler[] internal feeHandler;
@@ -53,7 +51,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     event ReserveRebateWalletSet(
         bytes32 indexed reserveId,
-        address indexed reserve,
         address indexed rebateWallet
     );
 
@@ -72,14 +69,13 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         kyberNetwork = _kyberNetwork;
     }
 
-    function setRebateWallet(address reserve, address rebateWallet) external {
+    function setRebateWallet(bytes32 reserveId, address rebateWallet) external {
         onlyOperator();
         require(rebateWallet != address(0), "rebate wallet is 0");
-        bytes32 reserveId = reserveAddressToId[reserve];
-        require(reserveId != bytes32(0), "reserve not found");
+        require(reserveId != bytes32(0), "reserveId not found");
 
         reserveRebateWallet[reserveId] = rebateWallet;
-        emit ReserveRebateWalletSet(reserveId, reserve, rebateWallet);
+        emit ReserveRebateWalletSet(reserveId, rebateWallet);
     }
 
     function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
@@ -157,7 +153,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         reserveType[reserveId] = uint256(resType);
 
         emit AddReserveToStorage(reserve, reserveId, resType, rebateWallet, true);
-        emit ReserveRebateWalletSet(reserveId, reserve, rebateWallet);
+        emit ReserveRebateWalletSet(reserveId, rebateWallet);
         return true;
     }
 
