@@ -417,14 +417,6 @@ contract('KyberNetwork', function(accounts) {
             });
         });
 
-        it("Remove reserve", async() => {
-            let txResult = await tempStorage.removeReserve(mockReserve.address, 0, {from: operator});
-            expectEvent(txResult, 'RemoveReserveFromStorage', {
-                reserve: mockReserve.address,
-                reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase()
-            });
-        });
-
         it("Add DAO contract", async() => {
             let fakeDAO = accounts[3];
             let txResult = await tempNetwork.setDAOContract(fakeDAO, {from: admin});
