@@ -1636,7 +1636,8 @@ contract('KyberFeeHandler', function(accounts) {
 
     it("test upgradeable - update network address", async() => {
         admin = accounts[9];
-        tempNetwork = await KyberNetworkProxy.new(admin);
+        storage = accounts[8];
+        tempNetwork = await KyberNetwork.new(admin, storage);
         tempProxy = await KyberNetworkProxy.new(admin);
         tempFeeHandler = await FeeHandler.new(daoSetter, tempProxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, burnConfigSetter);
         Helper.assertEqual(kyberNetwork, await tempFeeHandler.kyberNetwork(), "network does not match");

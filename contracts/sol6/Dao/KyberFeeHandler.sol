@@ -29,7 +29,7 @@ import "../utils/zeppelin/SafeMath.sol";
  *              rebates: accumulated per rebate wallet, can be claimed any time.
  *              Burn: accumulated in the contract. Burned value and interval limited with safe check using sanity rate
  *              Platfrom fee: accumulated per platform wallet, can be claimed any time.
- *      2. Network Fee distribtuion. per epoch Kyber fee Handler reads current distribution from Kyber DAO.
+ *      2. Network Fee distribution. per epoch Kyber fee Handler reads current distribution from Kyber DAO.
  *          Expiry timestamp for data is set. when data expires. Fee handler reads new data from DAO.
  */
 
