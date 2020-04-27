@@ -83,6 +83,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
 
         //deploy network
         network = await KyberNetwork.new(admin, networkStorage.address);
+        await networkStorage.addOperator(operator, {from: admin});
         await networkStorage.setNetworkContract(network.address, {from:admin});
 
 
@@ -136,7 +137,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         await network.setDAOContract(DAO.address, {from: admin});
 
         //add and list pair for reserve
-        await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+        await nwHelper.addReservesToStorage(networkStorage, reserveInstances, tokens, operator);
 
         //set params, enable network
         await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});

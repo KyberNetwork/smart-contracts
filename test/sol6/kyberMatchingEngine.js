@@ -5,6 +5,7 @@ const MockMatchEngine = artifacts.require("MockMatchEngine.sol");
 const MaliciousKyberEngine = artifacts.require("MaliciousMatchingEngine.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
+const KyberNetwork = artifacts.require("KyberNetwork.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -211,11 +212,13 @@ contract('KyberMatchingEngine', function(accounts) {
         before("setup matchingEngine instance and 2 tokens", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
             storage = await KyberStorage.new(admin);
-            await matchingEngine.setNetworkContract(network, {from: admin});
+            network = await KyberNetwork.new(admin, storage.address);
+            await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
+            await storage.addOperator(operator, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
-            await storage.setNetworkContract(network, {from: admin});
+            await storage.setNetworkContract(network.address, {from: admin});
             rateHelper = await RateHelper.new(admin);
             await rateHelper.setContracts(matchingEngine.address, accounts[9], storage.address, {from: admin});
 
@@ -238,17 +241,17 @@ contract('KyberMatchingEngine', function(accounts) {
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: operator});
                 };
             });
 
             after("unlist and remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
-                    await storage.removeReserve(reserve.address, new BN(0), {from: network});
+                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: operator});
+                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: operator});
+                    await storage.removeReserve(reserve.address, new BN(0), {from: operator});
                 };
             });
 
@@ -302,17 +305,17 @@ contract('KyberMatchingEngine', function(accounts) {
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: operator});
                 };
             });
 
             after("unlist and remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
-                    await storage.removeReserve(reserve.address, new BN(0), {from: network});
+                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: operator});
+                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: operator});
+                    await storage.removeReserve(reserve.address, new BN(0), {from: operator});
                 };
             });
 
@@ -371,17 +374,17 @@ contract('KyberMatchingEngine', function(accounts) {
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: network});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: network});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: operator});
                 };
             });
 
             after("unlist and remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: network});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: network});
-                    await storage.removeReserve(reserve.address, new BN(0), {from: network});
+                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: operator});
+                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: operator});
+                    await storage.removeReserve(reserve.address, new BN(0), {from: operator});
                 };
             });
 
@@ -417,11 +420,13 @@ contract('KyberMatchingEngine', function(accounts) {
         before("setup matchingEngine instance", async() => {
             matchingEngine = await MockMatchEngine.new(admin);
             storage = await KyberStorage.new(admin);
-            await matchingEngine.setNetworkContract(network, {from: admin});
+            network = await KyberNetwork.new(admin, storage.address);
+            await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
+            await storage.addOperator(operator, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
-            await storage.setNetworkContract(network, {from: admin});
+            await storage.setNetworkContract(network.address, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);
@@ -442,7 +447,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
                 };
             });
 
@@ -459,7 +464,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
             after("remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.removeReserve(reserve.address, new BN(0), {from: network});
+                    await storage.removeReserve(reserve.address, new BN(0), {from: operator});
                 };
             });
 
@@ -472,9 +477,11 @@ contract('KyberMatchingEngine', function(accounts) {
         before("setup matchingEngine instance", async() => {
             matchingEngine = await MockMatchEngine.new(admin);
             storage = await KyberStorage.new(admin);
-            await matchingEngine.setNetworkContract(network, {from: admin});
+            network = await KyberNetwork.new(admin, storage.address);
+            await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
-            await storage.setNetworkContract(network, {from: admin});
+            await storage.addOperator(operator, {from: admin});
+            await storage.setNetworkContract(network.address, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
@@ -497,7 +504,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, {from: network});
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
                 };
             });
 
@@ -527,7 +534,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
             after("remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.removeReserve(reserve.address, new BN(0), {from: network});
+                    await storage.removeReserve(reserve.address, new BN(0), {from: operator});
                 };
             });
         });

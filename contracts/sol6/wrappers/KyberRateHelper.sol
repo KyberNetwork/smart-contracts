@@ -134,7 +134,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         buyRates = new uint256[](buyReserves.length);
 
         for (uint256 i = 0; i < buyReserves.length; i++) {
-            (reserve, , ,) = kyberStorage.getReserveDetailsById(buyReserves[i]);
+            (reserve, , , ,) = kyberStorage.getReserveDetailsById(buyReserves[i]);
             if (networkFeeBps == 0 || !isFeeAccountedFlags[i]) {
                 buyRates[i] = IKyberReserve(reserve).getConversionRate(
                     ETH_TOKEN_ADDRESS,
@@ -188,7 +188,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         sellRates = new uint256[](sellReserves.length);
 
         for (uint256 i = 0; i < sellReserves.length; i++) {
-            (reserve, , ,) = kyberStorage.getReserveDetailsById(sellReserves[i]);
+            (reserve, , , ,) = kyberStorage.getReserveDetailsById(sellReserves[i]);
             sellRates[i] = IKyberReserve(reserve).getConversionRate(
                 token,
                 ETH_TOKEN_ADDRESS,
