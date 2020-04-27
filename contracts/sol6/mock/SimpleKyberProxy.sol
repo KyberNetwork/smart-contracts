@@ -153,4 +153,21 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
         expectedRate = pairRate[keccak256(abi.encodePacked(src, dest))];
         worstRate = (expectedRate * 97) / 100;
     }
+
+    function swapEtherToToken(IERC20 token, uint256 minConversionRate)
+        external
+        payable
+        returns (uint256)
+    {
+        return
+            trade(
+                ETH_TOKEN_ADDRESS,
+                msg.value,
+                token,
+                msg.sender,
+                MAX_QTY,
+                minConversionRate,
+                address(0)
+            );
+    }
 }
