@@ -202,12 +202,12 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         reserveIndexes[0] = bestReserve.index;
     }
 
-    function convertReserveIdToAddress(bytes32 reserveId) internal view override returns (address) {
-        return kyberStorage.convertReserveIdToAddress(reserveId);
+    function convertReserveIdToAddress(bytes32 reserveId) internal view override returns (address reserveAddress) {
+        (reserveAddress, , , ,) = kyberStorage.getReserveDetailsById(reserveId);
     }
 
     function convertAddressToReserveId(address reserveAddress) internal view override returns (bytes32) {
-        return kyberStorage.convertReserveAddresstoId(reserveAddress);
+        return kyberStorage.getReserveID(reserveAddress);
     }
 
     /// @notice Logic for masking out reserves

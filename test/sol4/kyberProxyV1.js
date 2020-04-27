@@ -123,6 +123,7 @@ contract('KyberProxyV1', function(accounts) {
         await storage.setNetworkContract(network.address, {from: admin});
         await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
         await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+        await storage.addOperator(operator, {from: admin});
 
         // set proxy same as network
         proxyForFeeHandler = network;
@@ -212,7 +213,7 @@ contract('KyberProxyV1', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
 
                 //set zero rates
                 for (const [key, value] of Object.entries(reserveInstances)) {
@@ -225,7 +226,7 @@ contract('KyberProxyV1', function(accounts) {
             });
 
             after("unlist and remove reserve", async() => {
-                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
 
@@ -310,11 +311,11 @@ contract('KyberProxyV1', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
             })
 
             after("unlist and remove reserve", async() => {
-                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
             });
 
@@ -912,7 +913,7 @@ contract('KyberProxyV1', function(accounts) {
 
             it("should test T2T one reserve, balances changed as expected", async function() {
                 // remove all reserves
-                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
                 numReserves = 0;
 
@@ -923,7 +924,7 @@ contract('KyberProxyV1', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
 
                 hint = web3.utils.fromAscii("PERM");
                 expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
@@ -954,7 +955,7 @@ contract('KyberProxyV1', function(accounts) {
                     initialReserveBalances, initialTakerBalances, expectedResult, taker, taker);
 
                 // remove all reserves
-                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
                 numReserves = 0;
 
@@ -965,12 +966,12 @@ contract('KyberProxyV1', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
             });
 
             it("should test T2T 2 different reserves, balances changed as expected", async function() {
                 // remove all reserves
-                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
                 numReserves = 0;
 
@@ -981,7 +982,7 @@ contract('KyberProxyV1', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
 
                 // one reserve has rate srcToken -> eth, the other has rate eth -> destToken
                 tokensPerEther = precisionUnits.mul(new BN(30));
@@ -1029,7 +1030,7 @@ contract('KyberProxyV1', function(accounts) {
                     initialReserveBalances, initialTakerBalances, expectedResult, taker, taker);
 
                 // remove all reserves
-                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
                 numReserves = 0;
 
@@ -1040,7 +1041,7 @@ contract('KyberProxyV1', function(accounts) {
                 numReserves += result.numAddedReserves * 1;
 
                 //add and list pair for reserve
-                await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
             });
 
             it("should test trade with simple swapTokenToEther API, balances changed as expected", async() => {
@@ -1193,7 +1194,7 @@ contract('KyberProxyV1', function(accounts) {
             });
 
             it("verify trade is reverted when malicious reserve tries recursive call = tries to call kyber trade function.", async function () {
-                await nwHelper.removeReservesFromNetwork(network, reserveInstances, tokens, operator);
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
                 reserveInstances = {};
                 numReserves = 0;
 
@@ -1221,9 +1222,9 @@ contract('KyberProxyV1', function(accounts) {
 
                 // add reserve to network
                 let reserveId = (await nwHelper.genReserveID(MOCK_ID, malReserve.address)).toLowerCase();
-                await network.addReserve(malReserve.address, reserveId, ReserveType.FPR, malReserve.address, {from: operator});
+                await storage.addReserve(malReserve.address, reserveId, ReserveType.FPR, malReserve.address, {from: operator});
                 for (let j = 0; j < tokens.length; j++) {
-                    await network.listPairForReserve(malReserve.address, tokens[j].address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(malReserve.address, tokens[j].address, true, true, true, {from: operator});
                 }
 
                 let amountWei = 960;
@@ -1272,9 +1273,9 @@ contract('KyberProxyV1', function(accounts) {
                 )
 
                 for (let j = 0; j < tokens.length; j++) {
-                    await network.listPairForReserve(malReserve.address, tokens[j].address, true, true, false, {from: operator});
+                    await storage.listPairForReserve(malReserve.address, tokens[j].address, true, true, false, {from: operator});
                 }
-                await network.rmReserve(malReserve.address, {from: operator});
+                await storage.removeReserve(malReserve.address, 0, {from: operator});
             });
 
             it("should test can't init this contract with empty contracts (address 0) or with non admin.", async function () {
@@ -1362,9 +1363,10 @@ contract('KyberProxyV1', function(accounts) {
     });
 
     describe("MaliciousNetwork + KyberProxyV1", async () => {
+        let tempStorage;
         before("init smart malicious network and set all contracts and params", async () => {
             networkProxyV1 = await NetworkProxyV1.new(admin);
-            maliciousNetwork = await nwHelper.setupNetwork(MaliciousNetwork, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
+            [maliciousNetwork, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
             await networkProxyV1.setKyberNetworkContract(maliciousNetwork.address);
 
             // add reserves and list tokens
@@ -1372,11 +1374,11 @@ contract('KyberProxyV1', function(accounts) {
             reserveInstances = result.reserveInstances;
 
             //add and list pair for reserve
-            await nwHelper.addReservesToNetwork(maliciousNetwork, reserveInstances, tokens, operator);
+            await nwHelper.addReservesToStorage(tempStorage, reserveInstances, tokens, operator);
         });
 
         after("unlist and remove reserve", async() => {
-            await nwHelper.removeReservesFromNetwork(maliciousNetwork, reserveInstances, tokens, operator);
+            await nwHelper.removeReservesFromStorage(tempStorage, reserveInstances, tokens, operator);
             reserveInstances = {};
         });
 
@@ -1552,7 +1554,7 @@ contract('KyberProxyV1', function(accounts) {
     describe("MaliciousNetwork2 + Proxy1", async() => {
         before("init malicious network returning wrong actual dest, and set all contracts and params", async function () {
             networkProxyV1 = await NetworkProxyV1.new(admin);
-            maliciousNetwork2 = await nwHelper.setupNetwork(MaliciousNetwork2, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
+            [maliciousNetwork2, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork2, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
             await networkProxyV1.setKyberNetworkContract(maliciousNetwork2.address);
 
             // add reserves and list tokens
@@ -1560,11 +1562,11 @@ contract('KyberProxyV1', function(accounts) {
             reserveInstances = result.reserveInstances;
 
             //add and list pair for reserve
-            await nwHelper.addReservesToNetwork(maliciousNetwork2, reserveInstances, tokens, operator);
+            await nwHelper.addReservesToStorage(tempStorage, reserveInstances, tokens, operator);
         });
 
         after("unlist and remove reserve", async() => {
-            await nwHelper.removeReservesFromNetwork(maliciousNetwork2, reserveInstances, tokens, operator);
+            await nwHelper.removeReservesFromStorage(tempStorage, reserveInstances, tokens, operator);
             reserveInstances = {};
         });
 
@@ -1661,7 +1663,7 @@ contract('KyberProxyV1', function(accounts) {
             // 1. if src token amount after trade is higher then src amount before trade.
             // 2. if dest amount for dest token after trade is lower then before trade
             networkProxyV1 = await NetworkProxyV1.new(admin);
-            generousNetwork = await nwHelper.setupNetwork(GenerousNetwork, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
+            [generousNetwork, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
             await networkProxyV1.setKyberNetworkContract(generousNetwork.address);
 
             // add reserves and list tokens
@@ -1669,7 +1671,7 @@ contract('KyberProxyV1', function(accounts) {
             reserveInstances = result.reserveInstances;
 
             //add and list pair for reserve
-            await nwHelper.addReservesToNetwork(generousNetwork, reserveInstances, tokens, operator);
+            await nwHelper.addReservesToStorage(tempStorage, reserveInstances, tokens, operator);
         });
 
         it("verify trade with reverses trade = (src address before is lower then source address after), reverts.", async function () {
@@ -1724,7 +1726,7 @@ contract('KyberProxyV1', function(accounts) {
     describe("NetworkNoMaxDest + Proxy1", async() => {
         before("init network with no max dest check. set all contracts and params", async function () {
             networkProxyV1 = await NetworkProxyV1.new(admin);
-            networkNoMaxDest = await nwHelper.setupNetwork(NetworkNoMaxDest, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
+            [networkNoMaxDest, tempStorage] = await nwHelper.setupNetwork(NetworkNoMaxDest, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
             await networkProxyV1.setKyberNetworkContract(networkNoMaxDest.address);
 
             // add reserves and list tokens
@@ -1732,7 +1734,7 @@ contract('KyberProxyV1', function(accounts) {
             reserveInstances = result.reserveInstances;
 
             //add and list pair for reserve
-            await nwHelper.addReservesToNetwork(networkNoMaxDest, reserveInstances, tokens, operator);
+            await nwHelper.addReservesToStorage(tempStorage, reserveInstances, tokens, operator);
         });
 
         it("verify buy with network without max dest reverts if dest amount is below actual dest amount", async function () {

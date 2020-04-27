@@ -91,6 +91,7 @@ contract('KyberNetworkProxy', function(accounts) {
         storage = await KyberStorage.new(admin);
         network = await KyberNetwork.new(admin, storage.address);
         await storage.setNetworkContract(network.address, {from: admin});
+        await storage.addOperator(operator, {from: admin});
 
         // init proxy
         networkProxy = await KyberNetworkProxy.new(admin);
@@ -133,7 +134,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await network.setDAOContract(DAO.address, {from: admin});
 
         //add and list pair for reserve
-        await nwHelper.addReservesToNetwork(network, reserveInstances, tokens, operator);
+        await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
 
         //set params, enable network
         await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
@@ -512,6 +513,7 @@ contract('KyberNetworkProxy', function(accounts) {
             tempStorage = await KyberStorage.new(admin);
             mockNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(mockNetwork.address, {from: admin});
+            await tempStorage.addOperator(operator, {from: admin});
 
             // init proxy
             mockProxy = await KyberNetworkProxy.new(admin);
@@ -554,7 +556,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await mockNetwork.setDAOContract(mockDAO.address, {from: admin});
 
             //add and list pair for reserve
-            await nwHelper.addReservesToNetwork(mockNetwork, mockReserveInstances, mockTokens, operator);
+            await nwHelper.addReservesToStorage(tempStorage, mockReserveInstances, mockTokens, operator);
 
             //set params, enable network
             await mockNetwork.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
@@ -808,22 +810,23 @@ contract('KyberNetworkProxy', function(accounts) {
     });
 
     describe("test doTrade verify condition", async () => {
+        let tempStorage;
         let generousNetwork;
         let generousNetwork2;
         let maliciousNetwork;
         before("init 'generous' network and 'malicious' network", async () => {
             // set up generousNetwork
-            generousNetwork = await nwHelper.setupNetwork(GenerousNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
+            [generousNetwork, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
             let result = await nwHelper.setupReserves(generousNetwork, tokens, 1, 1, 0, 0, accounts, admin, operator);
-            await nwHelper.addReservesToNetwork(generousNetwork, result.reserveInstances, tokens, operator);
+            await nwHelper.addReservesToStorage(tempStorage, result.reserveInstances, tokens, operator);
             // set up maliciousNetwork
-            maliciousNetwork = await nwHelper.setupNetwork(MaliciousNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
+            [maliciousNetwork, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork, networkProxy.address, KNC.address, DAO.address, admin, operator);
             result = await nwHelper.setupReserves(maliciousNetwork, tokens, 1, 1, 0, 0, accounts, admin, operator);
-            await nwHelper.addReservesToNetwork(maliciousNetwork, result.reserveInstances, tokens, operator);
+            await nwHelper.addReservesToStorage(tempStorage, result.reserveInstances, tokens, operator);
             // set up generousNetwork2
-            generousNetwork2 = await nwHelper.setupNetwork(GenerousNetwork2, networkProxy.address, KNC.address, DAO.address, admin, operator);
+            [generousNetwork2, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork2, networkProxy.address, KNC.address, DAO.address, admin, operator);
             result = await nwHelper.setupReserves(generousNetwork2, tokens, 1, 1, 0, 0, accounts, admin, operator);
-            await nwHelper.addReservesToNetwork(generousNetwork2, result.reserveInstances, tokens, operator);
+            await nwHelper.addReservesToStorage(tempStorage, result.reserveInstances, tokens, operator);
         });
 
         it("trade revert if src address is not eth and msg value is not zero", async () => {
