@@ -784,15 +784,16 @@ contract('KyberNetwork', function(accounts) {
 
         it("remove reserve revert", async function(){
             await expectRevert(
-                tempStorage.removeReserve(ethAddress, 0, {from: operator}),
-                "reserve not found"
+                tempStorage.removeReserve(nwHelper.genReserveID(MOCK_ID, ethAddress), 0, {from: operator}),
+                "reserveId not found"
             )
         });
 
         it("List pair For unlisted reserve eth to token", async function() {
             let anotherMockReserve = await MockReserve.new();
+            let mockID = nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address);
             await expectRevert.unspecified(
-                tempStorage.listPairForReserve(anotherMockReserve.address, KNC.address, true, true, true, {from: operator})
+                tempStorage.listPairForReserve(mockID, KNC.address, true, true, true, {from: operator})
             );
         });
 
@@ -989,7 +990,7 @@ contract('KyberNetwork', function(accounts) {
                     let rebateWallet = (reserve.rebateWallet == zeroAddress || reserve.rebateWallet == undefined)
                         ? reserve.address : reserve.rebateWallet;
                     await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
-                    await storage.listPairForReserve(reserve.address, tokens[j%3].address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, tokens[j%3].address, true, true, true, {from: operator});
                     j++;
                 }
             });

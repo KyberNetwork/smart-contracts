@@ -100,7 +100,7 @@ contract('KyberStorage', function(accounts) {
             await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             let reserveId = await kyberStorage.getReserveID(reserve.address);
 
-            let reserveAddress = await kyberStorage.getReservesByReserveId(reserve.reserveId);
+            let reserveAddress = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
             Helper.assertEqual(reserve.reserveId, reserveId, "wrong address to ID");
             Helper.assertEqual(reserve.address, reserveAddress[0], "wrong ID to address");
         });
@@ -119,38 +119,38 @@ contract('KyberStorage', function(accounts) {
 
         it("should not have unauthorized personnel list token pair for reserve", async() => {
             await expectRevert(
-                kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: user}),
+                kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: user}),
                 "only operator"
             );
 
             await expectRevert(
-                kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: admin}),
+                kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: admin}),
                 "only operator"
             );
         });
 
         it("should have operator list pair for reserve", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
-            let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "reserve should have supported token");
-            result = await kyberStorage.getReservesPerTokenDest(token.address);
+            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "reserve should have supported token");
         });
 
         it("should not have unauthorized personnel remove reserve", async() => {
             await expectRevert(
-                kyberStorage.removeReserve(reserve.address, zeroBN, {from: user}),
+                kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: user}),
                 "only operator"
             );
 
             await expectRevert(
-                kyberStorage.removeReserve(reserve.address, zeroBN, {from: admin}),
+                kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: admin}),
                 "only operator"
             );
         });
 
         it("should have operator removes reserve", async() => {
-            await kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator});
+            await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
         });
 
         it("should not have unauthorized personnel set contracts", async() => {
@@ -217,7 +217,11 @@ contract('KyberStorage', function(accounts) {
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
                 rebateWallet: anyWallet
             });
-            await kyberStorage.removeReserve(mockReserve.address, 0, {from: operator});
+            await kyberStorage.removeReserve(
+                nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
+                0,
+                {from: operator}
+            );
         });
 
         it("Remove reserve", async() => {
@@ -227,7 +231,11 @@ contract('KyberStorage', function(accounts) {
             let reserves = await kyberStorage.getReserves();
             Helper.assertEqual(reserves.length, 1, "number of reserve is not expected");
             Helper.assertEqual(reserves[0], mockReserve.address, "reserve addr is not expected");
-            let txResult = await kyberStorage.removeReserve(mockReserve.address, 0, {from: operator});
+            let txResult = await kyberStorage.removeReserve(
+                nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
+                0,
+                {from: operator}
+            );
             expectEvent(txResult, 'RemoveReserveFromStorage', {
                 reserve: mockReserve.address,
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase()
@@ -248,16 +256,22 @@ contract('KyberStorage', function(accounts) {
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
                 rebateWallet: anyWallet
             });
-            await kyberStorage.removeReserve(mockReserve.address, 0, {from: operator});
+            await kyberStorage.removeReserve(
+                nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
+                0,
+                {from: operator}
+            );
         });
 
         it("List pair For reserve eth to token", async() => {
             let anyWallet = accounts[0];
             let anotherMockReserve = await MockReserve.new();
+            let mockReserveId = nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address).toLowerCase();
             let token = await TestToken.new("test token", "tst", 18);
-            await kyberStorage.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
-            let txResult = await kyberStorage.listPairForReserve(anotherMockReserve.address, token.address, true, false, true, {from: operator});
+            await kyberStorage.addReserve(anotherMockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
+            let txResult = await kyberStorage.listPairForReserve(mockReserveId, token.address, true, false, true, {from: operator});
             expectEvent(txResult, 'ListReservePairs', {
+                reserveId: mockReserveId,
                 reserve: anotherMockReserve.address,
                 src: ethAddress,
                 dest: token.address,
@@ -268,10 +282,12 @@ contract('KyberStorage', function(accounts) {
         it("List pair For reserve token to eth", async() => {
             let anyWallet = accounts[0];
             let anotherMockReserve = await MockReserve.new();
+            let mockReserveId = nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address).toLowerCase();
             let token = await TestToken.new("test token", "tst", 18);
-            await kyberStorage.addReserve(anotherMockReserve.address, nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
-            let txResult = await kyberStorage.listPairForReserve(anotherMockReserve.address, token.address, false, true, true, {from: operator});
+            await kyberStorage.addReserve(anotherMockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
+            let txResult = await kyberStorage.listPairForReserve(mockReserveId, token.address, false, true, true, {from: operator});
             expectEvent(txResult, 'ListReservePairs', {
+                reserveId: mockReserveId,
                 reserve: anotherMockReserve.address,
                 src: token.address,
                 dest: ethAddress,
@@ -433,15 +449,15 @@ contract('KyberStorage', function(accounts) {
             });
 
             it("should be able to re-add a reserve after its removal", async() => {
-                await kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator});
+                await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
                 await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             });
 
             it("should be able to add a new reserve address for an existing id after removing an old one", async() => {
                 let newReserve = await MockReserve.new();
-                await kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator});
+                await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
                 await kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
-                let reserves = await kyberStorage.getReservesByReserveId(reserve.reserveId);
+                let reserves = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
                 let actualNewReserveAddress = reserves[0];
                 let actualOldReserveAddress = reserves[1];
                 let reserveData = await kyberStorage.getReserveDetailsById(reserve.reserveId);
@@ -458,7 +474,7 @@ contract('KyberStorage', function(accounts) {
             let mockRebateWallet;
             before("setup data", async() => {
                 mockReserve = await MockReserve.new();
-                mockReserveId = nwHelper.genReserveID(MOCK_ID, mockReserve.address);
+                mockReserveId = nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase();
                 mockRebateWallet = accounts[0];
             });
 
@@ -565,8 +581,8 @@ contract('KyberStorage', function(accounts) {
                 assert(reserveData.isEntitledRebateFlag == (reserve.type != "TYPE_MOCK"), "unexpected entitled rebate flag");
             }
             Helper.assertEqualArray(await kyberStorage.getReserves(), reserveAddresses, "unexpected reserve addresses");
-            Helper.assertEqualArray(await kyberStorage.convertReserveAddressestoIds(reserveAddresses), reserveIds);
-            Helper.assertEqualArray(await kyberStorage.convertReserveIdsToAddresses(reserveIds), reserveAddresses);
+            Helper.assertEqualArray(await kyberStorage.getReserveIdsFromAddresses(reserveAddresses), reserveIds);
+            Helper.assertEqualArray(await kyberStorage.getReserveAddressesFromIds(reserveIds), reserveAddresses);
             Helper.assertEqualArray(await kyberStorage.getFeeAccountedData(reserveIds), reserveFeeData);
             Helper.assertEqualArray(await kyberStorage.getEntitledRebateData(reserveIds), reserveRebateData);
             let feeAccountedAndRebateResult = await kyberStorage.getReservesData(reserveIds);
@@ -597,19 +613,32 @@ contract('KyberStorage', function(accounts) {
         });
 
         beforeEach("delist token pair on both sides", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: operator});
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
         });
 
         it("should revert when listing token for non-reserve", async() => {
+            let mockReserveId = nwHelper.genReserveID(MOCK_ID, user);
             await expectRevert(
-                kyberStorage.listPairForReserve(user, token.address, true, true, true, {from: operator}),
-                "reserveId = 0"
+                kyberStorage.listPairForReserve(mockReserveId, token.address, true, true, true, {from: operator}),
+                "reserveId not found"
            );
         });
 
         it("should revert when removing non-reserve", async() => {
             await expectRevert(
-                kyberStorage.removeReserve(user, zeroBN, {from : operator}),
+                kyberStorage.removeReserve(nwHelper.genReserveID(MOCK_ID, user).toLowerCase(), zeroBN, {from : operator}),
+                "reserveId not found"
+           );
+        });
+
+        it("should revert when removing reserve twice", async() => {
+            let anyWallet = accounts[0];
+            let mockReserve = await MockReserve.new();
+            let mockReserveId = nwHelper.genReserveID(MOCK_ID, mockReserve.address);
+            await kyberStorage.addReserve(mockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
+            await kyberStorage.removeReserve(mockReserveId, 0, {from : operator}),
+            await expectRevert(
+                kyberStorage.removeReserve(mockReserveId, 0, {from : operator}),
                 "reserve not found"
            );
         });
@@ -627,13 +656,13 @@ contract('KyberStorage', function(accounts) {
             await mockStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             await mockStorage.setReserveId(reserve.address, nwHelper.ZERO_RESERVE_ID);
             await expectRevert(
-                mockStorage.removeReserve(reserve.address,zeroBN, {from: operator}),
+                mockStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator}),
                 "reserve's existing reserveId is 0"
             );
         });
 
         it("should have reserveId reset to zero after removal", async() => {
-            await kyberStorage.removeReserve(reserve.address, zeroBN, {from: operator});
+            await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
             let reserveId = await kyberStorage.getReserveID(reserve.address);
             Helper.assertEqual(reserveId, nwHelper.ZERO_RESERVE_ID, "reserve id was not reset to zero");
 
@@ -644,7 +673,7 @@ contract('KyberStorage', function(accounts) {
         it("should list reserves and test get reserve addresses", async() => {
             let reserveAddresses = [];
             for (let reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
+                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
                 reserveAddresses.push(reserve.address);
             }
             // only 1 index
@@ -672,110 +701,122 @@ contract('KyberStorage', function(accounts) {
             Helper.assertEqual(result.length, zeroBN);
             // delist for both side
             for (let reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: operator});
+                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
             }
         });
 
         it("should list E2T side with 2 reserve", async() => {
             let reserveIds = [];
             for (let reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, true, {from: operator});
+                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, false, true, {from: operator});
                 reserveIds.push(reserve.reserveId);
             }
-            let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
             result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 1);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
 
-            result = await kyberStorage.getReservesPerTokenDest(token.address);
+            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqualArray(result, reserveIds, "E2T should be listed");
             // delist for both side
             for (let reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: operator});
+                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
             }
         });
 
         it("should list E2T side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, true, {from: operator});
-            let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, false, true, {from: operator});
+            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
             result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 1);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
 
-            result = await kyberStorage.getReservesPerTokenDest(token.address);
+            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
         });
 
         it("should list T2E side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, false, true, true, {from: operator});
-            let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, false, true, true, {from: operator});
+            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
             result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result[0], reserve.address, "T2E should be listed");
 
-            result = await kyberStorage.getReservesPerTokenDest(token.address);
+            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
         });
 
         it("should list both T2E and E2T", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
-            let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
             result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result[0], reserve.address, "T2E should be listed");
 
-            result = await kyberStorage.getReservesPerTokenDest(token.address);
+            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
         });
 
         it("should delist T2E side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
-            await kyberStorage.listPairForReserve(reserve.address, token.address, false, true, false, {from: operator});
-            let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, false, true, false, {from: operator});
+            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
             result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
 
-            result = await kyberStorage.getReservesPerTokenDest(token.address);
+            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
         });
 
         it("should delist E2T side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, false, false, {from: operator});
-            let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, false, false, {from: operator});
+            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
             result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result[0], reserve.address, "T2E should be listed");
 
-            result = await kyberStorage.getReservesPerTokenDest(token.address);
+            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
         });
 
         it("should delist both T2E and E2T", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, false, {from: operator});
-            let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
+            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
             result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result[0], zeroBN, "T2E should not be listed");
 
-            result = await kyberStorage.getReservesPerTokenDest(token.address);
+            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
         });
 
         it("should revert for listing twice (approving)", async() => {
-            await kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator});
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
             await expectRevert.unspecified(
-                kyberStorage.listPairForReserve(reserve.address, token.address, true, true, true, {from: operator})
+                kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator})
             )
-            let result = await kyberStorage.getReservesPerTokenSrc(token.address);
+            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
             result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result[0], reserve.address, "E2T should be listed");
 
-            result = await kyberStorage.getReservesPerTokenDest(token.address);
+            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
+        });
+
+        it("should revert when list tokens for reserve that has been removed", async() => {
+            let anyWallet = accounts[0];
+            let mockReserve = await MockReserve.new();
+            let mockReserveId = nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase();
+            await kyberStorage.addReserve(mockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
+            await kyberStorage.removeReserve(mockReserveId, 0, {from : operator}),
+            await expectRevert(
+                kyberStorage.listPairForReserve(mockReserveId, token.address, true, true, true, {from: operator}),
+                "reserve = 0"
+           );
         });
     });
 
@@ -849,18 +890,18 @@ contract('KyberStorage', function(accounts) {
 
         it("should not have unauthorized personnel remove reserve", async() => {
             await expectRevert(
-                storage.removeReserve(reserve.address, 0, {from: user}),
+                storage.removeReserve(reserve.reserveId, 0, {from: user}),
                 "only operator"
             );
 
             await expectRevert(
-                storage.removeReserve(reserve.address, 0, {from: admin}),
+                storage.removeReserve(reserve.reserveId, 0, {from: admin}),
                 "only operator"
             );
         });
 
         it("should have operator removes reserve", async() => {
-            await storage.removeReserve(reserve.address, 0, {from: operator});
+            await storage.removeReserve(reserve.reserveId, 0, {from: operator});
         });
     });
 
@@ -928,7 +969,7 @@ contract('KyberStorage', function(accounts) {
             });
 
             it("should be able to re-add a reserve after its removal", async() => {
-                await tempStorage.removeReserve(reserve.address, 0, {from: operator});
+                await tempStorage.removeReserve(reserve.reserveId, 0, {from: operator});
                 await tempStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             });
         });

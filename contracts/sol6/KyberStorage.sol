@@ -55,6 +55,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     );
 
     event ListReservePairs(
+        bytes32 reserveId,
         address indexed reserve,
         IERC20 indexed src,
         IERC20 indexed dest,
@@ -159,13 +160,16 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
     /// @notice Can be called only by operator
     /// @dev Removes a reserve from the network
-    /// @param reserve The reserve address
+    /// @param reserveId The reserve address
     /// @param startIndex Index to start searching from in reserve array
-    function removeReserve(address reserve, uint256 startIndex)
+    function removeReserve(bytes32 reserveId, uint256 startIndex)
         external
-        returns (bytes32 reserveId)
+        returns (bool)
     {
         onlyOperator();
+        require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
+        address reserve = reserveIdToAddresses[reserveId][0];
+
         uint256 reserveIndex = 2**255;
         for (uint256 i = startIndex; i < reserves.length; i++) {
             if (reserves[i] == IKyberReserve(reserve)) {
@@ -190,18 +194,18 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         reserveRebateWallet[reserveId] = address(0);
 
         emit RemoveReserveFromStorage(reserve, reserveId);
-        return reserveId;
+        return true;
     }
 
     /// @notice Can be called only by operator
     /// @dev Allow or prevent a specific reserve to trade a pair of tokens
-    /// @param reserve The reserve address
+    /// @param reserveId The reserve address
     /// @param token Token address
     /// @param ethToToken Will it support ether to token trade
     /// @param tokenToEth Will it support token to ether trade
     /// @param add If true then list this pair, otherwise unlist it
     function listPairForReserve(
-        address reserve,
+        bytes32 reserveId,
         IERC20 token,
         bool ethToToken,
         bool tokenToEth,
@@ -209,12 +213,13 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     ) external returns (bool) {
         onlyOperator();
 
-        bytes32 reserveId = reserveAddressToId[reserve];
-        require(reserveId != bytes32(0), "reserveId = 0");
+        require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
+        address reserve = reserveIdToAddresses[reserveId][0];
+        require(reserve != address(0), "reserve = 0");
 
         if (ethToToken) {
             listPairs(reserveId, token, false, add);
-            emit ListReservePairs(reserve, ETH_TOKEN_ADDRESS, token, add);
+            emit ListReservePairs(reserveId, reserve, ETH_TOKEN_ADDRESS, token, add);
         }
 
         if (tokenToEth) {
@@ -223,7 +228,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
                 "network failed to list token"
             );
             listPairs(reserveId, token, true, add);
-            emit ListReservePairs(reserve, token, ETH_TOKEN_ADDRESS, add);
+            emit ListReservePairs(reserveId, reserve, token, ETH_TOKEN_ADDRESS, add);
         }
 
         return true;
@@ -338,7 +343,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         return reserveAddressToId[reserve];
     }
 
-    function convertReserveAddressestoIds(address[] calldata reserveAddresses)
+    function getReserveIdsFromAddresses(address[] calldata reserveAddresses)
         external
         override
         view
@@ -350,7 +355,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
     }
 
-    function convertReserveIdsToAddresses(bytes32[] calldata reserveIds)
+    function getReserveAddressesFromIds(bytes32[] calldata reserveIds)
         external
         view
         override
@@ -362,7 +367,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
     }
 
-    function getReservesPerTokenSrc(address token)
+    function getReserveIdsPerTokenSrc(address token)
         external
         view
         override
@@ -395,7 +400,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
     }
 
-    function getReservesPerTokenDest(address token)
+    function getReserveIdsPerTokenDest(address token)
         external
         view
         override
@@ -404,7 +409,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         reserveIds = reservesPerTokenDest[token];
     }
 
-    function getReservesByReserveId(bytes32 reserveId)
+    function getReserveAddressesByReserveId(bytes32 reserveId)
         external
         view
         override
