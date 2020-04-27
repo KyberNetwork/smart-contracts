@@ -2,12 +2,13 @@
 This repository contains kyber network smart contracts.
 For more details, please visit our [developer portal](https://developer.kyber.network/)
 
-##API
+## API
 Public facing interfaces for kyber network (folder: contracts/sol6):
 1. IKyberNetworkProxy.sol - Get rate and trade APIs. Hint handler address.
 2. ISimpleKyberProxy.sol - Simple trade functions.
 3. IKyberHintHandler.sol - Build hints for advanced trade functionality.
 4. IkyberDAO - Interact with Kyber dao.
+5. Dao/IKyberStaking - interact with staking contract.
 
 ## Setup
 1. Clone this repo
