@@ -69,7 +69,7 @@ async function setupReserves
         let reserveId = (genReserveID(MOCK_ID, reserve.address)).toLowerCase();
         let rebateWallet;
         if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
-            rebateWallet = zeroAddress;
+            rebateWallet = reserve.address;
         } else {
             rebateWallet = rebateWallets[i];
         }
@@ -119,7 +119,7 @@ async function setupReserves
         let reserveId = (genReserveID(FPR_ID, reserve.address)).toLowerCase();
         let rebateWallet;
         if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
-            rebateWallet = zeroAddress;
+            rebateWallet = reserve.address;
         } else {
             rebateWallet = rebateWallets[i];
         }
@@ -147,7 +147,7 @@ async function setupReserves
         let reserveId = (genReserveID(FPR_ID, reserve.address)).toLowerCase();
         let rebateWallet;
         if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
-            rebateWallet = zeroAddress;
+            rebateWallet = reserve.address;
         } else {
             rebateWallet = rebateWallets[i];
         }
@@ -174,6 +174,7 @@ async function setupNetwork
     const storage =  await KyberStorage.new(admin);
     const network = await NetworkArtifact.new(admin, storage.address);
     await storage.setNetworkContract(network.address, {from: admin});
+    await storage.addOperator(operator, {from: admin});
     await network.addOperator(operator, { from: admin });
     //init matchingEngine, feeHandler
     const matchingEngine = await MatchingEngine.new(admin);
@@ -191,7 +192,7 @@ async function setupNetwork
     //set params, enable network
     await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
     await network.setEnable(true, { from: admin });
-    return network;
+    return [network, storage];
 }
 
 module.exports.setupFprReserve = setupFprReserve;
@@ -375,16 +376,16 @@ async function setupAprPricing(token, p0, admin, operator) {
     return pricing;
 }
 
-module.exports.addReservesToNetwork = addReservesToNetwork;
-async function addReservesToNetwork(networkInstance, reserveInstances, tokens, operator) {
+module.exports.addReservesToStorage = addReservesToStorage;
+async function addReservesToStorage(storageInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
         console.log("add reserve type: " + reserve.type + " ID: " + reserve.reserveId);
         let rebateWallet = (reserve.rebateWallet == zeroAddress || reserve.rebateWallet == undefined)
              ? reserve.address : reserve.rebateWallet;
-        await networkInstance.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
+        await storageInstance.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
         for (let j = 0; j < tokens.length; j++) {
-            await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
+            await storageInstance.listPairForReserve(reserve.reserveId, tokens[j].address, true, true, true, {from: operator});
         }
     }
 }
@@ -402,14 +403,14 @@ module.exports.getEt2ReservesFromTradeTx = function(tradeTx) {
     }
 }
 
-module.exports.removeReservesFromNetwork = async function (networkInstance, reserveInstances, tokens, operator) {
+module.exports.removeReservesFromStorage = async function (storageInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
         reserve = value;
         console.log("removing reserve type: " + reserve.type + " address: " + reserve.address + " pricing: " + reserve.pricing);
         for (let j = 0; j < tokens.length; j++) {
-            await networkInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, false, {from: operator});
+            await storageInstance.listPairForReserve(reserve.reserveId, tokens[j].address, true, true, false, {from: operator});
         }
-        await networkInstance.rmReserve(reserve.address, {from: operator});
+        await storageInstance.removeReserve(reserve.reserveId, 0, {from: operator});
     }
 }
 
@@ -702,7 +703,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
         };
         result.t2eSrcAmts = tmpAmts;
         result.t2eRates = tmpRates;
-        result.t2eAddresses = await storage.convertReserveIdsToAddresses(result.t2eIds);
+        result.t2eAddresses = await storage.getReserveAddressesFromIds(result.t2eIds);
     } else {
         result.tradeWei = srcQty;
     }
@@ -765,7 +766,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             }
         }
 
-        result.e2tAddresses = await storage.convertReserveIdsToAddresses(result.e2tIds);
+        result.e2tAddresses = await storage.getReserveAddressesFromIds(result.e2tIds);
         result.e2tRates = tmpRates;
         result.e2tSrcAmts = tmpAmts;
     } else {

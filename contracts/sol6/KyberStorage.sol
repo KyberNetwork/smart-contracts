@@ -5,6 +5,7 @@ import "./IKyberFeeHandler.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
 import "./utils/PermissionGroupsNoModifiers.sol";
+import "./utils/Utils5.sol";
 
 
 /**
@@ -14,7 +15,7 @@ import "./utils/PermissionGroupsNoModifiers.sol";
  *   - Stores feeAccounted data for reserve types
  *   - Record contract changes for network, matchingEngine, feeHandler, reserves, network proxies and kyberDAO
  */
-contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
+contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     // store current and previous contracts.
     IKyberNetwork[] internal previousNetworks;
     IKyberFeeHandler[] internal feeHandler;
@@ -23,7 +24,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     IKyberReserve[] internal reserves;
     IKyberNetworkProxy[] internal kyberProxyArray;
 
-    mapping(bytes32 => address[]) public reserveIdToAddresses;
+    mapping(bytes32 => address[]) internal reserveIdToAddresses;
+    mapping(bytes32 => address) internal reserveRebateWallet;
     mapping(address => bytes32) internal reserveAddressToId;
     mapping(address => bytes32[]) internal reservesPerTokenSrc; // reserves supporting token to eth
     mapping(address => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
@@ -37,6 +39,28 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
     constructor(address _admin) public PermissionGroupsNoModifiers(_admin) {}
 
     event KyberNetworkUpdated(IKyberNetwork newNetwork);
+    event RemoveReserveFromStorage(address indexed reserve, bytes32 indexed reserveId);
+
+    event AddReserveToStorage(
+        address indexed reserve,
+        bytes32 indexed reserveId,
+        IKyberStorage.ReserveType reserveType,
+        address indexed rebateWallet,
+        bool add
+    );
+
+    event ReserveRebateWalletSet(
+        bytes32 indexed reserveId,
+        address indexed rebateWallet
+    );
+
+    event ListReservePairs(
+        bytes32 indexed reserveId,
+        address reserve,
+        IERC20 indexed src,
+        IERC20 indexed dest,
+        bool add
+    );
 
     function setNetworkContract(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
@@ -44,6 +68,17 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         emit KyberNetworkUpdated(_kyberNetwork);
         previousNetworks.push(kyberNetwork);
         kyberNetwork = _kyberNetwork;
+    }
+
+    function setRebateWallet(bytes32 reserveId, address rebateWallet) external {
+        onlyOperator();
+        require(rebateWallet != address(0), "rebate wallet is 0");
+        require(reserveId != bytes32(0), "reserveId = 0");
+        require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
+        require(reserveIdToAddresses[reserveId][0] != address(0), "no reserve associated");
+
+        reserveRebateWallet[reserveId] = rebateWallet;
+        emit ReserveRebateWalletSet(reserveId, rebateWallet);
     }
 
     function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
@@ -84,12 +119,19 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return true;
     }
 
+    /// @notice Can be called only by operator
+    /// @dev Adds a reserve to the storage
+    /// @param reserve The reserve address
+    /// @param reserveId The reserve ID in 32 bytes. 1st byte is reserve type
+    /// @param resType Type of the reserve out of enum ReserveType
+    /// @param rebateWallet Rebate wallet address for this reserve
     function addReserve(
         address reserve,
         bytes32 reserveId,
-        ReserveType resType
-    ) external override returns (bool) {
-        onlyNetwork();
+        ReserveType resType,
+        address payable rebateWallet
+    ) external returns (bool) {
+        onlyOperator();
         require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
         require(
@@ -98,6 +140,9 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         );
         require(feeAccountedPerType != 0xffffffff, "fee accounted data not set");
         require(entitledRebatePerType != 0xffffffff, "entitled rebate data not set");
+        require(rebateWallet != address(0), "rebate wallet is 0");
+
+        reserveRebateWallet[reserveId] = rebateWallet;
 
         if (reserveIdToAddresses[reserveId].length == 0) {
             reserveIdToAddresses[reserveId].push(reserve);
@@ -110,15 +155,23 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         reserveAddressToId[reserve] = reserveId;
         reserveType[reserveId] = uint256(resType);
 
+        emit AddReserveToStorage(reserve, reserveId, resType, rebateWallet, true);
+        emit ReserveRebateWalletSet(reserveId, rebateWallet);
         return true;
     }
 
-    function removeReserve(address reserve, uint256 startIndex)
+    /// @notice Can be called only by operator
+    /// @dev Removes a reserve from the storage
+    /// @param reserveId The reserve id
+    /// @param startIndex Index to start searching from in reserve array
+    function removeReserve(bytes32 reserveId, uint256 startIndex)
         external
-        override
-        returns (bytes32 reserveId)
+        returns (bool)
     {
-        onlyNetwork();
+        onlyOperator();
+        require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
+        address reserve = reserveIdToAddresses[reserveId][0];
+
         uint256 reserveIndex = 2**255;
         for (uint256 i = startIndex; i < reserves.length; i++) {
             if (reserves[i] == IKyberReserve(reserve)) {
@@ -140,26 +193,44 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
         reserveType[reserveId] = uint256(ReserveType.NONE);
 
-        return reserveId;
+        reserveRebateWallet[reserveId] = address(0);
+
+        emit RemoveReserveFromStorage(reserve, reserveId);
+        return true;
     }
 
+    /// @notice Can be called only by operator
+    /// @dev Allow or prevent a specific reserve to trade a pair of tokens
+    /// @param reserveId The reserve id
+    /// @param token Token address
+    /// @param ethToToken Will it support ether to token trade
+    /// @param tokenToEth Will it support token to ether trade
+    /// @param add If true then list this pair, otherwise unlist it
     function listPairForReserve(
-        address reserve,
+        bytes32 reserveId,
         IERC20 token,
         bool ethToToken,
         bool tokenToEth,
         bool add
-    ) external override returns (bool) {
-        onlyNetwork();
-        bytes32 reserveId = reserveAddressToId[reserve];
-        require(reserveId != bytes32(0), "reserveId = 0");
+    ) external returns (bool) {
+        onlyOperator();
+
+        require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
+        address reserve = reserveIdToAddresses[reserveId][0];
+        require(reserve != address(0), "reserve = 0");
 
         if (ethToToken) {
             listPairs(reserveId, token, false, add);
+            emit ListReservePairs(reserveId, reserve, ETH_TOKEN_ADDRESS, token, add);
         }
 
         if (tokenToEth) {
+            require(
+                kyberNetwork.listTokenForReserve(reserve, token, add),
+                "network failed to list token"
+            );
             listPairs(reserveId, token, true, add);
+            emit ListReservePairs(reserveId, reserve, token, ETH_TOKEN_ADDRESS, add);
         }
 
         return true;
@@ -270,19 +341,11 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         return reserves;
     }
 
-    function getReserveID(address reserve) external view returns (bytes32) {
+    function getReserveID(address reserve) external view override returns (bytes32) {
         return reserveAddressToId[reserve];
     }
 
-    function convertReserveAddresstoId(address reserve) external view override returns (bytes32 reserveId) {
-        return reserveAddressToId[reserve];
-    }
-
-    function convertReserveIdToAddress(bytes32 reserveId) external view override returns (address reserve) {
-        return reserveIdToAddresses[reserveId][0];
-    }
-
-    function convertReserveAddressestoIds(address[] calldata reserveAddresses)
+    function getReserveIdsFromAddresses(address[] calldata reserveAddresses)
         external
         override
         view
@@ -294,7 +357,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         }
     }
 
-    function convertReserveIdsToAddresses(bytes32[] calldata reserveIds)
+    function getReserveAddressesFromIds(bytes32[] calldata reserveIds)
         external
         view
         override
@@ -306,22 +369,67 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         }
     }
 
-    function getReservesPerTokenSrc(address token)
+    function getRebateWalletsFromIds(bytes32[] calldata reserveIds)
         external
         view
         override
-        returns (bytes32[] memory reserveIds)
+        returns (address[] memory rebateWallets)
     {
-        return reservesPerTokenSrc[token];
+        rebateWallets = new address[](reserveIds.length);
+        for(uint i = 0; i < rebateWallets.length; i++) {
+            rebateWallets[i] = reserveRebateWallet[reserveIds[i]];
+        }
     }
 
-    function getReservesPerTokenDest(address token)
+    function getReserveIdsPerTokenSrc(address token)
         external
         view
         override
         returns (bytes32[] memory reserveIds)
     {
-        return reservesPerTokenDest[token];
+        reserveIds = reservesPerTokenSrc[token];
+    }
+
+    /// @dev Network is calling this function to approve (allowance) for list of reserves for a token
+    ///      in case we have a long list of reserves, approving all of them could run out of gas
+    ///      using startIndex and endIndex to prevent above scenario
+    ///      also enable us to approve reserve one by one
+    function getReserveAddressesPerTokenSrc(address token, uint256 startIndex, uint256 endIndex)
+        external
+        view
+        override
+        returns (address[] memory reserveAddresses)
+    {
+        bytes32[] memory reserveIds = reservesPerTokenSrc[token];
+        if (reserveIds.length == 0) {
+            return reserveAddresses ;
+        }
+        uint256 endId = (endIndex >= reserveIds.length) ? (reserveIds.length - 1) : endIndex;
+        if (endId < startIndex) {
+            return reserveAddresses;
+        }
+        reserveAddresses = new address[](endId - startIndex + 1);
+        for(uint i = startIndex; i <= endId; i++) {
+            reserveAddresses[i - startIndex] = reserveIdToAddresses[reserveIds[i]][0];
+        }
+    }
+
+    function getReserveIdsPerTokenDest(address token)
+        external
+        view
+        override
+        returns (bytes32[] memory reserveIds)
+    {
+        reserveIds = reservesPerTokenDest[token];
+    }
+
+    function getReserveAddressesByReserveId(bytes32 reserveId)
+        external
+        view
+        override
+        returns (address[] memory reserveAddresses)
+    {
+        reserveAddresses = reserveIdToAddresses[reserveId];
     }
 
     /// @notice Should be called off chain
@@ -352,6 +460,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     /// @notice Returns information about a reserve given its reserve ID
     /// @return reserveAddress Address of the reserve
+    /// @return rebateWallet address of rebate wallet of this reserve
     /// @return resType Reserve type from enum ReserveType
     /// @return isFeeAccountedFlag Whether fees are to be charged for the trade for this reserve
     /// @return isEntitledRebateFlag Whether reserve is entitled rebate from the trade fees
@@ -361,12 +470,14 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         override
         returns (
             address reserveAddress,
+            address rebateWallet,
             ReserveType resType,
             bool isFeeAccountedFlag,
             bool isEntitledRebateFlag
         )
     {
         reserveAddress = reserveIdToAddresses[reserveId][0];
+        rebateWallet = reserveRebateWallet[reserveId];
         uint256 resTypeUint = reserveType[reserveId];
         resType = ReserveType(resTypeUint);
         isFeeAccountedFlag = (feeAccountedPerType & (1 << resTypeUint)) > 0;
@@ -375,6 +486,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
 
     /// @notice Returns information about a reserve given its reserve ID
     /// @return reserveId The reserve ID in 32 bytes. 1st byte is reserve type
+    /// @return rebateWallet address of rebate wallet of this reserve
     /// @return resType Reserve type from enum ReserveType
     /// @return isFeeAccountedFlag Whether fees are to be charged for the trade for this reserve
     /// @return isEntitledRebateFlag Whether reserve is entitled rebate from the trade fees
@@ -384,12 +496,14 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         override
         returns (
             bytes32 reserveId,
+            address rebateWallet,
             ReserveType resType,
             bool isFeeAccountedFlag,
             bool isEntitledRebateFlag
         )
     {
         reserveId = reserveAddressToId[reserve];
+        rebateWallet = reserveRebateWallet[reserveId];
         uint256 resTypeUint = reserveType[reserveId];
         resType = ReserveType(resTypeUint);
         isFeeAccountedFlag = (feeAccountedPerType & (1 << resTypeUint)) > 0;
@@ -426,14 +540,18 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
         }
     }
 
-    function getFeeAccountedAndEntitledRebateData(bytes32[] calldata reserveIds)
+    function getReservesData(bytes32[] calldata reserveIds)
         external
         view
         override
-        returns (bool[] memory feeAccountedArr, bool[] memory entitledRebateArr)
+        returns (
+            bool[] memory feeAccountedArr,
+            bool[] memory entitledRebateArr,
+            IKyberReserve[] memory reserveAddresses)
     {
         feeAccountedArr = new bool[](reserveIds.length);
         entitledRebateArr = new bool[](reserveIds.length);
+        reserveAddresses = new IKyberReserve[](reserveIds.length);
 
         uint256 entitledRebateData = entitledRebatePerType;
         uint256 feeAccountedData = feeAccountedPerType;
@@ -442,6 +560,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers {
             uint256 resTypeUint = reserveType[reserveIds[i]];
             entitledRebateArr[i] = (entitledRebateData & (1 << resTypeUint) > 0);
             feeAccountedArr[i] = (feeAccountedData & (1 << resTypeUint) > 0);
+            reserveAddresses[i] = IKyberReserve(reserveIdToAddresses[reserveIds[i]][0]);
         }
     }
 

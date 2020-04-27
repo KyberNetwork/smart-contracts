@@ -83,8 +83,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         HintErrors error;
         if (hint.length == 0 || hint.length == 4) {
             reserveIds = (dest == ETH_TOKEN_ADDRESS)
-                ? kyberStorage.getReservesPerTokenSrc(address(src))
-                : kyberStorage.getReservesPerTokenDest(address(dest));
+                ? kyberStorage.getReserveIdsPerTokenSrc(address(src))
+                : kyberStorage.getReserveIdsPerTokenDest(address(dest));
 
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
             processWithRate = ProcessWithRate.Required;
@@ -115,8 +115,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         } else if (tradeType == TradeType.MaskOut) {
             // if mask out, apply masking out logic
             bytes32[] memory allReserves = (dest == ETH_TOKEN_ADDRESS)
-                ? kyberStorage.getReservesPerTokenSrc(address(src))
-                : kyberStorage.getReservesPerTokenDest(address(dest));
+                ? kyberStorage.getReserveIdsPerTokenSrc(address(src))
+                : kyberStorage.getReserveIdsPerTokenDest(address(dest));
 
             reserveIds = maskOutReserves(allReserves, reserveIds);
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
@@ -202,12 +202,12 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         reserveIndexes[0] = bestReserve.index;
     }
 
-    function convertReserveIdToAddress(bytes32 reserveId) internal view override returns (address) {
-        return kyberStorage.convertReserveIdToAddress(reserveId);
+    function convertReserveIdToAddress(bytes32 reserveId) internal view override returns (address reserveAddress) {
+        (reserveAddress, , , ,) = kyberStorage.getReserveDetailsById(reserveId);
     }
 
     function convertAddressToReserveId(address reserveAddress) internal view override returns (bytes32) {
-        return kyberStorage.convertReserveAddresstoId(reserveAddress);
+        return kyberStorage.getReserveID(reserveAddress);
     }
 
     /// @notice Logic for masking out reserves

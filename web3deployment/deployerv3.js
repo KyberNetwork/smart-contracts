@@ -234,7 +234,7 @@ async function main() {
   await setNetworkAddresses();
   await setTempOperatorToContracts();
   await addPermissionlessListerToNetwork();
-  await addReservesToNetwork();
+  await addReservesToStorage();
   await configureAndEnableNetwork();
   await configureFeeBurner();
   await setNonDefaultWalletFees();
@@ -383,7 +383,7 @@ async function addPermissionlessListerToNetwork() {
   await sendTx(networkContract.methods.addOperator(permissionlessOrderbookReserveListerAddress));
 }
 
-async function addReservesToNetwork() {
+async function addReservesToStorage() {
   // add reserve to network
   console.log("Add reserves to network");
   for(let i = 0 ; i < reserveDataArray.length ; i++) {
