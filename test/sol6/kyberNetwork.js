@@ -355,11 +355,11 @@ contract('KyberNetwork', function(accounts) {
             );
         });
 
-        it("set empty dao contract", async function(){
-            await expectRevert(
-                tempNetwork.setDAOContract(zeroAddress, {from: admin}),
-                "kyberDAO 0"
-            );
+        it("should enable setting an empty dao contract", async function(){
+            await tempNetwork.setDAOContract(zeroAddress, {from: admin});
+            
+            let rxContracts = await tempNetwork.getContracts();
+            assert.equal(rxContracts.daoAddress, zeroAddress);
         });
     });
 
