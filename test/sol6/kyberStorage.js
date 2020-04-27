@@ -324,13 +324,6 @@ contract('KyberStorage', function(accounts) {
             );
         });
 
-        it("set empty dao contract", async function(){
-            await expectRevert(
-                kyberStorage.setDAOContract(zeroAddress, {from: network}),
-                "kyberDAO 0"
-            );
-        });
-
         it("set and get contracts history", async() =>{
             await kyberStorage.setDAOContract(DAOAddr, { from: network});
             await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
@@ -347,6 +340,14 @@ contract('KyberStorage', function(accounts) {
             Helper.assertEqualArray(result.daoAddresses, [DAOAddr2, DAOAddr], "unexpected dao history");
             Helper.assertEqualArray(result.matchingEngineAddresses, [matchingEngineAddr2, matchingEngineAddr], "unexpected match engine history");
             Helper.assertEqualArray(result.feeHandlerAddresses, [feeHandlerAddr2, feeHandlerAddr], "unexpected fee handler history");
+        });
+
+        it("should enable setting an empty dao contract", async function(){
+            await kyberStorage.setDAOContract(zeroAddress, {from: network});
+
+            let rxContracts = await kyberStorage.getContracts();
+
+            assert.equal(rxContracts.daoAddresses[0], zeroAddress);
         });
     });
 

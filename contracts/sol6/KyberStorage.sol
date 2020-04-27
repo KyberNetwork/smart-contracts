@@ -109,7 +109,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
     function setDAOContract(IKyberDAO _kyberDAO) external override returns (bool) {
         onlyNetwork();
-        require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
+        
         if (kyberDAO.length > 0) {
             kyberDAO.push(kyberDAO[0]);
             kyberDAO[0] = _kyberDAO;

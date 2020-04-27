@@ -298,13 +298,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     function setDAOContract(IKyberDAO _kyberDAO) external {
+        // enable setting 0 address DAO.
         onlyAdmin();
         if (kyberDAO != _kyberDAO) {
             kyberDAO = _kyberDAO;
             require(kyberStorage.setDAOContract(_kyberDAO));
             emit KyberDAOUpdated(_kyberDAO);
         }
-        require(_kyberDAO != IKyberDAO(0));
     }
 
     function setParams(uint256 _maxGasPrice, uint256 _negligibleRateDiffBps) external {
