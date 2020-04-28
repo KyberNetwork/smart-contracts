@@ -55,8 +55,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     );
 
     event ListReservePairs(
-        bytes32 reserveId,
-        address indexed reserve,
+        bytes32 indexed reserveId,
+        address reserve,
         IERC20 indexed src,
         IERC20 indexed dest,
         bool add
