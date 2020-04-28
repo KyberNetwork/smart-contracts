@@ -482,7 +482,7 @@ contract('KyberStorage', function(accounts) {
                 await kyberStorage.addReserve(mockReserve.address, mockReserveId, ReserveType.FPR, mockRebateWallet, {from: operator});
                 let reserveData = await kyberStorage.getReserveDetailsById(mockReserveId);
                 Helper.assertEqual(mockRebateWallet, reserveData.rebateWallet);
-                let rebateWallets = await kyberStorage.getRebateWallets([mockReserveId]);
+                let rebateWallets = await kyberStorage.getRebateWalletsFromIds([mockReserveId]);
                 Helper.assertEqual(1, rebateWallets.length);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[0]);
             })
@@ -492,7 +492,7 @@ contract('KyberStorage', function(accounts) {
                 await kyberStorage.setRebateWallet(mockReserveId, newRebateWallet, {from: operator});
                 let reserveData = await kyberStorage.getReserveDetailsById(mockReserveId);
                 Helper.assertEqual(newRebateWallet, reserveData.rebateWallet);
-                let rebateWallets = await kyberStorage.getRebateWallets([mockReserveId]);
+                let rebateWallets = await kyberStorage.getRebateWalletsFromIds([mockReserveId]);
                 Helper.assertEqual(1, rebateWallets.length);
                 Helper.assertEqual(newRebateWallet, rebateWallets[0]);
                 // reset rebate wallet
@@ -507,7 +507,7 @@ contract('KyberStorage', function(accounts) {
                 await kyberStorage.addReserve(newReserve.address, newReserveId, ReserveType.FPR, newReserve.address, {from: operator});
                 let reserveData = await kyberStorage.getReserveDetailsById(newReserveId);
                 Helper.assertEqual(newReserve.address, reserveData.rebateWallet);
-                let rebateWallets = await kyberStorage.getRebateWallets([newReserveId]);
+                let rebateWallets = await kyberStorage.getRebateWalletsFromIds([newReserveId]);
                 Helper.assertEqual(1, rebateWallets.length);
                 Helper.assertEqual(newReserve.address, rebateWallets[0]);
                 // reset the same rebate wallet
@@ -518,10 +518,10 @@ contract('KyberStorage', function(accounts) {
 
             it("test get rebate wallets", async() => {
                 // get empty list
-                rebateWallets = await kyberStorage.getRebateWallets([]);
+                rebateWallets = await kyberStorage.getRebateWalletsFromIds([]);
                 Helper.assertEqual(0, rebateWallets.length);
                 // get with 1 id
-                rebateWallets = await kyberStorage.getRebateWallets([mockReserveId]);
+                rebateWallets = await kyberStorage.getRebateWalletsFromIds([mockReserveId]);
                 Helper.assertEqual(1, rebateWallets.length);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[0]);
                 // get with 2 ids
@@ -529,12 +529,12 @@ contract('KyberStorage', function(accounts) {
                 let newRebateWallet = accounts[1];
                 let newReserveId = nwHelper.genReserveID(MOCK_ID, newReserve.address);
                 await kyberStorage.addReserve(newReserve.address, newReserveId, ReserveType.FPR, newRebateWallet, {from: operator});
-                rebateWallets = await kyberStorage.getRebateWallets([mockReserveId, newReserveId]);
+                rebateWallets = await kyberStorage.getRebateWalletsFromIds([mockReserveId, newReserveId]);
                 Helper.assertEqual(2, rebateWallets.length);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[0]);
                 Helper.assertEqual(newRebateWallet, rebateWallets[1]);
                 // get with same ids
-                rebateWallets = await kyberStorage.getRebateWallets([mockReserveId, mockReserveId]);
+                rebateWallets = await kyberStorage.getRebateWalletsFromIds([mockReserveId, mockReserveId]);
                 Helper.assertEqual(2, rebateWallets.length);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[0]);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[1]);

@@ -367,6 +367,18 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
     }
 
+    function getRebateWalletsFromIds(bytes32[] calldata reserveIds)
+        external
+        view
+        override
+        returns (address[] memory rebateWallets)
+    {
+        rebateWallets = new address[](reserveIds.length);
+        for(uint i = 0; i < rebateWallets.length; i++) {
+            rebateWallets[i] = reserveRebateWallet[reserveIds[i]];
+        }
+    }
+
     function getReserveIdsPerTokenSrc(address token)
         external
         view
@@ -416,18 +428,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         returns (address[] memory reserveAddresses)
     {
         reserveAddresses = reserveIdToAddresses[reserveId];
-    }
-
-    function getRebateWallets(bytes32[] calldata reserveIds)
-        external
-        view
-        override
-        returns (address[] memory rebateWallets)
-    {
-        rebateWallets = new address[](reserveIds.length);
-        for(uint i = 0; i < rebateWallets.length; i++) {
-            rebateWallets[i] = reserveRebateWallet[reserveIds[i]];
-        }
     }
 
     /// @notice Should be called off chain

@@ -53,7 +53,7 @@ interface IKyberStorage {
         view
         returns (address[] memory reserveAddresses);
 
-    function getRebateWallets(bytes32[] calldata reserveIds)
+    function getRebateWalletsFromIds(bytes32[] calldata reserveIds)
         external
         view
         returns (address[] memory rebateWallets);
