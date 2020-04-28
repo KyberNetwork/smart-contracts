@@ -1229,6 +1229,88 @@ contract('KyberDAO', function(accounts) {
         0, daoStartTime, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: campCreator}
       );
+      // set next block timestamp and start at that time
+      await Helper.setNextBlockTimestamp(daoStartTime);
+      await daoContract.submitNewCampaign(
+        0, daoStartTime, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
+        [1, 2, 3, 4], '0x', {from: campCreator}
+      );
+    });
+
+    it("Test submit campaign with startTimestamp is beginning of an epoch", async() => {
+      await deployContracts(30, currentBlock + 30, 10);
+      // start at beginning of epoch 1
+      await daoContract.submitNewCampaign(
+        0, daoStartTime, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
+        [1, 2, 3, 4], '0x', {from: campCreator}
+      );
+      // should revert: start at end of epoch 0, end at epoch 1
+      await expectRevert(
+        daoContract.submitNewCampaign(
+          0, daoStartTime - 1, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
+          [1, 2, 3, 4], '0x', {from: campCreator}
+        ),
+        "validateParams: start & end not same epoch"
+      )
+      // delay to epoch 1
+      await Helper.mineNewBlockAt(daoStartTime);
+      // start at beginning of epoch 2
+      let startEpoch2Timestamp = daoStartTime + blocksToSeconds(epochPeriod);
+      await daoContract.submitNewCampaign(
+        0, startEpoch2Timestamp, startEpoch2Timestamp + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
+        [1, 2, 3, 4], '0x', {from: campCreator}
+      );
+      // should revert: start at end of epoch 1, end at epoch 2
+      await expectRevert(
+        daoContract.submitNewCampaign(
+          0, startEpoch2Timestamp - 1, startEpoch2Timestamp + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
+          [1, 2, 3, 4], '0x', {from: campCreator}
+        ),
+        "validateParams: start & end not same epoch"
+      )
+      // start at beginning, end at end timestamp of an epoch
+      await daoContract.submitNewCampaign(
+        0, startEpoch2Timestamp, startEpoch2Timestamp + blocksToSeconds(epochPeriod) - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
+        [1, 2, 3, 4], '0x', {from: campCreator}
+      );
+    });
+
+    it("Test submit campaign with endTimestamp is end timestamp of an epoch", async() => {
+      await deployContracts(30, currentBlock + 30, 10);
+      // end at end of epoch 0
+      await daoContract.submitNewCampaign(
+        0, daoStartTime - minCampPeriod * blockTime, daoStartTime - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
+        [1, 2, 3, 4], '0x', {from: campCreator}
+      );
+      // should revert: start at epoch 0, end at beginning of epoch 1
+      await expectRevert(
+        daoContract.submitNewCampaign(
+          0, daoStartTime - minCampPeriod * blockTime, daoStartTime, minPercentageInPrecision, cInPrecision, tInPrecision,
+          [1, 2, 3, 4], '0x', {from: campCreator}
+        ),
+        "validateParams: start & end not same epoch"
+      )
+      // end of end of epoch 1
+      let endEpoch1Timestamp = daoStartTime + blocksToSeconds(epochPeriod) - 1;
+      await daoContract.submitNewCampaign(
+        0, endEpoch1Timestamp - minCampPeriod * blockTime, endEpoch1Timestamp, minPercentageInPrecision, cInPrecision, tInPrecision,
+        [1, 2, 3, 4], '0x', {from: campCreator}
+      );
+      // should revert: start at epoch 1, end at beginning of epoch 2
+      await expectRevert(
+        daoContract.submitNewCampaign(
+          0, endEpoch1Timestamp - minCampPeriod * blockTime, endEpoch1Timestamp + 1, minPercentageInPrecision, cInPrecision, tInPrecision,
+          [1, 2, 3, 4], '0x', {from: campCreator}
+        ),
+        "validateParams: start & end not same epoch"
+      )
+      // delay to epoch 1
+      await Helper.mineNewBlockAt(daoStartTime);
+      // start at beginning, end at end timestamp of an epoch
+      await daoContract.submitNewCampaign(
+        0, endEpoch1Timestamp - minCampPeriod * blockTime - 10, endEpoch1Timestamp, minPercentageInPrecision, cInPrecision, tInPrecision,
+        [1, 2, 3, 4], '0x', {from: campCreator}
+      );
     });
 
     it("Test submit campaign should revert number options is invalid", async function() {
