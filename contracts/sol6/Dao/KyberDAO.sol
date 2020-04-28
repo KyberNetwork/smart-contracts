@@ -1,11 +1,11 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
 
 import "./EpochUtils.sol";
 import "../IERC20.sol";
 import "./IKyberStaking.sol";
 import "../IKyberDAO.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
-import "../utils/Utils4.sol";
+import "../utils/Utils5.sol";
 
 
 interface IFeeHandler {
@@ -16,61 +16,6 @@ interface IFeeHandler {
     ) external returns (bool);
 }
 
-
-contract CampPermissionGroups {
-    address public campaignCreator;
-    address public pendingCampaignCreator;
-
-    event TransferCampaignCreatorPending(address pendingCampaignCreator);
-    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
-
-    constructor(address _campaignCreator) public {
-        require(_campaignCreator != address(0), "campaignCreator is 0");
-        campaignCreator = _campaignCreator;
-    }
-
-    modifier onlyCampaignCreator() {
-        require(msg.sender == campaignCreator, "only campaign creator");
-        _;
-    }
-
-    /**
-     * @dev Allows the current campaignCreator to set the pendingCampaignCreator address.
-     * @param newCampaignCreator The address to transfer ownership to.
-     */
-    function transferCampaignCreator(address newCampaignCreator) external onlyCampaignCreator {
-        require(newCampaignCreator != address(0), "newCampaignCreator is 0");
-        emit TransferCampaignCreatorPending(newCampaignCreator);
-        pendingCampaignCreator = newCampaignCreator;
-    }
-
-    /**
-     * @dev Allows the current campCcampaignCreatorreator to set the campaignCreator in one tx.
-            Useful initial deployment.
-     * @param newCampaignCreator The address to transfer ownership to.
-     */
-    function transferCampaignCreatorQuickly(address newCampaignCreator)
-        external
-        onlyCampaignCreator
-    {
-        require(newCampaignCreator != address(0), "newCampaignCreator is 0");
-        emit TransferCampaignCreatorPending(newCampaignCreator);
-        emit CampaignCreatorClaimed(newCampaignCreator, campaignCreator);
-        campaignCreator = newCampaignCreator;
-    }
-
-    /**
-     * @dev Allows the pendingCampaignCreator address to finalize the change campaign creator process.
-     */
-    function claimCampaignCreator() external {
-        require(pendingCampaignCreator == msg.sender, "only pending campaign creator");
-        emit CampaignCreatorClaimed(pendingCampaignCreator, campaignCreator);
-        campaignCreator = pendingCampaignCreator;
-        pendingCampaignCreator = address(0);
-    }
-}
-
-
 /**
  * @notice  This contract is using SafeMath for uint, which is inherited from EpochUtils
             Some events are moved to interface, easier for public uses
@@ -78,7 +23,7 @@ contract CampPermissionGroups {
  *      BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
  *      General campaign: options are from 1 to num_options
  */
-contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroups, Utils4 {
+contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
     /* Constants */
     // max number of campaigns for each epoch
     uint256 public   constant MAX_EPOCH_CAMPAIGNS = 10;
@@ -122,12 +67,16 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     IKyberStaking public staking;
     IFeeHandler public feeHandler;
 
+    // campaign creator permissions
+    address public campaignCreator;
+    address public pendingCampaignCreator;
+
     /* Mapping from campaign ID => data */
     // use to generate increasing campaign ID
     uint256 public numberCampaigns = 0;
     mapping(uint256 => Campaign) internal campaignData;
-    /** Mapping from epoch => data */
 
+    /** Mapping from epoch => data */
     // epochCampaigns[epoch]: list campaign IDs for each epoch (epoch => campaign IDs)
     mapping(uint256 => uint256[]) internal epochCampaigns;
     // totalEpochPoints[epoch]: total points for an epoch (epoch => total points)
@@ -140,13 +89,16 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     mapping(address => mapping(uint256 => uint256)) public stakerVotedOption;
 
     /* Configuration Campaign Data */
-    uint256 internal latestNetworkFeeResult = 25; // 0.25%
+    uint256 internal latestNetworkFeeResult;
     // epoch => campaignID for network fee campaigns
     mapping(uint256 => uint256) public networkFeeCampaigns;
     // latest BRR data (reward and rebate in bps)
     BRRData internal latestBrrData;
     // epoch => campaignID for brr campaigns
     mapping(uint256 => uint256) public brrCampaigns;
+
+    event TransferCampaignCreatorPending(address pendingCampaignCreator);
+    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
 
     event NewCampaignCreated(
         CampaignType campaignType,
@@ -172,12 +124,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint256 _defaultRewardBps,
         uint256 _defaultRebateBps,
         address _campaignCreator
-    ) public CampPermissionGroups(_campaignCreator) {
+    ) public {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
         require(_staking != address(0), "ctor: staking is missing");
         require(_feeHandler != address(0), "ctor: feeHandler is missing");
         require(_knc != address(0), "ctor: knc token is missing");
+        require(_campaignCreator != address(0), "campaignCreator is 0");
         // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
         // so network fee should be less than 50%
         require(_defaultNetworkFeeBps < BPS / 2, "ctor: network fee high");
@@ -194,10 +147,18 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         firstEpochStartTimestamp = _startTimestamp;
         feeHandler = IFeeHandler(_feeHandler);
         kncToken = IERC20(_knc);
+
         latestNetworkFeeResult = _defaultNetworkFeeBps;
-        // reward + rebate will be validated inside get func here
-        latestBrrData.rewardInBps = _defaultRewardBps;
-        latestBrrData.rebateInBps = _defaultRebateBps;
+        latestBrrData = BRRData({
+            rewardInBps: _defaultRewardBps,
+            rebateInBps: _defaultRebateBps
+        });
+        campaignCreator = _campaignCreator;
+    }
+
+    modifier onlyCampaignCreator() {
+        require(msg.sender == campaignCreator, "only campaign creator");
+        _;
     }
 
     modifier onlyStakingContract {
@@ -206,11 +167,46 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
+     * @dev Allows the current campaignCreator to set the pendingCampaignCreator address.
+     * @param newCampaignCreator The address to transfer ownership to.
+     */
+    function transferCampaignCreator(address newCampaignCreator) external onlyCampaignCreator {
+        require(newCampaignCreator != address(0), "newCampaignCreator is 0");
+        emit TransferCampaignCreatorPending(newCampaignCreator);
+        pendingCampaignCreator = newCampaignCreator;
+    }
+
+    /**
+     * @dev Allows the current campCcampaignCreatorreator to set the campaignCreator in one tx.
+            Useful initial deployment.
+     * @param newCampaignCreator The address to transfer ownership to.
+     */
+    function transferCampaignCreatorQuickly(address newCampaignCreator)
+        external
+        onlyCampaignCreator
+    {
+        require(newCampaignCreator != address(0), "newCampaignCreator is 0");
+        emit TransferCampaignCreatorPending(newCampaignCreator);
+        emit CampaignCreatorClaimed(newCampaignCreator, campaignCreator);
+        campaignCreator = newCampaignCreator;
+    }
+
+    /**
+     * @dev Allows the pendingCampaignCreator address to finalize the change campaign creator process.
+     */
+    function claimCampaignCreator() external {
+        require(pendingCampaignCreator == msg.sender, "only pending campaign creator");
+        emit CampaignCreatorClaimed(pendingCampaignCreator, campaignCreator);
+        campaignCreator = pendingCampaignCreator;
+        pendingCampaignCreator = address(0);
+    }
+
+    /**
      * @dev called by staking contract when staker wanted to withdraw
      * @param staker address of staker to reduce reward
      * @param reduceAmount amount voting power to be reduced for each campaign staker has voted at this epoch
      */
-    function handleWithdrawal(address staker, uint256 reduceAmount) external onlyStakingContract {
+    function handleWithdrawal(address staker, uint256 reduceAmount) external override onlyStakingContract {
         // staking shouldn't call this func with reduce amount = 0
         if (reduceAmount == 0) {
             return;
@@ -219,7 +215,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         // update total points for epoch
         uint256 numVotes = numberVotes[staker][curEpoch];
-        // if no votes, no need to deduce points, but it should still return true to allow withdraw
+        // staker has not participated in any campaigns at the current epoch
         if (numVotes == 0) {
             return;
         }
@@ -238,23 +234,20 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             } // staker has not voted yet
 
             Campaign storage campaign = campaignData[campaignID];
-            // deduce vote count for current running campaign that this staker has voted
             if (campaign.endTimestamp >= now) {
-                // user already voted for this campaign and the campaign is not ended
-                campaign.campaignVoteData.totalVotes = campaign.campaignVoteData.totalVotes.sub(
-                    reduceAmount
-                );
-                campaign.campaignVoteData.votePerOption[votedOption - 1] = campaign
-                    .campaignVoteData
-                    .votePerOption[votedOption - 1]
-                    .sub(reduceAmount);
+                // the staker has voted for this campaign and the campaign has not ended yet
+                // reduce total votes and vote count of staker's voted option
+                campaign.campaignVoteData.totalVotes =
+                    campaign.campaignVoteData.totalVotes.sub(reduceAmount);
+                campaign.campaignVoteData.votePerOption[votedOption - 1] =
+                    campaign.campaignVoteData.votePerOption[votedOption - 1].sub(reduceAmount);
             }
         }
     }
 
     /**
-     * @dev create new campaign, only called by admin
-     * @param campaignType type of campaign (network fee, brr, general)
+     * @dev create new campaign, only called by campaignCreator
+     * @param campaignType type of campaign (General, NetworkFee, FeeHandlerBRR)
      * @param startTimestamp timestamp to start running the campaign
      * @param endTimestamp timestamp to end this campaign
      * @param minPercentageInPrecision min percentage (in precision) for formula to conclude campaign
@@ -275,10 +268,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     ) external onlyCampaignCreator returns (uint256 campaignID) {
         // campaign epoch could be different from current epoch
         // as we allow to create campaign of next epoch as well
-        uint256 campEpoch = getEpochNumber(startTimestamp);
+        uint256 campaignEpoch = getEpochNumber(startTimestamp);
 
         require(
-            epochCampaigns[campEpoch].length < MAX_EPOCH_CAMPAIGNS,
+            epochCampaigns[campaignEpoch].length < MAX_EPOCH_CAMPAIGNS,
             "newCampaign: too many campaigns"
         );
 
@@ -287,7 +280,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
                 campaignType,
                 startTimestamp,
                 endTimestamp,
-                campEpoch,
+                campaignEpoch,
                 minPercentageInPrecision,
                 cInPrecision,
                 tInPrecision,
@@ -298,23 +291,26 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         if (campaignType == CampaignType.NetworkFee) {
             require(
-                networkFeeCampaigns[campEpoch] == 0,
+                networkFeeCampaigns[campaignEpoch] == 0,
                 "newCampaign: already had network fee for this epoch"
             );
         } else if (campaignType == CampaignType.FeeHandlerBRR) {
-            require(brrCampaigns[campEpoch] == 0, "newCampaign: already had brr for this epoch");
+            require(
+                brrCampaigns[campaignEpoch] == 0,
+                "newCampaign: already had brr for this epoch"
+            );
         }
 
         numberCampaigns = numberCampaigns.add(1);
         campaignID = numberCampaigns;
 
-        // add campaignID into this current epoch campaign IDs
-        epochCampaigns[campEpoch].push(campaignID);
-        // update network fee or brr campaigns
+        // add campaignID into the list campaign IDs
+        epochCampaigns[campaignEpoch].push(campaignID);
+        // update network fee or fee handler brr campaigns
         if (campaignType == CampaignType.NetworkFee) {
-            networkFeeCampaigns[campEpoch] = campaignID;
+            networkFeeCampaigns[campaignEpoch] = campaignID;
         } else if (campaignType == CampaignType.FeeHandlerBRR) {
-            brrCampaigns[campEpoch] = campaignID;
+            brrCampaigns[campaignEpoch] = campaignID;
         }
 
         FormulaData memory formulaData = FormulaData({
@@ -353,7 +349,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-     * @dev  cancel a campaign with given id, called by admin only
+     * @dev  cancel a campaign with given id, called by campaignCreator only
      *       only can cancel campaigns that have not started yet
      * @param campaignID id of the campaign to cancel
      */
@@ -394,13 +390,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
      * @param campaignID id of campaign to vote for
      * @param option id of options to vote for
      */
-    function vote(uint256 campaignID, uint256 option) external {
+    function vote(uint256 campaignID, uint256 option) external override {
         require(validateVoteOption(campaignID, option), "vote: invalid campaignID or option");
         address staker = msg.sender;
 
         uint256 curEpoch = getCurrentEpochNumber();
-        (uint256 stake, uint256 dStake, address dAddress) = staking
-            .initAndReturnStakerDataForCurrentEpoch(staker);
+        (uint256 stake, uint256 dStake, address dAddress) =
+            staking.initAndReturnStakerDataForCurrentEpoch(staker);
 
         uint256 totalStake = dAddress == staker ? stake.add(dStake) : dStake;
         uint256 lastVotedOption = stakerVotedOption[staker][campaignID];
@@ -408,13 +404,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         CampaignVoteData storage voteData = campaignData[campaignID].campaignVoteData;
 
         if (lastVotedOption == 0) {
-            // increase number campaigns that the staker has voted for first time voted
+            // increase number campaigns that the staker has voted at the current epoch
             numberVotes[staker][curEpoch]++;
 
             totalEpochPoints[curEpoch] = totalEpochPoints[curEpoch].add(totalStake);
-            // increase voted points for this option
-            voteData.votePerOption[option - 1] = voteData.votePerOption[option - 1]
-                .add(totalStake);
+            // increase voted count for this option
+            voteData.votePerOption[option - 1] =
+                voteData.votePerOption[option - 1].add(totalStake);
             // increase total votes
             voteData.totalVotes = voteData.totalVotes.add(totalStake);
         } else if (lastVotedOption != option) {
@@ -422,8 +418,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             voteData.votePerOption[lastVotedOption - 1] =
                 voteData.votePerOption[lastVotedOption - 1].sub(totalStake);
             // increase new option voted count
-            voteData.votePerOption[option - 1] = voteData.votePerOption[option - 1]
-                .add(totalStake);
+            voteData.votePerOption[option - 1] =
+                voteData.votePerOption[option - 1].add(totalStake);
         }
 
         stakerVotedOption[staker][campaignID] = option;
@@ -438,7 +434,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
      * @param staker address to claim reward for
      * @param epoch to claim reward
      */
-    function claimReward(address staker, uint256 epoch) external nonReentrant {
+    function claimReward(address staker, uint256 epoch) external override nonReentrant {
         uint256 curEpoch = getCurrentEpochNumber();
         require(epoch < curEpoch, "claimReward: only for past epochs");
         require(!hasClaimedReward[staker][epoch], "claimReward: already claimed");
@@ -462,6 +458,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
      */
     function getLatestNetworkFeeDataWithCache()
         external
+        override
         returns (uint256 feeInBps, uint256 expiryTimestamp)
     {
         (feeInBps, expiryTimestamp) = getLatestNetworkFeeData();
@@ -475,6 +472,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
      */
     function getLatestBRRDataWithCache()
         external
+        override
         returns (
             uint256 burnInBps,
             uint256 rewardInBps,
@@ -493,7 +491,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
      *      return true if should burn all that reward
      * @param epoch epoch to check for burning reward
      */
-    function shouldBurnRewardForEpoch(uint256 epoch) external view returns (bool) {
+    function shouldBurnRewardForEpoch(uint256 epoch) external view override returns (bool) {
         uint256 curEpoch = getCurrentEpochNumber();
         if (epoch >= curEpoch) {
             return false;
@@ -503,7 +501,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
     // return list campaign ids for epoch, excluding non-existed ones
     function getListCampIDs(uint256 epoch) external view returns (uint256[] memory campaignIDs) {
-        return epochCampaigns[epoch];
+        campaignIDs = epochCampaigns[epoch];
     }
 
     // return total points for an epoch
@@ -565,8 +563,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             return (0, 0);
         } // not exist
 
-        // not found or not ended yet, return 0 as winning option
-        if (campaign.endTimestamp == 0 || campaign.endTimestamp > now) {
+        // campaign has not ended yet, return 0 as winning option
+        if (campaign.endTimestamp > now) {
             return (0, 0);
         }
 
@@ -622,11 +620,12 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-     * @dev return latest network fee with expiry timestamp
+     * @dev return latest network fee and expiry timestamp
      */
     function getLatestNetworkFeeData()
         public
         view
+        override
         returns (uint256 feeInBps, uint256 expiryTimestamp)
     {
         uint256 curEpoch = getCurrentEpochNumber();
@@ -672,8 +671,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             return 0;
         }
 
-        (uint256 stake, uint256 delegatedStake, address delegatedAddr) = staking
-            .getStakerDataForPastEpoch(staker, epoch);
+        (uint256 stake, uint256 delegatedStake, address delegatedAddr) =
+            staking.getStakerDataForPastEpoch(staker, epoch);
+
         uint256 totalStake = delegatedAddr == staker ? stake.add(delegatedStake) : delegatedStake;
         if (totalStake == 0) {
             return 0;
@@ -786,10 +786,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         } else {
             // brr fee handler campaign, option must be combined for reward + rebate %
             for (uint256 i = 0; i < options.length; i++) {
-                // first 128 bits is rebate, last 128 bits is reward
-                (uint256 rebateInBps, uint256 rewardInBps) = getRebateAndRewardFromData(
-                    options[i]
-                );
+                // rebate (left most 128 bits) + reward (right most 128 bits)
+                (uint256 rebateInBps, uint256 rewardInBps) =
+                    getRebateAndRewardFromData(options[i]);
                 require(
                     rewardInBps.add(rebateInBps) <= BPS,
                     "validateParams: RR values are too high"

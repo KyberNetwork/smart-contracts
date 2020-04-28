@@ -1,4 +1,4 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
 
 import "./IERC20.sol";
 
@@ -31,6 +31,12 @@ interface IKyberNetwork {
         uint256 platformFeeBps,
         bytes calldata hint
     ) external payable returns (uint256 destAmount);
+
+    function listTokenForReserve(
+        address reserve,
+        IERC20 token,
+        bool add
+    ) external returns (bool);
 
     function enabled() external view returns (bool);
 

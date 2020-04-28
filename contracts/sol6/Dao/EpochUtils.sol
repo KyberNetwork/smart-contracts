@@ -1,13 +1,13 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
 
 import "../utils/zeppelin/SafeMath.sol";
+import "./IEpochUtils.sol";
 
-
-contract EpochUtils {
+contract EpochUtils is IEpochUtils {
     using SafeMath for uint256;
 
-    uint256 public epochPeriodInSeconds;
-    uint256 public firstEpochStartTimestamp;
+    uint256 public override epochPeriodInSeconds;
+    uint256 public override firstEpochStartTimestamp;
 
     function getCurrentEpochNumber() public view returns (uint256) {
         return getEpochNumber(now);

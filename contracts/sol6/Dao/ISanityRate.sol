@@ -1,4 +1,4 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
 
 
 /// @title Sanity Rate check to prevent burning KNC with too expensive or cheap price

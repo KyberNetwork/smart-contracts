@@ -1,14 +1,14 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
 
 import "../IKyberMatchingEngine.sol";
 import "../IKyberRateHelper.sol";
 import "../IKyberDAO.sol";
 import "../IKyberStorage.sol";
-import "../utils/Utils4.sol";
+import "../utils/Utils5.sol";
 import "../utils/WithdrawableNoModifiers.sol";
 
 
-contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
+contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
     struct Amounts {
         uint256 srcAmount;
         uint256 ethSrcAmount;
@@ -60,6 +60,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
     )
         public
         view
+        override
         returns (
             bytes32[] memory buyReserves,
             uint256[] memory buyRates,
@@ -77,6 +78,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
     )
         public
         view
+        override
         returns (
             bytes32[] memory buyReserves,
             uint256[] memory buyRates,
@@ -97,6 +99,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
     )
         public
         view
+        override
         returns (
             bytes32[] memory buyReserves,
             uint256[] memory buyRates,
@@ -131,7 +134,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         buyRates = new uint256[](buyReserves.length);
 
         for (uint256 i = 0; i < buyReserves.length; i++) {
-            (reserve, , ) = kyberStorage.getReserveDetailsById(buyReserves[i]);
+            (reserve, , , ,) = kyberStorage.getReserveDetailsById(buyReserves[i]);
             if (networkFeeBps == 0 || !isFeeAccountedFlags[i]) {
                 buyRates[i] = IKyberReserve(reserve).getConversionRate(
                     ETH_TOKEN_ADDRESS,
@@ -185,7 +188,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils4 {
         sellRates = new uint256[](sellReserves.length);
 
         for (uint256 i = 0; i < sellReserves.length; i++) {
-            (reserve, , ) = kyberStorage.getReserveDetailsById(sellReserves[i]);
+            (reserve, , , ,) = kyberStorage.getReserveDetailsById(sellReserves[i]);
             sellRates[i] = IKyberReserve(reserve).getConversionRate(
                 token,
                 ETH_TOKEN_ADDRESS,

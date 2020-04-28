@@ -1,7 +1,9 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
+
+import "./IEpochUtils.sol";
 
 
-interface IKyberStaking {
+interface IKyberStaking is IEpochUtils {
     event Delegated(
         address indexed staker,
         address indexed delegatedAddress,
@@ -33,8 +35,4 @@ interface IKyberStaking {
             uint256 _delegatedStake,
             address _delegatedAddress
         );
-
-    function epochPeriodInSeconds() external view returns (uint256);
-
-    function firstEpochStartTimestamp() external view returns (uint256);
 }

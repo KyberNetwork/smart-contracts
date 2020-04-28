@@ -1,4 +1,4 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
 
 import "../IERC20.sol";
 import "./PermissionGroupsNoModifiers.sol";
@@ -13,7 +13,7 @@ contract WithdrawableNoModifiers is PermissionGroupsNoModifiers {
     /// @dev Withdraw Ethers
     function withdrawEther(uint256 amount, address payable sendTo) external {
         onlyAdmin();
-        (bool success, ) = sendTo.call.value(amount)("");
+        (bool success, ) = sendTo.call{value: amount}("");
         require(success);
         emit EtherWithdraw(amount, sendTo);
     }

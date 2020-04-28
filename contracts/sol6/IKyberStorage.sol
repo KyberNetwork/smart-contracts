@@ -1,22 +1,13 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
 
 import "./IKyberFeeHandler.sol";
 import "./IKyberDAO.sol";
 import "./IKyberNetworkProxy.sol";
+import "./IKyberReserve.sol";
 
 
-contract IKyberStorage {
+interface IKyberStorage {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
-
-    function addReserve(
-        address reserve,
-        bytes32 reserveId,
-        ReserveType resType
-    ) external returns (bool);
-
-    function removeReserve(address reserve, uint256 startIndex)
-        external
-        returns (bytes32 reserveId);
 
     function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
         external
@@ -24,26 +15,13 @@ contract IKyberStorage {
 
     function removeKyberProxy(address networkProxy) external returns (bool);
 
-    function listPairForReserve(
-        address reserve,
-        IERC20 token,
-        bool ethToToken,
-        bool tokenToEth,
-        bool add
-    ) external returns (bool);
-
     function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
         external
         returns (bool);
 
     function setDAOContract(IKyberDAO _kyberDAO) external returns (bool);
 
-    function convertReserveAddresstoId(address reserve) external view returns (bytes32 reserveId);
-
-    function convertReserveIdToAddress(bytes32 reserveId)
-        external
-        view
-        returns (address reserveAddress);
+    function getReserveID(address reserve) external view returns (bytes32 reserveId);
 
     function convertReserveAddressestoIds(address[] calldata reserveAddresses)
         external
@@ -60,10 +38,25 @@ contract IKyberStorage {
         view
         returns (bytes32[] memory reserveIds);
 
+    function getReserveAddressesPerTokenSrc(address token, uint256 startIndex, uint256 endIndex)
+        external
+        view
+        returns (address[] memory reserveAddresses);
+
     function getReservesPerTokenDest(address token)
         external
         view
         returns (bytes32[] memory reserveIds);
+
+    function getReservesByReserveId(bytes32 reserveId)
+        external
+        view
+        returns (address[] memory reserveAddresses);
+
+    function getRebateWallets(bytes32[] calldata reserveIds)
+        external
+        view
+        returns (address[] memory rebateWallets);
 
     function getKyberProxies() external view returns (IKyberNetworkProxy[] memory);
 
@@ -72,8 +65,10 @@ contract IKyberStorage {
         view
         returns (
             bytes32 reserveId,
+            address rebateWallet,
             ReserveType resType,
-            bool isFeeAccountedFlags
+            bool isFeeAccountedFlag,
+            bool isEntitledRebateFlag
         );
 
     function getReserveDetailsById(bytes32 reserveId)
@@ -81,14 +76,29 @@ contract IKyberStorage {
         view
         returns (
             address reserveAddress,
+            address rebateWallet,
             ReserveType resType,
-            bool isFeeAccountedFlags
+            bool isFeeAccountedFlag,
+            bool isEntitledRebateFlag
         );
 
     function getFeeAccountedData(bytes32[] calldata reserveIds)
         external
         view
         returns (bool[] memory feeAccountedArr);
+
+    function getEntitledRebateData(bytes32[] calldata reserveIds)
+        external
+        view
+        returns (bool[] memory entitledRebateArr);
+
+    function getReservesData(bytes32[] calldata reserveIds)
+        external
+        view
+        returns (
+            bool[] memory feeAccountedArr,
+            bool[] memory entitledRebateArr,
+            IKyberReserve[] memory reserveAddresses);
 
     function isKyberProxyAdded() external view returns (bool);
 }

@@ -1,4 +1,4 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
 
 
 interface IERC20 {
@@ -25,6 +25,6 @@ interface IERC20 {
 
 
 // to support backward compatible contract name -- so function signature remains same
-contract ERC20 is IERC20 {
+abstract contract ERC20 is IERC20 {
 
 }

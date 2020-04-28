@@ -1,7 +1,7 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
 
 import "./utils/WithdrawableNoModifiers.sol";
-import "./utils/Utils4.sol";
+import "./utils/Utils5.sol";
 import "./utils/zeppelin/SafeERC20.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberNetworkProxy.sol";
@@ -21,7 +21,7 @@ contract KyberNetworkProxy is
     IKyberNetworkProxy,
     ISimpleKyberProxy,
     WithdrawableNoModifiers,
-    Utils4
+    Utils5
 {
     using SafeERC20 for IERC20;
 
@@ -54,7 +54,7 @@ contract KyberNetworkProxy is
         uint256 maxDestAmount,
         uint256 minConversionRate,
         address payable platformWallet
-    ) external payable returns (uint256) {
+    ) external payable override returns (uint256) {
         bytes memory hint;
 
         return
@@ -92,7 +92,7 @@ contract KyberNetworkProxy is
         uint256 minConversionRate,
         address walletId,
         bytes calldata hint
-    ) external payable returns (uint256) {
+    ) external payable override returns (uint256) {
         return
             doTrade(
                 src,
@@ -118,7 +118,7 @@ contract KyberNetworkProxy is
     /// @param platformWallet Wallet address to receive a portion of the fees collected
     /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
     /// @param hint Defines which reserves should be used for the trade
-    /// @return Amount of actual dest tokens in twei
+    /// @return destAmount Amount of actual dest tokens in twei
     function tradeWithHintAndFee(
         IERC20 src,
         uint256 srcAmount,
@@ -129,7 +129,7 @@ contract KyberNetworkProxy is
         address payable platformWallet,
         uint256 platformFeeBps,
         bytes calldata hint
-    ) external payable returns (uint256 destAmount) {
+    ) external payable override returns (uint256 destAmount) {
         return
             doTrade(
                 src,
@@ -155,7 +155,7 @@ contract KyberNetworkProxy is
         uint256 srcAmount,
         IERC20 dest,
         uint256 minConversionRate
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         bytes memory hint;
 
         return
@@ -179,6 +179,7 @@ contract KyberNetworkProxy is
     function swapEtherToToken(IERC20 token, uint256 minConversionRate)
         external
         payable
+        override
         returns (uint256)
     {
         bytes memory hint;
@@ -206,7 +207,7 @@ contract KyberNetworkProxy is
         IERC20 token,
         uint256 srcAmount,
         uint256 minConversionRate
-    ) external returns (uint256) {
+    ) external override returns (uint256) {
         bytes memory hint;
 
         return
@@ -252,7 +253,7 @@ contract KyberNetworkProxy is
         ERC20 src,
         ERC20 dest,
         uint256 srcQty
-    ) external view returns (uint256 expectedRate, uint256 worstRate) {
+    ) external view override returns (uint256 expectedRate, uint256 worstRate) {
         bytes memory hint;
         (, expectedRate, ) = kyberNetwork.getExpectedRateWithHintAndFee(
             src,
@@ -280,7 +281,7 @@ contract KyberNetworkProxy is
         uint256 srcQty,
         uint256 platformFeeBps,
         bytes calldata hint
-    ) external view returns (uint256 expectedRate) {
+    ) external view override returns (uint256 expectedRate) {
         (, , expectedRate) = kyberNetwork.getExpectedRateWithHintAndFee(
             src,
             dest,
@@ -303,7 +304,7 @@ contract KyberNetworkProxy is
         IERC20 dest,
         uint256 srcQty,
         bytes calldata hint
-    ) external view returns (uint256 priceNoFee) {
+    ) external view override returns (uint256 priceNoFee) {
         (priceNoFee, , ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
     }
 
@@ -334,7 +335,7 @@ contract KyberNetworkProxy is
     ) internal returns (uint256) {
         UserBalance memory balanceBefore = prepareTrade(src, dest, srcAmount, destAddress);
 
-        uint256 reportedDestAmount = kyberNetwork.tradeWithHintAndFee.value(msg.value)(
+        uint256 reportedDestAmount = kyberNetwork.tradeWithHintAndFee{value: msg.value}(
             msg.sender,
             src,
             srcAmount,

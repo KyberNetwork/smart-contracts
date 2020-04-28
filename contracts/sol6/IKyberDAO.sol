@@ -1,7 +1,9 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
+
+import "./Dao/IEpochUtils.sol";
 
 
-interface IKyberDAO {
+interface IKyberDAO is IEpochUtils {
     event Voted(address indexed staker, uint indexed epoch, uint indexed campaignID, uint option);
     event RewardClaimed(address indexed staker, uint256 indexed epoch, uint256 percentInPrecision);
 
@@ -24,10 +26,6 @@ interface IKyberDAO {
     function handleWithdrawal(address staker, uint256 penaltyAmount) external;
 
     function vote(uint256 campaignID, uint256 option) external;
-
-    function epochPeriodInSeconds() external view returns (uint256);
-
-    function firstEpochStartTimestamp() external view returns (uint256);
 
     function getLatestNetworkFeeData()
         external

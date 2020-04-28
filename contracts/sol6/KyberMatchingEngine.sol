@@ -1,4 +1,4 @@
-pragma solidity 0.5.11;
+pragma solidity 0.6.6;
 
 import "./utils/WithdrawableNoModifiers.sol";
 import "./IKyberMatchingEngine.sol";
@@ -31,14 +31,19 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         /* empty body */
     }
 
-    function setKyberStorage(IKyberStorage _kyberStorage) external returns (bool) {
+    function setKyberStorage(IKyberStorage _kyberStorage) external virtual override returns (bool) {
         onlyAdmin();
         emit KyberStorageUpdated(_kyberStorage);
         kyberStorage = _kyberStorage;
         return true;
     }
 
-    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps) external returns (bool) {
+    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps)
+        external
+        virtual
+        override
+        returns (bool)
+    {
         onlyNetwork();
         require(_negligibleRateDiffBps <= BPS, "rateDiffBps exceed BPS"); // at most 100%
         negligibleRateDiffBps = _negligibleRateDiffBps;
@@ -57,7 +62,6 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @param dest Destination token
     /// @param isTokenToToken Whether the trade is T2T
     /// @param hint Defines which reserves should be used for the trade
-    /// @return Returns ids, split values and whether more processing is necessary
     /// @return reserveIds Array of reserve IDs for the trade, each being 32 bytes. 1st byte is reserve type
     /// @return splitValuesBps Array of split values (in basis points) for the trade
     /// @return processWithRate Enum ProcessWithRate, whether extra processing is required or not
@@ -69,6 +73,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     )
         external
         view
+        override
         returns (
             bytes32[] memory reserveIds,
             uint256[] memory splitValuesBps,
@@ -122,7 +127,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             : ProcessWithRate.Required;
     }
 
-    function getNegligibleRateDiffBps() external view returns (uint256) {
+    function getNegligibleRateDiffBps() external view override returns (uint256) {
         return negligibleRateDiffBps;
     }
 
@@ -132,14 +137,14 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @param srcAmounts Array of srcAmounts
     /// @param feesAccountedDestBps Fees charged in BPS, to be deducted from calculated destAmount
     /// @param rates Rates provided by reserves
-    /// @return Return an array of the indexes most suited for the trade
+    /// @return reserveIndexes An array of the indexes most suited for the trade
     function doMatch(
         IERC20 src,
         IERC20 dest,
         uint256[] calldata srcAmounts,
         uint256[] calldata feesAccountedDestBps, // 0 for no fee, networkFeeBps when has fee
         uint256[] calldata rates
-    ) external view returns (uint256[] memory reserveIndexes) {
+    ) external view override returns (uint256[] memory reserveIndexes) {
         src;
         dest;
         reserveIndexes = new uint256[](1);
@@ -197,18 +202,18 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         reserveIndexes[0] = bestReserve.index;
     }
 
-    function convertReserveIdToAddress(bytes32 reserveId) internal view returns (address) {
-        return kyberStorage.convertReserveIdToAddress(reserveId);
+    function convertReserveIdToAddress(bytes32 reserveId) internal view override returns (address reserveAddress) {
+        (reserveAddress, , , ,) = kyberStorage.getReserveDetailsById(reserveId);
     }
 
-    function convertAddressToReserveId(address reserveAddress) internal view returns (bytes32) {
-        return kyberStorage.convertReserveAddresstoId(reserveAddress);
+    function convertAddressToReserveId(address reserveAddress) internal view override returns (bytes32) {
+        return kyberStorage.getReserveID(reserveAddress);
     }
 
     /// @notice Logic for masking out reserves
     /// @param allReservesPerToken Array of reserveIds that support the t2e or e2t side of the trade
     /// @param maskedOutReserves Array of reserveIds to be excluded from allReservesPerToken
-    /// @return Returns an array of reserveIds that can be used for the trade
+    /// @return filteredReserves An array of reserveIds that can be used for the trade
     function maskOutReserves(
         bytes32[] memory allReservesPerToken,
         bytes32[] memory maskedOutReserves
