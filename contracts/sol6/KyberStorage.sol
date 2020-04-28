@@ -159,8 +159,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     }
 
     /// @notice Can be called only by operator
-    /// @dev Removes a reserve from the network
-    /// @param reserveId The reserve address
+    /// @dev Removes a reserve from the storage
+    /// @param reserveId The reserve id
     /// @param startIndex Index to start searching from in reserve array
     function removeReserve(bytes32 reserveId, uint256 startIndex)
         external
@@ -199,7 +199,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
     /// @notice Can be called only by operator
     /// @dev Allow or prevent a specific reserve to trade a pair of tokens
-    /// @param reserveId The reserve address
+    /// @param reserveId The reserve id
     /// @param token Token address
     /// @param ethToToken Will it support ether to token trade
     /// @param tokenToEth Will it support token to ether trade
