@@ -71,7 +71,7 @@ let ethSrcQty;
 let srcQty;
 
 contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrations', function(accounts) {
-    before("one time global init", async() => {
+    const global_init = async() => {
         //init accounts
         operator = accounts[1];
         alerter = accounts[2];
@@ -150,7 +150,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await network.setEnable(true, {from: admin});
 
         await updateCurrentBlockAndTimestamp();
-    });
+    };
 
     const blockToTimestamp = function(block) {
         return currentTimestamp + (block - currentBlock) * blockTime;
@@ -350,15 +350,60 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await Helper.setNextBlockTimestamp(networkData.expiryTimestamp * 1 + 1);
     };
 
+    const testChangeKyberStorageAndNetwork = async function(){
+        networkStorage = await KyberStorage.new(admin);
+        //deploy network
+        network = await KyberNetwork.new(admin, networkStorage.address);
+        await networkStorage.addOperator(operator, {from: admin});
+        await networkStorage.setNetworkContract(network.address, {from: admin});
+        await networkStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+        await networkStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+
+        await matchingEngine.setNetworkContract(network.address, {from: admin});
+        await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
+
+        await rateHelper.setContracts(matchingEngine.address, daoContract.address, networkStorage.address, {from: admin});
+
+        // setup proxy
+        await networkProxy.setKyberNetwork(network.address, {from: admin});
+
+        // init and setup reserves
+        let result = await nwHelper.setupReserves(network, tokens, 2, 3, 0, 0, accounts, admin, operator);
+        reserveInstances = result.reserveInstances;
+
+        //setup network
+        ///////////////
+        await network.addKyberProxy(networkProxy.address, {from: admin});
+        await network.addOperator(operator, {from: admin});
+        await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
+        await network.setDAOContract(daoContract.address, {from: admin});
+
+        //add and list pair for reserve
+        await nwHelper.addReservesToStorage(networkStorage, reserveInstances, tokens, operator);
+
+        //set params, enable network
+        await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
+        await network.setEnable(true, {from: admin});
+
+        //update  network contract
+        await feeHandler.updateNetworkContract({from: daoSetter});
+
+        await updateCurrentBlockAndTimestamp();
+    };
+
     var testSuite = {
         "test intergration" : testIntergraitonSetup,
         "upgrage ability - change KyberProxy": testChangeKyberProxySetup,
         "upgrade ability - change KyberDao/kyberStaking/feeHandler": testChangeKyberDao,
+        "upgrade ability - change network/KyberStorage": testChangeKyberStorageAndNetwork,
     }
 
     for (const [test_name, initFunction] of Object.entries(testSuite)) {
         describe(test_name, async() => {
-            before("update global data", initFunction);
+            before("update global data", async() => {
+                await global_init();
+                await initFunction();
+            });
 
             beforeEach("running before each test", async() => {
                 await updateCurrentBlockAndTimestamp();
