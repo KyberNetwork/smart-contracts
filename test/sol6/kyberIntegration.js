@@ -326,9 +326,34 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await Helper.setNextBlockTimestamp(networkData.expiryTimestamp * 1 + 1);
     };
 
+    const testChangeKyberDao = async function(){
+        // FeeHandler init
+        feeHandler = await FeeHandler.new(daoSetter, networkProxy.address, network.address, KNC.address, burnBlockInterval, daoSetter);
+
+        // Staking & DAO init
+        await updateCurrentBlockAndTimestamp();
+        await deployContracts(40, currentBlock + 350, 10);
+        await setupSimpleStakingData();
+
+        // setup fee handler
+        await feeHandler.setDaoContract(daoContract.address, {from: daoSetter});
+
+        // setup network
+        await network.setDAOContract(daoContract.address, {from: admin});
+
+        // setup rateHelper
+        await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin})
+        await rateHelper.setContracts(matchingEngine.address, daoContract.address, networkStorage.address, {from: admin});
+
+        // move time to expiryTimestamp
+        let networkData = await network.getNetworkData();
+        await Helper.setNextBlockTimestamp(networkData.expiryTimestamp * 1 + 1);
+    };
+
     var testSuite = {
         "test intergration" : testIntergraitonSetup,
         "upgrage ability - change KyberProxy": testChangeKyberProxySetup,
+        "upgrade ability - change KyberDao/kyberStaking/feeHandler": testChangeKyberDao,
     }
 
     for (const [test_name, initFunction] of Object.entries(testSuite)) {
