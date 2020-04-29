@@ -391,11 +391,26 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await updateCurrentBlockAndTimestamp();
     };
 
+    const testChangeMatchingEngine = async function(){
+        matchingEngine = await MatchingEngine.new(admin);
+        await matchingEngine.setNetworkContract(network.address, {from: admin});
+        await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
+
+        await rateHelper.setContracts(matchingEngine.address, daoContract.address, networkStorage.address, {from: admin});
+
+        await networkProxy.setHintHandler(matchingEngine.address, {from: admin});
+
+        await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
+
+        await updateCurrentBlockAndTimestamp();
+    };
+
     var testSuite = {
         "test intergration" : testIntergraitonSetup,
         "upgrage ability - change KyberProxy": testChangeKyberProxySetup,
         "upgrade ability - change KyberDao/kyberStaking/feeHandler": testChangeKyberDao,
         "upgrade ability - change network/KyberStorage": testChangeKyberStorageAndNetwork,
+        "upgrade ability - change matchingEngine": testChangeMatchingEngine,
     }
 
     for (const [test_name, initFunction] of Object.entries(testSuite)) {
