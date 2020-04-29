@@ -73,7 +73,9 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     function setRebateWallet(bytes32 reserveId, address rebateWallet) external {
         onlyOperator();
         require(rebateWallet != address(0), "rebate wallet is 0");
-        require(reserveId != bytes32(0), "reserveId not found");
+        require(reserveId != bytes32(0), "reserveId = 0");
+        require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
+        require(reserveIdToAddresses[reserveId][0] != address(0), "no reserve associated");
 
         reserveRebateWallet[reserveId] = rebateWallet;
         emit ReserveRebateWalletSet(reserveId, rebateWallet);

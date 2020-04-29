@@ -539,6 +539,42 @@ contract('KyberStorage', function(accounts) {
                 Helper.assertEqual(mockRebateWallet, rebateWallets[0]);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[1]);
             });
+
+            it("test should revert reserve id is 0", async() => {
+                await expectRevert(
+                    kyberStorage.setRebateWallet(nwHelper.ZERO_RESERVE_ID, accounts[0], {from: operator}),
+                    "reserveId = 0"
+                );
+            });
+
+            it("test should revert rebate wallet is 0", async() => {
+                let newReserveId = nwHelper.genReserveID(MOCK_ID, accounts[0]).toLowerCase();
+                await expectRevert(
+                    kyberStorage.setRebateWallet(newReserveId, zeroAddress, {from: operator}),
+                    "rebate wallet is 0"
+                );
+            });
+
+            it("test should revert reserve id not found", async() => {
+                let newReserveId = nwHelper.genReserveID(MOCK_ID, accounts[0]).toLowerCase();
+                await expectRevert(
+                    kyberStorage.setRebateWallet(newReserveId, accounts[0], {from: operator}),
+                    "reserveId not found"
+                );
+            });
+
+            it("test should revert no reserve found for reserve id", async() => {
+                let newReserve = await MockReserve.new();
+                let newReserveId = nwHelper.genReserveID(MOCK_ID, newReserve.address).toLowerCase();
+                // add reserve
+                await kyberStorage.addReserve(newReserve.address, newReserveId, ReserveType.FPR, accounts[0], {from: operator});
+                // remove reserve
+                await kyberStorage.removeReserve(newReserveId, 0, {from: operator});
+                await expectRevert(
+                    kyberStorage.setRebateWallet(newReserveId, accounts[0], {from: operator}),
+                    "no reserve associated"
+                );
+            });
         });
 
         
