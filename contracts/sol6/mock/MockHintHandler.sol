@@ -7,6 +7,10 @@ contract MockHintHandler is KyberHintHandler {
     mapping(address => bytes32) public reserveAddressToId;
     mapping(bytes32 => address[]) public reserveIdToAddresses;
 
+    function callHintError(HintErrors error) external pure {
+        return throwHintError(error);
+    }
+
     function addReserve(address reserve, bytes32 reserveId) public {
         reserveIdToAddresses[reserveId].push(reserve);
         reserveAddressToId[reserve] = reserveId;
