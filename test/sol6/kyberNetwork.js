@@ -1,12 +1,18 @@
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
+const ReentrantReserve = artifacts.require("ReentrantReserve.sol");
+const ReserveNoReturnVal = artifacts.require("ReserveNoReturnVal.sol");
+const ReserveReturnFalse = artifacts.require("ReserveReturnFalse.sol");
 const MockDao = artifacts.require("MockDAO.sol");
 const MockGasHelper = artifacts.require("MockGasHelper.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const MockNetwork = artifacts.require("MockNetwork.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
+const MockFeeHandlerReturnFalse = artifacts.require("MockFeeHandlerReturnFalse.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const MaliciousMatchingEngine = artifacts.require("MaliciousMatchingEngine.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
+const MaliciousStorage = artifacts.require("MaliciousStorage.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const OtherMatchingEngine = artifacts.require("OtherMatchingEngine.sol");
 const NotPayableContract = artifacts.require("MockNotPayableContract.sol");
@@ -35,6 +41,7 @@ let platformFeeBps = zeroBN;
 let platformFeeArray = [zeroBN, new BN(50), new BN(100)];
 
 let admin;
+let storage;
 let network;
 let DAO;
 let networkProxy;
@@ -126,7 +133,6 @@ contract('KyberNetwork', function(accounts) {
     describe("should test adding contracts, and adding / removing proxy.", async() => {
         let tempNetwork;
         let tempStorage;
-        let tempStorage2;
         let tempMatchingEngine;
 
         let proxy1 = accounts[9];
@@ -310,56 +316,99 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
-    describe("test add contract nil address", async function(){
+    describe("test add contract nil address with KyberStorage", async function(){
         let tempMatchingEngine;
         let tempStorage;
         let gasHelperAdd;
 
-        before("const setup", async function(){
+        before("const setup", async() => {
             tempMatchingEngine = await MatchingEngine.new(admin);
             mockReserve = await MockReserve.new();
             gasHelperAdd = accounts[9];
-        })
-        beforeEach("global setup", async function(){
+            maliciousStorage = await MaliciousStorage.new();
+            feeHandler = accounts[3];
+        });
+
+        beforeEach("global setup", async() => {
             tempStorage = await KyberStorage.new(admin);
             tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
 
             await tempNetwork.addOperator(operator, {from: admin});
-            await tempMatchingEngine.setNetworkContract(tempNetwork.address, {from: admin});
-            await tempMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
-            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-            await tempStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
-
-            //init feeHandler
-            KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            proxyForFeeHandler = tempNetwork;
-            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
-            rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, tempStorage.address, {from: admin});
-
             await tempNetwork.setDAOContract(DAO.address, {from: admin});
         });
 
-        it("set empty fee handler contract", async function(){
+        it("set empty fee handler contract", async() => {
             await expectRevert(
                 tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, gasHelperAdd, {from: admin}),
                 "feeHandler 0"
             );
         });
 
-        it("set empty matching engine contract", async function(){
+        it("set empty matching engine contract", async() => {
             await expectRevert(
-                tempNetwork.setContracts(feeHandler.address, zeroAddress, gasHelperAdd, {from: admin}),
+                tempNetwork.setContracts(feeHandler, zeroAddress, gasHelperAdd, {from: admin}),
                 "matchingEngine 0"
             );
         });
 
-        it("should enable setting an empty dao contract", async function(){
+        it("should enable setting an empty dao contract", async() => {
             await tempNetwork.setDAOContract(zeroAddress, {from: admin});
             
             let rxContracts = await tempNetwork.getContracts();
             assert.equal(rxContracts.daoAddress, zeroAddress);
+        });
+
+        it("should do nothing if setting to same DAO address, check no event emitted", async() => {
+            let txResult = await tempNetwork.setDAOContract(DAO.address, {from: admin});
+            Helper.assertEqual(txResult.logs.length, zeroBN, "event emitted");
+        });
+    });
+
+    describe("test add contract nil address with malicious storage", async function(){
+        let tempMatchingEngine;
+        let maliciousStorage;
+        let gasHelperAdd;
+
+        before("const setup", async() => {
+            tempMatchingEngine = await MatchingEngine.new(admin);
+            mockReserve = await MockReserve.new();
+            gasHelperAdd = accounts[9];
+        })
+        beforeEach("global setup", async() => {
+            maliciousStorage = await MaliciousStorage.new();
+            tempNetwork = await KyberNetwork.new(admin, maliciousStorage.address);
+            await tempNetwork.addOperator(operator, {from: admin});
+        });
+
+        it("set empty fee handler contract", async() => {
+            await expectRevert.unspecified(
+                tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, gasHelperAdd, {from: admin})
+            );
+        });
+
+        it("set empty matching engine contract", async() => {
+            await expectRevert.unspecified(
+                tempNetwork.setContracts(feeHandler, zeroAddress, gasHelperAdd, {from: admin})
+            );
+        });
+
+        it("should revert when calling storage to set dao contract", async() => {
+            await expectRevert.unspecified(
+                tempNetwork.setDAOContract(DAO.address, {from: admin})
+            );
+        });
+
+        it("set empty kyber proxy address", async() => {
+            await expectRevert.unspecified(
+                tempNetwork.addKyberProxy(zeroAddress, {from: admin})
+            );
+        });
+
+        it("should revert for setting non-existing proxy", async() => {
+            await expectRevert.unspecified(
+                tempNetwork.removeKyberProxy(accounts[1], {from: admin})
+            );
         });
     });
 
@@ -392,7 +441,7 @@ contract('KyberNetwork', function(accounts) {
             await rateHelper.setContracts(tempMatchingEngine.address, DAO.address, tempStorage.address, {from: admin});
         });
 
-        it("ETH recieval", async() => {
+        it("ETH receival", async() => {
             let ethSender = accounts[9];
 
             let txResult = await tempNetwork.send(ethSrcQty, {from: ethSender});
@@ -962,6 +1011,16 @@ contract('KyberNetwork', function(accounts) {
                     Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rate with all fees not 0");
                 });
+
+                it("should revert for trade attempt", async() => {
+                    hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                    await srcToken.transfer(network.address, srcQty);
+                    await expectRevert(
+                        network.tradeWithHint(networkProxy, srcToken.address, srcQty, ethAddress, taker,
+                            maxDestAmt, minConversionRate, platformWallet, hint),
+                        "0 rate"
+                    );
+                });
             };
         });
 
@@ -971,7 +1030,7 @@ contract('KyberNetwork', function(accounts) {
                 let result = await nwHelper.setupReserves(network, tokens.slice(0,3), 0, 0, 0, 9, accounts, admin, operator);
 
                 reserveInstances = result.reserveInstances;
-                numReserves += result.numAddedReserves * 1;
+                numReserves = result.numAddedReserves * 1;
 
                 //add and list pair for reserve
                 let j = 0;
@@ -1162,6 +1221,84 @@ contract('KyberNetwork', function(accounts) {
                         });
                     };
                 };
+            });
+
+            describe("test getExpectedRate with malicious matching engine", async() => {
+                let tempNetwork;
+                let maliciousMatchingEngine;
+                before("setup network with bad matching engine", async() => {
+                    maliciousMatchingEngine = await MaliciousMatchingEngine.new();
+                    await maliciousMatchingEngine.setKyberStorage(storage.address);
+                    tempNetwork = await KyberNetwork.new(admin, storage.address);
+                    await storage.setNetworkContract(tempNetwork.address, { from: admin });
+                    await tempNetwork.setContracts(feeHandler.address, maliciousMatchingEngine.address, zeroAddress, { from: admin });
+                });
+
+                after("switch storage back to normal network", async() => {
+                    await storage.setNetworkContract(network.address, { from: admin });
+                });
+
+                it("should revert for bad split array length", async() => {
+                    await expectRevert(
+                        tempNetwork.getExpectedRate(srcToken.address, destToken.address, srcQty),
+                        "bad split array"
+                    );
+                });
+
+                it("should revert for bad split bps values", async() => {
+                    let correctArrLength = (await storage.getReserveIdsPerTokenSrc(srcToken.address)).length;
+                    await maliciousMatchingEngine.setSplitLength(correctArrLength);
+                    await maliciousMatchingEngine.setBadValues(true);
+                    await expectRevert(
+                        tempNetwork.getExpectedRate(srcToken.address, destToken.address, srcQty),
+                        "invalid split bps"
+                    );
+                });
+
+                it("should revert if doMatch returns too many selected indexes", async() => {
+                    let correctArrLength = (await storage.getReserveIdsPerTokenSrc(srcToken.address)).length;
+                    await maliciousMatchingEngine.setSplitLength(correctArrLength);
+                    await maliciousMatchingEngine.setBadValues(false);
+                    await expectRevert(
+                        tempNetwork.getExpectedRate(srcToken.address, destToken.address, srcQty),
+                        "doMatch: too many reserves"
+                    );
+                });
+            });
+
+            describe("test getExpectedRate with malicious storage", async() => {
+                let tempNetwork;
+                let maliciousStorage;
+                before("setup network with bad storage", async() => {
+                    maliciousStorage = await MaliciousStorage.new();
+                    tempNetwork = await KyberNetwork.new(admin, maliciousStorage.address);
+                    await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
+                });
+
+                it("should revert for bad fee array length", async() => {
+                    await expectRevert(
+                        tempNetwork.getExpectedRate(srcToken.address, destToken.address, srcQty),
+                        "bad fee array"
+                    );
+                });
+
+                it("should revert for bad rebate array length", async() => {
+                    let correctArrLength = (await storage.getReserveIdsPerTokenSrc(srcToken.address)).length;
+                    await maliciousStorage.setArrayLengths(correctArrLength, zeroBN, zeroBN);
+                    await expectRevert(
+                        tempNetwork.getExpectedRate(srcToken.address, destToken.address, srcQty),
+                        "bad rebate array"
+                    );
+                });
+
+                it("should revert for bad addresses array length", async() => {
+                    let correctArrLength = (await storage.getReserveIdsPerTokenSrc(srcToken.address)).length;
+                    await maliciousStorage.setArrayLengths(correctArrLength, correctArrLength, zeroBN);
+                    await expectRevert(
+                        tempNetwork.getExpectedRate(srcToken.address, destToken.address, srcQty),
+                        "bad addresses array"
+                    );
+                });
             });
 
             it("should emit KyberTrade event for a test T2T split trade", async() => {
@@ -1603,6 +1740,146 @@ contract('KyberNetwork', function(accounts) {
                 await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, actualSrcQty,
                     initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
             });
+
+            it("should revert if destAddress does not accept ETH", async() => {
+                await srcToken.transfer(network.address, srcQty);
+                let badDestAddress = await NotPayableContract.new();
+
+                await expectRevert(
+                    network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, badDestAddress.address,
+                    maxDestAmt, minConversionRate, platformWallet, zeroBN, emptyHint),
+                    "send dest qty failed"
+                );
+            });
+
+            it("should revert with 0 rate if reserve IDs are duplicated for split trades", async() => {
+                let hintType = SPLIT_HINTTYPE;
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                let firstChar = hint.search('aa'); // APR hint, change if needed
+                let firstResID = hint.substr(firstChar, 64); // 32 byte length
+                hint = hint.substr(0, firstChar) + firstResID + firstResID + hint.substr(firstChar + 128);
+
+                await srcToken.transfer(network.address, srcQty);
+                await expectRevert(
+                    network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint),
+                    "0 rate"
+                );
+            });
+
+            for (tradeType of tradeTypesArray) {
+                it(`should revert with 0 rate due to wrong ${tradeStr[tradeType]}`, async() => {
+                    let hintType = tradeType;
+                    hint = await nwHelper.getWrongHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+    
+                    await srcToken.transfer(network.address, srcQty);
+                    await expectRevert(
+                        network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint),
+                        "0 rate"
+                    );
+                });
+            }
+
+            it("should revert if masked out reserves exceed available reserves", async() => {
+                let allReserves = await storage.getReserveIdsPerTokenSrc(srcToken.address);
+                let someReserveID = "0xaa00000026d1e94963c8b382ad00000000000000000000000000000000000000";
+                hint = await matchingEngine.buildTokenToEthHint(
+                    MASK_OUT_HINTTYPE,
+                    allReserves.concat(someReserveID),
+                    []
+                );
+
+                await srcToken.transfer(network.address, srcQty);
+                await expectRevert(
+                    network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint),
+                    "mask out exceeds available reserves"
+                );
+            });
+
+            it("should revert with 0 rate if split values are invalid", async() => {
+                let hintType = SPLIT_HINTTYPE;
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                let firstChar = hint.search('d05'); // split amount in hex
+                let newSplit = 'd06';
+                hint = hint.substr(0, firstChar) + newSplit + hint.substr(firstChar + 3);
+
+                await srcToken.transfer(network.address, srcQty);
+                await expectRevert(
+                    network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint),
+                    "0 rate"
+                );
+            });
+
+            it("should revert if reserve IDs are not in increasing order", async() => {
+                let hintType = SPLIT_HINTTYPE;
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                let firstChar = hint.search('aa'); // APR hint, change if needed
+                let firstResID = hint.substr(firstChar, 64); // 32 byte length
+                let secondResID = hint.substr(firstChar + 64, 64);
+                hint = hint.substr(0, firstChar) + secondResID + firstResID + hint.substr(firstChar + 128);
+
+                await srcToken.transfer(network.address, srcQty);
+                await expectRevert(
+                    network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint),
+                    "0 rate"
+                );
+            });
+        });
+
+        describe("test with malicious reserves", async() => {
+            let reserveInstances = {};
+            let badReserve;
+            beforeEach("reset reserveInstances", async() => {
+                reserveInstances = {};
+            });
+
+            it("should revert if reserve tries recursive call = tries to call kyber trade function", async() => {
+                // setup reserve and add to storage
+                reserveInstances = await nwHelper.setupBadReserve(ReentrantReserve, accounts, tokens);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
+                badReserve = (Object.values(reserveInstances))[0].instance;
+                await badReserve.setDestToken(destToken.address);
+                let scammer = accounts[8];
+                await badReserve.setDestAddress(scammer);
+                await badReserve.setNetwork(network.address);
+                await badReserve.setNumRecursive(1);
+                await expectRevert(
+                    network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, emptyHint, {value: ethSrcQty}),
+                    "ReentrancyGuard: reentrant call"
+                );  
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
+            });
+
+            it("should revert if reserve fails to return boolean for trade() call", async() => {
+                // setup reserve and add to storage
+                reserveInstances = await nwHelper.setupBadReserve(ReserveNoReturnVal, accounts, tokens);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
+                badReserve = (Object.values(reserveInstances))[0].instance;
+                await expectRevert(
+                    network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, emptyHint, {value: ethSrcQty}),
+                    "trade failed"
+                );  
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
+            });
+
+            it("should revert if reserve returns false for trade() call", async() => {
+                // setup reserve and add to storage
+                reserveInstances = await nwHelper.setupBadReserve(ReserveReturnFalse, accounts, tokens);
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
+                badReserve = (Object.values(reserveInstances))[0].instance;
+                await expectRevert(
+                    network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
+                        maxDestAmt, minConversionRate, platformWallet, platformFeeBps, emptyHint, {value: ethSrcQty}),
+                    "trade failed"
+                );  
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
+            });
         });
 
         describe("Test maxDestAmount reverse calculation edge cases", async() => {
@@ -1906,7 +2183,7 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
-    describe("test fee handler integrations with 2 mock reserves", async() => {
+    describe("test fee handler integrations with 1 mock and 1 apr", async() => {
         let platformFee = new BN(200);
         let networkFeeBps;
         let rebateBps;
@@ -1914,11 +2191,11 @@ contract('KyberNetwork', function(accounts) {
         let reserveIdToWallet = [];
         let rebateWallets;
 
-        before("setup, add and list mock reserves", async() => {
+        before("setup, add and list reserves", async() => {
             //init reserves
             rebateWallets = [accounts[7], accounts[8]];
 
-            let result = await nwHelper.setupReserves(network, tokens, 2,0,0,0, accounts, admin, operator, rebateWallets);
+            let result = await nwHelper.setupReserves(network, tokens, 1,1,0,0, accounts, admin, operator, rebateWallets);
 
             reserveInstances = result.reserveInstances;
             numReserves += result.numAddedReserves * 1;
@@ -1943,7 +2220,7 @@ contract('KyberNetwork', function(accounts) {
             rewardBps = BRRData.rewardBps;
         });
 
-        it("et2 trade. see rebate per wallet updated in fee handler.", async() => {
+        it("t2e trade. see rebate per wallet updated in fee handler.", async() => {
             let payoutBalance0 = await feeHandler.totalPayoutBalance();
             let rebateWalletBalance0 = {};
             for (let i = 0; i < rebateWallets.length; i++) {
@@ -1967,7 +2244,7 @@ contract('KyberNetwork', function(accounts) {
             Helper.assertEqual(actualBalance, expectedBalance);
         });
 
-        it("et2 trade. see total payout amount updated in fee handler.", async() => {
+        it("e2t trade. see total payout amount updated in fee handler.", async() => {
             let payoutBalance0 = await feeHandler.totalPayoutBalance();
 
             let srcQty = oneEth;
@@ -1980,6 +2257,100 @@ contract('KyberNetwork', function(accounts) {
             let expectedAddedAmount = expectedAddedRebate.add(expectedAddedReward);
             let payoutBalance1 = await feeHandler.totalPayoutBalance();
             Helper.assertEqual(payoutBalance0.add(expectedAddedAmount), payoutBalance1);
+        });
+
+        it("should have rebate given only to rebate entitled reserve.", async() => {
+            await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+            // set rebate entitled true for FPR
+            await storage.setEntitledRebatePerReserveType(true, false, false, false, false, false, {from: admin});
+
+            let rebateWalletBalance0 = {};
+            for (let i = 0; i < rebateWallets.length; i++) {
+                rebateWalletBalance0[rebateWallets[i]] = await feeHandler.rebatePerWallet(rebateWallets[i]);
+            }
+
+            let srcQty = oneEth;
+            await srcToken.transfer(network.address, srcQty);
+            hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, 
+                srcToken.address, destToken.address, srcQty);
+            await network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, destToken.address, taker,
+                maxDestAmt, minConversionRate, platformWallet, platformFee, hint, {from: networkProxy});
+
+            // first rebate wallet rebate entitled
+            let rebateWallet = rebateWallets[0];
+            let actualBalance = await feeHandler.rebatePerWallet(rebateWallet);
+            Helper.assertGreater(actualBalance, rebateWalletBalance0[rebateWallet]);
+            
+            // second rebate wallet not rebate entitled
+            rebateWallet = rebateWallets[1];
+            actualBalance = await feeHandler.rebatePerWallet(rebateWallet);
+            Helper.assertEqual(actualBalance, rebateWalletBalance0[rebateWallet]);
+        });
+
+        it("should not have any fees if fee accounted data set to false", async() => {
+            // set fee accounted data to false
+            await storage.setFeeAccountedPerReserveType(false, false, false, false, false, false, {from: admin});
+            await storage.setEntitledRebatePerReserveType(false, false, false, false, false, false, {from: admin});
+            
+            let payoutBalance0 = await feeHandler.totalPayoutBalance();
+            let srcQty = oneEth;
+
+            await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
+                maxDestAmt, minConversionRate, platformWallet, 0, '0x', {from: networkProxy, value: srcQty});
+            let payoutBalance1 = await feeHandler.totalPayoutBalance();
+            Helper.assertEqual(payoutBalance0, payoutBalance1);
+
+            // reset fees
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+        });
+
+        it("should not have any fees if entitled rebate data is set to false", async() => {
+            await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+            // set entitled rebate data to false
+            await storage.setEntitledRebatePerReserveType(false, false, false, false, false, false, {from: admin});
+            
+            let payoutBalance0 = await feeHandler.totalPayoutBalance();
+            let srcQty = oneEth;
+
+            await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
+                maxDestAmt, minConversionRate, platformWallet, 0, '0x', {from: networkProxy, value: srcQty});
+            let payoutBalance1 = await feeHandler.totalPayoutBalance();
+            Helper.assertEqual(payoutBalance0, payoutBalance1);
+
+            // reset fees
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+        });
+
+        it("should have fees only for platform wallet if fee accounted data set to false", async() => {
+            // set fee accounted data to false
+            await storage.setFeeAccountedPerReserveType(false, false, false, false, false, false, {from: admin});
+            await storage.setEntitledRebatePerReserveType(false, false, false, false, false, false, {from: admin});
+            
+            let payoutBalance0 = await feeHandler.feePerPlatformWallet(platformWallet);
+            let srcQty = oneEth;
+
+            await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
+                maxDestAmt, minConversionRate, platformWallet, new BN(5), '0x', {from: networkProxy, value: srcQty});
+            let payoutBalance1 = await feeHandler.feePerPlatformWallet(platformWallet);
+            await Helper.assertGreater(payoutBalance1, payoutBalance0, "platform received no fees");
+
+            // reset fees
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+        });
+
+        it("should revert if handle fee call fails", async() => {
+            let badFeeHandler = await MockFeeHandlerReturnFalse.new();
+            await network.setContracts(badFeeHandler.address, matchingEngine.address, zeroAddress, { from : admin });
+            let srcQty = oneEth;
+            await expectRevert(
+                network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
+                    maxDestAmt, minConversionRate, platformWallet, new BN(5), '0x', {from: networkProxy, value: srcQty}),
+                    "handle fee fail"
+            );
+            await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, { from : admin });
         });
     });
 

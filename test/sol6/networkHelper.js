@@ -78,7 +78,7 @@ async function setupReserves
             'address': reserve.address,
             'instance': reserve,
             'reserveId': reserveId,
-            'onChainType': ReserveType.FPR,
+            'onChainType': ReserveType.CUSTOM,
             'rate': new BN(0),
             'type': type_MOCK,
             'pricing': "none",
@@ -144,7 +144,7 @@ async function setupReserves
         let pricing = await setupAprPricing(token, p0, admin, operator);
         let reserve = await setupAprReserve(network, token, accounts[ethSenderIndex++], pricing.address, ethInit, admin, operator);
         await pricing.setReserveAddress(reserve.address, {from: admin});
-        let reserveId = (genReserveID(FPR_ID, reserve.address)).toLowerCase();
+        let reserveId = (genReserveID(APR_ID, reserve.address)).toLowerCase();
         let rebateWallet;
         if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
             rebateWallet = reserve.address;
@@ -156,7 +156,7 @@ async function setupReserves
             'address': reserve.address,
             'instance': reserve,
             'reserveId': reserveId,
-            'onChainType': ReserveType.FPR,
+            'onChainType': ReserveType.APR,
             'rate': new BN(0),
             'type': type_apr,
             'pricing': pricing.address,
@@ -184,7 +184,6 @@ async function listTokenForRedeployNetwork(storageInstance, reserveInstances, to
             await storageInstance.listPairForReserve(reserve.reserveId, tokens[j].address, true, true, true, {from: operator});
         }
     }
-
 }
 
 module.exports.setupNetwork = setupNetwork;
@@ -395,6 +394,38 @@ async function setupAprPricing(token, p0, admin, operator) {
     return pricing;
 }
 
+module.exports.setupBadReserve = setupBadReserve;
+async function setupBadReserve(BadReserveArtifact, accounts, tokens) {
+    let result = {}
+    badReserve = await BadReserveArtifact.new();
+    badReserveId = genReserveID(MOCK_ID, badReserve.address);
+    result[badReserveId] = {
+        'address': badReserve.address,
+        'instance': badReserve,
+        'reserveId': badReserveId,
+        'onChainType': ReserveType.CUSTOM,
+        'rate': zeroBN,
+        'type': type_MOCK,
+        'pricing': "none",
+        'rebateWallet': badReserve.address
+    }
+
+    // send ETH and tokens
+    let ethSender = accounts[4];
+    let ethInit = (new BN(10)).pow(new BN(19)).mul(new BN(20));
+    await Helper.sendEtherWithPromise(ethSender, badReserve.address, ethInit);
+    await Helper.assertSameEtherBalance(badReserve.address, ethInit);
+
+    for (let j = 0; j < tokens.length; ++j) {
+        let token = tokens[j];
+        let initialTokenAmount = new BN(200000).mul(new BN(10).pow(new BN(await token.decimals())));
+        await token.transfer(badReserve.address, initialTokenAmount);
+        await Helper.assertSameTokenBalance(badReserve.address, token, initialTokenAmount);
+        await badReserve.setRate(token.address, precisionUnits.mul(new BN(10)));
+    }
+    return result;
+}
+
 module.exports.addReservesToStorage = addReservesToStorage;
 async function addReservesToStorage(storageInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
@@ -593,6 +624,67 @@ async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, n
     );
 
     return hint;
+}
+
+module.exports.getWrongHint = getWrongHint;
+async function getWrongHint(rateHelper, matchingEngine, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
+    function buildHint(tradeType, reserveIds, splits) {
+        reserveIds.sort();
+        return web3.eth.abi.encodeParameters(
+            ['uint8', 'bytes32[]', 'uint[]'],
+            [tradeType, reserveIds, splits],
+        );
+    }
+
+    let reserveCandidates;
+    let hintedReservese2t;
+    let hintedReservest2e;
+    let hint;
+    let t2eHint;
+    let e2tHint;
+
+    if (hintType == EMPTY_HINTTYPE) hintType = MASK_IN_HINTTYPE;
+
+    if(srcAdd != ethAddress) {
+        reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, srcAdd, qty, true);
+        hintedReservest2e = applyHintToReserves(hintType, reserveCandidates, numReserves);
+
+        // Adds splits if MASK_IN or MASK_OUT
+        // Remove all splits of SPLIT
+        if (hintType === MASK_IN_HINTTYPE || hintType === MASK_OUT_HINTTYPE) {
+            hintedReservest2e.splits.push(5000);
+        } else {
+            hintedReservest2e.splits = [];
+        }
+
+        t2eHint = buildHint(hintedReservest2e.tradeType, hintedReservest2e.reservesForHint, hintedReservest2e.splits);
+        if(destAdd == ethAddress) {
+            return t2eHint;
+        }
+    }
+
+    if(destAdd != ethAddress) {
+        reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, destAdd, qty, false);
+        hintedReservese2t = applyHintToReserves(hintType, reserveCandidates, numReserves);
+
+        // Adds splits if MASK_IN or MASK_OUT
+        // Remove all splits of SPLIT
+        if (hintType === MASK_IN_HINTTYPE || hintType === MASK_OUT_HINTTYPE) {
+            hintedReservese2t.splits.push(5000);
+        } else {
+            hintedReservese2t.splits = [];
+        }
+
+        e2tHint = buildHint(hintedReservese2t.tradeType, hintedReservese2t.reservesForHint, hintedReservese2t.splits);
+        if(srcAdd == ethAddress) {
+            return e2tHint;
+        }
+    }
+
+    return web3.eth.abi.encodeParameters(
+        ['bytes', 'bytes'],
+        [t2eHint, e2tHint],
+    );
 }
 
 module.exports.minusNetworkFees = minusNetworkFees;
