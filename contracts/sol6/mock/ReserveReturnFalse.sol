@@ -3,16 +3,13 @@ pragma solidity 0.6.6;
 import "../IKyberReserve.sol";
 import "../utils/Utils5.sol";
 import "../utils/zeppelin/SafeERC20.sol";
-import "../IKyberNetworkProxy.sol";
+import "../IKyberNetwork.sol";
 
 
-contract MaliciousReserve is IKyberReserve, Utils5 {
+contract ReserveReturnFalse is IKyberReserve, Utils5 {
     using SafeERC20 for IERC20;
 
     mapping(address => uint256) public buyTokenRates;
-    IKyberNetworkProxy proxy;
-    address payable scammer;
-    IERC20 public scamToken;
 
     uint256 public numRecursive = 1;
 
@@ -28,12 +25,6 @@ contract MaliciousReserve is IKyberReserve, Utils5 {
     ) public payable override returns (bool) {
         require(srcToken == ETH_TOKEN_ADDRESS, "not buy token");
 
-        if (numRecursive > 0) {
-            --numRecursive;
-
-            doTrade();
-        }
-
         validate;
         require(msg.value == srcAmount, "ETH sent != srcAmount");
 
@@ -43,38 +34,7 @@ contract MaliciousReserve is IKyberReserve, Utils5 {
 
         // send dest tokens
         destToken.safeTransfer(destAddress, destAmount);
-
-        return true;
-    }
-
-    function doTrade() public {
-        uint256 callValue = 960;
-
-        proxy.trade{value: callValue}(
-            ETH_TOKEN_ADDRESS,
-            callValue,
-            scamToken,
-            scammer,
-            (2**255),
-            0,
-            address(0)
-        );
-    }
-
-    function setDestAddress(address payable _scammer) public {
-        scammer = _scammer;
-    }
-
-    function setDestToken(ERC20 _token) public {
-        scamToken = _token;
-    }
-
-    function setKyberProxy(IKyberNetworkProxy _proxy) public {
-        proxy = _proxy;
-    }
-
-    function setNumRecursive(uint256 num) public {
-        numRecursive = num;
+        return false;
     }
 
     function setRate(IERC20 token, uint256 buyRate) public {
