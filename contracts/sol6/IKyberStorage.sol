@@ -23,17 +23,17 @@ interface IKyberStorage {
 
     function getReserveID(address reserve) external view returns (bytes32 reserveId);
 
-    function convertReserveAddressestoIds(address[] calldata reserveAddresses)
+    function getReserveIdsFromAddresses(address[] calldata reserveAddresses)
         external
         view
         returns (bytes32[] memory reserveIds);
 
-    function convertReserveIdsToAddresses(bytes32[] calldata reserveIds)
+    function getReserveAddressesFromIds(bytes32[] calldata reserveIds)
         external
         view
         returns (address[] memory reserveAddresses);
 
-    function getReservesPerTokenSrc(address token)
+    function getReserveIdsPerTokenSrc(address token)
         external
         view
         returns (bytes32[] memory reserveIds);
@@ -43,17 +43,17 @@ interface IKyberStorage {
         view
         returns (address[] memory reserveAddresses);
 
-    function getReservesPerTokenDest(address token)
+    function getReserveIdsPerTokenDest(address token)
         external
         view
         returns (bytes32[] memory reserveIds);
 
-    function getReservesByReserveId(bytes32 reserveId)
+    function getReserveAddressesByReserveId(bytes32 reserveId)
         external
         view
         returns (address[] memory reserveAddresses);
 
-    function getRebateWallets(bytes32[] calldata reserveIds)
+    function getRebateWalletsFromIds(bytes32[] calldata reserveIds)
         external
         view
         returns (address[] memory rebateWallets);

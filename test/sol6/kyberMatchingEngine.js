@@ -242,16 +242,16 @@ contract('KyberMatchingEngine', function(accounts) {
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
                     await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: operator});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, srcToken.address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, destToken.address, true, true, true, {from: operator});
                 };
             });
 
             after("unlist and remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: operator});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: operator});
-                    await storage.removeReserve(reserve.address, new BN(0), {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, srcToken.address, true, true, false, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, destToken.address, true, true, false, {from: operator});
+                    await storage.removeReserve(reserve.reserveId, new BN(0), {from: operator});
                 };
             });
 
@@ -306,16 +306,16 @@ contract('KyberMatchingEngine', function(accounts) {
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
                     await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: operator});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, srcToken.address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, destToken.address, true, true, true, {from: operator});
                 };
             });
 
             after("unlist and remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: operator});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: operator});
-                    await storage.removeReserve(reserve.address, new BN(0), {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, srcToken.address, true, true, false, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, destToken.address, true, true, false, {from: operator});
+                    await storage.removeReserve(reserve.reserveId, new BN(0), {from: operator});
                 };
             });
 
@@ -375,16 +375,16 @@ contract('KyberMatchingEngine', function(accounts) {
                 //add reserves, list token pairs
                 for (reserve of Object.values(reserveInstances)) {
                     await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, true, {from: operator});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, srcToken.address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, destToken.address, true, true, true, {from: operator});
                 };
             });
 
             after("unlist and remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.listPairForReserve(reserve.address, srcToken.address, true, true, false, {from: operator});
-                    await storage.listPairForReserve(reserve.address, destToken.address, true, true, false, {from: operator});
-                    await storage.removeReserve(reserve.address, new BN(0), {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, srcToken.address, true, true, false, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, destToken.address, true, true, false, {from: operator});
+                    await storage.removeReserve(reserve.reserveId, new BN(0), {from: operator});
                 };
             });
 
@@ -464,7 +464,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
             after("remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.removeReserve(reserve.address, new BN(0), {from: operator});
+                    await storage.removeReserve(reserve.reserveId, new BN(0), {from: operator});
                 };
             });
 
@@ -534,7 +534,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
             after("remove reserves", async() => {
                 for (reserve of Object.values(reserveInstances)) {
-                    await storage.removeReserve(reserve.address, new BN(0), {from: operator});
+                    await storage.removeReserve(reserve.reserveId, new BN(0), {from: operator});
                 };
             });
         });

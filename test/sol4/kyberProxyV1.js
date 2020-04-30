@@ -1224,7 +1224,7 @@ contract('KyberProxyV1', function(accounts) {
                 let reserveId = (await nwHelper.genReserveID(MOCK_ID, malReserve.address)).toLowerCase();
                 await storage.addReserve(malReserve.address, reserveId, ReserveType.FPR, malReserve.address, {from: operator});
                 for (let j = 0; j < tokens.length; j++) {
-                    await storage.listPairForReserve(malReserve.address, tokens[j].address, true, true, true, {from: operator});
+                    await storage.listPairForReserve(reserveId, tokens[j].address, true, true, true, {from: operator});
                 }
 
                 let amountWei = 960;
@@ -1273,9 +1273,9 @@ contract('KyberProxyV1', function(accounts) {
                 )
 
                 for (let j = 0; j < tokens.length; j++) {
-                    await storage.listPairForReserve(malReserve.address, tokens[j].address, true, true, false, {from: operator});
+                    await storage.listPairForReserve(reserveId, tokens[j].address, true, true, false, {from: operator});
                 }
-                await storage.removeReserve(malReserve.address, 0, {from: operator});
+                await storage.removeReserve(reserveId, 0, {from: operator});
             });
 
             it("should test can't init this contract with empty contracts (address 0) or with non admin.", async function () {
