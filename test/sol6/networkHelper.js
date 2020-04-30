@@ -385,7 +385,7 @@ async function addReservesToStorage(storageInstance, reserveInstances, tokens, o
              ? reserve.address : reserve.rebateWallet;
         await storageInstance.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
         for (let j = 0; j < tokens.length; j++) {
-            await storageInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, true, {from: operator});
+            await storageInstance.listPairForReserve(reserve.reserveId, tokens[j].address, true, true, true, {from: operator});
         }
     }
 }
@@ -408,9 +408,9 @@ module.exports.removeReservesFromStorage = async function (storageInstance, rese
         reserve = value;
         console.log("removing reserve type: " + reserve.type + " address: " + reserve.address + " pricing: " + reserve.pricing);
         for (let j = 0; j < tokens.length; j++) {
-            await storageInstance.listPairForReserve(reserve.address, tokens[j].address, true, true, false, {from: operator});
+            await storageInstance.listPairForReserve(reserve.reserveId, tokens[j].address, true, true, false, {from: operator});
         }
-        await storageInstance.removeReserve(reserve.address, 0, {from: operator});
+        await storageInstance.removeReserve(reserve.reserveId, 0, {from: operator});
     }
 }
 
@@ -703,7 +703,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
         };
         result.t2eSrcAmts = tmpAmts;
         result.t2eRates = tmpRates;
-        result.t2eAddresses = await storage.convertReserveIdsToAddresses(result.t2eIds);
+        result.t2eAddresses = await storage.getReserveAddressesFromIds(result.t2eIds);
     } else {
         result.tradeWei = srcQty;
     }
@@ -766,7 +766,7 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
             }
         }
 
-        result.e2tAddresses = await storage.convertReserveIdsToAddresses(result.e2tIds);
+        result.e2tAddresses = await storage.getReserveAddressesFromIds(result.e2tIds);
         result.e2tRates = tmpRates;
         result.e2tSrcAmts = tmpAmts;
     } else {
