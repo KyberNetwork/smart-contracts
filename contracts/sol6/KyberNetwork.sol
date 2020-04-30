@@ -964,7 +964,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             tradeData.entitledRebateBps
         );
 
-        rebateWallets = kyberStorage.getRebateWallets(rebateReserveIds);
+        rebateWallets = kyberStorage.getRebateWalletsFromIds(rebateReserveIds);
     }
 
     function createRebateEntitledList(
