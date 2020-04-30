@@ -83,8 +83,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         HintErrors error;
         if (hint.length == 0 || hint.length == 4) {
             reserveIds = (dest == ETH_TOKEN_ADDRESS)
-                ? kyberStorage.getReservesPerTokenSrc(address(src))
-                : kyberStorage.getReservesPerTokenDest(address(dest));
+                ? kyberStorage.getReserveIdsPerTokenSrc(address(src))
+                : kyberStorage.getReserveIdsPerTokenDest(address(dest));
 
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
             processWithRate = ProcessWithRate.Required;
@@ -115,8 +115,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         } else if (tradeType == TradeType.MaskOut) {
             // if mask out, apply masking out logic
             bytes32[] memory allReserves = (dest == ETH_TOKEN_ADDRESS)
-                ? kyberStorage.getReservesPerTokenSrc(address(src))
-                : kyberStorage.getReservesPerTokenDest(address(dest));
+                ? kyberStorage.getReserveIdsPerTokenSrc(address(src))
+                : kyberStorage.getReserveIdsPerTokenDest(address(dest));
 
             reserveIds = maskOutReserves(allReserves, reserveIds);
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
