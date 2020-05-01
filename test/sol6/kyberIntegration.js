@@ -210,7 +210,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await stakingContract.deposit(initMikeStake, {from: mike});
     };
 
-    const testIntergraitonSetup = async function(){};
+    const testIntegrationSetup = async function(){};
 
     const testRedeployKyberProxySetup = async function(){
         //remove old proxy
@@ -347,8 +347,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await updateCurrentBlockAndTimestamp();
     };
 
-    var testSuite = {
-        "test intergration" : testIntergraitonSetup,
+    let testSuite = {
+        "test integration" : testIntegrationSetup,
         "upgrage ability - redeploy KyberProxy": testRedeployKyberProxySetup,
         "upgrade ability - redeploy KyberDao/kyberStaking/feeHandler": testRedeployKyberDao,
         "upgrade ability - redeploy KyberStorage": testRedeployKyberStorage,
