@@ -69,10 +69,13 @@ let destToken;
 let srcDecimals;
 let ethSrcQty;
 let srcQty;
+let testSuite;
 
+// In this test we will need to define testSuite
+// It will init contracts with different init functions
+// After each init, will run all tests to see integration is working.
 contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrations', function(accounts) {
-    const global_init = async() => {
-        //init accounts
+    before("init accounts", async() => {
         operator = accounts[1];
         alerter = accounts[2];
         taker = accounts[3];
@@ -81,7 +84,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         daoSetter = accounts[7];
         mike = accounts[8];
         victor = accounts[9];
+    });
 
+    const global_init = async() => {
         //init KNC
         KNC = await TestToken.new("kyber network crystal", "KNC", 18);
 
@@ -347,7 +352,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await updateCurrentBlockAndTimestamp();
     };
 
-    let testSuite = {
+    testSuite = {
         "test integration" : testIntegrationSetup,
         "upgrage ability - redeploy KyberProxy": testRedeployKyberProxySetup,
         "upgrade ability - redeploy KyberDao/kyberStaking/feeHandler": testRedeployKyberDao,
@@ -355,7 +360,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         "upgrade ability - redeploy KyberNetwork": testRedeployKyberNetwork,
         "upgrade ability - redeploy matchingEngine": testRedeployMatchingEngine,
     }
-
+    // run all test with each setup
     for (const [test_name, initFunction] of Object.entries(testSuite)) {
         describe(test_name, async() => {
             before("update global data", async() => {
@@ -1039,8 +1044,6 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             });
         });
     }
-
-
 });
 
 function mulPrecision(value) {
