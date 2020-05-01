@@ -152,14 +152,6 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await updateCurrentBlockAndTimestamp();
     };
 
-    const blockToTimestamp = function(block) {
-        return currentTimestamp + (block - currentBlock) * blockTime;
-    };
-
-    const blocksToSeconds = function(blocks) {
-        return blocks * blockTime;
-    };
-
     const updateCurrentBlockAndTimestamp = async() => {
         currentBlock = await Helper.getCurrentBlock();
         currentTimestamp = await Helper.getCurrentBlockTime();
@@ -218,83 +210,9 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await stakingContract.deposit(initMikeStake, {from: mike});
     };
 
-    const tradeAndCheckDataChangesAsExpected = async(epoch, expectedNetworkFee, expectedReward, expectedRebate, logGasMsg) => {
-        // make a simple swap, make sure data is updated for epoch 4 with concluding campaign
-        let txResult1 = await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
-        console.log("eth - token, first trade, gas used: " + txResult1.receipt.gasUsed);
-
-        // ============ check data should be updated from DAO ============
-        // check expected network data from network and dao
-        networkData = await network.getNetworkData();
-        Helper.assertEqual(blocksToSeconds(epoch * epochPeriod) + daoStartTime - 1, networkData.expiryTimestamp);
-        Helper.assertEqual(expectedNetworkFee, networkData.networkFeeBps);
-        Helper.assertEqual(expectedNetworkFee, (await daoContract.getLatestNetworkFeeData()).feeInBps);
-
-        // check expected brr data from fee handler
-        let brrData = await feeHandler.readBRRData();
-        Helper.assertEqual(blocksToSeconds(epoch * epochPeriod) + daoStartTime - 1, brrData.expiryTimestamp);
-        Helper.assertEqual(epoch, brrData.epoch);
-        Helper.assertEqual(expectedReward, brrData.rewardBps);
-        Helper.assertEqual(expectedRebate, brrData.rebateBps);
-        // check expected brr data from dao
-        let daoBrrData = await daoContract.getLatestBRRData();
-        Helper.assertEqual(brrData.expiryTimestamp, daoBrrData.expiryTimestamp);
-        Helper.assertEqual(brrData.epoch, daoBrrData.epoch);
-        Helper.assertEqual(brrData.rewardBps, daoBrrData.rewardInBps);
-        Helper.assertEqual(brrData.rebateBps, daoBrrData.rebateInBps);
-
-        // ========= another swap, data unchanges =========
-        let txResult2 = await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
-        console.log("eth - token, second trade, gas used: " + txResult2.receipt.gasUsed);
-        // different gas cost between second and first trade for each scenario
-        console.log("    " + logGasMsg + (txResult1.receipt.gasUsed - txResult2.receipt.gasUsed));
-
-        let curNetworkData = await network.getNetworkData();
-        Helper.assertEqual(networkData.expiryTimestamp, curNetworkData.expiryTimestamp);
-        Helper.assertEqual(networkData.networkFeeBps, curNetworkData.networkFeeBps);
-
-        let curBrrData = await feeHandler.readBRRData();
-        Helper.assertEqual(brrData.expiryTimestamp, curBrrData.expiryTimestamp);
-        Helper.assertEqual(brrData.epoch, curBrrData.epoch);
-        Helper.assertEqual(brrData.rewardBps, curBrrData.rewardBps);
-        Helper.assertEqual(brrData.rebateBps, curBrrData.rebateBps);
-
-        // ========= another swap, data unchanges =========
-        await srcToken.transfer(taker, srcQty);
-        await srcToken.approve(networkProxy.address, srcQty, {from: taker});
-        txResult = await networkProxy.swapTokenToEther(srcToken.address, srcQty, 1, {from: taker});
-        console.log("token - eth, third trade, gas used: " + txResult.receipt.gasUsed);
-
-        curNetworkData = await network.getNetworkData();
-        Helper.assertEqual(networkData.expiryTimestamp, curNetworkData.expiryTimestamp);
-        Helper.assertEqual(networkData.networkFeeBps, curNetworkData.networkFeeBps);
-
-        curBrrData = await feeHandler.readBRRData();
-        Helper.assertEqual(brrData.expiryTimestamp, curBrrData.expiryTimestamp);
-        Helper.assertEqual(brrData.epoch, curBrrData.epoch);
-        Helper.assertEqual(brrData.rewardBps, curBrrData.rewardBps);
-        Helper.assertEqual(brrData.rebateBps, curBrrData.rebateBps);
-
-        // ========= another swap, data unchanges =========
-        await srcToken.transfer(taker, srcQty);
-        await srcToken.approve(networkProxy.address, srcQty, {from: taker});
-        txResult = await networkProxy.swapTokenToToken(srcToken.address, srcQty, destToken.address, 1, {from: taker});
-        console.log("token - token, fourth trade, gas used: " + txResult.receipt.gasUsed);
-
-        curNetworkData = await network.getNetworkData();
-        Helper.assertEqual(networkData.expiryTimestamp, curNetworkData.expiryTimestamp);
-        Helper.assertEqual(networkData.networkFeeBps, curNetworkData.networkFeeBps);
-
-        curBrrData = await feeHandler.readBRRData();
-        Helper.assertEqual(brrData.expiryTimestamp, curBrrData.expiryTimestamp);
-        Helper.assertEqual(brrData.epoch, curBrrData.epoch);
-        Helper.assertEqual(brrData.rewardBps, curBrrData.rewardBps);
-        Helper.assertEqual(brrData.rebateBps, curBrrData.rebateBps);
-    }
-
     const testIntergraitonSetup = async function(){};
 
-    const testChangeKyberProxySetup = async function(){
+    const testRedeployKyberProxySetup = async function(){
         //remove old proxy
         await network.removeKyberProxy(networkProxy.address, {from: admin});
 
@@ -326,7 +244,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await Helper.setNextBlockTimestamp(networkData.expiryTimestamp * 1 + 1);
     };
 
-    const testChangeKyberDao = async function(){
+    const testRedeployKyberDao = async function(){
         // FeeHandler init
         feeHandler = await FeeHandler.new(daoSetter, networkProxy.address, network.address, KNC.address, burnBlockInterval, daoSetter);
 
@@ -350,7 +268,34 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await Helper.setNextBlockTimestamp(networkData.expiryTimestamp * 1 + 1);
     };
 
-    const testChangeKyberStorageAndNetwork = async function(){
+    const testRedeployKyberNetwork = async function(){
+        //deploy network
+        network = await KyberNetwork.new(admin, networkStorage.address);
+
+        await networkStorage.setNetworkContract(network.address, {from: admin});
+        await matchingEngine.setNetworkContract(network.address, {from: admin});
+        await networkProxy.setKyberNetwork(network.address, {from: admin});
+        await feeHandler.updateNetworkContract({from: daoSetter});
+
+        //setup network
+        ///////////////
+        await network.addKyberProxy(networkProxy.address, {from: admin});
+        await network.addOperator(operator, {from: admin});
+        await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
+        await network.setDAOContract(daoContract.address, {from: admin});
+
+        //add and list pair for network
+        await nwHelper.setNetworkForReserve(reserveInstances, network.address, admin);
+        await nwHelper.listTokenForRedeployNetwork(networkStorage, reserveInstances, tokens, operator);
+
+        //set params, enable network
+        await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
+        await network.setEnable(true, {from: admin});
+
+        await updateCurrentBlockAndTimestamp();
+    };
+
+    const testRedeployKyberStorage = async function(){
         networkStorage = await KyberStorage.new(admin);
         //deploy network
         network = await KyberNetwork.new(admin, networkStorage.address);
@@ -367,10 +312,6 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
 
-        // init and setup reserves
-        let result = await nwHelper.setupReserves(network, tokens, 2, 3, 0, 0, accounts, admin, operator);
-        reserveInstances = result.reserveInstances;
-
         //setup network
         ///////////////
         await network.addKyberProxy(networkProxy.address, {from: admin});
@@ -379,6 +320,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await network.setDAOContract(daoContract.address, {from: admin});
 
         //add and list pair for reserve
+        await nwHelper.setNetworkForReserve(reserveInstances, network.address, admin);
         await nwHelper.addReservesToStorage(networkStorage, reserveInstances, tokens, operator);
 
         //set params, enable network
@@ -391,7 +333,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await updateCurrentBlockAndTimestamp();
     };
 
-    const testChangeMatchingEngine = async function(){
+    const testRedeployMatchingEngine = async function(){
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
@@ -407,10 +349,11 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
     var testSuite = {
         "test intergration" : testIntergraitonSetup,
-        "upgrage ability - change KyberProxy": testChangeKyberProxySetup,
-        "upgrade ability - change KyberDao/kyberStaking/feeHandler": testChangeKyberDao,
-        "upgrade ability - change network/KyberStorage": testChangeKyberStorageAndNetwork,
-        "upgrade ability - change matchingEngine": testChangeMatchingEngine,
+        "upgrage ability - redeploy KyberProxy": testRedeployKyberProxySetup,
+        "upgrade ability - redeploy KyberDao/kyberStaking/feeHandler": testRedeployKyberDao,
+        "upgrade ability - redeploy KyberStorage": testRedeployKyberStorage,
+        "upgrade ability - redeploy KyberNetwork": testRedeployKyberNetwork,
+        "upgrade ability - redeploy matchingEngine": testRedeployMatchingEngine,
     }
 
     for (const [test_name, initFunction] of Object.entries(testSuite)) {
@@ -1096,6 +1039,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             });
         });
     }
+
+
 });
 
 function mulPrecision(value) {
@@ -1105,4 +1050,86 @@ function mulPrecision(value) {
 function getDataFromRebateAndReward(rebate, reward) {
     let power128 = new BN(2).pow(new BN(128));
     return (new BN(rebate).mul(power128)).add(new BN(reward));
+}
+
+function blockToTimestamp(block) {
+    return currentTimestamp + (block - currentBlock) * blockTime;
+};
+
+function blocksToSeconds(blocks) {
+    return blocks * blockTime;
+};
+
+async function tradeAndCheckDataChangesAsExpected (epoch, expectedNetworkFee, expectedReward, expectedRebate, logGasMsg){
+    // make a simple swap, make sure data is updated for epoch 4 with concluding campaign
+    let txResult1 = await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
+    console.log("eth - token, first trade, gas used: " + txResult1.receipt.gasUsed);
+
+    // ============ check data should be updated from DAO ============
+    // check expected network data from network and dao
+    networkData = await network.getNetworkData();
+    Helper.assertEqual(blocksToSeconds(epoch * epochPeriod) + daoStartTime - 1, networkData.expiryTimestamp);
+    Helper.assertEqual(expectedNetworkFee, networkData.networkFeeBps);
+    Helper.assertEqual(expectedNetworkFee, (await daoContract.getLatestNetworkFeeData()).feeInBps);
+
+    // check expected brr data from fee handler
+    let brrData = await feeHandler.readBRRData();
+    Helper.assertEqual(blocksToSeconds(epoch * epochPeriod) + daoStartTime - 1, brrData.expiryTimestamp);
+    Helper.assertEqual(epoch, brrData.epoch);
+    Helper.assertEqual(expectedReward, brrData.rewardBps);
+    Helper.assertEqual(expectedRebate, brrData.rebateBps);
+    // check expected brr data from dao
+    let daoBrrData = await daoContract.getLatestBRRData();
+    Helper.assertEqual(brrData.expiryTimestamp, daoBrrData.expiryTimestamp);
+    Helper.assertEqual(brrData.epoch, daoBrrData.epoch);
+    Helper.assertEqual(brrData.rewardBps, daoBrrData.rewardInBps);
+    Helper.assertEqual(brrData.rebateBps, daoBrrData.rebateInBps);
+
+    // ========= another swap, data unchanges =========
+    let txResult2 = await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
+    console.log("eth - token, second trade, gas used: " + txResult2.receipt.gasUsed);
+    // different gas cost between second and first trade for each scenario
+    console.log("    " + logGasMsg + (txResult1.receipt.gasUsed - txResult2.receipt.gasUsed));
+
+    let curNetworkData = await network.getNetworkData();
+    Helper.assertEqual(networkData.expiryTimestamp, curNetworkData.expiryTimestamp);
+    Helper.assertEqual(networkData.networkFeeBps, curNetworkData.networkFeeBps);
+
+    let curBrrData = await feeHandler.readBRRData();
+    Helper.assertEqual(brrData.expiryTimestamp, curBrrData.expiryTimestamp);
+    Helper.assertEqual(brrData.epoch, curBrrData.epoch);
+    Helper.assertEqual(brrData.rewardBps, curBrrData.rewardBps);
+    Helper.assertEqual(brrData.rebateBps, curBrrData.rebateBps);
+
+    // ========= another swap, data unchanges =========
+    await srcToken.transfer(taker, srcQty);
+    await srcToken.approve(networkProxy.address, srcQty, {from: taker});
+    txResult = await networkProxy.swapTokenToEther(srcToken.address, srcQty, 1, {from: taker});
+    console.log("token - eth, third trade, gas used: " + txResult.receipt.gasUsed);
+
+    curNetworkData = await network.getNetworkData();
+    Helper.assertEqual(networkData.expiryTimestamp, curNetworkData.expiryTimestamp);
+    Helper.assertEqual(networkData.networkFeeBps, curNetworkData.networkFeeBps);
+
+    curBrrData = await feeHandler.readBRRData();
+    Helper.assertEqual(brrData.expiryTimestamp, curBrrData.expiryTimestamp);
+    Helper.assertEqual(brrData.epoch, curBrrData.epoch);
+    Helper.assertEqual(brrData.rewardBps, curBrrData.rewardBps);
+    Helper.assertEqual(brrData.rebateBps, curBrrData.rebateBps);
+
+    // ========= another swap, data unchanges =========
+    await srcToken.transfer(taker, srcQty);
+    await srcToken.approve(networkProxy.address, srcQty, {from: taker});
+    txResult = await networkProxy.swapTokenToToken(srcToken.address, srcQty, destToken.address, 1, {from: taker});
+    console.log("token - token, fourth trade, gas used: " + txResult.receipt.gasUsed);
+
+    curNetworkData = await network.getNetworkData();
+    Helper.assertEqual(networkData.expiryTimestamp, curNetworkData.expiryTimestamp);
+    Helper.assertEqual(networkData.networkFeeBps, curNetworkData.networkFeeBps);
+
+    curBrrData = await feeHandler.readBRRData();
+    Helper.assertEqual(brrData.expiryTimestamp, curBrrData.expiryTimestamp);
+    Helper.assertEqual(brrData.epoch, curBrrData.epoch);
+    Helper.assertEqual(brrData.rewardBps, curBrrData.rewardBps);
+    Helper.assertEqual(brrData.rebateBps, curBrrData.rebateBps);
 }
