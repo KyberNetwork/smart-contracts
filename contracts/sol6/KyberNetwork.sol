@@ -857,6 +857,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(reservesData.ids.length == reservesData.splitsBps.length, "bad split array");
         require(reservesData.ids.length == reservesData.isFeeAccountedFlags.length, "bad fee array");
         require(reservesData.ids.length == reservesData.isEntitledRebateFlags.length, "bad rebate array");
+        require(reservesData.ids.length == reservesData.addresses.length, "bad addresses array");
 
         // calculate src trade amount per reserve and query rates
         // set data in reservesData struct
