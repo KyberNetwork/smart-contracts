@@ -669,18 +669,17 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(handleFees(tradeData));
 
         emit KyberTrade({
-            trader: tradeData.input.trader,
             src: tradeData.input.src,
             dest: tradeData.input.dest,
-            srcAmount: actualSrcAmount,
-            destAmount: destAmount,
-            destAddress: tradeData.input.destAddress,
             ethWeiValue: tradeData.tradeWei,
             networkFeeWei: tradeData.networkFeeWei,
             customPlatformFeeWei: tradeData.platformFeeWei,
             t2eIds: tradeData.tokenToEth.ids,
             e2tIds: tradeData.ethToToken.ids,
-            hint: hint
+            t2eSrcAmounts: tradeData.tokenToEth.srcAmounts,
+            e2tSrcAmounts: tradeData.ethToToken.srcAmounts,
+            t2eRates: tradeData.tokenToEth.rates,
+            e2tRates: tradeData.ethToToken.rates
         });
 
         if (gasHelper != IGasHelper(0)) {

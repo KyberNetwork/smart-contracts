@@ -1186,27 +1186,40 @@ contract('KyberNetwork', function(accounts) {
 
                 //have to check ids separately, because expectEvent does not support arrays
                 expectEvent(txResult, 'KyberTrade', {
-                    trader: networkProxy,
                     src: srcToken.address,
                     dest: destToken.address,
-                    srcAmount: srcQty,
-                    destAmount: expectedResult.actualDestAmount,
-                    destAddress: taker,
                     ethWeiValue: expectedResult.tradeWei,
                     networkFeeWei: expectedResult.networkFeeWei,
                     customPlatformFeeWei: expectedResult.platformFeeWei,
-                    hint: hint
                 });
 
                 let actualT2Eids = txResult.logs[3].args.t2eIds;
                 let actualE2Tids = txResult.logs[3].args.e2tIds;
                 Helper.assertEqual(expectedResult.t2eIds.length, actualT2Eids.length, "T2E id length not equal");
                 Helper.assertEqual(expectedResult.e2tIds.length, actualE2Tids.length, "E2T id length not equal");
-                for (let i = 0; i < expectedResult.t2eIds.length; i++) {
-                    Helper.assertEqual(expectedResult.t2eIds[i], actualT2Eids[i], "T2E id not equal");
+                Helper.assertEqualArray(expectedResult.t2eIds, actualT2Eids, "T2E ids not equal");
+                Helper.assertEqualArray(expectedResult.e2tIds, actualE2Tids, "E2T ids not equal");
+
+                let actualT2EsrcAmounts = txResult.logs[3].args.t2eSrcAmounts;
+                let actualE2TsrcAmounts = txResult.logs[3].args.e2tSrcAmounts;
+                Helper.assertEqual(expectedResult.t2eSrcAmounts.length, actualT2EsrcAmounts.length, "T2E srcAmounts length not equal");
+                Helper.assertEqual(expectedResult.e2tSrcAmounts.length, actualE2TsrcAmounts.length, "E2T srcAmounts length not equal");
+                for (let i = 0; i < expectedResult.t2eSrcAmounts.length; i++) {
+                    Helper.assertEqual(expectedResult.t2eSrcAmounts[i], actualT2EsrcAmounts[i], "T2E srcAmounts not equal");
                 }
-                for (let i = 0; i < expectedResult.e2tIds.length; i++) {
-                    Helper.assertEqual(expectedResult.e2tIds[i], actualE2Tids[i], "E2T id not equal");
+                for (let i = 0; i < expectedResult.e2tSrcAmounts.length; i++) {
+                    Helper.assertEqual(expectedResult.e2tSrcAmounts[i], actualE2TsrcAmounts[i], "E2T srcAmounts not equal");
+                }
+
+                let actualT2Erates = txResult.logs[3].args.t2eRates;
+                let actualE2Trates = txResult.logs[3].args.e2tRates;
+                Helper.assertEqual(expectedResult.t2eRates.length, actualT2Erates.length, "T2E rates length not equal");
+                Helper.assertEqual(expectedResult.e2tRates.length, actualE2Trates.length, "E2T rates length not equal");
+                for (let i = 0; i < expectedResult.t2eSrcAmounts.length; i++) {
+                    Helper.assertEqual(expectedResult.t2eRates[i], actualT2Erates[i], "T2E rates not equal");
+                }
+                for (let i = 0; i < expectedResult.e2tSrcAmounts.length; i++) {
+                    Helper.assertEqual(expectedResult.e2tRates[i], actualE2Trates[i], "E2T rates not equal");
                 }
             });
 
