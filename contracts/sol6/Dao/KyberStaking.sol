@@ -18,7 +18,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         address delegatedAddress;
     }
 
-    IERC20 public kncToken;
+    IERC20 public immutable kncToken;
     IKyberDAO public daoContract;
     address public daoContractSetter;
 

@@ -96,7 +96,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     IKyberFeeHandler internal feeHandler;
     IKyberDAO internal kyberDAO;
     IKyberMatchingEngine internal matchingEngine;
-    IKyberStorage internal kyberStorage;
+    IKyberStorage internal immutable kyberStorage;
     IGasHelper internal gasHelper;
 
     NetworkFeeData internal networkFeeData; // data is feeBps and expiry timestamp

@@ -56,9 +56,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
 
     // minimum duration in seconds for a campaign
     uint256 public minCampaignDurationInSeconds = 345600; // around 4 days
-    IERC20 public kncToken;
+    IERC20 public immutable kncToken;
     IKyberStaking public staking;
-    IKyberFeeHandler public feeHandler;
+    IKyberFeeHandler public immutable feeHandler;
 
     // campaign creator permissions
     address public campaignCreator;
