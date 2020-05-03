@@ -6,15 +6,8 @@ import "./IKyberStaking.sol";
 import "../IKyberDAO.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../utils/Utils5.sol";
+import "../IKyberFeeHandler.sol";
 
-
-interface IFeeHandler {
-    function claimStakerReward(
-        address staker,
-        uint256 percentageInBps,
-        uint256 epoch
-    ) external returns (bool);
-}
 
 /**
  * @notice  This contract is using SafeMath for uint, which is inherited from EpochUtils
@@ -65,7 +58,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
     uint256 public minCampaignDurationInSeconds = 345600; // around 4 days
     IERC20 public kncToken;
     IKyberStaking public staking;
-    IFeeHandler public feeHandler;
+    IKyberFeeHandler public feeHandler;
 
     // campaign creator permissions
     address public campaignCreator;
@@ -145,7 +138,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
 
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
-        feeHandler = IFeeHandler(_feeHandler);
+        feeHandler = IKyberFeeHandler(_feeHandler);
         kncToken = IERC20(_knc);
 
         latestNetworkFeeResult = _defaultNetworkFeeBps;

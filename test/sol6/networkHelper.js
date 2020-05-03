@@ -168,6 +168,25 @@ async function setupReserves
     return result;
 }
 
+module.exports.setNetworkForReserve = setNetworkForReserve;
+async function setNetworkForReserve(reserveInstances, networkAddress, admin) {
+    for (const [key, reserve] of Object.entries(reserveInstances)) {
+        if ((reserve.type == type_fpr) || (reserve.type == type_apr)) {
+            await reserve.instance.setContracts(networkAddress, reserve.pricing, zeroAddress, {from: admin});
+        }
+    }
+}
+
+module.exports.listTokenForRedeployNetwork = listTokenForRedeployNetwork;
+async function listTokenForRedeployNetwork(storageInstance, reserveInstances, tokens, operator) {
+    for (const [key, reserve] of Object.entries(reserveInstances)) {
+        for (let j = 0; j < tokens.length; j++) {
+            await storageInstance.listPairForReserve(reserve.reserveId, tokens[j].address, true, true, true, {from: operator});
+        }
+    }
+
+}
+
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
     (NetworkArtifact, networkProxyAddress, KNCAddress, DAOAddress, admin, operator) {
