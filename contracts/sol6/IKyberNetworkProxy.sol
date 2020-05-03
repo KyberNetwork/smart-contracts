@@ -63,11 +63,4 @@ interface IKyberNetworkProxy {
         uint256 platformFeeBps,
         bytes calldata hint
     ) external view returns (uint256 expectedRate);
-
-    function getPriceDataNoFees(
-        IERC20 src,
-        IERC20 dest,
-        uint256 srcQty,
-        bytes calldata hint
-    ) external view returns (uint256 priceNoFee);
 }

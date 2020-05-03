@@ -657,7 +657,6 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
         networkFeeWei: zeroBN,
         platformFeeWei: zeroBN,
         actualDestAmount: zeroBN,
-        rateWithoutFees: zeroBN,
         rateWithNetworkFee: zeroBN,
         rateWithAllFees: zeroBN,
         feePayingReservesBps: zeroBN,
@@ -801,17 +800,18 @@ async function getAndCalcRates(matchingEngine, storage, reserveInstances, srcTok
     destAmountWithNetworkFee = Helper.calcDstQty(result.tradeWei.sub(result.networkFeeWei), ethDecimals, destDecimals, e2tRate);
     destAmountWithoutFees = Helper.calcDstQty(result.tradeWei, ethDecimals, destDecimals, e2tRate);
 
-    result.rateWithNetworkFee = Helper.calcRateFromQty(srcQty, destAmountWithNetworkFee, srcDecimals, destDecimals);
+    result.rateWithNetworkFee = Helper.calcRateFromQty(
+        srcQty.mul(BPS.sub(platformFeeBps)).div(BPS),
+        result.actualDestAmount,
+        srcDecimals,
+        destDecimals
+        );
     result.rateWithAllFees = Helper.calcRateFromQty(srcQty, result.actualDestAmount, srcDecimals, destDecimals);
-    result.rateWithoutFees = result.rateWithNetworkFee.mul(BPS).div(
-        BPS.sub(networkFeeBps.mul(result.feePayingReservesBps).div(BPS))
-    );
     return result;
 }
 
 module.exports.assertRatesEqual = assertRatesEqual;
 function assertRatesEqual(expectedRates, actualRates) {
-    assertEqual(expectedRates.rateWithoutFees, actualRates.rateWithoutFees, "rate no fees not equal");
     assertEqual(expectedRates.rateWithNetworkFee, actualRates.rateWithNetworkFee, "rate after network fees not equal");
     assertEqual(expectedRates.rateWithAllFees, actualRates.rateWithAllFees, "rate after all fees not equal");
 }
