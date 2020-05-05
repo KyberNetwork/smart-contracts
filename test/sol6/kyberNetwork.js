@@ -1381,11 +1381,11 @@ contract('KyberNetwork', function(accounts) {
                     let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
 
                     let txResult = await network.tradeWithHint(networkProxy, ethAddress, ethSrcQty, destToken.address, taker,
-                        maxDestAmt, minConversionRate, platformWallet, hint, {value: ethSrcQty});
+                        maxDestAmt, minConversionRate, platformWallet, hint, {value: ethSrcQty, gasPrice: new BN(0)});
                     console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
 
                     await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, ethSrcQty,
-                        initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
+                        initialReserveBalances, initialTakerBalances, expectedResult, taker, networkProxy);
                 });
 
                 it(`should perform a T2T trade (backwards compatible,  ${tradeStr[hintType]}) and check balances change as expected`, async() => {
@@ -1445,11 +1445,11 @@ contract('KyberNetwork', function(accounts) {
                         let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
 
                         let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, ethSrcQty, destToken.address, taker,
-                            maxDestAmt, minConversionRate, platformWallet, platformFee, hint, {value: ethSrcQty});
+                            maxDestAmt, minConversionRate, platformWallet, platformFee, hint, {value: ethSrcQty, gasPrice: new BN(0)});
                         console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
 
                         await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, ethSrcQty,
-                            initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, networkProxy);
                     });
 
                     it(`should perform a T2T trade (${tradeStr[hintType]} & platform fee ${platformFee.toString()} bps) and check balances change as expected`, async() => {
@@ -1497,7 +1497,7 @@ contract('KyberNetwork', function(accounts) {
                 });
             }
 
-            let reducedAmounts = [0, 3];
+            let reducedAmounts = [0, 1, 3, 11];
             for (tradeType of tradeTypesArray) {
                 for (reduceAmt of reducedAmounts) {
                     let hintType = tradeType;
@@ -1544,12 +1544,12 @@ contract('KyberNetwork', function(accounts) {
                         let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
                         [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(ethAddress, destToken, expectedResult, info, maxDestAmt);
 
-                        let txResult = await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
-                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {value: ethSrcQty});
+                        let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, ethSrcQty, destToken.address, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {value: ethSrcQty, gasPrice: new BN(0)});
                         console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
 
                         await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, actualSrcQty,
-                            initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, networkProxy);
                     });
 
                     it(`should perform a T2T trade (${tradeStr[hintType]}, with maxDestAmount = actualDestAmount - ${reduceAmt}) and check balances change as expected`, async() => {
@@ -1625,12 +1625,11 @@ contract('KyberNetwork', function(accounts) {
                         let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, destToken, taker, networkProxy);
                         [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(ethAddress, destToken, expectedResult, info, maxDestAmt);
 
-                        let txResult = await network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
-                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {value: ethSrcQty});
+                        let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, ethSrcQty, destToken.address, taker,
+                            maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {value: ethSrcQty, gasPrice: new BN(0)});
                         console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
-
                         await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, actualSrcQty,
-                            initialReserveBalances, initialTakerBalances, expectedResult, taker, undefined);
+                            initialReserveBalances, initialTakerBalances, expectedResult, taker, networkProxy);
                     });
 
                     it(`should perform a T2T trade (${tradeStr[hintType]}, with small maxDestAmount) and check balances change as expected`, async() => {
