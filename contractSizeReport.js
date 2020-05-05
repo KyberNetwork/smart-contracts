@@ -43,7 +43,7 @@ async function main() {
   let contractSizeReport = await generateCodeSizeReport();
   console.log("Contract size report");
   console.log(contractSizeReport);
-  await writeReport();
+  await writeReport(contractSizeReport);
 }
 
 main()
