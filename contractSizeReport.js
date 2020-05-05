@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('fs');
 const util = require('util');
+const got = require('got');
 
 let path = "artifacts";
 
@@ -35,15 +36,56 @@ async function writeReport(report){
     if (err) {
         console.log("An error occured while writing JSON Object to File.");
         return console.log(err);
-    } 
-  }); 
+    }
+  });
 }
 
-async function main() {
+async function getKatalystReport(){
+  try {
+    var url = "http://katalyst-coverage.knstats.com/Katalyst/contractSize.json"
+    return await got(url).json();
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+function ContractDiff(katalystSize, currentSize, diff){
+  this.katalystSize = katalystSize
+  this.currentSize = currentSize
+  this.diff = diff
+}
+
+async function compareContractSize() {
   let contractSizeReport = await generateCodeSizeReport();
-  console.log("Contract size report");
-  console.log(contractSizeReport);
   await writeReport(contractSizeReport);
+  let katalystReport = await getKatalystReport();
+  var diffDict = {}
+  for (let fileName in contractSizeReport) {
+    if (fileName in katalystReport) {
+      let katalystSize = katalystReport[fileName];
+      let currentSize = contractSizeReport[fileName];
+      let diff = currentSize - katalystSize;
+      if (diff != 0){
+        diffDict[fileName] = new ContractDiff(katalystSize, currentSize, diff);
+      }
+    }
+  }
+  for (let fileName in katalystReport) {
+    if ((fileName in katalystReport) && !(fileName in diffDict)){
+      let katalystSize = katalystReport[fileName];
+      let currentSize = contractSizeReport[fileName];
+      let diff = currentSize - katalystSize;
+      if (diff != 0){
+        diffDict[fileName] = new ContractDiff(katalystSize, currentSize, diff)
+      }
+    }
+  }
+  if(Object.keys(diffDict).length > 0){
+    console.log("There is change in following contract size");
+    console.table(diffDict);
+  } else {
+    console.log("Contract size didn't change");
+  }
 }
 
-main()
+compareContractSize()
