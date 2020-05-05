@@ -333,6 +333,41 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         return stakerLatestData[staker].stake;
     }
 
+    /**
+     * @dev init data if it has not been init
+     * @param staker staker's address to init
+     * @param epoch should be current epoch
+     */
+    function initDataIfNeeded(address staker, uint256 epoch) internal {
+        address ldAddress = stakerLatestData[staker].delegatedAddress;
+        if (ldAddress == address(0)) {
+            // not delegate to anyone, consider as delegate to yourself
+            stakerLatestData[staker].delegatedAddress = staker;
+            ldAddress = staker;
+        }
+
+        uint256 ldStake = stakerLatestData[staker].delegatedStake;
+        uint256 lStakeBal = stakerLatestData[staker].stake;
+
+        if (!hasInited[epoch][staker]) {
+            hasInited[epoch][staker] = true;
+            StakerData storage stakerData = stakerPerEpochData[epoch][staker];
+            stakerData.delegatedAddress = ldAddress;
+            stakerData.delegatedStake = ldStake;
+            stakerData.stake = lStakeBal;
+        }
+
+        // whenever users deposit/withdraw/delegate, the current and next epoch data need to be updated
+        // as the result, we will also need to init data for staker at the next epoch
+        if (!hasInited[epoch + 1][staker]) {
+            hasInited[epoch + 1][staker] = true;
+            StakerData storage nextEpochStakerData = stakerPerEpochData[epoch + 1][staker];
+            nextEpochStakerData.delegatedAddress = ldAddress;
+            nextEpochStakerData.delegatedStake = ldStake;
+            nextEpochStakerData.stake = lStakeBal;
+        }
+    }
+
     // prettier-ignore
     /**
     * @dev  separate logics from withdraw, so staker can withdraw as long as amount <= staker's deposit amount
@@ -390,39 +425,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
                 stakerLatestData[dAddr].delegatedStake.sub(amount);
         }
     }
-
-    /**
-     * @dev init data if it has not been init
-     * @param staker staker's address to init
-     * @param epoch should be current epoch
-     */
-    function initDataIfNeeded(address staker, uint256 epoch) internal {
-        address ldAddress = stakerLatestData[staker].delegatedAddress;
-        if (ldAddress == address(0)) {
-            // not delegate to anyone, consider as delegate to yourself
-            stakerLatestData[staker].delegatedAddress = staker;
-            ldAddress = staker;
-        }
-
-        uint256 ldStake = stakerLatestData[staker].delegatedStake;
-        uint256 lStakeBal = stakerLatestData[staker].stake;
-
-        if (!hasInited[epoch][staker]) {
-            hasInited[epoch][staker] = true;
-            StakerData storage stakerData = stakerPerEpochData[epoch][staker];
-            stakerData.delegatedAddress = ldAddress;
-            stakerData.delegatedStake = ldStake;
-            stakerData.stake = lStakeBal;
-        }
-
-        // whenever users deposit/withdraw/delegate, the current and next epoch data need to be updated
-        // as the result, we will also need to init data for staker at the next epoch
-        if (!hasInited[epoch + 1][staker]) {
-            hasInited[epoch + 1][staker] = true;
-            StakerData storage nextEpochStakerData = stakerPerEpochData[epoch + 1][staker];
-            nextEpochStakerData.delegatedAddress = ldAddress;
-            nextEpochStakerData.delegatedStake = ldStake;
-            nextEpochStakerData.stake = lStakeBal;
-        }
-    }
 }
+
+    
