@@ -36,6 +36,7 @@ deploy:
     region: ap-southeast-1
     acl: public_read
     local_dir: report
+    skip_cleanup: true
     on:
       all_branches: true
       condition: $TEST_PART = Sol6
@@ -46,6 +47,7 @@ deploy:
     region: ap-southeast-1
     acl: public_read
     local_dir: coverage
+    skip_cleanup: true
     on:
       branch: $COVERAGE_BRANCH
       condition: $TEST_PART = Coverage
