@@ -7,6 +7,7 @@ readonly test_part=${TEST_PART:-}
 
 case "$test_part" in
 Sol6)
+    node contractSizeReport.js
     npx buidler test --no-compile --config buidlerConfigSol6.js
     ;;
 Coverage)
