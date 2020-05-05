@@ -958,14 +958,13 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
     let reserveAddress;
     let expectedDestChange;
     let splitAmount;
-    let expectedSrcQty;
+    let expectedSrcQty = zeroBN;
     let srcDecimals = (srcToken == ethAddress) ? ethDecimals : await srcToken.decimals();
     let destDecimals = (destToken == ethAddress) ? ethDecimals : await destToken.decimals();
     networkAdd = (networkAdd == undefined) ? taker : networkAdd;
 
     if (destToken == ethAddress) {
         //token -> ETH trade
-        expectedSrcQty = new BN(0); // note total split amounts <= srcQty
         //Reserves: plus split dest amt (srcToken), minus split src amt based on rate (ETH)
         for (let i=0; i<ratesAmts.t2eAddresses.length; i++) {
             reserveAddress = ratesAmts.t2eAddresses[i];
@@ -981,7 +980,7 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
         }
 
         //user: minus srcQty (token), plus actualDestAmt (ETH)
-        expectedTakerBalance = initialTakerBalances.src.sub(expectedSrcQty);
+        expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
         await Helper.assertSameTokenBalance(networkAdd, srcToken, expectedTakerBalance);
         expectedTakerBalance = initialTakerBalances.dest.add(ratesAmts.actualDestAmount);
         actualBalance = await Helper.getBalancePromise(taker);
@@ -990,14 +989,9 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
     } else if (srcToken == ethAddress) {
         //ETH -> token trade
         //User: Minus srcQty (ETH), plus expectedDestAmtAfterAllFees (token)
-        //Issue: Sender has to pay network fee, so ETH calculation is a lil difficult
-        // expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
-        // await Helper.assertSameEtherBalance(taker, expectedTakerBalance);
-
         expectedTakerBalance = initialTakerBalances.dest.add(ratesAmts.actualDestAmount);
         let actualTokenBal = await destToken.balanceOf(taker);
         await Helper.assertSameTokenBalance(taker, destToken, expectedTakerBalance);
-
         //Reserves: Minus expectedDestAmtAfterAllFees (ETH), Plus destAmtAfterNetworkFees (token)
         for (let i=0; i<ratesAmts.e2tAddresses.length; i++) {
             reserveAddress = ratesAmts.e2tAddresses[i];
@@ -1010,9 +1004,10 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
             expectedReserveBalance = initialReserveBalances.e2tToken[i].sub(expectedDestChange);
             await Helper.assertSameTokenBalance(reserveAddress, destToken, expectedReserveBalance);
         }
+        //Issue: Sender has to pay network fee, so ETH calculation is a lil difficult, just get from actualSrcAmount
+        expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
+        await Helper.assertSameEtherBalance(networkAdd, expectedTakerBalance);
     } else {
-        expectedSrcQty = new BN(0); // note total split amounts <= srcQty
-
         //Reserves: plus split dest amt (srcToken), minus split src amt based on rate (ETH)
         for (let i=0; i<ratesAmts.t2eAddresses.length; i++) {
             reserveAddress = ratesAmts.t2eAddresses[i];
@@ -1034,7 +1029,7 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
             }
         }
         //user: minus srcQty (srcToken), plus actualDestAmount (destToken)
-        expectedTakerBalance = initialTakerBalances.src.sub(expectedSrcQty);
+        expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
         await Helper.assertSameTokenBalance(networkAdd, srcToken, expectedTakerBalance);
         expectedTakerBalance = initialTakerBalances.dest.add(ratesAmts.actualDestAmount);
         await Helper.assertSameTokenBalance(taker, destToken, expectedTakerBalance);
