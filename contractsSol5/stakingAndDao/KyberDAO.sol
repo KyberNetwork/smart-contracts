@@ -21,9 +21,6 @@ contract CampPermissionGroups {
     address public campaignCreator;
     address public pendingCampaignCreator;
 
-    event TransferCampaignCreatorPending(address pendingCampaignCreator);
-    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
-
     constructor(address _campaignCreator) public {
         require(_campaignCreator != address(0), "campaignCreator is 0");
         campaignCreator = _campaignCreator;
@@ -33,6 +30,8 @@ contract CampPermissionGroups {
         require(msg.sender == campaignCreator, "only campaign creator");
         _;
     }
+
+    event TransferCampaignCreatorPending(address pendingCampaignCreator);
 
     /**
      * @dev Allows the current campaignCreator to set the pendingCampaignCreator address.
@@ -59,6 +58,8 @@ contract CampPermissionGroups {
         campaignCreator = newCampaignCreator;
     }
 
+    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
+
     /**
      * @dev Allows the pendingCampaignCreator address to finalize the change campaign creator process.
      */
@@ -80,11 +81,17 @@ contract CampPermissionGroups {
  */
 contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroups, Utils4 {
     /* Constants */
+    uint256 internal constant POWER_128 = 2**128;
     // max number of campaigns for each epoch
     uint256 public   constant MAX_EPOCH_CAMPAIGNS = 10;
     // max number of options for each campaign
     uint256 public   constant MAX_CAMPAIGN_OPTIONS = 8;
-    uint256 internal constant POWER_128 = 2**128;
+
+    // minimum duration in seconds for a campaign
+    uint256 public minCampaignDurationInSeconds = 345600; // around 4 days
+    IERC20 public kncToken;
+    IKyberStaking public staking;
+    IFeeHandler public feeHandler;
 
     enum CampaignType {General, NetworkFee, FeeHandlerBRR}
 
@@ -116,12 +123,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         uint256 rebateInBps;
     }
 
-    // minimum duration in seconds for a campaign
-    uint256 public minCampaignDurationInSeconds = 345600; // around 4 days
-    IERC20 public kncToken;
-    IKyberStaking public staking;
-    IFeeHandler public feeHandler;
-
     /* Mapping from campaign ID => data */
     // use to generate increasing campaign ID
     uint256 public numberCampaigns = 0;
@@ -147,20 +148,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     BRRData internal latestBrrData;
     // epoch => campaignID for brr campaigns
     mapping(uint256 => uint256) public brrCampaigns;
-
-    event NewCampaignCreated(
-        CampaignType campaignType,
-        uint256 indexed campaignID,
-        uint256 startTimestamp,
-        uint256 endTimestamp,
-        uint256 minPercentageInPrecision,
-        uint256 cInPrecision,
-        uint256 tInPrecision,
-        uint256[] options,
-        bytes link
-    );
-
-    event CancelledCampaign(uint256 indexed campaignID);
 
     constructor(
         uint256 _epochPeriod,
@@ -251,6 +238,18 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             }
         }
     }
+
+    event NewCampaignCreated(
+        CampaignType campaignType,
+        uint256 indexed campaignID,
+        uint256 startTimestamp,
+        uint256 endTimestamp,
+        uint256 minPercentageInPrecision,
+        uint256 cInPrecision,
+        uint256 tInPrecision,
+        uint256[] options,
+        bytes link
+    );
 
     /**
      * @dev create new campaign, only called by admin
@@ -351,6 +350,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             link
         );
     }
+
+    event CancelledCampaign(uint256 indexed campaignID);
 
     /**
      * @dev  cancel a campaign with given id, called by admin only
@@ -470,11 +471,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
     }
 
     /**
-     * @dev return latest burn/reward/rebate data, also affecting epoch + expiry timestamp
-     *      conclude brr campaign if needed and caching latest result in DAO
+     * @dev return latest brr result, conclude brr campaign if needed
      */
-    function getLatestBRRDataWithCache()
-        external
+    function getLatestBRRData()
+        public
+        view
         returns (
             uint256 burnInBps,
             uint256 rewardInBps,
@@ -483,9 +484,26 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             uint256 expiryTimestamp
         )
     {
-        (burnInBps, rewardInBps, rebateInBps, epoch, expiryTimestamp) = getLatestBRRData();
-        latestBrrData.rewardInBps = rewardInBps;
-        latestBrrData.rebateInBps = rebateInBps;
+        epoch = getCurrentEpochNumber();
+        // expiryTimestamp = firstEpochStartTimestamp + epoch * epochPeriodInSeconds - 1;
+        expiryTimestamp = firstEpochStartTimestamp.add(epoch.mul(epochPeriodInSeconds)).sub(1);
+        rewardInBps = latestBrrData.rewardInBps;
+        rebateInBps = latestBrrData.rebateInBps;
+
+        if (epoch > 0) {
+            uint256 campaignID = brrCampaigns[epoch.sub(1)];
+            if (campaignID != 0) {
+                uint256 winningOption;
+                uint256 brrData;
+                (winningOption, brrData) = getCampaignWinningOptionAndValue(campaignID);
+                if (winningOption > 0) {
+                    // has winning option, update reward and rebate value
+                    (rebateInBps, rewardInBps) = getRebateAndRewardFromData(brrData);
+                }
+            }
+        }
+
+        burnInBps = BPS.sub(rebateInBps).sub(rewardInBps);
     }
 
     /**
@@ -499,16 +517,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
             return false;
         }
         return totalEpochPoints[epoch] == 0;
-    }
-
-    // return list campaign ids for epoch, excluding non-existed ones
-    function getListCampIDs(uint256 epoch) external view returns (uint256[] memory campaignIDs) {
-        return epochCampaigns[epoch];
-    }
-
-    // return total points for an epoch
-    function getTotalEpochPoints(uint256 epoch) external view returns (uint256) {
-        return totalEpochPoints[epoch];
     }
 
     function getCampaignDetails(uint256 campaignID)
@@ -692,40 +700,32 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         return points.mul(PRECISION).div(totalPts);
     }
 
-    /**
-     * @dev return latest brr result, conclude brr campaign if needed
-     */
-    function getLatestBRRData()
+    // return list campaign ids for epoch, excluding non-existed ones
+    function getListCampIDs(uint256 epoch) external view returns (uint256[] memory campaignIDs) {
+        return epochCampaigns[epoch];
+    }
+
+    // Helper functions for squeezing data
+    function getRebateAndRewardFromData(uint256 data)
         public
-        view
-        returns (
-            uint256 burnInBps,
-            uint256 rewardInBps,
-            uint256 rebateInBps,
-            uint256 epoch,
-            uint256 expiryTimestamp
-        )
+        pure
+        returns (uint256 rebateInBps, uint256 rewardInBps)
     {
-        epoch = getCurrentEpochNumber();
-        // expiryTimestamp = firstEpochStartTimestamp + epoch * epochPeriodInSeconds - 1;
-        expiryTimestamp = firstEpochStartTimestamp.add(epoch.mul(epochPeriodInSeconds)).sub(1);
-        rewardInBps = latestBrrData.rewardInBps;
-        rebateInBps = latestBrrData.rebateInBps;
+        rewardInBps = data & (POWER_128.sub(1));
+        rebateInBps = (data.div(POWER_128)) & (POWER_128.sub(1));
+    }
 
-        if (epoch > 0) {
-            uint256 campaignID = brrCampaigns[epoch.sub(1)];
-            if (campaignID != 0) {
-                uint256 winningOption;
-                uint256 brrData;
-                (winningOption, brrData) = getCampaignWinningOptionAndValue(campaignID);
-                if (winningOption > 0) {
-                    // has winning option, update reward and rebate value
-                    (rebateInBps, rewardInBps) = getRebateAndRewardFromData(brrData);
-                }
-            }
-        }
-
-        burnInBps = BPS.sub(rebateInBps).sub(rewardInBps);
+    /**
+     * @dev  helper func to get encoded reward and rebate
+     *       revert if validation failed
+     */
+    function getDataFromRewardAndRebateWithValidation(uint256 rewardInBps, uint256 rebateInBps)
+        public
+        pure
+        returns (uint256 data)
+    {
+        require(rewardInBps.add(rebateInBps) <= BPS, "reward plus rebate high");
+        data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
     }
 
     /**
@@ -808,29 +808,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
         return true;
     }
 
-    // Helper functions for squeezing data
-    function getRebateAndRewardFromData(uint256 data)
-        public
-        pure
-        returns (uint256 rebateInBps, uint256 rewardInBps)
-    {
-        rewardInBps = data & (POWER_128.sub(1));
-        rebateInBps = (data.div(POWER_128)) & (POWER_128.sub(1));
-    }
-
-    /**
-     * @dev  helper func to get encoded reward and rebate
-     *       revert if validation failed
-     */
-    function getDataFromRewardAndRebateWithValidation(uint256 rewardInBps, uint256 rebateInBps)
-        public
-        pure
-        returns (uint256 data)
-    {
-        require(rewardInBps.add(rebateInBps) <= BPS, "reward plus rebate high");
-        data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
-    }
-
     /**
      * @dev options are indexed from 1
      */
@@ -847,4 +824,29 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, CampPermissionGroup
 
         return true;
     }
+
+    /**
+     * @dev return latest burn/reward/rebate data, also affecting epoch + expiry timestamp
+     *      conclude brr campaign if needed and caching latest result in DAO
+     */
+    function getLatestBRRDataWithCache()
+        external
+        returns (
+            uint256 burnInBps,
+            uint256 rewardInBps,
+            uint256 rebateInBps,
+            uint256 epoch,
+            uint256 expiryTimestamp
+        )
+    {
+        (burnInBps, rewardInBps, rebateInBps, epoch, expiryTimestamp) = getLatestBRRData();
+        latestBrrData.rewardInBps = rewardInBps;
+        latestBrrData.rebateInBps = rebateInBps;
+    }
+
+    // return total points for an epoch
+    function getTotalEpochPoints(uint256 epoch) external view returns (uint256) {
+        return totalEpochPoints[epoch];
+    }
+
 }
