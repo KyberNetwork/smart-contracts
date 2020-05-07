@@ -40,6 +40,15 @@
         "ORDERBOOK": true
     },
 
+    "isEntitledRebate": {
+        "FPR": true,
+        "APR": true,
+        "BRIDGE": false,
+        "UTILITY": false,
+        "CUSTOM": true,
+        "ORDERBOOK": true
+    },
+
     "reserves": [
         {
             "address": "0x39C30B03799DB870e9C01747f68e24D2b38A30C9",
@@ -138,11 +147,12 @@
     "max gas price" : 50000000000,
     "neg diff in bps" : 20,
     
-    "epoch period": 10800,
-    "start timestamp": 1587367900,
+    "epoch period": 2700,
+    "start timestamp": 1590983945,
     "network fee bps": 30,
     "reward fee bps": 3850,
     "rebate bps": 3000,
     "burn block interval": 10,
+    "contracts filename" : "katalystContracts.json",
     "output filename" : "katalystRopsten.json"
 }
