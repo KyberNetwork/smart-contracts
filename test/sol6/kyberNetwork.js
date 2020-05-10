@@ -914,17 +914,14 @@ contract('KyberNetwork', function(accounts) {
                 let unlistedDestToken = await TestToken.new("test", "tst", 18);
 
                 actualResult = await network.getExpectedRateWithHintAndFee(unlistedSrcToken.address, ethAddress, ethSrcQty, platformFeeBps, emptyHint);
-                Helper.assertEqual(actualResult.rateWithoutFees, zeroBN, "expected rate not 0");
                 Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rate with network fee not 0");
                 Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rate with all fees not 0");
 
                 actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, unlistedDestToken.address, ethSrcQty, platformFeeBps, emptyHint);
-                Helper.assertEqual(actualResult.rateWithoutFees, zeroBN, "expected rate not 0");
                 Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rate with network fee not 0");
                 Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rate with all fees not 0");
 
                 actualResult = await network.getExpectedRateWithHintAndFee(unlistedSrcToken.address, unlistedDestToken.address, ethSrcQty, platformFeeBps, emptyHint);
-                Helper.assertEqual(actualResult.rateWithoutFees, zeroBN, "expected rate not 0");
                 Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rate with network fee not 0");
                 Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rate with all fees not 0");
             });
@@ -934,19 +931,16 @@ contract('KyberNetwork', function(accounts) {
                 it(`should return 0 rate (${tradeStr[hintType]}) if all reserves return zero rate`, async() => {
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
-                    Helper.assertEqual(actualResult.rateWithoutFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rate with all fees not 0");
 
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, emptyHint);
-                    Helper.assertEqual(actualResult.rateWithoutFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rate with all fees not 0");
 
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, platformFeeBps, emptyHint);
-                    Helper.assertEqual(actualResult.rateWithoutFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rate with all fees not 0");
                 });
@@ -955,19 +949,16 @@ contract('KyberNetwork', function(accounts) {
                     srcQty = zeroBN;
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
-                    Helper.assertEqual(actualResult.rateWithoutFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rate with all fees not 0");
 
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, emptyHint);
-                    Helper.assertEqual(actualResult.rateWithoutFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rate with all fees not 0");
 
                     hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, MASK_IN_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, platformFeeBps, emptyHint);
-                    Helper.assertEqual(actualResult.rateWithoutFees, zeroBN, "expected rate not 0");
                     Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rate with network fee not 0");
                     Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rate with all fees not 0");
                 });
@@ -2329,7 +2320,7 @@ contract('KyberNetwork', function(accounts) {
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
                         { from: kyberProxy }
                     ),
-                "srcAmount > MAX_QTY"
+                "destAmount > MAX_QTY"
             );
         });
 
@@ -2357,7 +2348,7 @@ contract('KyberNetwork', function(accounts) {
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), hint, 
                         { from: kyberProxy }
                     ),
-                "srcAmount > MAX_QTY"
+                "destAmount > MAX_QTY"
             );
         });
 

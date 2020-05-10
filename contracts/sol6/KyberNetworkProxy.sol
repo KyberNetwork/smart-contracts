@@ -255,7 +255,7 @@ contract KyberNetworkProxy is
         uint256 srcQty
     ) external view override returns (uint256 expectedRate, uint256 worstRate) {
         bytes memory hint;
-        (, expectedRate, ) = kyberNetwork.getExpectedRateWithHintAndFee(
+        (expectedRate, ) = kyberNetwork.getExpectedRateWithHintAndFee(
             src,
             dest,
             srcQty,
@@ -282,30 +282,13 @@ contract KyberNetworkProxy is
         uint256 platformFeeBps,
         bytes calldata hint
     ) external view override returns (uint256 expectedRate) {
-        (, , expectedRate) = kyberNetwork.getExpectedRateWithHintAndFee(
+        (, expectedRate) = kyberNetwork.getExpectedRateWithHintAndFee(
             src,
             dest,
             srcQty,
             platformFeeBps,
             hint
         );
-    }
-
-    /// @notice Use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev Get expected rate for a trade from src to dest tokens, with amount srcQty
-    /// @param src Source token
-    /// @param dest Destination token
-    /// @param srcQty Amount of src tokens in twei
-    /// @param hint Defines which reserves should be used for the trade
-    /// @return priceNoFee for a trade without deducting any fees, network or platform fee
-    ///             Rate = destQty (twei) / srcQty (twei) * 10 ** 18
-    function getPriceDataNoFees(
-        IERC20 src,
-        IERC20 dest,
-        uint256 srcQty,
-        bytes calldata hint
-    ) external view override returns (uint256 priceNoFee) {
-        (priceNoFee, , ) = kyberNetwork.getExpectedRateWithHintAndFee(src, dest, srcQty, 0, hint);
     }
 
     function maxGasPrice() external view returns (uint256) {

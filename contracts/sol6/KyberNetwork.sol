@@ -358,7 +358,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param srcQty Amount of src tokens in twei
     /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
     /// @param hint Defines which reserves should be used for the trade
-    /// @return rateWithoutFees Rate excluding network and platform fees
     /// @return rateWithNetworkFee Rate excluding network fee, but includes platform fee
     /// @return rateWithAllFees Rate after accounting for both network and platform fees
     function getExpectedRateWithHintAndFee(
@@ -372,12 +371,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         view
         override
         returns (
-            uint256 rateWithoutFees,
             uint256 rateWithNetworkFee,
             uint256 rateWithAllFees
         )
     {
-        if (src == dest) return (0, 0, 0);
+        if (src == dest) return (0, 0);
 
         TradeData memory tradeData = initTradeInput({
             trader: address(uint160(0)),
@@ -402,10 +400,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             tradeData.tokenToEth.decimals,
             tradeData.ethToToken.decimals
         );
-
-        rateWithoutFees =
-            (rateWithNetworkFee * BPS) /
-            (BPS - (tradeData.networkFeeBps * tradeData.feeAccountedBps) / BPS);
     }
 
     /// @notice Backward compatible API
@@ -801,26 +795,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         tradeData.networkFeeWei =
             (((tradeData.tradeWei * tradeData.networkFeeBps) / BPS) * tradeData.feeAccountedBps) /
             BPS;
-        actualSrcWei = tradeData.tradeWei - tradeData.networkFeeWei - tradeData.platformFeeWei;
-
-        // calculate different rates: rate with only network fee, dest amount without fees.
-        uint256 e2tRate = calcRateFromQty(
-            actualSrcWei,
-            destAmount,
-            ETH_DECIMALS,
-            tradeData.ethToToken.decimals
-        );
-
-        uint256 destAmountWithNetworkFee = calcDstQty(
-            tradeData.tradeWei - tradeData.networkFeeWei,
-            ETH_DECIMALS,
-            tradeData.ethToToken.decimals,
-            e2tRate
-        );
 
         rateWithNetworkFee = calcRateFromQty(
-            tradeData.input.srcAmount,
-            destAmountWithNetworkFee,
+            tradeData.input.srcAmount * (BPS - tradeData.input.platformFeeBps) / BPS,
+            destAmount,
             tradeData.tokenToEth.decimals,
             tradeData.ethToToken.decimals
         );

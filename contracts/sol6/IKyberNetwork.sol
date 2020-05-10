@@ -49,7 +49,6 @@ interface IKyberNetwork {
         external
         view
         returns (
-            uint256 expectedRateNoFees,
             uint256 expectedRateAfterNetworkFee,
             uint256 expectedRateAfterAllFees
         );
