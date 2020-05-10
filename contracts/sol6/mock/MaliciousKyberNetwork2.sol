@@ -1,30 +1,20 @@
 pragma solidity 0.6.6;
 
-import "../KyberNetwork.sol";
+import "./MaliciousKyberNetwork.sol";
 
 
 /*
  * @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
  */
-contract MaliciousKyberNetwork2 is KyberNetwork {
-    uint256 public myFeeWei = 10;
-
+contract MaliciousKyberNetwork2 is MaliciousKyberNetwork {
+    
     constructor(address _admin, IKyberStorage _kyberStorage)
         public
-        KyberNetwork(_admin, _kyberStorage)
-    {}
-
-    function setMyFeeWei(uint256 fee) public {
-        myFeeWei = fee;
+        MaliciousKyberNetwork(_admin, _kyberStorage)
+    {
+        myFeeWei = 10;
     }
 
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev do one trade with a reserve
-    /// @param src Src token
-    /// @param amount amount of src tokens
-    /// @param dest   Destination token
-    /// @param destAddress Address to send tokens to
-    /// @return true if trade is successful
     function doReserveTrades(
         IERC20 src,
         uint256 amount,

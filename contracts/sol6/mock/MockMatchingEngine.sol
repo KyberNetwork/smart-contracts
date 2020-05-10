@@ -11,10 +11,6 @@ contract MockMatchEngine is KyberMatchingEngine {
     constructor(address _admin) public KyberMatchingEngine(_admin) {}
 
     function reserveIdToAddress(bytes32 reserveId) public view returns (address) {
-        return convertReserveIdToAddress(reserveId);
-    }
-
-    function addressToReserveId(address reserveAddress) public view returns (bytes32) {
-        return convertAddressToReserveId(reserveAddress);
+        return getReserveAddress(reserveId);
     }
 }

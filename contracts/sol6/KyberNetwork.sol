@@ -17,7 +17,7 @@ import "./IGasHelper.sol";
  *   @title Kyber Network main contract
  *   Interacts with contracts:
  *       KyberDao: to retrieve fee data
- *       KyberFeeHandler: accumulate network fees per trade
+ *       KyberFeeHandler: accumulates and distributes trade fees
  *       KyberMatchingEngine: parse user hint and run reserve matching algorithm
  *       KyberStorage: store / access reserves, token listings and contract addresses
  *       Kyber Reserves: query rate and trade.
@@ -39,6 +39,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param isEntitledRebateFlags List of reserves eligible for rebates
     /// @param splitsBps List of proportions of trade amount allocated to the reserves.
     ///     If there is only 1 reserve, then it should have a value of 10000 bps
+    /// @param srcAmounts Source amount per reserve.
     /// @param decimals Token decimals. Src decimals when for src -> ETH, dest decimals when ETH -> dest
     struct ReservesData {
         IKyberReserve[] addresses;
@@ -61,7 +62,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param networkFeeBps Network fee bps determined by DAO, or default value
     /// @param numEntitledRebateReserves No. of reserves that are eligible for rebates
     /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * BPS
-    /// @param entitledRebateBps Proportion of reserve rebate entitlement, in BPS. Up to 2 * BPS
+    /// @param entitledRebateBps Proportion of reserves entitled for rebate, in BPS. Up to 2 * BPS
     /// @param rateWithNetworkFee src -> dest token rate, after accounting for only network fee
     struct TradeData {
         TradeInput input;
@@ -143,29 +144,29 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens in twei
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
-    /// @param walletId Wallet address to receive a portion of the fees collected
-    /// @param hint Defines which reserves should be used for the trade
+    /// @param walletId Platform wallet address for receiving fees
+    /// @param hint Advanced instructions for running the trade 
     /// @return destAmount Amount of actual dest tokens in twei
     function tradeWithHint(
-        address trader,
+        address payable trader,
         ERC20 src,
         uint256 srcAmount,
         ERC20 dest,
-        address destAddress,
+        address payable destAddress,
         uint256 maxDestAmount,
         uint256 minConversionRate,
-        address walletId,
+        address payable walletId,
         bytes calldata hint
     ) external payable returns (uint256 destAmount) {
         TradeData memory tradeData = initTradeInput({
-            trader: address(uint160(trader)),
+            trader: trader,
             src: src,
             dest: dest,
             srcAmount: srcAmount,
-            destAddress: address(uint160(destAddress)),
+            destAddress: destAddress,
             maxDestAmount: maxDestAmount,
             minConversionRate: minConversionRate,
-            platformWallet: address(uint160(walletId)),
+            platformWallet: walletId,
             platformFeeBps: 0
         });
 
@@ -181,9 +182,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens in twei
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
-    /// @param platformWallet Wallet address to receive a portion of the fees collected
-    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
-    /// @param hint Defines which reserves should be used for the trade
+    /// @param platformWallet Platform wallet address for receiving fees
+    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 1000 = 10%
+    /// @param hint Advanced instructions for running the trade 
     /// @return destAmount Amount of actual dest tokens in twei
     function tradeWithHintAndFee(
         address payable trader,
@@ -240,8 +241,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     ///      Useful for migration new network
     ///      Call storage to get list of reserves that are supported token->eth
     /// @param token Token address
-    /// @param startIndex start index in list reserves
-    /// @param endIndex end index in list reserves
+    /// @param startIndex start index in reserves list
+    /// @param endIndex end index in reserves list (can be larger)
     /// @param add If true then list token->eth pair, otherwise unlist it
     function listReservesForToken(
         IERC20 token,
@@ -328,7 +329,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         emit KyberNetworkSetEnable(isEnabled);
     }
 
-    /// @dev No. of KyberNetworkProxies are capped
+    /// @dev No. of KyberNetworkProxies is capped
     function addKyberProxy(address networkProxy) external virtual {
         onlyAdmin();
         require(kyberStorage.addKyberProxy(networkProxy, MAX_APPROVED_PROXIES));
@@ -352,14 +353,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         emit KyberProxyRemoved(networkProxy);
     }
 
-    /// @dev gets the expected and slippage rate for exchanging src -> dest token, with platform fee taken into account
+    /// @dev gets the expected rates when trading src -> dest token, with / without fees
     /// @param src Source token
     /// @param dest Destination token
     /// @param srcQty Amount of src tokens in twei
-    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
-    /// @param hint Defines which reserves should be used for the trade
-    /// @return rateWithNetworkFee Rate excluding network fee, but includes platform fee
-    /// @return rateWithAllFees Rate after accounting for both network and platform fees
+    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 1000 = 10%
+    /// @param hint Advanced instructions for running the trade 
+    /// @return rateWithNetworkFee Rate after deducting network fee but excluding platform fee
+    /// @return rateWithAllFees = actual rate. Rate after accounting for both network and platform fees
     function getExpectedRateWithHintAndFee(
         IERC20 src,
         IERC20 dest,
@@ -378,14 +379,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         if (src == dest) return (0, 0);
 
         TradeData memory tradeData = initTradeInput({
-            trader: address(uint160(0)),
+            trader: payable(address(0)),
             src: src,
             dest: dest,
             srcAmount: (srcQty == 0) ? 1 : srcQty,
-            destAddress: address(uint160(0)),
+            destAddress: payable(address(0)),
             maxDestAmount: 2**255,
             minConversionRate: 0,
-            platformWallet: address(uint160(0)),
+            platformWallet: payable(address(0)),
             platformFeeBps: platformFeeBps
         });
 
@@ -408,7 +409,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param src Source token
     /// @param dest Destination token
     /// @param srcQty Amount of src tokens in twei
-    /// @return expectedRate for a trade after deducting network fee. Rate = destQty (twei) / srcQty (twei) * 10 ** 18
+    /// @return expectedRate for a trade after deducting network fee. 
     /// @return worstRate for a trade. Calculated to be expectedRate * 97 / 100
     function getExpectedRate(
         ERC20 src,
@@ -419,14 +420,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 qty = srcQty & ~PERM_HINT_GET_RATE;
 
         TradeData memory tradeData = initTradeInput({
-            trader: address(uint160(0)),
+            trader: payable(address(0)),
             src: src,
             dest: dest,
             srcAmount: (qty == 0) ? 1 : qty,
-            destAddress: address(uint160(0)),
+            destAddress: payable(address(0)),
             maxDestAmount: 2**255,
             minConversionRate: 0,
-            platformWallet: address(uint160(0)),
+            platformWallet: payable(address(0)),
             platformFeeBps: 0
         });
 
@@ -527,7 +528,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 tradeData.input.platformWallet,
                 tradeData.platformFeeWei
             ),
-            "handle fee fail"
+            "handle fee failed"
         );
         return true;
     }
@@ -543,19 +544,17 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
     /// @dev Do one trade with a reserve
     /// @param src Source token
-    /// @param amount Amount of src tokens in twei
     /// @param dest Destination token
     /// @param destAddress Address to send tokens to
     /// @return True if trade is successful
     function doReserveTrades(
         IERC20 src,
-        uint256 amount,
         IERC20 dest,
         address payable destAddress,
         TradeData memory tradeData,
         uint256 expectedDestAmount
     ) internal virtual returns (bool) {
-        amount;
+
         if (src == dest) {
             // ether to ether, need not do anything except for token to ether: transfer ETH to destAddress
             if (destAddress != (address(this))) {
@@ -595,8 +594,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         return true;
     }
 
-    /* solhint-disable function-max-lines */
-    //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
     /// @dev Trade API for kyber network
     /// @param tradeData Main trade data object for trade info to be stored
@@ -631,7 +628,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(
             doReserveTrades(
                 tradeData.input.src,
-                actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
                 address(this),
                 tradeData,
@@ -643,7 +639,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(
             doReserveTrades(
                 ETH_TOKEN_ADDRESS,
-                tradeData.tradeWei - tradeData.networkFeeWei - tradeData.platformFeeWei,
                 tradeData.input.dest,
                 tradeData.input.destAddress,
                 tradeData,
@@ -747,14 +742,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     ///     network fee, platform fee, etc. WITHOUT accounting for maxDestAmount.
     ///     This function should set all TradeData information so that it can be used after without any ambiguity
     /// @param tradeData Main trade data object for trade info to be stored
-    /// @param hint Defines which reserves should be used for the trade
+    /// @param hint Advanced instructions for running the trade 
     function calcRatesAndAmounts(TradeData memory tradeData, bytes memory hint)
         internal
         view
         returns (uint256 destAmount, uint256 rateWithNetworkFee)
     {
         // token to ether: find best reserve match and calculate wei amount
-        /////////////////////////////////////////////////////////////////
         tradeData.tradeWei = calcDestQtyAndMatchReserves(
             tradeData.input.src,
             ETH_TOKEN_ADDRESS,
@@ -783,6 +777,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 actualSrcWei = tradeData.tradeWei -
             tradeData.networkFeeWei -
             tradeData.platformFeeWei;
+
         destAmount = calcDestQtyAndMatchReserves(
             ETH_TOKEN_ADDRESS,
             tradeData.input.dest,
@@ -857,7 +852,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 reservesData.rates
             );
 
-            updateReservesData(reservesData, selectedIndexes);
+            updateReservesList(reservesData, selectedIndexes);
         }
 
         // calculate dest amount and fee paying data of this part (t2e or e2t)
@@ -1010,7 +1005,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Update reserve data with selected reserves from matching engine
-    function updateReservesData(ReservesData memory reservesData, uint256[] memory selectedIndexes)
+    function updateReservesList(ReservesData memory reservesData, uint256[] memory selectedIndexes)
         internal
         pure
     {
@@ -1060,7 +1055,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 totalBps;
         uint256 srcDecimals = (src == ETH_TOKEN_ADDRESS) ? ETH_DECIMALS : reservesData.decimals;
         uint256 destDecimals = (src == ETH_TOKEN_ADDRESS) ? reservesData.decimals : ETH_DECIMALS;
-
+        
         for (uint256 i = 0; i < reservesData.addresses.length; i++) {
             if (i > 0 && (uint256(reservesData.ids[i]) <= uint256(reservesData.ids[i - 1]))) {
                 return 0; // ids are not in increasing order
@@ -1097,21 +1092,21 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         virtual
         returns (uint256 actualSrcAmount)
     {
-        uint256 weiAfterFees;
+        uint256 weiAfterDeductingFees;
         if (tradeData.input.dest != ETH_TOKEN_ADDRESS) {
-            weiAfterFees = calcTradeSrcAmount(
+            weiAfterDeductingFees = calcTradeSrcAmount(
                 ETH_DECIMALS,
                 tradeData.ethToToken.decimals,
                 tradeData.input.maxDestAmount,
                 tradeData.ethToToken
             );
         } else {
-            weiAfterFees = tradeData.input.maxDestAmount;
+            weiAfterDeductingFees = tradeData.input.maxDestAmount;
         }
 
         // reverse calculation, because we are working backwards
         tradeData.tradeWei =
-            (weiAfterFees * BPS * BPS) /
+            (weiAfterDeductingFees * BPS * BPS) /
             ((BPS * BPS) -
                 tradeData.networkFeeBps *
                 tradeData.feeAccountedBps -

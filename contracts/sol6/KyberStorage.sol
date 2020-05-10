@@ -237,14 +237,14 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     }
 
     /// @dev No. of KyberNetworkProxies are capped
-    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
+    function addKyberProxy(address networkProxy, uint256 maxApprovedProxies)
         external
         override
         returns (bool)
     {
         onlyNetwork();
         require(networkProxy != address(0), "proxy 0");
-        require(kyberProxyArray.length < max_approved_proxies, "max proxies limit reached");
+        require(kyberProxyArray.length < maxApprovedProxies, "max proxies limit reached");
 
         kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
 
@@ -341,7 +341,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         return reserves;
     }
 
-    function getReserveID(address reserve) external view override returns (bytes32) {
+    function getReserveId(address reserve) external view override returns (bytes32) {
         return reserveAddressToId[reserve];
     }
 

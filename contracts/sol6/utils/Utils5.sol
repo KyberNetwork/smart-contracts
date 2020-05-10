@@ -6,7 +6,8 @@ import "../IERC20.sol";
 /**
  * @title Kyber utility file
  * mostly shared constants and rate calculation helpers
- * inherited by most of kyber contracts
+ * inherited by most of kyber contracts.
+ * previous utils implementations are for previous solidity versions.
  */
 contract Utils5 {
     IERC20 internal constant ETH_TOKEN_ADDRESS = IERC20(
@@ -28,7 +29,7 @@ contract Utils5 {
         // these tokens will just have higher gas fees.
         if (tokenDecimals == 0) {
             tokenDecimals = token.decimals();
-            decimals[address(token)] = token.decimals();
+            decimals[address(token)] = tokenDecimals;
         }
 
         return tokenDecimals;

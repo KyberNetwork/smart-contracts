@@ -14,16 +14,11 @@ contract GenerousKyberNetwork is KyberNetwork {
         KyberNetwork(_admin, _kyberStorage)
     {}
 
-    /* solhint-enable function-max-lines */
     function removeKyberProxy(address networkProxy) external override {
         // reduce extra gas cost of deploying this contract
         networkProxy;
     }
 
-    /* solhint-disable function-max-lines */
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev trade api for kyber network.
-    /// @param tData.input structure of trade inputs
     function trade(TradeData memory tData, bytes memory hint)
         internal
         override
@@ -93,7 +88,6 @@ contract GenerousKyberNetwork is KyberNetwork {
         require(
             doReserveTrades( //src to ETH
                 tData.input.src,
-                actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
                 address(this),
                 tData,
@@ -104,7 +98,6 @@ contract GenerousKyberNetwork is KyberNetwork {
         require(
             doReserveTrades( //Eth to dest
                 ETH_TOKEN_ADDRESS,
-                tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei,
                 tData.input.dest,
                 tData.input.destAddress,
                 tData,
