@@ -95,18 +95,17 @@ contract MaliciousKyberNetwork is KyberNetwork {
         );
         require(handleFees(tData));
         emit KyberTrade({
-            trader: tData.input.trader,
             src: tData.input.src,
             dest: tData.input.dest,
-            srcAmount: actualSrcAmount,
-            destAmount: destAmount,
-            destAddress: tData.input.destAddress,
             ethWeiValue: tData.tradeWei,
             networkFeeWei: tData.networkFeeWei,
             customPlatformFeeWei: tData.platformFeeWei,
             t2eIds: tData.tokenToEth.ids,
             e2tIds: tData.ethToToken.ids,
-            hint: hint
+            t2eSrcAmounts: tData.tokenToEth.srcAmounts,
+            e2tSrcAmounts: tData.ethToToken.srcAmounts,
+            t2eRates: tData.tokenToEth.rates,
+            e2tRates: tData.ethToToken.rates
         });
         return (destAmount - myFeeWei);
     }

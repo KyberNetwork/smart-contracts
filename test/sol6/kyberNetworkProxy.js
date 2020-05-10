@@ -676,6 +676,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 trader: taker,
                 src: srcToken.address,
                 dest: ethAddress,
+                destAddress: destAddress,
                 actualSrcAmount: srcAmount,
                 actualDestAmount: destQty,
                 platformWallet: platformWallet,

@@ -9,6 +9,7 @@ interface IKyberNetworkProxy {
         address indexed trader,
         IERC20 src,
         IERC20 dest,
+        address destAddress,
         uint256 actualSrcAmount,
         uint256 actualDestAmount,
         address platformWallet,

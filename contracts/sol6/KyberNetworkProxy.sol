@@ -352,6 +352,7 @@ contract KyberNetworkProxy is
             msg.sender,
             src,
             dest,
+            destAddress,
             tradeOutcome.userDeltaSrcToken,
             tradeOutcome.userDeltaDestToken,
             platformWallet,
