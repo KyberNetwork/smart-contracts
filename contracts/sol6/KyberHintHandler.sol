@@ -47,7 +47,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
 
         for (uint256 i = 0; i < tokenToEthReserveIds.length; i++) {
             tokenToEthAddresses[i] = IKyberReserve(
-                convertReserveIdToAddress(tokenToEthReserveIds[i])
+                getReserveAddress(tokenToEthReserveIds[i])
             );
         }
     }
@@ -79,7 +79,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
 
         for (uint256 i = 0; i < ethToTokenReserveIds.length; i++) {
             ethToTokenAddresses[i] = IKyberReserve(
-                convertReserveIdToAddress(ethToTokenReserveIds[i])
+                getReserveAddress(ethToTokenReserveIds[i])
             );
         }
     }
@@ -127,12 +127,12 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
 
         for (uint256 i = 0; i < tokenToEthReserveIds.length; i++) {
             tokenToEthAddresses[i] = IKyberReserve(
-                convertReserveIdToAddress(tokenToEthReserveIds[i])
+                getReserveAddress(tokenToEthReserveIds[i])
             );
         }
         for (uint256 i = 0; i < ethToTokenReserveIds.length; i++) {
             ethToTokenAddresses[i] = IKyberReserve(
-                convertReserveIdToAddress(ethToTokenReserveIds[i])
+                getReserveAddress(ethToTokenReserveIds[i])
             );
         }
     }
@@ -273,7 +273,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         bytes32[] memory reserveIds,
         uint256[] memory splits
     ) internal pure returns (HintErrors) {
-        if (!(reserveIds.length > 0)) return HintErrors.ReserveIdEmptyError;
+        if (reserveIds.length == 0) return HintErrors.ReserveIdEmptyError;
         if (tradeType == TradeType.Split) {
             if (reserveIds.length != splits.length) return HintErrors.ReserveIdSplitsError;
 
@@ -300,7 +300,5 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         if (error == HintErrors.SplitsNotEmptyError) revert("splits must be empty");
     }
 
-    function convertReserveIdToAddress(bytes32 reserveId) internal view virtual returns (address);
-
-    function convertAddressToReserveId(address reserveAddress) internal view virtual returns (bytes32);
+    function getReserveAddress(bytes32 reserveId) internal view virtual returns (address);
 }

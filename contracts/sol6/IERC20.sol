@@ -18,7 +18,7 @@ interface IERC20 {
 
     function balanceOf(address _owner) external view returns (uint256 balance);
 
-    function decimals() external view returns (uint256 digits);
+    function decimals() external view returns (uint8 digits);
 
     function totalSupply() external view returns (uint256 supply);
 }

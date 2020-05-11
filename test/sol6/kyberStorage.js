@@ -98,7 +98,7 @@ contract('KyberStorage', function(accounts) {
 
         it("should have operator add reserve", async() => {
             await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
-            let reserveId = await kyberStorage.getReserveID(reserve.address);
+            let reserveId = await kyberStorage.getReserveId(reserve.address);
 
             let reserveAddress = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
             Helper.assertEqual(reserve.reserveId, reserveId, "wrong address to ID");
@@ -608,7 +608,7 @@ contract('KyberStorage', function(accounts) {
                 reserveRebateWalletData.push(reserve.rebateWallet);
                 reserveRebateData.push(reserve.type != "TYPE_MOCK");
 
-                assert(await kyberStorage.getReserveID(reserve.address) == reserve.reserveId, "unexpected reserveId");
+                assert(await kyberStorage.getReserveId(reserve.address) == reserve.reserveId, "unexpected reserveId");
                 let reserveData = await kyberStorage.getReserveDetailsById(reserve.reserveId);
                 assert(reserveData.reserveAddress == reserve.address, "unexpected reserve address");
                 assert(reserveData.rebateWallet == reserve.rebateWallet, "unexpected rebate address");
@@ -699,7 +699,7 @@ contract('KyberStorage', function(accounts) {
 
         it("should have reserveId reset to zero after removal", async() => {
             await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
-            let reserveId = await kyberStorage.getReserveID(reserve.address);
+            let reserveId = await kyberStorage.getReserveId(reserve.address);
             Helper.assertEqual(reserveId, nwHelper.ZERO_RESERVE_ID, "reserve id was not reset to zero");
 
             //reset

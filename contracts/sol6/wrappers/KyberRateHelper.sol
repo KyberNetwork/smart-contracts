@@ -1,7 +1,7 @@
 pragma solidity 0.6.6;
 
 import "../IKyberMatchingEngine.sol";
-import "../IKyberRateHelper.sol";
+import "./IKyberRateHelper.sol";
 import "../IKyberDAO.sol";
 import "../IKyberStorage.sol";
 import "../utils/Utils5.sol";

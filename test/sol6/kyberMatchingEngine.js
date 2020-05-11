@@ -515,13 +515,6 @@ contract('KyberMatchingEngine', function(accounts) {
                 }
             });
 
-            it("should get reserve from address", async() => {
-                for (reserve of Object.values(reserveInstances)) {
-                    reserveId = await matchingEngine.addressToReserveId(reserve.address);
-                    Helper.assertEqual(reserve.reserveId, reserveId, "reserve not found");
-                }
-            });
-
             it("should get reserve details by address", async() => {
                 for (reserve of Object.values(reserveInstances)) {
                     res = await storage.getReserveDetailsByAddress(reserve.address);
