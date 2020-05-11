@@ -1095,6 +1095,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 weiAfterDeductingFees;
         if (tradeData.input.dest != ETH_TOKEN_ADDRESS) {
             weiAfterDeductingFees = calcTradeSrcAmount(
+                tradeData.tradeWei - tradeData.platformFeeWei - tradeData.networkFeeWei,
                 ETH_DECIMALS,
                 tradeData.ethToToken.decimals,
                 tradeData.input.maxDestAmount,
@@ -1105,13 +1106,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
 
         // reverse calculation, because we are working backwards
-        tradeData.tradeWei =
+        uint256 newTradeWei =
             (weiAfterDeductingFees * BPS * BPS) /
             ((BPS * BPS) -
                 tradeData.networkFeeBps *
                 tradeData.feeAccountedBps -
                 tradeData.input.platformFeeBps *
                 BPS);
+        tradeData.tradeWei = minOf(newTradeWei, tradeData.tradeWei);
         // recalculate network and platform fees based on tradeWei
         tradeData.networkFeeWei =
             (((tradeData.tradeWei * tradeData.networkFeeBps) / BPS) * tradeData.feeAccountedBps) /
@@ -1120,6 +1122,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         if (tradeData.input.src != ETH_TOKEN_ADDRESS) {
             actualSrcAmount = calcTradeSrcAmount(
+                tradeData.input.srcAmount,
                 tradeData.tokenToEth.decimals,
                 ETH_DECIMALS,
                 tradeData.tradeWei,
@@ -1135,37 +1138,47 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @notice Recalculates srcAmounts and stores into tradingReserves, given the new destAmount.
     ///     Uses the original proportion of srcAmounts and rates to determine new split destAmounts,
     ///     then calculate the respective srcAmounts
-    /// @dev Due to small rounding errors, we take the minimum of the original and new srcAmounts
+    /// @dev Due to small rounding errors, will fallback to current src amounts if new src amount is greater
     function calcTradeSrcAmount(
+        uint256 srcAmount,
         uint256 srcDecimals,
         uint256 destDecimals,
         uint256 destAmount,
         ReservesData memory reservesData
-    ) internal pure returns (uint256 srcAmount) {
+    ) internal pure returns (uint256 newSrcAmount) {
         uint256 totalWeightedDestAmount;
         for (uint256 i = 0; i < reservesData.srcAmounts.length; i++) {
             totalWeightedDestAmount += reservesData.srcAmounts[i] * reservesData.rates[i];
         }
 
+        uint256[] memory newSrcAmounts = new uint256[](reservesData.srcAmounts.length);
         uint256 destAmountSoFar;
+        uint256 currentSrcAmount;
+        uint256 destAmountSplit;
+
         for (uint256 i = 0; i < reservesData.srcAmounts.length; i++) {
-            uint256 currentSrcAmount = reservesData.srcAmounts[i];
-            uint256 destAmountSplit = i == (reservesData.srcAmounts.length - 1)
+            currentSrcAmount = reservesData.srcAmounts[i];
+            destAmountSplit = i == (reservesData.srcAmounts.length - 1)
                 ? (destAmount - destAmountSoFar)
                 : (destAmount * currentSrcAmount * reservesData.rates[i]) /
                     totalWeightedDestAmount;
             destAmountSoFar += destAmountSplit;
 
-            uint256 newSrcAmount = calcSrcQty(
+            newSrcAmounts[i] = calcSrcQty(
                 destAmountSplit,
                 srcDecimals,
                 destDecimals,
                 reservesData.rates[i]
             );
-            newSrcAmount = minOf(newSrcAmount, currentSrcAmount);
+            if (newSrcAmounts[i] > currentSrcAmount) {
+                // revert back to use current src amounts
+                newSrcAmount = srcAmount;
+                return newSrcAmount;
+            }
 
-            reservesData.srcAmounts[i] = newSrcAmount;
-            srcAmount += newSrcAmount;
+            newSrcAmount += newSrcAmounts[i];
         }
+        // new src amounts are used only when any of them isn't greater then current srcAmount.
+        reservesData.srcAmounts = newSrcAmounts;
     }
 }
