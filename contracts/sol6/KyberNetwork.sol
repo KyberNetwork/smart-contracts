@@ -290,7 +290,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             emit GasHelperUpdated(_gasHelper);
         }
 
-        kyberStorage.setContracts(_feeHandler, address(_matchingEngine));
+        kyberStorage.setContracts(address(_feeHandler), address(_matchingEngine));
         require(_feeHandler != IKyberFeeHandler(0));
         require(_matchingEngine != IKyberMatchingEngine(0));
     }
@@ -300,7 +300,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         onlyAdmin();
         if (kyberDAO != _kyberDAO) {
             kyberDAO = _kyberDAO;
-            kyberStorage.setDAOContract(_kyberDAO);
+            kyberStorage.setDAOContract(address(_kyberDAO));
             emit KyberDAOUpdated(_kyberDAO);
         }
     }

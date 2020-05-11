@@ -1,8 +1,7 @@
 pragma solidity 0.6.6;
 
+import "./IKyberHistory.sol";
 import "./IKyberStorage.sol";
-import "./IKyberFeeHandler.sol";
-import "./IKyberMatchingEngine.sol";
 import "./IKyberNetwork.sol";
 import "./utils/PermissionGroupsNoModifiers.sol";
 import "./utils/Utils5.sol";
@@ -13,14 +12,16 @@ import "./utils/Utils5.sol";
  *   The contract provides the following functions for KyberNetwork contract:
  *   - Stores reserve and token listing information by the network
  *   - Stores feeAccounted data for reserve types
- *   - Record contract changes for network, matchingEngine, feeHandler, reserves, network proxies and kyberDAO
+ *   - Record contract changes for reserves and network proxies
+ *   - Points to historical contracts that record contract changes for network, feeHandler, DAO and matchingEngine
  */
 contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
-    // store current and previous contracts.
-    IKyberNetwork[] internal previousNetworks;
-    IKyberFeeHandler[] internal feeHandler;
-    IKyberDAO[] internal kyberDAO;
-    IKyberMatchingEngine[] internal matchingEngine;
+    // store current and previous contracts
+    IKyberHistory public networkHistory;
+    IKyberHistory public feeHandlerHistory;
+    IKyberHistory public kyberDAOHistory;
+    IKyberHistory public matchingEngineHistory;
+
     IKyberReserve[] internal reserves;
     IKyberNetworkProxy[] internal kyberProxyArray;
 
@@ -36,7 +37,23 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
     IKyberNetwork public kyberNetwork;
 
-    constructor(address _admin) public PermissionGroupsNoModifiers(_admin) {}
+    constructor(
+        address _admin,
+        IKyberHistory _networkHistory,
+        IKyberHistory _feeHandlerHistory,
+        IKyberHistory _kyberDAOHistory,
+        IKyberHistory _matchingEngineHistory
+    ) public PermissionGroupsNoModifiers(_admin) {
+        require(_networkHistory != IKyberHistory(0), "networkHistory 0");
+        require(_feeHandlerHistory != IKyberHistory(0), "feeHandlerHistory 0");
+        require(_kyberDAOHistory != IKyberHistory(0), "kyberDAOHistory 0");
+        require(_matchingEngineHistory != IKyberHistory(0), "matchingEngineHistory 0");
+
+        networkHistory = _networkHistory;
+        feeHandlerHistory = _feeHandlerHistory;
+        kyberDAOHistory = _kyberDAOHistory;
+        matchingEngineHistory = _matchingEngineHistory;
+    }
 
     event KyberNetworkUpdated(IKyberNetwork newNetwork);
     event RemoveReserveFromStorage(address indexed reserve, bytes32 indexed reserveId);
@@ -66,7 +83,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         onlyAdmin();
         require(_kyberNetwork != IKyberNetwork(0), "network 0");
         emit KyberNetworkUpdated(_kyberNetwork);
-        previousNetworks.push(kyberNetwork);
+        networkHistory.saveContract(address(_kyberNetwork));
         kyberNetwork = _kyberNetwork;
     }
 
@@ -81,39 +98,22 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         emit ReserveRebateWalletSet(reserveId, rebateWallet);
     }
 
-    function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
+    function setContracts(address _feeHandler, address _matchingEngine)
         external
         override
     {
         onlyNetwork();
-        require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
+        require(_feeHandler != address(0), "feeHandler 0");
         require(_matchingEngine != address(0), "matchingEngine 0");
-        IKyberMatchingEngine newMatchingEngine = IKyberMatchingEngine(_matchingEngine);
 
-        if (feeHandler.length > 0) {
-            feeHandler.push(feeHandler[0]);
-            feeHandler[0] = _feeHandler;
-        } else {
-            feeHandler.push(_feeHandler);
-        }
-
-        if (matchingEngine.length > 0) {
-            matchingEngine.push(matchingEngine[0]);
-            matchingEngine[0] = newMatchingEngine;
-        } else {
-            matchingEngine.push(newMatchingEngine);
-        }
+        feeHandlerHistory.saveContract(_feeHandler);
+        matchingEngineHistory.saveContract(_matchingEngine);
     }
 
-    function setDAOContract(IKyberDAO _kyberDAO) external override {
+    function setDAOContract(address _kyberDAO) external override {
         onlyNetwork();
-        
-        if (kyberDAO.length > 0) {
-            kyberDAO.push(kyberDAO[0]);
-            kyberDAO[0] = _kyberDAO;
-        } else {
-            kyberDAO.push(_kyberDAO);
-        }
+
+        kyberDAOHistory.saveContract(_kyberDAO);
     }
 
     /// @notice Can be called only by operator
@@ -423,13 +423,16 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         external
         view
         returns (
-            IKyberDAO[] memory daoAddresses,
-            IKyberFeeHandler[] memory feeHandlerAddresses,
-            IKyberMatchingEngine[] memory matchingEngineAddresses,
-            IKyberNetwork[] memory previousNetworkContracts
+            address[] memory daoAddresses,
+            address[] memory feeHandlerAddresses,
+            address[] memory matchingEngineAddresses,
+            address[] memory previousNetworkContracts
         )
     {
-        return (kyberDAO, feeHandler, matchingEngine, previousNetworks);
+        daoAddresses = kyberDAOHistory.getContracts();
+        feeHandlerAddresses = feeHandlerHistory.getContracts();
+        matchingEngineAddresses = matchingEngineHistory.getContracts();
+        previousNetworkContracts = networkHistory.getContracts();
     }
 
     /// @notice Should be called off chain

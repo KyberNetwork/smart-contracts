@@ -90,7 +90,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         //init KNC
         KNC = await TestToken.new("kyber network crystal", "KNC", 18);
 
-        networkStorage = await KyberStorage.new(admin);
+        networkStorage = await nwHelper.setupStorage(admin);
         //deploy network
         network = await KyberNetwork.new(admin, networkStorage.address);
         await networkStorage.addOperator(operator, {from: admin});
@@ -301,7 +301,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     };
 
     const testRedeployKyberStorage = async function(){
-        networkStorage = await KyberStorage.new(admin);
+        networkStorage = await nwHelper.setupStorage(admin);
         //deploy network
         network = await KyberNetwork.new(admin, networkStorage.address);
         await networkStorage.addOperator(operator, {from: admin});
