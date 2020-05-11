@@ -518,10 +518,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     {
         feeAccountedArr = new bool[](reserveIds.length);
 
-        uint256 feeAccountedData = feeAccountedPerType;
-
         for (uint256 i = 0; i < reserveIds.length; i++) {
-            feeAccountedArr[i] = (feeAccountedData & (1 << reserveType[reserveIds[i]]) > 0);
+            feeAccountedArr[i] = (feeAccountedPerType & (1 << reserveType[reserveIds[i]]) > 0);
         }
     }
 
@@ -533,10 +531,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     {
         entitledRebateArr = new bool[](reserveIds.length);
 
-        uint256 entitledRebateData = entitledRebatePerType;
-
         for (uint256 i = 0; i < reserveIds.length; i++) {
-            entitledRebateArr[i] = (entitledRebateData & (1 << reserveType[reserveIds[i]]) > 0);
+            entitledRebateArr[i] = (entitledRebatePerType & (1 << reserveType[reserveIds[i]]) > 0);
         }
     }
 
@@ -553,13 +549,10 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         entitledRebateArr = new bool[](reserveIds.length);
         reserveAddresses = new IKyberReserve[](reserveIds.length);
 
-        uint256 entitledRebateData = entitledRebatePerType;
-        uint256 feeAccountedData = feeAccountedPerType;
-
         for (uint256 i = 0; i < reserveIds.length; i++) {
             uint256 resTypeUint = reserveType[reserveIds[i]];
-            entitledRebateArr[i] = (entitledRebateData & (1 << resTypeUint) > 0);
-            feeAccountedArr[i] = (feeAccountedData & (1 << resTypeUint) > 0);
+            entitledRebateArr[i] = (entitledRebatePerType & (1 << resTypeUint) > 0);
+            feeAccountedArr[i] = (feeAccountedPerType & (1 << resTypeUint) > 0);
             reserveAddresses[i] = IKyberReserve(reserveIdToAddresses[reserveIds[i]][0]);
         }
     }
