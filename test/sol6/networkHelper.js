@@ -979,9 +979,14 @@ async function calcParamsFromMaxDestAmt(srcToken, destToken, unpackedOutput, inf
             tradeWeiAfterFees = maxDestAmt;
         }
 
-        unpackedOutput.tradeWei = tradeWeiAfterFees.mul(BPS).mul(BPS).div(
+        let newTradeWei = tradeWeiAfterFees.mul(BPS).mul(BPS).div(
             (BPS.mul(BPS)).sub(networkFeeBps.mul(unpackedOutput.feePayingReservesBps)).sub(platformFeeBps.mul(BPS))
         );
+        if (unpackedOutput.tradeWei.gt(newTradeWei)) {
+            unpackedOutput.tradeWei = newTradeWei;
+        } else if (newTradeWei.gt(unpackedOutput.tradeWei)) {
+            console.log("New trade wei is greater than current trade wei by: " + newTradeWei.sub(unpackedOutput.tradeWei).toString(10) + " wei");
+        }
         unpackedOutput.networkFeeWei = unpackedOutput.tradeWei.mul(networkFeeBps).div(BPS).mul(unpackedOutput.feePayingReservesBps).div(BPS);
         unpackedOutput.platformFeeWei = unpackedOutput.tradeWei.mul(platformFeeBps).div(BPS);
 
@@ -1005,17 +1010,33 @@ function calcTradeSrcAmount(srcDecimals, destDecimals, destAmt, rates, srcAmount
     let srcAmount = new BN(0);
     let destAmountSoFar = new BN(0);
     let newSrcAmounts = [];
+    let shouldFallback = false;
+    let totalDestAmount = new BN(0);
+
     for(let i = 0; i < srcAmounts.length; i++) {
         let destAmountSplit = (i == srcAmounts.length - 1) ? (new BN(destAmt).sub(destAmountSoFar)) :
             new BN(destAmt).mul(srcAmounts[i]).mul(rates[i]).div(weightedDestAmount);
         destAmountSoFar = destAmountSoFar.add(destAmountSplit);
-        let srcAmt = Helper.calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]);
+        let srcAmt = new BN(Helper.calcSrcQty(destAmountSplit, srcDecimals, destDecimals, rates[i]));
         if (srcAmt.gt(srcAmounts[i])) {
+            shouldFallback = true;
             srcAmt = srcAmounts[i];
-            console.log("new src amount is higher than current src amount");
         }
         newSrcAmounts.push(srcAmt);
         srcAmount = srcAmount.add(srcAmt);
+        totalDestAmount = totalDestAmount.add(Helper.calcDstQty(srcAmt, srcDecimals, destDecimals, rates[i]));
+    }
+    // for logging purpose only
+    if (destAmt.gt(totalDestAmount)) {
+        console.log("MaxDestAmount: new total dest amount is smaller than max dest amount by: " + destAmt.sub(totalDestAmount))
+    }
+    if (shouldFallback) {
+        srcAmount = new BN(0);
+        console.log("new src amount is higher than current src amount, fallback");
+        for(let i = 0; i < srcAmounts.length; i++) {
+            srcAmount = srcAmount.add(srcAmounts[i]);
+        }
+        return [srcAmount, srcAmounts];
     }
 
     return [srcAmount, newSrcAmounts];
