@@ -4,7 +4,7 @@ import "../KyberNetwork.sol";
 
 
 /*
- * @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
+ * @title Malicious Kyber Network, takes (steals) some extra fees and reports actual dest amount minus Fees.
  */
 contract MaliciousKyberNetwork is KyberNetwork {
     uint256 public myFeeWei = 10;
@@ -18,12 +18,6 @@ contract MaliciousKyberNetwork is KyberNetwork {
         myFeeWei = fee;
     }
 
-    /* solhint-disable function-max-lines */
-    //  Most of the lines here are functions calls spread over multiple lines.
-    //  We find this function readable enough
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev trade api for kyber network.
-    /// @param tData.input structure of trade inputs
     function trade(TradeData memory tData, bytes memory hint)
         internal
         override
@@ -110,15 +104,6 @@ contract MaliciousKyberNetwork is KyberNetwork {
         return (destAmount - myFeeWei);
     }
 
-    /* solhint-enable function-max-lines */
-
-    /// @notice use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev do one trade with a reserve
-    /// @param src Src token
-    /// @param amount amount of src tokens
-    /// @param dest   Destination token
-    /// @param destAddress Address to send tokens to
-    /// @return true if trade is successful
     function doReserveTrades(
         IERC20 src,
         uint256 amount,
@@ -126,7 +111,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
         address payable destAddress,
         TradeData memory tData,
         uint256 expectedDestAmount
-    ) internal override returns (bool) {
+    ) internal virtual returns (bool) {
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
             if (destAddress != (address(this))) destAddress.transfer(amount - myFeeWei);

@@ -1,6 +1,6 @@
 pragma solidity 0.6.6;
 
-import "./IKyberReserve.sol";
+import "../IKyberReserve.sol";
 
 
 interface IKyberRateHelper {

@@ -40,7 +40,6 @@ interface IKyberProxy is IKyberNetworkProxy, ISimpleKyberProxy {
 contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
     using SafeMath for uint256;
 
-    uint256 internal constant BITS_PER_PARAM = 64;
     uint256 internal constant DEFAULT_REWARD_BPS = 3000;
     uint256 internal constant DEFAULT_REBATE_BPS = 3000;
     uint256 internal constant SANITY_RATE_DIFF_BPS = 1000; // 10%
@@ -155,9 +154,9 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
     }
 
     /// @dev handleFees function is called per trade on KyberNetwork. unless the trade is not involving any fees.
-    /// @param rebateWallets a list of rebate wallets that are entitiled for fee with this trade.
-    /// @param rebateBpsPerWallet percentage of rebate for each wallet, out of total rebate. BPS uints: 10000 = 100%
-    /// @param platformWallet Wallet address that is entitled to platfrom fee.
+    /// @param rebateWallets a list of rebate wallets that will get rebate for this trade.
+    /// @param rebateBpsPerWallet percentage of rebate for each wallet, out of total rebate.
+    /// @param platformWallet Wallet address that will receive the platfrom fee.
     /// @param platformFeeWei Fee amount in wei the platfrom wallet is entitled to.
     function handleFees(
         address[] calldata rebateWallets,
@@ -218,11 +217,11 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
         return true;
     }
 
-    /// @dev only Dao can call a claim to staker rewards.
+    /// @dev only Dao can claim staker rewards.
     /// @param staker address.
     /// @param percentageInPrecision the relative part of the trade the staker is entitled to for this epoch.
     ///             uint Precision: 10 ** 18 = 100%
-    /// @param epoch for which epoch the staker is claiming the rewerad
+    /// @param epoch for which epoch the staker is claiming the reward
     function claimStakerReward(
         address staker,
         uint256 percentageInPrecision,
