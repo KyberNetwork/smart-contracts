@@ -1363,6 +1363,32 @@ contract('KyberNetwork', function(accounts) {
                     Helper.assertEqual(actualWalletFee, expectedWalletFee, "platform fee did not receive fees");
                 });
             }
+        });
+
+        describe("Test maxDestAmount normal cases", async() => {
+            before("setup, add and list reserves", async() => {
+                //init reserves
+                let result = await nwHelper.setupReserves(network, tokens.slice(0,3), 0, 0, 0, 9, accounts, admin, operator);
+
+                reserveInstances = result.reserveInstances;
+                numReserves += result.numAddedReserves * 1;
+
+                //add and list pair for reserve
+                let j = 0;
+                for (const [key, value] of Object.entries(reserveInstances)) {
+                    reserve = value;
+                    let rebateWallet = (reserve.rebateWallet == zeroAddress || reserve.rebateWallet == undefined)
+                        ? reserve.address : reserve.rebateWallet;
+                    await storage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, rebateWallet, {from: operator});
+                    await storage.listPairForReserve(reserve.reserveId, tokens[j%3].address, true, true, true, {from: operator});
+                    j++;
+                }
+            });
+
+            after("unlist and remove reserve", async() => {
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
+                reserveInstances = {};
+            });
 
             let reducedAmounts = [0, 3];
             for (tradeType of tradeTypesArray) {
@@ -1576,6 +1602,205 @@ contract('KyberNetwork', function(accounts) {
                 console.log(`token -> ETH (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
                 await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, actualSrcQty,
                     initialReserveBalances, initialTakerBalances, expectedResult, taker, network.address);
+            });
+        });
+
+        describe("Test maxDestAmount reverse calculation edge cases", async() => {
+            let mockStorage;
+            let mockNetwork;
+            let networkProxy;
+            let mockMatchingEngine;
+            let mockRateHelper;
+            let srcToken;
+            let destToken;
+            let srcDecimals;
+            let destDecimals;
+            let mockReserveInstances;
+            let reserveIDs;
+
+            before("setup contracts", async() => {
+                // DAO related init.
+                let expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
+                let DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+                await DAO.setNetworkFeeBps(networkFeeBps);
+                networkProxy = accounts[2];
+                srcToken = tokens[0];
+                srcDecimals = tokenDecimals[0];
+                destToken = tokens[1];
+                destDecimals = tokenDecimals[1];
+
+                // init storage and network
+                mockStorage = await KyberStorage.new(admin);
+                mockNetwork = await KyberNetwork.new(admin, mockStorage.address);
+                await mockStorage.setNetworkContract(mockNetwork.address, {from: admin});
+                await mockStorage.addOperator(operator, {from: admin});
+
+                // init feeHandler
+                let KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+                let feeHandler = await FeeHandler.new(DAO.address, mockNetwork.address, mockNetwork.address, KNC.address, burnBlockInterval, DAO.address);
+
+                // init matchingEngine
+                mockMatchingEngine = await MatchingEngine.new(admin);
+                await mockMatchingEngine.setNetworkContract(mockNetwork.address, {from: admin});
+                await mockMatchingEngine.setKyberStorage(mockStorage.address, {from: admin});
+                await mockStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+                await mockStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+
+                // init rateHelper
+                mockRateHelper = await RateHelper.new(admin);
+                await mockRateHelper.setContracts(mockMatchingEngine.address, DAO.address, mockStorage.address, {from: admin});
+
+                // init gas helper
+                // tests gasHelper when gasHelper != address(0), and when a trade is being done
+                let gasHelperAdd = await MockGasHelper.new(platformWallet);
+
+                // setup network
+                await mockNetwork.setContracts(feeHandler.address, mockMatchingEngine.address,
+                    gasHelperAdd.address, {from: admin});
+                await mockNetwork.addOperator(operator, {from: admin});
+                await mockNetwork.addKyberProxy(networkProxy, {from: admin});
+                await mockNetwork.setDAOContract(DAO.address, {from: admin});
+                //set params, enable network
+                await mockNetwork.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
+                await mockNetwork.setEnable(true, {from: admin});
+            });
+
+            const setupAndAddReservesWithFixedRates = async(rates, token) => {
+                reserveIDs = [];
+                let reserveInstances = {};
+                // setup and make reserve ids increasing
+                for (let i = 0; i < rates.length; i++) {
+                    let reserve = await MockReserve.new();
+                    let reserveId = (MOCK_ID + `${i}` + reserve.address.substring(2,20) + "0".repeat(37)).toLowerCase();
+
+                    reserveInstances[reserveId] = {
+                        'address': reserve.address,
+                        'instance': reserve,
+                        'reserveId': reserveId,
+                        'onChainType': ReserveType.APR,
+                        'rate': new BN(0),
+                        'type': type_MOCK,
+                        'pricing': "none",
+                        'rebateWallet': accounts[0]
+                    }
+                    await Helper.sendEtherWithPromise(accounts[i], reserve.address, new BN(10).pow(new BN(19)));
+                    let initialTokenAmount = new BN(2000000).mul(new BN(10).pow(new BN(await token.decimals())));
+                    await token.transfer(reserve.address, initialTokenAmount);
+
+                    await reserve.setRate(token.address, rates[i], rates[i]);
+                    mockReserveInstances[reserveId] = reserveInstances[reserveId];
+                    reserveIDs.push(reserveId);
+                }
+                //add and list pair for reserve
+                await nwHelper.addReservesToStorage(mockStorage, reserveInstances, [token], operator);
+            };
+
+            it("test new trade wei is higher than current one", async function() {
+                mockReserveInstances = {};
+                await setupAndAddReservesWithFixedRates(
+                    // BN can not be inited by a number more than 52 bits
+                    // 28247334871812199
+                    [(new BN(28247334)).mul(new BN(1000000000)).add(new BN(871812199))],
+                    srcToken
+                );
+                await setupAndAddReservesWithFixedRates(
+                    // BN can not be inited by a number more than 52 bits
+                    // 164931666174724191876
+                    [(new BN(164931666174)).mul(new BN(1000000000)).add(new BN(724191876))],
+                    destToken
+                );
+                let platformFeeBps = new BN(50);
+                let taker = accounts[1];
+                // 50000000000000000 = 5 * 10^16
+                let srcQty = (new BN(5)).mul(new BN(10).pow(new BN(16)));
+                let actualSrcQty = new BN(0);
+
+                let expectedResult = await nwHelper.getAndCalcRates(
+                    mockMatchingEngine, mockStorage, mockReserveInstances,
+                    srcToken.address, destToken.address, srcQty,
+                    srcDecimals, destDecimals,
+                    networkFeeBps, platformFeeBps, emptyHint
+                );
+
+                // expect dest amount = 2308475042677372405
+                // 2308475042677372402
+                let maxDestAmt = expectedResult.actualDestAmount.sub(new BN(3));
+
+                await srcToken.transfer(mockNetwork.address, srcQty);
+                let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, destToken, expectedResult);
+                let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, destToken, taker, mockNetwork.address);
+                let info = [srcQty, networkFeeBps, platformFeeBps];
+                [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, destToken, expectedResult, info, maxDestAmt);
+
+                await mockNetwork.tradeWithHintAndFee(mockNetwork.address, srcToken.address, srcQty, destToken.address, taker,
+                    maxDestAmt, minConversionRate, platformWallet, platformFeeBps, emptyHint, {from: networkProxy});
+
+                await nwHelper.compareBalancesAfterTrade(srcToken, destToken, actualSrcQty,
+                    initialReserveBalances, initialTakerBalances, expectedResult, taker, mockNetwork.address);
+                // delist and remove reserves
+                await nwHelper.removeReservesFromStorage(mockStorage, mockReserveInstances, [srcToken, destToken], operator);
+            });
+
+            it("test new total dest amount is smaller than max dest amount", async function() {
+                mockReserveInstances = {};
+                await setupAndAddReservesWithFixedRates(
+                    // BN can not be inited by a number more than 52 bits
+                    // 29200009311823143, 5649810535995056, 9405972798074902
+                    [
+                        (new BN(29200009)).mul(new BN(1000000000)).add(new BN(311823143)),
+                        (new BN(5649810)).mul(new BN(1000000000)).add(new BN(535995056)),
+                        (new BN(9405972)).mul(new BN(1000000000)).add(new BN(798074902)),
+                    ],
+                    srcToken
+                );
+                let t2eReserveIDs = reserveIDs;
+                await setupAndAddReservesWithFixedRates(
+                    // BN can not be inited by a number more than 52 bits
+                    // 121463263618128016904, 169558058045704600812, 43477220717868778247
+                    [
+                        (new BN(121463263618)).mul(new BN(1000000000)).add(new BN(128016904)),
+                        (new BN(169558058045)).mul(new BN(1000000000)).add(new BN(704600812)),
+                        (new BN(43477220717)).mul(new BN(1000000000)).add(new BN(868778247))
+                    ],
+                    destToken
+                );
+                let e2tReserveIDs = reserveIDs;
+                let platformFeeBps = new BN(50);
+                let taker = accounts[1];
+                // 50000000000000000 = 5 * 10^16
+                let srcQty = (new BN(5)).mul(new BN(10).pow(new BN(16)));
+                let actualSrcQty = new BN(0);
+
+                // both are split
+                hint = await mockMatchingEngine.buildTokenToTokenHint(
+                    2, t2eReserveIDs, [3333, 3333, 3334],
+                    2, e2tReserveIDs, [3333, 3333, 3334]
+                );
+
+                let expectedResult = await nwHelper.getAndCalcRates(
+                    mockMatchingEngine, mockStorage, mockReserveInstances,
+                    srcToken.address, destToken.address, srcQty,
+                    srcDecimals, destDecimals,
+                    networkFeeBps, platformFeeBps, hint
+                );
+
+                // expect dest amount = 814935558819009438
+                // max dest amount = 814935558819009435
+                let maxDestAmt = expectedResult.actualDestAmount.sub(new BN(3));
+
+                await srcToken.transfer(mockNetwork.address, srcQty);
+                let initialReserveBalances = await nwHelper.getReserveBalances(srcToken, destToken, expectedResult);
+                let initialTakerBalances = await nwHelper.getTakerBalances(srcToken, destToken, taker, mockNetwork.address);
+                let info = [srcQty, networkFeeBps, platformFeeBps];
+                [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(srcToken, destToken, expectedResult, info, maxDestAmt);
+
+                await mockNetwork.tradeWithHintAndFee(mockNetwork.address, srcToken.address, srcQty, destToken.address, taker,
+                    maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint, {from: networkProxy});
+
+                await nwHelper.compareBalancesAfterTrade(srcToken, destToken, actualSrcQty,
+                    initialReserveBalances, initialTakerBalances, expectedResult, taker, mockNetwork.address);
+                // delist and remove reserves
+                await nwHelper.removeReservesFromStorage(mockStorage, mockReserveInstances, [srcToken, destToken], operator);
             });
         });
 
