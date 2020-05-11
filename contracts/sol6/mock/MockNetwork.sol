@@ -60,14 +60,12 @@ contract MockNetwork is KyberNetwork {
     //over ride some functions to reduce contract size.
     function doReserveTrades(
         IERC20 src,
-        uint256 amount,
         IERC20 dest,
         address payable destAddress,
         TradeData memory tradeData,
         uint256 expectedDestAmount
     ) internal override returns (bool) {
         src;
-        amount;
         dest;
         destAddress;
         tradeData;

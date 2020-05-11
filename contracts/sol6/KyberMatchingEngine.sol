@@ -9,7 +9,7 @@ import "./IKyberStorage.sol";
 
 /**
  *   @title Kyber matching engine contract
- *   During getExpectedRate flow and trade flow this contract is called twice for:
+ *   During getExpectedRate flow and trade flow this contract is called for:
  *       - parsing hint and returning reserve list (function getTradingReserves)
  *       - matching best reserves to trade with (function doMatch)
  */
@@ -61,7 +61,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @param src Source token
     /// @param dest Destination token
     /// @param isTokenToToken Whether the trade is T2T
-    /// @param hint Defines which reserves should be used for the trade
+    /// @param hint Advanced instructions for running the trade
     /// @return reserveIds Array of reserve IDs for the trade, each being 32 bytes. 1st byte is reserve type
     /// @return splitValuesBps Array of split values (in basis points) for the trade
     /// @return processWithRate Enum ProcessWithRate, whether extra processing is required or not
@@ -122,6 +122,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         }
 
+        // for split no need to know rate. User defines full trade details in advance.
         processWithRate = (tradeType == TradeType.Split)
             ? ProcessWithRate.NotRequired
             : ProcessWithRate.Required;
@@ -136,7 +137,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @param dest Destination token (not needed in this matchingEngine version)
     /// @param srcAmounts Array of srcAmounts
     /// @param feesAccountedDestBps Fees charged in BPS, to be deducted from calculated destAmount
-    /// @param rates Rates provided by reserves
+    /// @param rates Rates queried from reserves
     /// @return reserveIndexes An array of the indexes most suited for the trade
     function doMatch(
         IERC20 src,
@@ -202,12 +203,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         reserveIndexes[0] = bestReserve.index;
     }
 
-    function convertReserveIdToAddress(bytes32 reserveId) internal view override returns (address reserveAddress) {
+    function getReserveAddress(bytes32 reserveId) internal view override returns (address reserveAddress) {
         (reserveAddress, , , ,) = kyberStorage.getReserveDetailsById(reserveId);
-    }
-
-    function convertAddressToReserveId(address reserveAddress) internal view override returns (bytes32) {
-        return kyberStorage.getReserveID(reserveAddress);
     }
 
     /// @notice Logic for masking out reserves

@@ -9,7 +9,7 @@ import "./IKyberReserve.sol";
 interface IKyberStorage {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
 
-    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
+    function addKyberProxy(address networkProxy, uint256 maxApprovedProxies)
         external
         returns (bool);
 
@@ -21,7 +21,7 @@ interface IKyberStorage {
 
     function setDAOContract(IKyberDAO _kyberDAO) external returns (bool);
 
-    function getReserveID(address reserve) external view returns (bytes32 reserveId);
+    function getReserveId(address reserve) external view returns (bytes32 reserveId);
 
     function getReserveIdsFromAddresses(address[] calldata reserveAddresses)
         external
