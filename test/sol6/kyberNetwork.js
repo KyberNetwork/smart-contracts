@@ -16,6 +16,8 @@ const MaliciousStorage = artifacts.require("MaliciousStorage.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const NotPayableContract = artifacts.require("MockNotPayableContract.sol");
 const MaliciousReserve2 = artifacts.require("MaliciousReserve2.sol");
+const DummyDGX = artifacts.require("DummyDGX.sol");
+const DummyDGXStorage = artifacts.require("DummyDGXStorage.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -2183,6 +2185,137 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.getAndUpdateNetworkFee();
             result = await tempNetwork.getNetworkFeeData();
             Helper.assertEqual(result[0], newNetworkFeeBps, "unexpected network fee");
+        });
+
+        describe("test with DGX token", async() => {
+            let dgxToken;
+            let dgxTransferfee = new BN(13);
+            let dgxDecimal = new BN(9);
+            let networkProxy = accounts[8];
+            let tokens;
+            before("setup, add and list mock reserves", async() => {
+                let dgxStorage = await DummyDGXStorage.new({from: admin});
+                dgxToken = await DummyDGX.new(dgxStorage.address, admin);
+                await dgxStorage.setInteractive(dgxToken.address, { from: admin});
+                // transfer token and add accounts[0] to whitelist so `token.transfer` still works
+                await dgxToken.mintDgxFor(accounts[0], new BN(10).pow(new BN(18)), {from: admin});
+                await dgxToken.updateUserFeesConfigs(accounts[0], true, true, {from: admin});
+                // add balance to network
+                await dgxToken.mintDgxFor(network.address, new BN(10).pow(new BN(18)), {from: admin});
+                await dgxToken.updateUserFeesConfigs(network.address, true, true, {from: admin});
+                
+                await network.addKyberProxy(networkProxy, {from: admin});
+                tokens = [dgxToken];
+                //init reserves
+                let result = await nwHelper.setupReserves(network, tokens, 1,0,0,0, accounts, admin, operator);
+               
+                reserveInstances = result.reserveInstances;
+                numReserves += result.numAddedReserves * 1;
+
+                //add and list pair for reserve
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
+
+                for (const [key, value] of Object.entries(reserveInstances)) {
+                    reserve = value.instance;
+                    //add reserves to white list
+                    await dgxToken.updateUserFeesConfigs(reserve.address, true, true, {from: admin});
+                }
+            });
+
+            after("clean up", async() => {
+                await network.removeKyberProxy(networkProxy, {from: admin});
+                await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
+                reserveInstances = {};
+            });
+
+            it("should success when e2t with dgx, network not pays fee", async() => {
+                let ethSrcQty = new BN(10).pow(new BN(18));
+                let hintType = EMPTY_HINTTYPE;
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, dgxToken.address, ethSrcQty);
+
+                info = [ethSrcQty, networkFeeBps, platformFeeBps];
+
+                expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                    ethAddress, dgxToken.address, ethSrcQty,
+                    ethDecimals, dgxDecimal,
+                    networkFeeBps, platformFeeBps, hint);
+
+                let initialReserveBalances = await nwHelper.getReserveBalances(ethAddress, dgxToken, expectedResult);
+                let initialTakerBalances = await nwHelper.getTakerBalances(ethAddress, dgxToken, taker, networkProxy);
+                let initialNetworkDgxBalance = await dgxToken.balanceOf(network.address);
+                [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(ethAddress, dgxToken, expectedResult, info, maxDestAmt);
+
+                await network.tradeWithHintAndFee(networkProxy, ethAddress, ethSrcQty, dgxToken.address, taker,
+                    maxDestAmt, minConversionRate, zeroAddress, platformFeeBps, hint, {value: ethSrcQty, from: networkProxy, gasPrice: new BN(0)});
+
+                await nwHelper.compareBalancesAfterTrade(ethAddress, dgxToken, actualSrcQty,
+                    initialReserveBalances, initialTakerBalances, expectedResult, taker, networkProxy);
+                
+                //because network is in whitelist so fee is not change
+                await Helper.assertSameTokenBalance(network.address, dgxToken, initialNetworkDgxBalance);
+            });
+
+            it("should success when t2e with dgx, network pays fee", async() => {
+                let srcQty = new BN(10).pow(new BN(9));
+                let hintType = EMPTY_HINTTYPE;
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, dgxToken.address, ethAddress, srcQty);
+
+                info = [srcQty, networkFeeBps, platformFeeBps];
+
+                expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                    dgxToken.address, ethAddress, srcQty,
+                    dgxDecimal, ethDecimals,
+                    networkFeeBps, platformFeeBps, hint);
+                await dgxToken.mintDgxFor(networkProxy, srcQty, {from: admin});
+
+                let initialReserveBalances = await nwHelper.getReserveBalances(dgxToken, ethAddress, expectedResult);
+                let initialTakerBalances = await nwHelper.getTakerBalances(dgxToken, ethAddress, taker, networkProxy);
+                let initialNetworkDgxBalance = await dgxToken.balanceOf(network.address);
+                [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(dgxToken, ethAddress, expectedResult, info, maxDestAmt);
+                //inside the tradeflow
+                await dgxToken.transfer(network.address, srcQty, {from: networkProxy});
+                await network.tradeWithHintAndFee(networkProxy, dgxToken.address, srcQty, ethAddress, taker,
+                    maxDestAmt, minConversionRate, zeroAddress, platformFeeBps, hint, {from: networkProxy});
+
+                await nwHelper.compareBalancesAfterTrade(dgxToken, ethAddress, srcQty,
+                    initialReserveBalances, initialTakerBalances, expectedResult, taker, networkProxy);
+                //because trader(kyberProxy) is not in whitelist so fee is 0.13%
+                let dgxFee = actualSrcQty.mul(dgxTransferfee).div(new BN(10000));
+                let expectedNewBalance = initialNetworkDgxBalance.sub(dgxFee)
+                await Helper.assertSameTokenBalance(network.address, dgxToken, expectedNewBalance);
+            });
+
+            it("should success when t2e with dgx, network pays fee with maxDestAmount", async() => {
+                let srcQty = new BN(10).pow(new BN(9));
+                let hintType = EMPTY_HINTTYPE;
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, dgxToken.address, ethAddress, srcQty);
+
+                info = [srcQty, networkFeeBps, platformFeeBps];
+
+                expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
+                    dgxToken.address, ethAddress, srcQty,
+                    dgxDecimal, ethDecimals,
+                    networkFeeBps, platformFeeBps, hint);
+                await dgxToken.mintDgxFor(networkProxy, srcQty, {from: admin});
+
+                let initialReserveBalances = await nwHelper.getReserveBalances(dgxToken, ethAddress, expectedResult);
+                let initialTakerBalances = await nwHelper.getTakerBalances(dgxToken, ethAddress, taker, networkProxy);
+                let initialNetworkDgxBalance = await dgxToken.balanceOf(network.address);
+                let maxDestAmt = expectedResult.actualDestAmount.div(new BN(2));
+                [expectedResult, actualSrcQty] = await nwHelper.calcParamsFromMaxDestAmt(dgxToken, ethAddress, expectedResult, info, maxDestAmt);
+                //inside the tradeflow
+                await dgxToken.transfer(network.address, srcQty, {from: networkProxy});
+                await network.tradeWithHintAndFee(networkProxy, dgxToken.address, srcQty, ethAddress, taker,
+                    maxDestAmt, minConversionRate, zeroAddress, platformFeeBps, hint, {from: networkProxy});
+
+                await nwHelper.compareBalancesAfterTrade(dgxToken, ethAddress, actualSrcQty,
+                    initialReserveBalances, initialTakerBalances, expectedResult, taker, networkProxy);
+                //because trader(kyberProxy) is not in whitelist so fee is 0.13% of srcQty
+                let dgxFee = srcQty.mul(dgxTransferfee).div(new BN(10000));
+                let expectedNewBalance = initialNetworkDgxBalance.sub(dgxFee)
+                await Helper.assertSameTokenBalance(network.address, dgxToken, expectedNewBalance);
+            });
+
         });
     });
 
