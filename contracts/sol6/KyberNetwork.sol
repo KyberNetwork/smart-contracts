@@ -838,8 +838,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             src,
             dest,
             srcAmount,
-            tradeData.networkFeeBps,
-            (tradeData.tradeWei * tradeData.networkFeeBps) / BPS
+            tradeData
         );
 
         // if matching engine requires processing with rate data. call do match and update reserve list
@@ -865,10 +864,20 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         IERC20 src,
         IERC20 dest,
         uint256 srcAmount,
-        uint256 networkFeeBps,
-        uint256 networkFeeValue
+        TradeData memory tradeData
     ) internal view returns (uint256[] memory feesAccountedDestBps) {
         uint256 numReserves = reservesData.ids.length;
+        uint256 srcAmountAfterFee;
+        uint256 destAmountFeeBps;
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            srcAmountAfterFee = srcAmount - 
+                (tradeData.tradeWei * tradeData.networkFeeBps / BPS);
+            // destAmountFeeBps = 0;
+        } else { 
+            srcAmountAfterFee = srcAmount;
+            destAmountFeeBps = tradeData.networkFeeBps;
+        }
 
         reservesData.srcAmounts = new uint256[](numReserves);
         reservesData.rates = new uint256[](numReserves);
@@ -881,16 +890,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 "invalid split bps"
             );
 
+//+ srcAmounts[i] <= srcAmount
             if (reservesData.isFeeAccountedFlags[i]) {
-                if (src == ETH_TOKEN_ADDRESS) {
-                    // reduce fee from srcAmount if fee paying.
-                    reservesData.srcAmounts[i] =
-                        ((srcAmount - networkFeeValue) * reservesData.splitsBps[i]) /
-                        BPS;
-                } else {
-                    reservesData.srcAmounts[i] = (srcAmount * reservesData.splitsBps[i]) / BPS;
-                    feesAccountedDestBps[i] = networkFeeBps;
-                }
+                reservesData.srcAmounts[i] = srcAmountAfterFee * reservesData.splitsBps[i] / BPS;
+                feesAccountedDestBps[i] = destAmountFeeBps;
             } else {
                 reservesData.srcAmounts[i] = (srcAmount * reservesData.splitsBps[i]) / BPS;
             }
@@ -1055,13 +1058,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 totalBps;
         uint256 srcDecimals = (src == ETH_TOKEN_ADDRESS) ? ETH_DECIMALS : reservesData.decimals;
         uint256 destDecimals = (src == ETH_TOKEN_ADDRESS) ? reservesData.decimals : ETH_DECIMALS;
-        
+
         for (uint256 i = 0; i < reservesData.addresses.length; i++) {
             if (i > 0 && (uint256(reservesData.ids[i]) <= uint256(reservesData.ids[i - 1]))) {
                 return 0; // ids are not in increasing order
             }
             totalBps += reservesData.splitsBps[i];
 
+//+ destAmount <= MAX_QTY * MAX_RATE? 
             destAmount += calcDstQty(
                 reservesData.srcAmounts[i],
                 srcDecimals,
@@ -1069,10 +1073,12 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 reservesData.rates[i]
             );
 
+//+ feeAccountedBps < BPS
             if (reservesData.isFeeAccountedFlags[i]) {
                 tradeData.feeAccountedBps += reservesData.splitsBps[i];
 
                 if (reservesData.isEntitledRebateFlags[i]) {
+//+ entitledRebateBps < BPS
                     tradeData.entitledRebateBps += reservesData.splitsBps[i];
                     tradeData.numEntitledRebateReserves++;
                 }
