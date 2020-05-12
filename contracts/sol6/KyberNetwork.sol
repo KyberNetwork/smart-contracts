@@ -1175,8 +1175,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             );
             if (newSrcAmounts[i] > currentSrcAmount) {
                 // revert back to use current src amounts
-                newSrcAmount = srcAmount;
-                return newSrcAmount;
+                return srcAmount;
             }
 
             newSrcAmount += newSrcAmounts[i];
