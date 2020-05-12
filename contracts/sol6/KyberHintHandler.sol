@@ -144,15 +144,21 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     /// @return hint The ABI encoded hint
     function buildTokenToEthHint(
         TradeType tokenToEthType,
-        bytes32[] calldata tokenToEthReserveIds,
-        uint256[] calldata tokenToEthSplits
-    ) external pure override returns (bytes memory hint) {
-        bytes32[] memory seqT2EReserveIds = ensureReserveIdSeq(tokenToEthReserveIds);
+        bytes32[] memory tokenToEthReserveIds,
+        uint256[] memory tokenToEthSplits
+    ) public pure override returns (bytes memory hint) {
+        bytes32[] memory seqT2EReserveIds;
+        uint256[] memory seqT2ESplits;
 
-        HintErrors valid = verifyData(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
+        (seqT2EReserveIds, seqT2ESplits) = ensureReserveIdSeq(
+            tokenToEthReserveIds,
+            tokenToEthSplits
+        );
+
+        HintErrors valid = verifyData(tokenToEthType, seqT2EReserveIds, seqT2ESplits);
         if (valid != HintErrors.NoError) throwHintError(valid);
 
-        hint = abi.encode(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
+        hint = abi.encode(tokenToEthType, seqT2EReserveIds, seqT2ESplits);
     }
 
     /// @notice Builds the hint for a ether to token trade
@@ -162,15 +168,21 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     /// @return hint The ABI encoded hint
     function buildEthToTokenHint(
         TradeType ethToTokenType,
-        bytes32[] calldata ethToTokenReserveIds,
-        uint256[] calldata ethToTokenSplits
-    ) external pure override returns (bytes memory hint) {
-        bytes32[] memory seqE2TReserveIds = ensureReserveIdSeq(ethToTokenReserveIds);
+        bytes32[] memory ethToTokenReserveIds,
+        uint256[] memory ethToTokenSplits
+    ) public pure override returns (bytes memory hint) {
+        bytes32[] memory seqE2TReserveIds;
+        uint256[] memory seqE2TSplits;
 
-        HintErrors valid = verifyData(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
+        (seqE2TReserveIds, seqE2TSplits) = ensureReserveIdSeq(
+            ethToTokenReserveIds,
+            ethToTokenSplits
+        );
+
+        HintErrors valid = verifyData(ethToTokenType, seqE2TReserveIds, seqE2TSplits);
         if (valid != HintErrors.NoError) throwHintError(valid);
 
-        hint = abi.encode(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
+        hint = abi.encode(ethToTokenType, seqE2TReserveIds, seqE2TSplits);
     }
 
     /// @notice Builds the hint for a token to token trade
@@ -183,23 +195,24 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     /// @return hint The ABI encoded hint
     function buildTokenToTokenHint(
         TradeType tokenToEthType,
-        bytes32[] calldata tokenToEthReserveIds,
-        uint256[] calldata tokenToEthSplits,
+        bytes32[] memory tokenToEthReserveIds,
+        uint256[] memory tokenToEthSplits,
         TradeType ethToTokenType,
-        bytes32[] calldata ethToTokenReserveIds,
-        uint256[] calldata ethToTokenSplits
-    ) external pure override returns (bytes memory hint) {
-        bytes32[] memory seqT2EReserveIds = ensureReserveIdSeq(tokenToEthReserveIds);
-        bytes32[] memory seqE2TReserveIds = ensureReserveIdSeq(ethToTokenReserveIds);
+        bytes32[] memory ethToTokenReserveIds,
+        uint256[] memory ethToTokenSplits
+    ) public pure override returns (bytes memory hint) {
+        bytes memory t2eHint = buildTokenToEthHint(
+            tokenToEthType,
+            tokenToEthReserveIds,
+            tokenToEthSplits
+        );
 
-        HintErrors validT2E = verifyData(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
-        if (validT2E != HintErrors.NoError) throwHintError(validT2E);
+        bytes memory e2tHint = buildEthToTokenHint(
+            ethToTokenType,
+            ethToTokenReserveIds,
+            ethToTokenSplits
+        );
 
-        HintErrors validE2T = verifyData(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
-        if (validE2T != HintErrors.NoError) throwHintError(validE2T);
-
-        bytes memory t2eHint = abi.encode(tokenToEthType, seqT2EReserveIds, tokenToEthSplits);
-        bytes memory e2tHint = abi.encode(ethToTokenType, seqE2TReserveIds, ethToTokenSplits);
         hint = abi.encode(t2eHint, e2tHint);
     }
 
@@ -242,25 +255,35 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
 
     /// @notice Ensures that the reserveIds passed when building hints are in increasing sequence
     /// @param reserveIds Reserve IDs
-    /// @return Returns a bytes32[] with reserveIds in increasing sequence
-    function ensureReserveIdSeq(bytes32[] memory reserveIds)
+    /// @param splits Reserve splits
+    /// @return Returns a bytes32[] with reserveIds in increasing sequence and respective arranged splits
+    function ensureReserveIdSeq(
+        bytes32[] memory reserveIds,
+        uint256[] memory splits
+    )
         internal
         pure
-        returns (bytes32[] memory)
+        returns (bytes32[] memory, uint256[] memory)
     {
         for (uint256 i = 0; i < reserveIds.length; i++) {
             for (uint256 j = i + 1; j < reserveIds.length; j++) {
                 if (uint256(reserveIds[i]) > (uint256(reserveIds[j]))) {
-                    bytes32 temp = reserveIds[i];
+                    bytes32 tempId = reserveIds[i];
                     reserveIds[i] = reserveIds[j];
-                    reserveIds[j] = temp;
+                    reserveIds[j] = tempId;
+
+                    if (splits.length > 0) {
+                        uint256 tempSplit = splits[i];
+                        splits[i] = splits[j];
+                        splits[j] = tempSplit;
+                    }
                 } else if (reserveIds[i] == reserveIds[j]) {
                     throwHintError(HintErrors.ReserveIdDupError);
                 }
             }
         }
 
-        return reserveIds;
+        return (reserveIds, splits);
     }
 
     /// @notice Ensures that the data passed when building/parsing hints is valid
