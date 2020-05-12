@@ -822,12 +822,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             return (0, 0);
         }
 
-        // platform fee
+        // fees
         tradeData.platformFeeWei = (tradeData.tradeWei * tradeData.input.platformFeeBps) / BPS;
         tradeData.networkFeeWei =
             (((tradeData.tradeWei * tradeData.networkFeeBps) / BPS) * tradeData.feeAccountedBps) /
             BPS;
-        // set networkFeeWei in stack. since we set it again after full flow done.
         require(
             tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei),
             "fees exceed trade"
