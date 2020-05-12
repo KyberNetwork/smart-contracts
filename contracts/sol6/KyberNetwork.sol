@@ -758,11 +758,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             hint
         );
 
+        require(tradeData.tradeWei <= MAX_QTY, "tradeWei > MAX_QTY");
         if (tradeData.tradeWei == 0) {
             return (0, 0);
         }
 
         // platform fee
+        //*
         tradeData.platformFeeWei = (tradeData.tradeWei * tradeData.input.platformFeeBps) / BPS;
         tradeData.networkFeeWei =
             (((tradeData.tradeWei * tradeData.networkFeeBps) / BPS) * tradeData.feeAccountedBps) /
@@ -787,6 +789,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             hint
         );
 
+//*
         tradeData.networkFeeWei =
             (((tradeData.tradeWei * tradeData.networkFeeBps) / BPS) * tradeData.feeAccountedBps) /
             BPS;
@@ -871,8 +874,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 destAmountFeeBps;
 
         if (src == ETH_TOKEN_ADDRESS) {
+            //+ srcAmountAfterFee < MAX_QTY
             srcAmountAfterFee = srcAmount - 
                 (tradeData.tradeWei * tradeData.networkFeeBps / BPS);
+                require(srcAmountAfterFee < srcAmount, "high fees");
             // destAmountFeeBps = 0;
         } else { 
             srcAmountAfterFee = srcAmount;
@@ -891,6 +896,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             );
 
 //+ srcAmounts[i] <= srcAmount
+//*
             if (reservesData.isFeeAccountedFlags[i]) {
                 reservesData.srcAmounts[i] = srcAmountAfterFee * reservesData.splitsBps[i] / BPS;
                 feesAccountedDestBps[i] = destAmountFeeBps;
@@ -905,6 +911,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 reservesData.srcAmounts[i],
                 block.number
             );
+//*         reservesData.rates[i] <= MAX_RATE?  later validation when calc destAmount
         }
     }
 
@@ -1063,9 +1070,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             if (i > 0 && (uint256(reservesData.ids[i]) <= uint256(reservesData.ids[i - 1]))) {
                 return 0; // ids are not in increasing order
             }
+            //+ totalBps <= BPS
             totalBps += reservesData.splitsBps[i];
 
-//+ destAmount <= MAX_QTY * MAX_RATE? 
+//+ destAmount <= MAX_QTY * MAX_RATE 
             destAmount += calcDstQty(
                 reservesData.srcAmounts[i],
                 srcDecimals,
@@ -1111,6 +1119,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             weiAfterDeductingFees = tradeData.input.maxDestAmount;
         }
 
+//* weiAfterDeductingFees < MAX_QTY
         // reverse calculation, because we are working backwards
         uint256 newTradeWei =
             (weiAfterDeductingFees * BPS * BPS) /
@@ -1153,6 +1162,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         ReservesData memory reservesData
     ) internal pure returns (uint256 newSrcAmount) {
         uint256 totalWeightedDestAmount;
+        //* SUM(srcAmounts[0..i-1]) < MAX_QTY
         for (uint256 i = 0; i < reservesData.srcAmounts.length; i++) {
             totalWeightedDestAmount += reservesData.srcAmounts[i] * reservesData.rates[i];
         }
@@ -1168,8 +1178,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 ? (destAmount - destAmountSoFar)
                 : (destAmount * currentSrcAmount * reservesData.rates[i]) /
                     totalWeightedDestAmount;
+            //+ destAmountSplit <= destAmount <= MAX_QTY * MAX_RATE
             destAmountSoFar += destAmountSplit;
+            //+ destAmountSoFar <= totalDestAmount <= MAX_QTY * MAX_RATE
 
+            //+ destAmountSplit <= MAX_QTY
             newSrcAmounts[i] = calcSrcQty(
                 destAmountSplit,
                 srcDecimals,
@@ -1182,6 +1195,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 return newSrcAmount;
             }
 
+            //* newSrcAmount <= srcAmount
             newSrcAmount += newSrcAmounts[i];
         }
         // new src amounts are used only when any of them isn't greater then current srcAmount.
