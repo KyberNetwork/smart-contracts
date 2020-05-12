@@ -551,8 +551,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         IERC20 src,
         IERC20 dest,
         address payable destAddress,
-        TradeData memory tradeData,
-        uint256 expectedDestAmount
+        ReservesData memory reservesData,
+        uint256 expectedDestAmount,
+        uint256 srcDecimals,
+        uint256 destDecimals
     ) internal virtual returns (bool) {
 
         if (src == dest) {
@@ -564,25 +566,15 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             return true;
         }
 
-        ReservesData memory reservesData = (src == ETH_TOKEN_ADDRESS)
-            ? tradeData.ethToToken
-            : tradeData.tokenToEth;
-        uint256 callValue;
-
         for (uint256 i = 0; i < reservesData.addresses.length; i++) {
-            callValue = (src == ETH_TOKEN_ADDRESS) ? reservesData.srcAmounts[i] : 0;
-
-            // reserve sends tokens/eth to network. network sends it to destination
-            require(
-                reservesData.addresses[i].trade{value: callValue}(
-                    src,
-                    reservesData.srcAmounts[i],
-                    dest,
-                    address(this),
-                    reservesData.rates[i],
-                    true
-                ),
-                "trade failed"
+            tradeAndVerifyNetworkBalance(
+                reservesData.addresses[i],
+                src,
+                reservesData.srcAmounts[i],
+                dest,
+                reservesData.rates[i],
+                srcDecimals,
+                destDecimals
             );
         }
 
@@ -594,6 +586,76 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         return true;
     }
 
+    /// @dev call trade from reserve and verify balances
+    ///      return actual dest amount received from reserve
+    /// @param reserve reserve address to trade with
+    /// @param src src token of the trade
+    /// @param srcAmount amount of src token to trade
+    /// @param dest dest token of the trade
+    /// @param conversionRate conversion rate of the trade
+    /// @param srcDecimals src token decimals
+    /// @param destDecimals dest token decimals
+    function tradeAndVerifyNetworkBalance(
+        IKyberReserve reserve,
+        IERC20 src,
+        uint256 srcAmount,
+        IERC20 dest,
+        uint256 conversionRate,
+        uint256 srcDecimals,
+        uint256 destDecimals
+    ) internal
+    {
+        uint256 destBalanceBefore = getBalance(dest, address(this));
+
+        uint256 srcBalanceBefore;
+        uint256 callValue;
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            srcBalanceBefore = 0; // no need to verify src balance
+            callValue = srcAmount;
+        } else {
+            srcBalanceBefore = getBalance(src, address(this));
+            callValue = 0;
+        }
+
+        // reserve sends tokens/eth to network. network sends it to destination
+        uint256 expectedDestAmount = calcDstQty(
+            srcAmount,
+            srcDecimals,
+            destDecimals,
+            conversionRate
+        );
+
+        require(
+            reserve.trade{value: callValue}(
+                src,
+                srcAmount,
+                dest,
+                address(this),
+                conversionRate,
+                true
+            ),
+            "trade failed"
+        );
+
+        uint256 balanceAfter;
+        if (src != ETH_TOKEN_ADDRESS) {
+            // verify src balance only if it is not ETH
+            balanceAfter = getBalance(src, address(this));
+            // verify correct src amount is taken
+            if (srcBalanceBefore >= balanceAfter && srcBalanceBefore - balanceAfter > srcAmount) {
+                revert("src amount high");
+            }
+        }
+        // verify correct dest amount is received
+        balanceAfter = getBalance(dest, address(this));
+        if (balanceAfter < destBalanceBefore || balanceAfter - destBalanceBefore < expectedDestAmount) {
+            revert("dst amount low");
+        }
+    }
+
+    /* solhint-disable function-max-lines */
+    //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
     /// @dev Trade API for kyber network
     /// @param tradeData Main trade data object for trade info to be stored
@@ -630,8 +692,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 tradeData.input.src,
                 ETH_TOKEN_ADDRESS,
                 address(this),
-                tradeData,
-                tradeData.tradeWei
+                tradeData.tokenToEth,
+                tradeData.tradeWei,
+                tradeData.tokenToEth.decimals,
+                ETH_DECIMALS
             )
         ); // tradeData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
 
@@ -641,8 +705,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 ETH_TOKEN_ADDRESS,
                 tradeData.input.dest,
                 tradeData.input.destAddress,
-                tradeData,
-                destAmount
+                tradeData.ethToToken,
+                destAmount,
+                ETH_DECIMALS,
+                tradeData.ethToToken.decimals
             )
         );
 
@@ -1172,8 +1238,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             );
             if (newSrcAmounts[i] > currentSrcAmount) {
                 // revert back to use current src amounts
-                newSrcAmount = srcAmount;
-                return newSrcAmount;
+                return srcAmount;
             }
 
             newSrcAmount += newSrcAmounts[i];

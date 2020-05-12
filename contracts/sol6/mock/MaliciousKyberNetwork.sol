@@ -72,8 +72,10 @@ contract MaliciousKyberNetwork is KyberNetwork {
                 actualSrcAmount,
                 ETH_TOKEN_ADDRESS,
                 address(this),
-                tData,
-                tData.tradeWei
+                tData.tokenToEth,
+                tData.tradeWei,
+                tData.tokenToEth.decimals,
+                ETH_DECIMALS
             )
         ); //tData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
 
@@ -83,8 +85,10 @@ contract MaliciousKyberNetwork is KyberNetwork {
                 tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei,
                 tData.input.dest,
                 tData.input.destAddress,
-                tData,
-                destAmount
+                tData.ethToToken,
+                destAmount,
+                ETH_DECIMALS,
+                tData.ethToToken.decimals
             )
         );
         require(handleFees(tData));
@@ -109,8 +113,10 @@ contract MaliciousKyberNetwork is KyberNetwork {
         uint256 amount,
         IERC20 dest,
         address payable destAddress,
-        TradeData memory tData,
-        uint256 expectedDestAmount
+        ReservesData memory reservesData,
+        uint256 expectedDestAmount,
+        uint256 srcDecimals,
+        uint256 destDecimals
     ) internal virtual returns (bool) {
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
@@ -118,9 +124,9 @@ contract MaliciousKyberNetwork is KyberNetwork {
             return true;
         }
 
-        ReservesData memory reservesData = src == ETH_TOKEN_ADDRESS
-            ? tData.ethToToken
-            : tData.tokenToEth;
+        srcDecimals;
+        destDecimals;
+
         uint256 callValue;
         uint256 srcAmountSoFar;
 
