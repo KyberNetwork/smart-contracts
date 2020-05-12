@@ -1174,6 +1174,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         for (uint256 i = 0; i < reservesData.srcAmounts.length; i++) {
             currentSrcAmount = reservesData.srcAmounts[i];
+            require(destAmount * currentSrcAmount * reservesData.rates[i] / destAmount == 
+                    currentSrcAmount * reservesData.rates[i], 
+                "multiplication overflow");
             destAmountSplit = i == (reservesData.srcAmounts.length - 1)
                 ? (destAmount - destAmountSoFar)
                 : (destAmount * currentSrcAmount * reservesData.rates[i]) /
