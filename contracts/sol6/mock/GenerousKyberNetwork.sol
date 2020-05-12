@@ -90,8 +90,10 @@ contract GenerousKyberNetwork is KyberNetwork {
                 tData.input.src,
                 ETH_TOKEN_ADDRESS,
                 address(this),
-                tData,
-                tData.tradeWei
+                tData.tokenToEth,
+                tData.tradeWei,
+                tData.tokenToEth.decimals,
+                ETH_DECIMALS
             )
         ); //tData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
 
@@ -100,8 +102,10 @@ contract GenerousKyberNetwork is KyberNetwork {
                 ETH_TOKEN_ADDRESS,
                 tData.input.dest,
                 tData.input.destAddress,
-                tData,
-                destAmount
+                tData.ethToToken,
+                destAmount,
+                ETH_DECIMALS,
+                tData.ethToToken.decimals
             )
         );
 
