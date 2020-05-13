@@ -758,6 +758,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             hint
         );
 
+        require(tradeData.tradeWei <= MAX_QTY, "Trade wei high");
         if (tradeData.tradeWei == 0) {
             return (0, 0);
         }
@@ -838,8 +839,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             src,
             dest,
             srcAmount,
-            tradeData.networkFeeBps,
-            (tradeData.tradeWei * tradeData.networkFeeBps) / BPS
+            tradeData
         );
 
         // if matching engine requires processing with rate data. call do match and update reserve list
@@ -865,10 +865,19 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         IERC20 src,
         IERC20 dest,
         uint256 srcAmount,
-        uint256 networkFeeBps,
-        uint256 networkFeeValue
+        TradeData memory tradeData
     ) internal view returns (uint256[] memory feesAccountedDestBps) {
         uint256 numReserves = reservesData.ids.length;
+        uint256 srcAmountAfterFee;
+        uint256 destAmountFeeBps;
+
+        if (src == ETH_TOKEN_ADDRESS) {
+            srcAmountAfterFee = srcAmount - 
+                (tradeData.tradeWei * tradeData.networkFeeBps / BPS);
+        } else { 
+            srcAmountAfterFee = srcAmount;
+            destAmountFeeBps = tradeData.networkFeeBps;
+        }
 
         reservesData.srcAmounts = new uint256[](numReserves);
         reservesData.rates = new uint256[](numReserves);
@@ -882,15 +891,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             );
 
             if (reservesData.isFeeAccountedFlags[i]) {
-                if (src == ETH_TOKEN_ADDRESS) {
-                    // reduce fee from srcAmount if fee paying.
-                    reservesData.srcAmounts[i] =
-                        ((srcAmount - networkFeeValue) * reservesData.splitsBps[i]) /
-                        BPS;
-                } else {
-                    reservesData.srcAmounts[i] = (srcAmount * reservesData.splitsBps[i]) / BPS;
-                    feesAccountedDestBps[i] = networkFeeBps;
-                }
+                reservesData.srcAmounts[i] = srcAmountAfterFee * reservesData.splitsBps[i] / BPS;
+                feesAccountedDestBps[i] = destAmountFeeBps;
             } else {
                 reservesData.srcAmounts[i] = (srcAmount * reservesData.splitsBps[i]) / BPS;
             }
