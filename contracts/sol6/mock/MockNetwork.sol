@@ -62,14 +62,18 @@ contract MockNetwork is KyberNetwork {
         IERC20 src,
         IERC20 dest,
         address payable destAddress,
-        TradeData memory tradeData,
-        uint256 expectedDestAmount
+        ReservesData memory reservesData,
+        uint256 expectedDestAmount,
+        uint256 srcDecimals,
+        uint256 destDecimals
     ) internal override returns (bool) {
         src;
         dest;
         destAddress;
-        tradeData;
+        reservesData;
         expectedDestAmount;
+        srcDecimals;
+        destDecimals;
 
         revert("must use real network");
         // return true;
