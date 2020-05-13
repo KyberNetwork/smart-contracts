@@ -87,10 +87,10 @@ contract KyberNetworkProxy is
         ERC20 src,
         uint256 srcAmount,
         ERC20 dest,
-        address destAddress,
+        address payable destAddress,
         uint256 maxDestAmount,
         uint256 minConversionRate,
-        address walletId,
+        address payable walletId,
         bytes calldata hint
     ) external payable override returns (uint256) {
         return
@@ -98,10 +98,10 @@ contract KyberNetworkProxy is
                 src,
                 srcAmount,
                 dest,
-                address(uint160(destAddress)),
+                destAddress,
                 maxDestAmount,
                 minConversionRate,
-                address(uint160(walletId)),
+                walletId,
                 0,
                 hint
             );
