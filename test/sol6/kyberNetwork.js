@@ -10,6 +10,7 @@ const KyberStorage = artifacts.require("KyberStorage.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const OtherMatchingEngine = artifacts.require("OtherMatchingEngine.sol");
 const NotPayableContract = artifacts.require("MockNotPayableContract.sol");
+const MaliciousReserve2 = artifacts.require("MaliciousReserve2.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -1981,6 +1982,161 @@ contract('KyberNetwork', function(accounts) {
             let payoutBalance1 = await feeHandler.totalPayoutBalance();
             Helper.assertEqual(payoutBalance0.add(expectedAddedAmount), payoutBalance1);
         });
+    });
+
+    describe("test trades with malicious reserves", async() => {
+        let numberReserves;
+        before("init contracts", async () => {
+            // init network
+            storage = await KyberStorage.new(admin);
+            network = await KyberNetwork.new(admin, storage.address);
+            await storage.setNetworkContract(network.address, { from: admin });
+            await storage.addOperator(operator, { from: admin });
+
+            // init feeHandler
+            KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            proxyForFeeHandler = network;
+            feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, DAO.address);
+
+            // init matchingEngine
+            matchingEngine = await MatchingEngine.new(admin);
+            await matchingEngine.setNetworkContract(network.address, { from: admin });
+            await matchingEngine.setKyberStorage(storage.address, { from: admin });
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin });
+
+            // init gas helper
+            gasHelperAdd = await MockGasHelper.new(platformWallet);
+
+            // setup network
+            await network.addOperator(operator, { from: admin });
+            await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, { from: admin });
+            await network.addKyberProxy(networkProxy, { from: admin });
+            await network.setDAOContract(DAO.address, { from: admin });
+
+            //set params, enable network
+            await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
+            await network.setEnable(true, { from: admin });
+
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setContracts(matchingEngine.address, DAO.address, storage.address, { from: admin });
+
+            // setup + add reserves
+            reserveInstances = {};
+            numberReserves = 5;
+            // setup malicious reserves
+            for (i = 0; i < numberReserves; i++) {
+                let reserve = await MaliciousReserve2.new();
+                let reserveId = (nwHelper.genReserveID(MOCK_ID, reserve.address)).toLowerCase();
+                reserveInstances[reserveId] = {
+                    'address': reserve.address,
+                    'instance': reserve,
+                    'reserveId': reserveId,
+                    'onChainType': ReserveType.FPR,
+                    'rate': new BN(0),
+                    'type': type_MOCK,
+                    'pricing': "none",
+                    'rebateWallet': accounts[i]
+                }
+                tokensPerEther = precisionUnits.mul(new BN((i + 1) * 10));
+                ethersPerToken = precisionUnits.div(new BN((i + 1) * 10));
+                //send ETH
+                await Helper.sendEtherWithPromise(accounts[i], reserve.address, (new BN(10)).pow(new BN(19)).mul(new BN(15)));
+                for (let j = 0; j < tokens.length; j++) {
+                    token = tokens[j];
+                    //set rates and send tokens
+                    await reserve.setRate(token.address, tokensPerEther, ethersPerToken);
+                    let initialTokenAmount = new BN(2000000).mul(new BN(10).pow(new BN(await token.decimals())));
+                    await token.transfer(reserve.address, initialTokenAmount);
+                }
+            }
+            await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
+
+            srcToken = tokens[0];
+            srcDecimals = tokenDecimals[0];
+            destToken = tokens[1];
+            destDecimals = tokenDecimals[1];
+            srcQty = new BN(10).mul(new BN(10).pow(new BN(srcDecimals)));
+            ethSrcQty = oneEth;
+        });
+
+        let extraSrcAmts = [1, -1, 0, 0];
+        let extraDestAmts = [0, 0, 1, -1];
+        let testNames = ["extra src amount", "less src amount", "extra dst amount", "less dst amount"];
+        // "": no revert
+        let revertMsgs = ["reserve takes high amount", "", "", "reserve returns low amount"];
+        let hint;
+        let hintType;
+        let status;
+
+        for (tradeType of tradeTypesArray) {
+            hintType = tradeType;
+            for(let i = 0; i < testNames.length; i++) {
+                status = revertMsgs[i] == "" ? "no revert" : ("revert: " + revertMsgs[i]);
+                // for split trades, test with ether 1 or all malicious reserves
+                let numMaliciousReserves = (hintType == SPLIT_HINTTYPE) ? [numberReserves, 1] : [numberReserves];
+
+                for(let k = 0; k < numMaliciousReserves.length; k++) {
+                    it(`should perform trades, (${status}}, ${tradeStr[hintType]})`, async() => {
+                        let counter = 0;
+                        for (const [key, value] of Object.entries(reserveInstances)) {
+                            let mockReserve = value.instance;
+                            // take extra src amount
+                            await mockReserve.setExtraSrcAndDestAmounts(extraSrcAmts[i], extraDestAmts[i]);
+                            counter++;
+                            if (counter == numMaliciousReserves[k]) { break; }
+                        }
+
+                        // T2E trade
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                        await srcToken.transfer(network.address, srcQty.add(new BN(extraSrcAmts[i])));
+                        if (revertMsgs[i] == "") {
+                            // no revert
+                            await network.tradeWithHint(networkProxy, srcToken.address, srcQty, ethAddress, taker,
+                                maxDestAmt, minConversionRate, platformWallet, hint);
+                        } else {
+                            await expectRevert(
+                                network.tradeWithHint(networkProxy, srcToken.address, srcQty, ethAddress, taker,
+                                    maxDestAmt, minConversionRate, platformWallet, hint),
+                                revertMsgs[i]
+                            )
+                        }
+
+                        // T2T trade
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, destToken.address, srcQty);
+
+                        await srcToken.transfer(network.address, srcQty.add(new BN(extraSrcAmts[i])));
+
+                        if (revertMsgs[i] == "") {
+                            // no revert
+                            await network.tradeWithHint(networkProxy, srcToken.address, srcQty, destToken.address, taker,
+                                maxDestAmt, minConversionRate, platformWallet, hint);
+                        } else {
+                            await expectRevert(
+                                network.tradeWithHint(networkProxy, srcToken.address, srcQty, destToken.address, taker,
+                                    maxDestAmt, minConversionRate, platformWallet, hint),
+                                revertMsgs[i]
+                            )
+                        }
+
+                        // E2T trades
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
+
+                        if (extraDestAmts[i] >= 0) {
+                            // no revert if dest amount is ok
+                            await network.tradeWithHint(networkProxy, ethAddress, ethSrcQty, destToken.address, taker,
+                                maxDestAmt, minConversionRate, platformWallet, hint, {value: ethSrcQty});
+                        } else {
+                            await expectRevert(
+                                network.tradeWithHint(networkProxy, ethAddress, ethSrcQty, destToken.address, taker,
+                                    maxDestAmt, minConversionRate, platformWallet, hint, {value: ethSrcQty}),
+                                revertMsgs[i]
+                            )
+                        }
+                    });
+                }
+            }
+        }
     });
 
     describe("test verifying trade inputs", async () => {

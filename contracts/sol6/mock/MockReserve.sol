@@ -29,7 +29,7 @@ contract MockReserve is IKyberReserve, Utils5 {
         address payable destAddress,
         uint256 conversionRate,
         bool validate
-    ) public payable override returns (bool) {
+    ) public payable override virtual returns (bool) {
         validate;
         if (srcToken == ETH_TOKEN_ADDRESS) {
             require(msg.value == srcAmount, "ETH sent != srcAmount");
