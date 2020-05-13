@@ -18,10 +18,10 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
         ERC20 src,
         uint256 srcAmount,
         ERC20 dest,
-        address destAddress,
+        address payable destAddress,
         uint256 maxDestAmount,
         uint256 minConversionRate,
-        address walletId,
+        address payable walletId,
         bytes calldata hint
     ) external payable override returns (uint256) {
         hint;
@@ -30,10 +30,10 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
                 src,
                 srcAmount,
                 dest,
-                address(uint160(address(destAddress))),
+                destAddress,
                 maxDestAmount,
                 minConversionRate,
-                address(uint160(address(walletId)))
+                walletId
             );
     }
 
