@@ -2064,7 +2064,7 @@ contract('KyberNetwork', function(accounts) {
         let extraDestAmts = [0, 0, 1, -1];
         let testNames = ["extra src amount", "less src amount", "extra dst amount", "less dst amount"];
         // "": no revert
-        let revertMsgs = ["src amount high", "", "", "dst amount low"];
+        let revertMsgs = ["reserve takes high amount", "", "", "reserve returns low amount"];
         let hint;
         let hintType;
         let status;

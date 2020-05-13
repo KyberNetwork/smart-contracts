@@ -644,13 +644,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             balanceAfter = getBalance(src, address(this));
             // verify correct src amount is taken
             if (srcBalanceBefore >= balanceAfter && srcBalanceBefore - balanceAfter > srcAmount) {
-                revert("src amount high");
+                revert("reserve takes high amount");
             }
         }
         // verify correct dest amount is received
         balanceAfter = getBalance(dest, address(this));
         if (balanceAfter < destBalanceBefore || balanceAfter - destBalanceBefore < expectedDestAmount) {
-            revert("dst amount low");
+            revert("reserve returns low amount");
         }
     }
 
@@ -814,7 +814,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         view
         returns (uint256 destAmount, uint256 rateWithNetworkFee)
     {
-        // token to ether: find best reserve match and calculate wei amount
+        // token to ether: find best reserves match and calculate wei amount
         tradeData.tradeWei = calcDestQtyAndMatchReserves(
             tradeData.input.src,
             ETH_TOKEN_ADDRESS,
@@ -828,18 +828,17 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             return (0, 0);
         }
 
-        // platform fee
+        // calculate fees
         tradeData.platformFeeWei = (tradeData.tradeWei * tradeData.input.platformFeeBps) / BPS;
         tradeData.networkFeeWei =
             (((tradeData.tradeWei * tradeData.networkFeeBps) / BPS) * tradeData.feeAccountedBps) /
             BPS;
-        // set networkFeeWei in stack. since we set it again after full flow done.
         require(
             tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei),
             "fees exceed trade"
         );
 
-        // ether to token: find best reserve match and calculate trade dest amount
+        // ether to token: find best reserves match and calculate trade dest amount
         uint256 actualSrcWei = tradeData.tradeWei -
             tradeData.networkFeeWei -
             tradeData.platformFeeWei;
