@@ -1,7 +1,7 @@
 pragma solidity 0.6.6;
 
 import "../IKyberReserve.sol";
-
+import "../IKyberFeeHandler.sol";
 
 // does not do anything, only return true
 contract MaliciousStorage {
@@ -17,34 +17,24 @@ contract MaliciousStorage {
         reserveAddressesLength = _addresses;
     }
 
-    function setContracts(address _feeHandler, address _matchingEngine)
+    function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
         external
         pure
-        returns (bool)
     {
         _feeHandler;
         _matchingEngine;
-        return true;
-    }
-
-    function setDAOContract(address _kyberDAO) external pure returns (bool) {
-        _kyberDAO;
-        return false;
     }
 
     function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
         external
         pure
-        returns (bool)
     {
         networkProxy;
         max_approved_proxies;
-        return true;
     }
 
-    function removeKyberProxy(address networkProxy) external pure returns (bool) {
+    function removeKyberProxy(address networkProxy) external pure {
         networkProxy;
-        return true;
     }
 
     function getReservesData(bytes32[] calldata reserveIds)
