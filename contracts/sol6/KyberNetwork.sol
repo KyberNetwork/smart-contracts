@@ -758,7 +758,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             hint
         );
 
-        require(tradeData.tradeWei <= MAX_QTY, "Trade wei high");
+        require(tradeData.tradeWei <= MAX_QTY, "Trade wei > MAX_QTY");
         if (tradeData.tradeWei == 0) {
             return (0, 0);
         }
@@ -872,6 +872,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 destAmountFeeBps;
 
         if (src == ETH_TOKEN_ADDRESS) {
+            // @notice srcAmount is after deducting fees from tradeWei
+            // @notice using tradeWei to calculate fee so Eth to token symmetric to token to eth
             srcAmountAfterFee = srcAmount - 
                 (tradeData.tradeWei * tradeData.networkFeeBps / BPS);
         } else { 
