@@ -638,8 +638,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
     }
 
-    /* solhint-disable function-max-lines */
-    //  Most of the lines here are functions calls spread over multiple lines. We find this function readable enough
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
     /// @dev Trade API for kyber network
     /// @param tradeData Main trade data object for trade info to be stored
@@ -671,15 +669,17 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
 
         // token to ether
-        doReserveTrades(
-            tradeData.input.src,
-            ETH_TOKEN_ADDRESS,
-            address(this),
-            tradeData.tokenToEth,
-            tradeData.tradeWei,
-            tradeData.tokenToEth.decimals,
-            ETH_DECIMALS
-        ); // tradeData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
+        require(
+            doReserveTrades(
+                tradeData.input.src,
+                ETH_TOKEN_ADDRESS,
+                address(this),
+                tradeData.tokenToEth,
+                tradeData.tradeWei,
+                tradeData.tokenToEth.decimals,
+                ETH_DECIMALS
+            )
+        ); 
 
         // ether to token
         doReserveTrades(
