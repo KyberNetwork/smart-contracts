@@ -855,7 +855,7 @@ contract('KyberNetwork', function(accounts) {
 
     });
 
-    describe("test with MockDAO", async() => {
+    describe("test trades with MockDAO", async() => {
         before("initialise DAO, network and reserves", async() => {
             // DAO related init.
             expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
@@ -899,6 +899,10 @@ contract('KyberNetwork', function(accounts) {
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
             await network.setEnable(true, {from: admin});
+        });
+
+        beforeEach("zero network balance", async() => {
+            await zeroNetworkBalance(network, tokens, admin);
         });
 
         it("should test enabling network", async() => {
@@ -2527,8 +2531,8 @@ contract('KyberNetwork', function(accounts) {
             matchingEngine = await MatchingEngine.new(admin);
             await matchingEngine.setNetworkContract(network.address, { from: admin });
             await matchingEngine.setKyberStorage(storage.address, { from: admin});
-            await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
-            await tempStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
+            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
             // init gas helper
             gasHelperAdd = await MockGasHelper.new(platformWallet);
@@ -2750,11 +2754,6 @@ contract('KyberNetwork', function(accounts) {
             await matchingEngine.setNetworkContract(tempNetwork.address, { from: admin });
             await matchingEngine.setKyberStorage(tempStorage.address, { from: admin });
 
-            // setup network
-            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
-            await tempNetwork.addOperator(operator, { from: admin });
-            await tempNetwork.addKyberProxy(networkProxy, { from: admin });
-
             // init DAO
             DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
             await tempNetwork.setDAOContract(DAO.address, { from: admin });
@@ -2766,6 +2765,10 @@ contract('KyberNetwork', function(accounts) {
             proxyForFeeHandler = tempNetwork;
             feeHandler = await FeeHandler.new(DAO.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, DAO.address);
 
+            // setup network
+            await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
+            await tempNetwork.addOperator(operator, { from: admin });
+            await tempNetwork.addKyberProxy(networkProxy, { from: admin });
 
             //set params, enable network
             await tempNetwork.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
@@ -2787,6 +2790,10 @@ contract('KyberNetwork', function(accounts) {
                 await mockReserve.setRate(tokens[1].address, MAX_RATE.div(new BN(2)), MAX_RATE.div(new BN(2)));
             }
 
+        });
+
+        beforeEach("zero network balance", async() => {
+            await zeroNetworkBalance(tempNetwork, tokens, admin);
         });
 
         it("trade zero source amount", async function(){
@@ -2820,6 +2827,53 @@ contract('KyberNetwork', function(accounts) {
                 tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, MAX_RATE, platformWallet, platformFeeBps, emptyHint),
                 "rate < min rate"
+            );
+        });
+    });
+
+    describe("test handle change edge case", async function(){
+        before("setup", async function(){
+            tempNetwork = await MockNetwork.new(admin, storage.address);
+        });
+
+        it("test srcAmount equal to require srcAmount", async function(){
+            // src = ethAddress
+            srcAmount = new BN(10);
+            requiredSrcAmount = srcAmount;
+            result = await tempNetwork.mockHandleChange.call(ethAddress, srcAmount, requiredSrcAmount, admin);
+            Helper.assertEqual(result, true, "handle change not true");
+        });
+
+        it("test handleChange while don't have fund", async function(){
+            src = ethAddress;
+            srcAmount = new BN(10);
+            requiredSrcAmount = srcAmount.sub(new BN(1));
+            await expectRevert(
+                tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, admin),
+                "Send change failed"
+            );
+        });
+
+        it("test handleChange send to not payable contract", async function(){
+            src = ethAddress;
+            srcAmount = new BN(10);
+            sendBackAmount = new BN(1);
+            requiredSrcAmount = srcAmount.sub(sendBackAmount);
+            blockContract = await NotPayableContract.new();
+            Helper.sendEtherWithPromise(accounts[0], tempNetwork.address, sendBackAmount);
+            await expectRevert(
+                tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, blockContract.address),
+                "Send change failed"
+            );
+            Helper.assertEqual(
+                await Helper.getBalancePromise(tempNetwork.address),
+                sendBackAmount
+            );
+            // send back to account 0
+            await tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, accounts[0]);
+            Helper.assertEqual(
+                await Helper.getBalancePromise(tempNetwork.address),
+                0
             );
         });
     });
@@ -2874,7 +2928,6 @@ contract('KyberNetwork', function(accounts) {
             }
         })
     })
-
 
     describe("test maximum trade quantity", async() => {
         let srcToken;
@@ -2954,6 +3007,7 @@ contract('KyberNetwork', function(accounts) {
                     await Helper.assertSameEtherBalance(reserve.address, MAX_QTY);
                 }
             }
+            await zeroNetworkBalance(network, tokens, admin);
         });
 
         it("test t2e success with max_qty, normal rate", async() => {
@@ -3081,4 +3135,20 @@ function getRandomInt(min, max) {
 
 function log(str) {
     console.log(str);
+}
+
+async function zeroNetworkBalance(network, tokens, admin) {
+    let balance = await Helper.getBalancePromise(network.address);
+
+    if (balance.gt(new BN(0))) {
+        await network.withdrawEther(balance, admin, {from: admin});
+    }
+
+    for (let i = 0 ; i < tokens.length; i++) {
+        balance = await tokens[i].balanceOf(network.address);
+
+        if (balance.gt(new BN(0))) {
+            await network.withdrawToken(tokens[i].address, balance, admin, {from: admin});
+        }
+    }
 }
