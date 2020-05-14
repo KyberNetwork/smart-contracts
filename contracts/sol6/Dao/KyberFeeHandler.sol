@@ -163,7 +163,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
         uint256[] calldata rebateBpsPerWallet,
         address platformWallet,
         uint256 platformFeeWei
-    ) external payable override onlyKyberNetwork returns (bool) {
+    ) external payable override onlyKyberNetwork {
         require(msg.value >= platformFeeWei, "msg.value low");
 
         // handle platform fee
@@ -185,7 +185,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
                 rebateBpsPerWallet,
                 0
             );
-            return true;
+            return;
         }
 
         uint256 rebateWei;
@@ -214,7 +214,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
             feeBRRWei
         );
 
-        return true;
     }
 
     /// @dev only Dao can claim staker rewards.
@@ -226,7 +225,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
         address staker,
         uint256 percentageInPrecision,
         uint256 epoch
-    ) external override onlyDAO returns (bool) {
+    ) external override onlyDAO {
         // Amount of reward to be sent to staker
         require(percentageInPrecision <= PRECISION, "percentage too high");
         uint256 amount = rewardsPerEpoch[epoch].mul(percentageInPrecision).div(PRECISION);
@@ -245,8 +244,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
         require(success, "staker rewards transfer failed");
 
         emit RewardPaid(staker, epoch, amount);
-
-        return true;
     }
 
     /// @dev claim reabate per reserve wallet. called by any address
@@ -378,7 +375,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
             0,
             ""
         );
-        require(validateEthToKncRateToBurn(kyberEthKncRate), "Kyber knc rate invalid");
+        validateEthToKncRateToBurn(kyberEthKncRate);
 
         // Buy some KNC and burn
         uint256 destQty = networkProxy.swapEtherToToken{value: srcQty}(
@@ -527,7 +524,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
         require(totalRebateBps <= BPS, "rebates more then 100%");
     }
 
-    function validateEthToKncRateToBurn(uint256 rateEthToKnc) internal view returns (bool) {
+    function validateEthToKncRateToBurn(uint256 rateEthToKnc) internal view {
         require(rateEthToKnc <= MAX_RATE, "ethToKnc rate out of bounds");
         require(rateEthToKnc > 0, "ethToKnc rate is 0");
         require(sanityRateContract.length > 0, "no sanity rate contract");
@@ -545,7 +542,5 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
             rateEthToKnc.mul(BPS) >= sanityEthToKncRate.mul(BPS.sub(SANITY_RATE_DIFF_BPS)),
             "Kyber eth to knc rate too low"
         );
-
-        return true;
     }
 }

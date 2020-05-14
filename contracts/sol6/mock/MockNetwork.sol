@@ -32,15 +32,6 @@ contract MockNetwork is KyberNetwork {
         }
     }
 
-    function mockHandleChange(
-        IERC20 src,
-        uint256 srcAmount,
-        uint256 requiredSrcAmount,
-        address payable trader
-    ) public returns (bool) {
-        return handleChange(src, srcAmount, requiredSrcAmount, trader);
-    }
-
     function setNetworkFeeData(uint256 _networkFeeBps, uint256 _expiryTimestamp) public {
         updateNetworkFee(_expiryTimestamp, _networkFeeBps);
     }
@@ -66,7 +57,7 @@ contract MockNetwork is KyberNetwork {
         uint256 expectedDestAmount,
         uint256 srcDecimals,
         uint256 destDecimals
-    ) internal override returns (bool) {
+    ) internal override {
         src;
         dest;
         destAddress;
