@@ -437,10 +437,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
 
         hasClaimedReward[staker][epoch] = true;
         // call fee handler to claim reward
-        require(
-            feeHandler.claimStakerReward(staker, perInPrecision, epoch),
-            "claimReward: feeHandle failed to claim"
-        );
+        feeHandler.claimStakerReward(staker, perInPrecision, epoch);
 
         emit RewardClaimed(staker, epoch, perInPrecision);
     }
