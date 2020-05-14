@@ -23,7 +23,7 @@ contract GenerousKyberNetwork2 is KyberNetwork {
     {
         tData.networkFeeBps = getAndUpdateNetworkFee();
 
-        require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
+        verifyTradeInputValid(tData.input, tData.networkFeeBps);
 
         // amounts excluding fees
         uint256 rateWithNetworkFee;
@@ -51,13 +51,11 @@ contract GenerousKyberNetwork2 is KyberNetwork {
             destAmount = tData.input.maxDestAmount;
             actualSrcAmount = calcTradeSrcAmountFromDest(tData);
 
-            require(
-                handleChange(
-                    tData.input.src,
-                    tData.input.srcAmount,
-                    actualSrcAmount,
-                    tData.input.trader
-                )
+            handleChange(
+                tData.input.src,
+                tData.input.srcAmount,
+                actualSrcAmount,
+                tData.input.trader
             );
         } else {
             actualSrcAmount = tData.input.srcAmount;
@@ -70,31 +68,27 @@ contract GenerousKyberNetwork2 is KyberNetwork {
             return 1717;
         }
 
-        require(
-            doReserveTrades( //src to ETH
-                tData.input.src,
-                ETH_TOKEN_ADDRESS,
-                address(this),
-                tData.tokenToEth,
-                tData.tradeWei,
-                tData.tokenToEth.decimals,
-                ETH_DECIMALS
-            )
+        doReserveTrades( //src to ETH
+            tData.input.src,
+            ETH_TOKEN_ADDRESS,
+            address(this),
+            tData.tokenToEth,
+            tData.tradeWei,
+            tData.tokenToEth.decimals,
+            ETH_DECIMALS
         ); //tData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
 
-        require(
-            doReserveTrades( //Eth to dest
-                ETH_TOKEN_ADDRESS,
-                tData.input.dest,
-                tData.input.destAddress,
-                tData.ethToToken,
-                destAmount,
-                ETH_DECIMALS,
-                tData.ethToToken.decimals
-            )
+        doReserveTrades( //Eth to dest
+            ETH_TOKEN_ADDRESS,
+            tData.input.dest,
+            tData.input.destAddress,
+            tData.ethToToken,
+            destAmount,
+            ETH_DECIMALS,
+            tData.ethToToken.decimals
         );
 
-        require(handleFees(tData));
+        handleFees(tData);
 
         emit KyberTrade({
             src: tData.input.src,

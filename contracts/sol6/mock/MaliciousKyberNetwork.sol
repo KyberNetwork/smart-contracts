@@ -26,7 +26,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
     {
         tData.networkFeeBps = getAndUpdateNetworkFee();
 
-        require(verifyTradeInputValid(tData.input, tData.networkFeeBps), "invalid");
+        verifyTradeInputValid(tData.input, tData.networkFeeBps);
 
         // amounts excluding fees
         uint256 rateWithNetworkFee;
@@ -54,44 +54,38 @@ contract MaliciousKyberNetwork is KyberNetwork {
             destAmount = tData.input.maxDestAmount;
             actualSrcAmount = calcTradeSrcAmountFromDest(tData);
 
-            require(
-                handleChange(
-                    tData.input.src,
-                    tData.input.srcAmount,
-                    actualSrcAmount,
-                    tData.input.trader
-                )
+            handleChange(
+                tData.input.src,
+                tData.input.srcAmount,
+                actualSrcAmount,
+                tData.input.trader
             );
         } else {
             actualSrcAmount = tData.input.srcAmount;
         }
 
-        require(
-            doReserveTrades( //src to ETH
-                tData.input.src,
-                actualSrcAmount,
-                ETH_TOKEN_ADDRESS,
-                address(this),
-                tData.tokenToEth,
-                tData.tradeWei,
-                tData.tokenToEth.decimals,
-                ETH_DECIMALS
-            )
+        doReserveTrades( //src to ETH
+            tData.input.src,
+            actualSrcAmount,
+            ETH_TOKEN_ADDRESS,
+            address(this),
+            tData.tokenToEth,
+            tData.tradeWei,
+            tData.tokenToEth.decimals,
+            ETH_DECIMALS
         ); //tData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
 
-        require(
-            doReserveTrades( //Eth to dest
-                ETH_TOKEN_ADDRESS,
-                tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei,
-                tData.input.dest,
-                tData.input.destAddress,
-                tData.ethToToken,
-                destAmount,
-                ETH_DECIMALS,
-                tData.ethToToken.decimals
-            )
+        doReserveTrades( //Eth to dest
+            ETH_TOKEN_ADDRESS,
+            tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei,
+            tData.input.dest,
+            tData.input.destAddress,
+            tData.ethToToken,
+            destAmount,
+            ETH_DECIMALS,
+            tData.ethToToken.decimals
         );
-        require(handleFees(tData));
+        handleFees(tData);
         emit KyberTrade({
             src: tData.input.src,
             dest: tData.input.dest,
@@ -117,11 +111,11 @@ contract MaliciousKyberNetwork is KyberNetwork {
         uint256 expectedDestAmount,
         uint256 srcDecimals,
         uint256 destDecimals
-    ) internal virtual returns (bool) {
+    ) internal virtual {
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
             if (destAddress != (address(this))) destAddress.transfer(amount - myFeeWei);
-            return true;
+            return;
         }
 
         srcDecimals;
@@ -153,7 +147,5 @@ contract MaliciousKyberNetwork is KyberNetwork {
         if (destAddress != address(this)) {
             dest.safeTransfer(destAddress, (expectedDestAmount - myFeeWei));
         }
-
-        return true;
     }
 }

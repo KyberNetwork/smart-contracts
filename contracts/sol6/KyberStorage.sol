@@ -84,7 +84,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
         external
         override
-        returns (bool)
     {
         onlyNetwork();
         require(_feeHandler != IKyberFeeHandler(0), "feeHandler 0");
@@ -104,10 +103,9 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         } else {
             matchingEngine.push(newMatchingEngine);
         }
-        return true;
     }
 
-    function setDAOContract(IKyberDAO _kyberDAO) external override returns (bool) {
+    function setDAOContract(IKyberDAO _kyberDAO) external override {
         onlyNetwork();
         
         if (kyberDAO.length > 0) {
@@ -116,7 +114,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         } else {
             kyberDAO.push(_kyberDAO);
         }
-        return true;
     }
 
     /// @notice Can be called only by operator
@@ -130,7 +127,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         bytes32 reserveId,
         ReserveType resType,
         address payable rebateWallet
-    ) external returns (bool) {
+    ) external {
         onlyOperator();
         require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
         require(reserveId != 0, "reserveId = 0");
@@ -157,7 +154,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
         emit AddReserveToStorage(reserve, reserveId, resType, rebateWallet, true);
         emit ReserveRebateWalletSet(reserveId, rebateWallet);
-        return true;
     }
 
     /// @notice Can be called only by operator
@@ -166,7 +162,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     /// @param startIndex Index to start searching from in reserve array
     function removeReserve(bytes32 reserveId, uint256 startIndex)
         external
-        returns (bool)
     {
         onlyOperator();
         require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
@@ -196,7 +191,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         reserveRebateWallet[reserveId] = address(0);
 
         emit RemoveReserveFromStorage(reserve, reserveId);
-        return true;
     }
 
     /// @notice Can be called only by operator
@@ -212,7 +206,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         bool ethToToken,
         bool tokenToEth,
         bool add
-    ) external returns (bool) {
+    ) external {
         onlyOperator();
 
         require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
@@ -225,33 +219,25 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
 
         if (tokenToEth) {
-            require(
-                kyberNetwork.listTokenForReserve(reserve, token, add),
-                "network failed to list token"
-            );
+            kyberNetwork.listTokenForReserve(reserve, token, add);
             listPairs(reserveId, token, true, add);
             emit ListReservePairs(reserveId, reserve, token, ETH_TOKEN_ADDRESS, add);
         }
-
-        return true;
     }
 
     /// @dev No. of KyberNetworkProxies are capped
     function addKyberProxy(address networkProxy, uint256 maxApprovedProxies)
         external
         override
-        returns (bool)
     {
         onlyNetwork();
         require(networkProxy != address(0), "proxy 0");
         require(kyberProxyArray.length < maxApprovedProxies, "max proxies limit reached");
 
         kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
-
-        return true;
     }
 
-    function removeKyberProxy(address networkProxy) external override returns (bool) {
+    function removeKyberProxy(address networkProxy) external override {
         onlyNetwork();
         uint256 proxyIndex = 2**255;
 
@@ -265,8 +251,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         require(proxyIndex != 2**255, "proxy not found");
         kyberProxyArray[proxyIndex] = kyberProxyArray[kyberProxyArray.length - 1];
         kyberProxyArray.pop();
-
-        return true;
     }
 
     function setFeeAccountedPerReserveType(

@@ -12,7 +12,7 @@ interface IKyberFeeHandler {
         uint256[] calldata rebatePercentages,
         address platformWallet,
         uint256 platformFeeWei
-    ) external payable returns (bool);
+    ) external payable;
 
     function claimReserveRebate(address rebateWallet) external returns (uint256);
 
@@ -20,5 +20,5 @@ interface IKyberFeeHandler {
         address staker,
         uint256 percentageInPrecision,
         uint256 epoch
-    ) external returns (bool);
+    ) external;
 }
