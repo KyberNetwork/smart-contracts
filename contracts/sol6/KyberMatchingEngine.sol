@@ -31,23 +31,20 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         /* empty body */
     }
 
-    function setKyberStorage(IKyberStorage _kyberStorage) external virtual override returns (bool) {
+    function setKyberStorage(IKyberStorage _kyberStorage) external virtual override {
         onlyAdmin();
         emit KyberStorageUpdated(_kyberStorage);
         kyberStorage = _kyberStorage;
-        return true;
     }
 
     function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps)
         external
         virtual
         override
-        returns (bool)
     {
         onlyNetwork();
         require(_negligibleRateDiffBps <= BPS, "rateDiffBps exceed BPS"); // at most 100%
         negligibleRateDiffBps = _negligibleRateDiffBps;
-        return true;
     }
 
     function setNetworkContract(IKyberNetwork _kyberNetwork) external {
