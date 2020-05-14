@@ -3,10 +3,10 @@ const DAOContract = artifacts.require("MockKyberDaoMoreGetters.sol");
 const StakingContract = artifacts.require("KyberStaking.sol");
 const MockFeeHandler = artifacts.require("MockFeeHandlerNoContructor.sol");
 const MockMaliciousDAO = artifacts.require("MockMaliciousDAO.sol");
-const MockFeeHandlerClaimRewardFailed = artifacts.require("MockFeeHandlerClaimRewardFailed.sol");
 const MockMaliciousFeeHandlerReentrancy = artifacts.require("MockMaliciousFeeHandlerReentrancy.sol");
 const MockStakerContractNoFallback = artifacts.require("MockStakerContractNoFallback");
 const MockStakerContractWithFallback = artifacts.require("MockStakerContractWithFallback");
+const MockFeeHandlerClaimRewardFailed = artifacts.require("MockFeeHandlerClaimRewardFailed.sol");
 const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
@@ -3586,7 +3586,7 @@ contract('KyberDAO', function(accounts) {
       await feeHandler.withdrawAllETH({from: accounts[0]});
     });
 
-    it("Test claim reward should revert fee handler return false for claimReward", async function() {
+    it("Test claim reward should revert if fee handler failed to claim reward", async function() {
       feeHandler = await MockFeeHandlerClaimRewardFailed.new();
       await deployContracts(15, currentBlock + 15, 5);
       await setupSimpleStakingData();
@@ -3606,9 +3606,8 @@ contract('KyberDAO', function(accounts) {
 
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      await expectRevert(
-        daoContract.claimReward(mike, 1),
-        "claimReward: feeHandle failed to claim"
+      await expectRevert.unspecified(
+        daoContract.claimReward(mike, 1)
       )
 
       await feeHandler.withdrawAllETH({from: accounts[0]});

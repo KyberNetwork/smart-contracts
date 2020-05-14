@@ -13,6 +13,6 @@ contract MockFeeHandlerClaimRewardFailed is MockFeeHandlerNoContructor {
         uint256 rewardToClaim = (percentInPrecision * reward) / PRECISION;
         require(rewardToClaim <= address(this).balance);
         staker.transfer(rewardToClaim);
-        return false;
+        revert();
     }
 }
