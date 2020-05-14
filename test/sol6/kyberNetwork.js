@@ -2656,7 +2656,7 @@ contract('KyberNetwork', function(accounts) {
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
                         { from: kyberProxy }
                     ),
-                "destAmount > MAX_QTY"
+                "Trade wei > MAX_QTY"
             );
         });
 
@@ -2684,7 +2684,7 @@ contract('KyberNetwork', function(accounts) {
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), hint, 
                         { from: kyberProxy }
                     ),
-                "destAmount > MAX_QTY"
+                "Trade wei > MAX_QTY"
             );
         });
 
