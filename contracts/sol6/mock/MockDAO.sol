@@ -1,11 +1,13 @@
 pragma solidity 0.6.6;
 
+import "../IERC20.sol";
 import "../IKyberDAO.sol";
 import "../utils/Utils5.sol";
 import "../IKyberFeeHandler.sol";
 
 
 contract MockDAO is IKyberDAO, Utils5 {
+    IERC20 public override kncToken;
     IKyberFeeHandler public feeHandler;
     uint256 public rewardInBPS;
     uint256 public rebateInBPS;

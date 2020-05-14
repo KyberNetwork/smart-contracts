@@ -2,7 +2,6 @@ pragma solidity 0.6.6;
 
 import "./EpochUtils.sol";
 import "./DaoOperator.sol";
-import "../IERC20.sol";
 import "./IKyberStaking.sol";
 import "../IKyberDAO.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
@@ -57,7 +56,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     // minimum duration in seconds for a campaign
     uint256 public minCampaignDurationInSeconds = 345600; // around 4 days
-    IERC20 public kncToken;
+    IERC20 public override kncToken;
     IKyberStaking public staking;
     IKyberFeeHandler public feeHandler;
 
@@ -128,6 +127,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             staking.firstEpochStartTimestamp() == _startTimestamp,
             "ctor: diff start timestamp"
         );
+        require(staking.kncToken() == IERC20(_knc), "ctor: diff knc token");
 
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;

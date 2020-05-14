@@ -5828,7 +5828,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(await daoContract.numberCampaigns(), 0, "number campaign is wrong");
     });
 
-    it("Test constructor should revert staking & dao have different epoch period or start block", async function() {
+    it("Test constructor should revert staking & dao have different data", async function() {
       // different epoch period
       let stakingContract = await StakingContract.new(kncToken.address, blocksToSeconds(10), blockToTimestamp(currentBlock + 10), daoOperator);
       await expectRevert(
@@ -5849,6 +5849,17 @@ contract('KyberDAO', function(accounts) {
           daoOperator
         ),
         "ctor: diff start timestamp"
+      )
+      // knc is different from staking
+      let token = await TestToken.new("test token", "tst", 18);
+      await expectRevert(
+        DAOContract.new(
+          blocksToSeconds(10), blockToTimestamp(currentBlock + 10),
+          stakingContract.address,  feeHandler.address, token.address,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+          daoOperator
+        ),
+        "ctor: diff knc token"
       )
       await DAOContract.new(
         blocksToSeconds(10), blockToTimestamp(currentBlock + 10),

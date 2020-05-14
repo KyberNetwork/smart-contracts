@@ -1,6 +1,5 @@
 pragma solidity 0.6.6;
 
-import "../IERC20.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "./IKyberStaking.sol";
 import "../IKyberDAO.sol";
@@ -18,7 +17,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         address delegatedAddress;
     }
 
-    IERC20 public kncToken;
+    IERC20 public override kncToken;
     IKyberDAO public daoContract;
     address public daoContractSetter;
 
@@ -73,6 +72,10 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         require(
             daoContract.firstEpochStartTimestamp() == firstEpochStartTimestamp,
             "updateDAO: DAO and Staking have different start timestamp"
+        );
+        require(
+            daoContract.kncToken() == kncToken,
+            "updateDAO: DAO and Staking have different knc token"
         );
 
         emit DAOAddressSet(_daoAddress);

@@ -7,7 +7,7 @@ import "../KyberStaking.sol";
 /// @notice Mock Malicious DAO tries to re-enter withdraw function in Staking
 contract MockMaliciousDaoReentrancy is EpochUtils {
     KyberStaking public staking;
-    IERC20 public knc;
+    IERC20 public kncToken;
 
     uint256 totalDeposit = 0;
 
@@ -20,7 +20,7 @@ contract MockMaliciousDaoReentrancy is EpochUtils {
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
         staking = _staking;
-        knc = _knc;
+        kncToken = _knc;
         require(_knc.approve(address(_staking), 2**255));
     }
 

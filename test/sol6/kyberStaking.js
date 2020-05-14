@@ -74,7 +74,8 @@ contract('KyberStaking', function(accounts) {
     await deployStakingContract(10, currentBlock + 10);
     let daoContract = await MockKyberDAO.new(
       blocksToSeconds(10),
-      blockToTimestamp(currentBlock + 10)
+      blockToTimestamp(currentBlock + 10),
+      kncToken.address
     );
 
     assert.equal(daoSetter, await stakingContract.daoContractSetter(), "daoSetter address is wrong");
@@ -1052,6 +1053,7 @@ contract('KyberStaking', function(accounts) {
       let dao = await MockKyberDAO.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
+        kncToken.address
       );
       await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
 
@@ -1130,6 +1132,7 @@ contract('KyberStaking', function(accounts) {
       let dao = await MockKyberDAO.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
+        kncToken.address
       );
       await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
 
@@ -1149,6 +1152,7 @@ contract('KyberStaking', function(accounts) {
       let dao = await MockKyberDAO.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
+        kncToken.address
       );
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2326,7 +2330,8 @@ contract('KyberStaking', function(accounts) {
       await deployStakingContract(10, currentBlock + 10);
       let dao = await MockKyberDAO.new(
         blocksToSeconds(10),
-        blockToTimestamp(currentBlock + 10)
+        blockToTimestamp(currentBlock + 10),
+        kncToken.address
       );
       await expectRevert(
         stakingContract.updateDAOAddressAndRemoveSetter(zeroAddress, {from: daoSetter}),
@@ -2343,11 +2348,12 @@ contract('KyberStaking', function(accounts) {
       )
     });
 
-    it("Test update DAO address should revert when epoch period or start timestamp is different between staking & DAO", async function() {
+    it("Test update DAO address should revert when data is different between staking & DAO", async function() {
       await deployStakingContract(10, currentBlock + 10);
       let dao = await MockKyberDAO.new(
         blocksToSeconds(9),
-        blockToTimestamp(currentBlock + 10)
+        blockToTimestamp(currentBlock + 10),
+        kncToken.address
       );
 
       // revert different epoch number
@@ -2358,7 +2364,8 @@ contract('KyberStaking', function(accounts) {
 
       dao = await MockKyberDAO.new(
         blocksToSeconds(10),
-        blockToTimestamp(currentBlock + 9)
+        blockToTimestamp(currentBlock + 9),
+        kncToken.address
       );
       // revert different start timestamp number
       await expectRevert(
@@ -2366,9 +2373,22 @@ contract('KyberStaking', function(accounts) {
         "updateDAO: DAO and Staking have different start timestamp"
       )
 
+      let token = await TestToken.new("test token", "tst", 18);
       dao = await MockKyberDAO.new(
         blocksToSeconds(10),
-        blockToTimestamp(currentBlock + 10)
+        blockToTimestamp(currentBlock + 10),
+        token.address
+      );
+      // revert different knc token
+      await expectRevert(
+        stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
+        "updateDAO: DAO and Staking have different knc token"
+      )
+
+      dao = await MockKyberDAO.new(
+        blocksToSeconds(10),
+        blockToTimestamp(currentBlock + 10),
+        kncToken.address
       );
       await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
     });
@@ -2658,7 +2678,8 @@ contract('KyberStaking', function(accounts) {
       await deployStakingContract(10, currentBlock + 10);
       let dao = await MockDAOWithdrawFailed.new(
         blocksToSeconds(10),
-        blockToTimestamp(currentBlock + 10)
+        blockToTimestamp(currentBlock + 10),
+        kncToken.address
       );
       await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
 
@@ -2681,7 +2702,8 @@ contract('KyberStaking', function(accounts) {
       await deployStakingContract(10, currentBlock + 10);
       let dao = await MockDAOWithdrawFailed.new(
         blocksToSeconds(10),
-        blockToTimestamp(currentBlock + 10)
+        blockToTimestamp(currentBlock + 10),
+        kncToken.address
       );
       await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
 
