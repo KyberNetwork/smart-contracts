@@ -35,7 +35,7 @@ interface IKyberNetwork {
         address reserve,
         IERC20 token,
         bool add
-    ) external returns (bool);
+    ) external;
 
     function enabled() external view returns (bool);
 

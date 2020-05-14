@@ -8,7 +8,6 @@ const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
-const OtherMatchingEngine = artifacts.require("OtherMatchingEngine.sol");
 const NotPayableContract = artifacts.require("MockNotPayableContract.sol");
 const MaliciousReserve2 = artifacts.require("MaliciousReserve2.sol");
 
@@ -752,7 +751,7 @@ contract('KyberNetwork', function(accounts) {
             tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
             await tempStorage.addOperator(operator, {from: admin});
-            tempMatchingEngine = await OtherMatchingEngine.new(admin);
+            tempMatchingEngine = await MatchingEngine.new(admin);
             mockReserve = await MockReserve.new();
 
             await tempNetwork.addOperator(operator, {from: admin});
@@ -2451,53 +2450,6 @@ contract('KyberNetwork', function(accounts) {
                 tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, MAX_RATE, platformWallet, platformFeeBps, emptyHint),
                 "rate < min rate"
-            );
-        });
-    });
-
-    describe("test handle change edge case", async function(){
-        before("setup", async function(){
-            tempNetwork = await MockNetwork.new(admin, storage.address);
-        });
-
-        it("test srcAmount equal to require srcAmount", async function(){
-            // src = ethAddress
-            srcAmount = new BN(10);
-            requiredSrcAmount = srcAmount;
-            result = await tempNetwork.mockHandleChange.call(ethAddress, srcAmount, requiredSrcAmount, admin);
-            Helper.assertEqual(result, true, "handle change not true");
-        });
-
-        it("test handle while don't have fund", async function(){
-            src = ethAddress;
-            srcAmount = new BN(10);
-            requiredSrcAmount = srcAmount.sub(new BN(1));
-            await expectRevert(
-                tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, admin),
-                "Send change failed"
-            );
-        });
-
-        it("test handle send to not payable contract", async function(){
-            src = ethAddress;
-            srcAmount = new BN(10);
-            sendBackAmount = new BN(1);
-            requiredSrcAmount = srcAmount.sub(sendBackAmount);
-            blockContract = await NotPayableContract.new();
-            Helper.sendEtherWithPromise(accounts[0], tempNetwork.address, sendBackAmount);
-            await expectRevert(
-                tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, blockContract.address),
-                "Send change failed"
-            );
-            Helper.assertEqual(
-                await Helper.getBalancePromise(tempNetwork.address),
-                sendBackAmount
-            );
-            // send back to account 0
-            await tempNetwork.mockHandleChange(src, srcAmount, requiredSrcAmount, accounts[0]);
-            Helper.assertEqual(
-                await Helper.getBalancePromise(tempNetwork.address),
-                0
             );
         });
     });

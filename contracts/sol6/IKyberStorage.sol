@@ -10,16 +10,15 @@ interface IKyberStorage {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
 
     function addKyberProxy(address networkProxy, uint256 maxApprovedProxies)
-        external
-        returns (bool);
+        external;
 
-    function removeKyberProxy(address networkProxy) external returns (bool);
+
+    function removeKyberProxy(address networkProxy) external;
 
     function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
-        external
-        returns (bool);
+        external;
 
-    function setDAOContract(IKyberDAO _kyberDAO) external returns (bool);
+    function setDAOContract(IKyberDAO _kyberDAO) external;
 
     function getReserveId(address reserve) external view returns (bytes32 reserveId);
 

@@ -24,11 +24,11 @@ contract MaliciousKyberNetwork2 is MaliciousKyberNetwork {
         uint256 expectedDestAmount,
         uint256 srcDecimals,
         uint256 destDecimals
-    ) internal override returns (bool) {
+    ) internal override {
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
             if (destAddress != (address(this))) destAddress.transfer(amount - myFeeWei);
-            return true;
+            return;
         }
 
         srcDecimals;
@@ -61,6 +61,6 @@ contract MaliciousKyberNetwork2 is MaliciousKyberNetwork {
             dest.safeTransfer(destAddress, (expectedDestAmount - myFeeWei));
         }
 
-        return true;
+        return;
     }
 }
