@@ -1159,10 +1159,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 newTradeWei =
             (weiAfterDeductingFees * BPS * BPS) /
             ((BPS * BPS) -
-                tradeData.networkFeeBps *
-                tradeData.feeAccountedBps -
+                (tradeData.networkFeeBps *
+                tradeData.feeAccountedBps +
                 tradeData.input.platformFeeBps *
-                BPS);
+                BPS));
         tradeData.tradeWei = minOf(newTradeWei, tradeData.tradeWei);
         // recalculate network and platform fees based on tradeWei
         tradeData.networkFeeWei =
