@@ -40,10 +40,10 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         uint256 _startTimestamp,
         address _daoContractSetter
     ) public {
-        require(_epochPeriod > 0, "ctor: epoch duration must be positive");
-        require(_startTimestamp >= now, "ctor: start timestamp should not be in the past");
-        require(_kncToken != address(0), "ctor: KNC address is missing");
-        require(_daoContractSetter != address(0), "ctor: daoContractSetter address is missing");
+        require(_epochPeriod > 0, "ctor: epoch period is 0");
+        require(_startTimestamp >= now, "ctor: start in the past");
+        require(_kncToken != address(0), "ctor: kncToken 0");
+        require(_daoContractSetter != address(0), "ctor: daoContractSetter 0");
 
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
@@ -52,7 +52,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     modifier onlyDAOContractSetter() {
-        require(msg.sender == daoContractSetter, "sender is not daoContractSetter");
+        require(msg.sender == daoContractSetter, "only daoContractSetter");
         _;
     }
 
@@ -61,21 +61,21 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
      * @param _daoAddress address of new DAO
      */
     function updateDAOAddressAndRemoveSetter(address _daoAddress) external onlyDAOContractSetter {
-        require(_daoAddress != address(0), "updateDAO: DAO address is missing");
+        require(_daoAddress != address(0), "updateDAO: daoAddress 0");
 
         daoContract = IKyberDAO(_daoAddress);
         // verify the same epoch period + start timestamp
         require(
             daoContract.epochPeriodInSeconds() == epochPeriodInSeconds,
-            "updateDAO: DAO and Staking have different epoch period"
+            "updateDAO: different epoch period"
         );
         require(
             daoContract.firstEpochStartTimestamp() == firstEpochStartTimestamp,
-            "updateDAO: DAO and Staking have different start timestamp"
+            "updateDAO: different start timestamp"
         );
         require(
             daoContract.kncToken() == kncToken,
-            "updateDAO: DAO and Staking have different knc token"
+            "updateDAO: different knc token"
         );
 
         emit DAOAddressSet(_daoAddress);
@@ -91,7 +91,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
      * @param dAddr address to delegate to
      */
     function delegate(address dAddr) external override {
-        require(dAddr != address(0), "delegate: delegated address should not be 0x0");
+        require(dAddr != address(0), "delegate: delegated address 0");
         address staker = msg.sender;
         uint256 curEpoch = getCurrentEpochNumber();
 
@@ -223,7 +223,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     {
         require(
             msg.sender == address(daoContract),
-            "initAndReturnData: sender is not DAO address"
+            "initAndReturnData: only daoContract"
         );
 
         uint256 curEpoch = getCurrentEpochNumber();
@@ -351,7 +351,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         uint256 amount,
         uint256 curEpoch
     ) public {
-        require(msg.sender == address(this), "only staking contract can call this function");
+        require(msg.sender == address(this), "only staking contract");
         initDataIfNeeded(staker, curEpoch);
         // Note: update latest stake will be done after this function
         // update staker's data for next epoch

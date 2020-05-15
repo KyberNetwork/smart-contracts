@@ -99,7 +99,7 @@ contract KyberFeeHandler is IKyberFeeHandler, DaoOperator, Utils5 {
     event BurnConfigSet(ISanityRate sanityRate, uint256 weiToBurn);
     event RewardsRemovedToBurn(uint256 indexed epoch, uint256 rewardsWei);
     event KyberNetworkUpdated(address kyberNetwork);
-    event KyberProxyUpdated(IKyberProxy indexed newProxy, IKyberProxy indexed oldProxy);
+    event KyberProxyUpdated(IKyberProxy kyberProxy);
 
     constructor(
         address _daoSetter,
@@ -292,6 +292,15 @@ contract KyberFeeHandler is IKyberFeeHandler, DaoOperator, Utils5 {
         daoSetter = address(0);
     }
 
+    /// @dev set new kyber network address
+    function setNetworkContract(address _kyberNetwork) external onlyDaoOperator {
+        require(_kyberNetwork != address(0), "KyberNetwork 0");
+        if (_kyberNetwork != kyberNetwork) {
+            kyberNetwork = _kyberNetwork;
+            emit KyberNetworkUpdated(kyberNetwork);
+        }
+    }
+
     /// @dev set burn KNC sanity rate contract and amount wei to burn
     /// @param _sanityRate new sanity rate contract
     /// @param _weiToBurn new amount of wei to burn
@@ -321,10 +330,8 @@ contract KyberFeeHandler is IKyberFeeHandler, DaoOperator, Utils5 {
     function setNetworkProxy(IKyberProxy _newProxy) external onlyDaoOperator {
         require(_newProxy != IKyberProxy(0), "new proxy is 0");
         if (_newProxy != networkProxy) {
-            emit KyberProxyUpdated(_newProxy, networkProxy);
             networkProxy = _newProxy;
-            // update network contract
-            updateNetworkContract();
+            emit KyberProxyUpdated(_newProxy);
         }
     }
 
@@ -400,14 +407,6 @@ contract KyberFeeHandler is IKyberFeeHandler, DaoOperator, Utils5 {
         if (sanityRateContract.length > 0 && sanityRateContract[0] != ISanityRate(0)) {
             kncToEthSanityRate = sanityRateContract[0].latestAnswer();
         }
-    }
-
-    /// @dev update kyber network contract address via kyber proxy.
-    function updateNetworkContract() public onlyDaoOperator {
-        address _kyberNetwork = networkProxy.kyberNetwork();
-        require(_kyberNetwork != address(0), "KyberNetwork 0");
-        kyberNetwork = _kyberNetwork;
-        emit KyberNetworkUpdated(kyberNetwork);
     }
 
     function getBRR()

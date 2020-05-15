@@ -1384,14 +1384,14 @@ contract('KyberDAO', function(accounts) {
           1, currentBlock + 9, currentBlock + 9 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 5000], '0x', {from: daoOperator}
         ),
-        "validateParams: Fee campaign option value is too high"
+        "validateParams: fee campaign option value is too high"
       )
       await expectRevert(
         submitNewCampaign(daoContract,
           1, currentBlock + 11, currentBlock + 11 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 10000, 2, 3], '0x', {from: daoOperator}
         ),
-        "validateParams: Fee campaign option value is too high"
+        "validateParams: fee campaign option value is too high"
       )
       await submitNewCampaign(daoContract,
         1, currentBlock + 13, currentBlock + 13 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -3508,7 +3508,7 @@ contract('KyberDAO', function(accounts) {
 
       await expectRevert(
         daoContract.claimReward(mike, 1),
-        "claimReward: No reward"
+        "claimReward: no reward"
       )
 
       await feeHandler.withdrawAllETH({from: accounts[0]});
@@ -3541,12 +3541,12 @@ contract('KyberDAO', function(accounts) {
       // no stake
       await expectRevert(
         daoContract.claimReward(poolMaster, 1),
-        "claimReward: No reward"
+        "claimReward: no reward"
       )
       // already delegated
       await expectRevert(
         daoContract.claimReward(victor, 1),
-        "claimReward: No reward"
+        "claimReward: no reward"
       )
 
       // mike has no stake, but has delegated stake
@@ -3578,7 +3578,7 @@ contract('KyberDAO', function(accounts) {
       // victor didn't vote
       await expectRevert(
         daoContract.claimReward(victor, 1),
-        "claimReward: No reward"
+        "claimReward: no reward"
       )
 
       await daoContract.claimReward(mike, 1);
@@ -3671,7 +3671,7 @@ contract('KyberDAO', function(accounts) {
 
       await expectRevert(
         daoContract.claimReward(mike, 4),
-        "claimReward: No reward"
+        "claimReward: no reward"
       )
 
       await daoContract.claimReward(mike, 1);
@@ -5838,7 +5838,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           daoOperator
         ),
-        "ctor: diff epoch period"
+        "ctor: different epoch period"
       )
       // different start block
       await expectRevert(
@@ -5848,7 +5848,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           daoOperator
         ),
-        "ctor: diff start timestamp"
+        "ctor: different start timestamp"
       )
       // knc is different from staking
       let token = await TestToken.new("test token", "tst", 18);
@@ -5859,7 +5859,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           daoOperator
         ),
-        "ctor: diff knc token"
+        "ctor: different knc token"
       )
       await DAOContract.new(
         blocksToSeconds(10), blockToTimestamp(currentBlock + 10),
@@ -5900,7 +5900,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           daoOperator
         ),
-        "ctor: staking is missing"
+        "ctor: staking 0"
       )
       // feehandler missing
       await expectRevert(
@@ -5910,7 +5910,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           daoOperator
         ),
-        "ctor: feeHandler is missing"
+        "ctor: feeHandler 0"
       )
       // knc missing
       await expectRevert(
@@ -5920,7 +5920,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           daoOperator
         ),
-        "ctor: knc token is missing"
+        "ctor: knc token 0"
       )
       // network fee is high (>= 50%)
       await expectRevert(

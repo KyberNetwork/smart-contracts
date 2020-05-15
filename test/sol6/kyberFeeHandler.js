@@ -1572,17 +1572,21 @@ contract('KyberFeeHandler', function(accounts) {
         tempFeeHandler = await FeeHandler.new(daoSetter, tempProxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
         Helper.assertEqual(kyberNetwork, await tempFeeHandler.kyberNetwork(), "network does not match");
         await expectRevert(
-            tempFeeHandler.updateNetworkContract(), "only daoOperator"
+            tempFeeHandler.setNetworkContract(accounts[0]), "only daoOperator"
         )
         await expectRevert(
-            tempFeeHandler.updateNetworkContract({from: daoOperator}), "KyberNetwork 0"
+            tempFeeHandler.setNetworkContract(zeroAddress, {from: daoOperator}), "KyberNetwork 0"
         )
-        await tempProxy.setKyberNetwork(tempNetwork.address, {from: admin});
-        txResult = await tempFeeHandler.updateNetworkContract({from: daoOperator});
+        let txResult = await tempFeeHandler.setNetworkContract(tempNetwork.address, {from: daoOperator});
         expectEvent(txResult, 'KyberNetworkUpdated', {
             kyberNetwork: tempNetwork.address,
         });
         Helper.assertEqual(tempNetwork.address, await tempFeeHandler.kyberNetwork(), "network does not match");
+        // should not have any event if update the same current network contract
+        txResult = await tempFeeHandler.setNetworkContract(tempNetwork.address, {from: daoOperator});
+        for (let i = 0; i < txResult.logs.length; i++) {
+            assert(txResult.logs[i].event != 'KyberNetworkUpdated', "shouldn't have network updated event");
+        }
     });
 
     describe("Update Network Proxy", async() => {
@@ -1591,24 +1595,9 @@ contract('KyberFeeHandler', function(accounts) {
                 feeHandler.setNetworkProxy(zeroAddress, {from: daoOperator}),
                 "new proxy is 0"
             )
-        })
+        });
 
-        it("Test should revert new proxy is not a contract", async() => {
-            await expectRevert.unspecified(
-                feeHandler.setNetworkProxy(accounts[2], {from: daoOperator})
-            )
-        })
-
-        // update proxy will also update network address
-        it("Test should revert new proxy has no network contract", async() => {
-            let proxy = await KyberNetworkProxy.new(accounts[0]);
-            await expectRevert(
-                feeHandler.setNetworkProxy(proxy.address, {from: daoOperator}),
-                "KyberNetwork 0"
-            )
-        })
-
-        it("Test should revert not burn config", async() => {
+        it("Test should revert not daoOperator", async() => {
             await expectRevert(
                 feeHandler.setNetworkProxy(accounts[0], {from: accounts[0]}),
                 "only daoOperator"
@@ -1617,51 +1606,28 @@ contract('KyberFeeHandler', function(accounts) {
 
         it("Test update with event", async() => {
             let newProxy = await KyberNetworkProxy.new(accounts[0]);
-            await newProxy.setKyberNetwork(accounts[1]);
             let txResult = await feeHandler.setNetworkProxy(newProxy.address, {from: daoOperator});
             expectEvent(txResult, "KyberProxyUpdated", {
-                newProxy: newProxy.address,
-                oldProxy: proxy.address
-            })
-            expectEvent(txResult, "KyberNetworkUpdated", {
-                kyberNetwork: accounts[1]
-            })
-            let anotherProxy = await KyberNetworkProxy.new(accounts[0]);
-            await anotherProxy.setKyberNetwork(accounts[2]);
-            txResult = await feeHandler.setNetworkProxy(anotherProxy.address, {from: daoOperator});
+                kyberProxy: newProxy.address,
+            });
+            let anotherProxy = accounts[0];
+            txResult = await feeHandler.setNetworkProxy(anotherProxy, {from: daoOperator});
             expectEvent(txResult, "KyberProxyUpdated", {
-                newProxy: anotherProxy.address,
-                oldProxy: newProxy.address
-            })
-            expectEvent(txResult, "KyberNetworkUpdated", {
-                kyberNetwork: accounts[2]
-            })
+                kyberProxy: anotherProxy
+            });
+            txResult = await feeHandler.setNetworkProxy(anotherProxy, {from: daoOperator});
+            for (let i = 0; i < txResult.logs.length; i++) {
+                assert(txResult.logs[i].event != 'KyberProxyUpdated', "shouldn't have proxy updated event");
+            }
         });
 
-        it("Test update network after update proxy", async() => {
-            let admin = accounts[1];
-            let storage = accounts[8];
-            let tempNetwork = await KyberNetwork.new(admin, storage);
-            let tempProxy = await KyberNetworkProxy.new(admin);
-            let tempFeeHandler = await FeeHandler.new(daoSetter, tempProxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
-            await tempFeeHandler.setNetworkProxy(tempProxy.address, {from: daoOperator});
-            await tempProxy.setKyberNetwork(accounts[0], {from: admin});
-            await tempFeeHandler.updateNetworkContract({from: daoOperator});
-            Helper.assertEqual(accounts[0], await tempFeeHandler.kyberNetwork(), "network does not match");
-            await tempProxy.setKyberNetwork(tempNetwork.address, {from: admin});
-            await tempFeeHandler.updateNetworkContract({from: daoOperator});
-            Helper.assertEqual(tempNetwork.address, await tempFeeHandler.kyberNetwork(), "network does not match");
-        })
-
         it("Test burn KNC after updating proxy", async() => {
-            let admin = accounts[1];
             let tempNetwork = accounts[0];
 
             let sanityRate = await BurnKncSanityRate.new();
             await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
 
             let tempProxy = await Proxy.new();
-            await tempProxy.setKyberNetwork(accounts[0]);
             await knc.transfer(tempProxy.address, oneKnc.mul(new BN(10000)));
             await Helper.sendEtherWithPromise(accounts[9], tempProxy.address, oneEth);
 
@@ -1681,7 +1647,6 @@ contract('KyberFeeHandler', function(accounts) {
 
             // new proxy
             tempProxy = await Proxy.new();
-            await tempProxy.setKyberNetwork(accounts[1]);
             await knc.transfer(tempProxy.address, oneKnc.mul(new BN(10000)));
             await Helper.sendEtherWithPromise(accounts[9], tempProxy.address, oneEth);
             await tempProxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);

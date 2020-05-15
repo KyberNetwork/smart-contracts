@@ -93,7 +93,7 @@ contract('KyberStaking', function(accounts) {
 
     await expectRevert(
       stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter}),
-      "sender is not daoContractSetter"
+      "only daoContractSetter"
     );
   });
 
@@ -1142,7 +1142,7 @@ contract('KyberStaking', function(accounts) {
 
       await expectRevert(
         stakingContract.handleWithdrawal(victor, mulPrecision(100), 0),
-        "only staking contract can call this function"
+        "only staking contract"
       )
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
     });
@@ -2335,16 +2335,16 @@ contract('KyberStaking', function(accounts) {
       );
       await expectRevert(
         stakingContract.updateDAOAddressAndRemoveSetter(zeroAddress, {from: daoSetter}),
-        "updateDAO: DAO address is missing"
+        "updateDAO: daoAddress 0"
       );
       await expectRevert(
         stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: mike}),
-        "sender is not daoContractSetter"
+        "only daoContractSetter"
       )
       await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
       await expectRevert(
         stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
-        "sender is not daoContractSetter"
+        "only daoContractSetter"
       )
     });
 
@@ -2359,7 +2359,7 @@ contract('KyberStaking', function(accounts) {
       // revert different epoch number
       await expectRevert(
         stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
-        "updateDAO: DAO and Staking have different epoch period"
+        "updateDAO: different epoch period"
       )
 
       dao = await MockKyberDAO.new(
@@ -2370,7 +2370,7 @@ contract('KyberStaking', function(accounts) {
       // revert different start timestamp number
       await expectRevert(
         stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
-        "updateDAO: DAO and Staking have different start timestamp"
+        "updateDAO: different start timestamp"
       )
 
       let token = await TestToken.new("test token", "tst", 18);
@@ -2382,7 +2382,7 @@ contract('KyberStaking', function(accounts) {
       // revert different knc token
       await expectRevert(
         stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
-        "updateDAO: DAO and Staking have different knc token"
+        "updateDAO: different knc token"
       )
 
       dao = await MockKyberDAO.new(
@@ -2402,7 +2402,7 @@ contract('KyberStaking', function(accounts) {
           blockToTimestamp(currentBlock + 10),
           daoSetter
         ),
-        "ctor: KNC address is missing"
+        "ctor: kncToken 0"
       );
       // epoch period is 0
       await expectRevert(
@@ -2412,7 +2412,7 @@ contract('KyberStaking', function(accounts) {
           blockToTimestamp(currentBlock + 10),
           daoSetter
         ),
-        "ctor: epoch duration must be positive"
+        "ctor: epoch period is 0"
       )
       // start timestamp is in the past
       await expectRevert(
@@ -2422,7 +2422,7 @@ contract('KyberStaking', function(accounts) {
           blockToTimestamp(currentBlock - 1),
           daoSetter
         ),
-        "ctor: start timestamp should not be in the past"
+        "ctor: start in the past"
       )
       // dao setter is 0
       await expectRevert(
@@ -2432,7 +2432,7 @@ contract('KyberStaking', function(accounts) {
           blockToTimestamp(currentBlock + 10),
           zeroAddress
         ),
-        "ctor: daoContractSetter address is missing"
+        "ctor: daoContractSetter 0"
       )
       stakingContract = await StakingContract.new(
         kncToken.address,
@@ -2497,16 +2497,16 @@ contract('KyberStaking', function(accounts) {
       await deployStakingContract(10, currentBlock + 10);
       await expectRevert(
         stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike}),
-        "initAndReturnData: sender is not DAO address"
+        "initAndReturnData: only daoContract"
       )
       await expectRevert(
         stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: daoSetter}),
-        "initAndReturnData: sender is not DAO address"
+        "initAndReturnData: only daoContract"
       )
       await stakingContract.setDAOAddressWithoutCheck(mike, {from: daoSetter});
       await expectRevert(
         stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: daoSetter}),
-        "initAndReturnData: sender is not DAO address"
+        "initAndReturnData: only daoContract"
       )
       await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike});
     });
@@ -2594,7 +2594,7 @@ contract('KyberStaking', function(accounts) {
 
       await expectRevert(
         stakingContract.delegate(zeroAddress, {from: victor}),
-        "delegate: delegated address should not be 0x0"
+        "delegate: delegated address 0"
       )
       await stakingContract.delegate(mike, {from: victor});
     });
