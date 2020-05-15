@@ -3049,6 +3049,7 @@ contract('KyberNetwork', function(accounts) {
     describe("test maximum trade quantity", async() => {
         let srcToken;
         let destToken;
+        let destToken2;
         let normalToken;
         let normalToken2;
         let kyberProxy = accounts[0];
@@ -3064,7 +3065,8 @@ contract('KyberNetwork', function(accounts) {
             normalToken = await TestToken.new("decimal 18", "18", new BN(18));
             normalToken2 = await TestToken.new("decimal 18", "18", new BN(18));
             destToken = await TestToken.new("decimal 36", "36", new BN(36));
-            let tokens = [srcToken, normalToken, normalToken2, destToken];
+            destToken2 = await TestToken.new("decimal 11", "11", new BN(11));
+            let tokens = [srcToken, normalToken, normalToken2, destToken, destToken2];
 
             let KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             //init network 
@@ -3099,6 +3101,7 @@ contract('KyberNetwork', function(accounts) {
                 let reserve = value.instance;
                 await reserve.setRate(srcToken.address, MAX_RATE, MAX_RATE);
                 await reserve.setRate(destToken.address, MAX_RATE, MAX_RATE);
+                await reserve.setRate(destToken2.address, MAX_RATE.sub(new BN(1)), MAX_RATE.sub(new BN(1)));
                 tokensPerEther = precisionUnits.mul(new BN(10));
                 ethersPerToken = precisionUnits.div(new BN(10));
                 await reserve.setRate(normalToken.address, tokensPerEther, ethersPerToken);
@@ -3111,7 +3114,7 @@ contract('KyberNetwork', function(accounts) {
         beforeEach("ensure each reserve have max eth-token value", async() => {
             for (const [key, value] of Object.entries(reserveInstances)) {
                 let reserve = value.instance;
-                let tokens = [srcToken, destToken, normalToken, normalToken2]
+                let tokens = [srcToken, destToken, destToken2, normalToken, normalToken2]
                 await tokens.forEach(async (token) =>  {
                     let currentBalance = await token.balanceOf(reserve.address);
                     if (MAX_DST_QTY.gt(currentBalance)) {
@@ -3194,7 +3197,7 @@ contract('KyberNetwork', function(accounts) {
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
                         { from: kyberProxy }
                     ),
-                "destAmount > MAX_QTY"
+                "Trade wei > MAX_QTY"
             );
         });
 
@@ -3222,7 +3225,7 @@ contract('KyberNetwork', function(accounts) {
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), hint, 
                         { from: kyberProxy }
                     ),
-                "destAmount > MAX_QTY"
+                "Trade wei > MAX_QTY"
             );
         });
 
@@ -3238,6 +3241,21 @@ contract('KyberNetwork', function(accounts) {
                         { from: kyberProxy }
                     ),
                 "destAmount > MAX_QTY"
+            );
+        });
+
+        it("test t2e revert when overflow at calcTradeSrcAmount", async() => {
+            //here when trade from e2t with MAX_RATE MAX_QTY
+            //destToken.decimals = 11 so the dstQty = MAX_QTY
+            hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, 
+                ethAddress, destToken2.address, MAX_QTY);
+            await destToken2.transfer(network.address, MAX_QTY);
+            let rateResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken2.address, MAX_QTY, new BN(0), hint);
+            let dstQty = Helper.calcDstQty(MAX_QTY, ethDecimals, await destToken2.decimals(), rateResult.rateWithAllFees);
+            await expectRevert(network.tradeWithHintAndFee(kyberProxy, ethAddress, MAX_QTY, destToken2.address, taker,
+                    dstQty.sub(new BN(1)), minConversionRate, platformWallet, new BN(0), hint, 
+                    { value: MAX_QTY, from: kyberProxy }
+                ), "multiplication overflow",
             );
         });
     });
