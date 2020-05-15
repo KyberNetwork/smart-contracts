@@ -1560,6 +1560,12 @@ contract('KyberHintHandler', function(accounts) {
             });
         });
     });
+
+    describe("test throw hint error", function() {
+        it("should do nothing if no error is passed into throwHintError", async() => {
+            await hintHandler.callHintError(0);
+        });
+    });
 });
 
 function buildHint(tradeType) {
