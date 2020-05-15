@@ -32,6 +32,15 @@ contract MockNetwork is KyberNetwork {
         }
     }
 
+    function mockHandleChange(
+        IERC20 src,
+        uint256 srcAmount,
+        uint256 requiredSrcAmount,
+        address payable trader
+    ) public {
+        return handleChange(src, srcAmount, requiredSrcAmount, trader);
+    }
+
     function setNetworkFeeData(uint256 _networkFeeBps, uint256 _expiryTimestamp) public {
         updateNetworkFee(_expiryTimestamp, _networkFeeBps);
     }
