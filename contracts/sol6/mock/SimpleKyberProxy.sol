@@ -15,6 +15,23 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
 
     receive() external payable {}
 
+    function swapEtherToToken(IERC20 token, uint256 minConversionRate)
+        external
+        payable
+        returns (uint256)
+    {
+        return
+            trade(
+                ETH_TOKEN_ADDRESS,
+                msg.value,
+                token,
+                msg.sender,
+                MAX_QTY,
+                minConversionRate,
+                address(0)
+            );
+    }
+
     function tradeWithHint(
         ERC20 src,
         uint256 srcAmount,

@@ -397,7 +397,7 @@ contract('KyberProxyV1', function(accounts) {
                         minConversionRate,
                         zeroAddress,
                         hint,
-                        {from: taker, value: ethSrcQty}
+                        {from: taker, value: ethSrcQty, gasPrice: new BN(0)}
                     );
                     console.log(`ETH -> token (${tradeStr[hintType]}): ${txResult.receipt.gasUsed} gas used`);
 
@@ -867,7 +867,7 @@ contract('KyberProxyV1', function(accounts) {
                     minConversionRate,
                     zeroAddress,
                     hint,
-                    {from: taker, value: ethSrcQty}
+                    {from: taker, value: ethSrcQty, gasPrice: new BN(0)}
                 );
 
                 await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, ethSrcQty,
@@ -1110,10 +1110,10 @@ contract('KyberProxyV1', function(accounts) {
                 await networkProxyV1.swapEtherToToken(
                     destToken.address,
                     minConversionRate,
-                    {from: taker, value: ethSrcQty}
+                    {from: taker, value: ethSrcQty, gasPrice: new BN(0)}
                 );
 
-                await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, srcQty,
+                await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, ethSrcQty,
                     initialReserveBalances, initialTakerBalances, expectedResult, taker, taker);
             });
 
@@ -1186,7 +1186,7 @@ contract('KyberProxyV1', function(accounts) {
                     minConversionRate,
                     zeroAddress,
                     hint,
-                    {from: taker, value: ethSrcQty}
+                    {from: taker, value: ethSrcQty, gasPrice: new BN(0)}
                 );
 
                 await nwHelper.compareBalancesAfterTrade(ethAddress, destToken, ethSrcQty,
