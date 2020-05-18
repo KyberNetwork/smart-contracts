@@ -1782,7 +1782,7 @@ contract('KyberNetwork', function(accounts) {
 
             it("should revert if masked out reserves exceed available reserves", async() => {
                 let allReserves = await storage.getReserveIdsPerTokenSrc(srcToken.address);
-                let someReserveID = "0xaa00000026d1e94963c8b382ad00000000000000000000000000000000000000";
+                let someReserveID = Object.keys(reserveInstances)[0];
                 hint = await matchingEngine.buildTokenToEthHint(
                     MASK_OUT_HINTTYPE,
                     allReserves.concat(someReserveID),
