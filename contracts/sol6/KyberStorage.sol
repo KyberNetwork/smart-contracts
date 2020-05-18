@@ -460,12 +460,16 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
             bool isEntitledRebateFlag
         )
     {
-        reserveAddress = reserveIdToAddresses[reserveId][0];
-        rebateWallet = reserveRebateWallet[reserveId];
-        uint256 resTypeUint = reserveType[reserveId];
-        resType = ReserveType(resTypeUint);
-        isFeeAccountedFlag = (feeAccountedPerType & (1 << resTypeUint)) > 0;
-        isEntitledRebateFlag = (entitledRebatePerType & (1 << resTypeUint)) > 0;
+        address[] memory reserveAddresses = reserveIdToAddresses[reserveId];
+
+        if (reserveAddresses.length != 0) {
+            reserveAddress = reserveIdToAddresses[reserveId][0];
+            rebateWallet = reserveRebateWallet[reserveId];
+            uint256 resTypeUint = reserveType[reserveId];
+            resType = ReserveType(resTypeUint);
+            isFeeAccountedFlag = (feeAccountedPerType & (1 << resTypeUint)) > 0;
+            isEntitledRebateFlag = (entitledRebatePerType & (1 << resTypeUint)) > 0;
+        }
     }
 
     /// @notice Returns information about a reserve given its reserve ID

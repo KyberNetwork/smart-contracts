@@ -14,11 +14,11 @@ contract MockHintHandler is KyberHintHandler {
         reserveIdToAddresses[reserveId].push(reserve);
     }
 
-    function getReserveAddress(bytes32 reserveId) internal view override returns (address) {
-        return reserveIdToAddresses[reserveId][0];
-    }
+    function getReserveAddress(bytes32 reserveId) internal view override returns (address reserveAddress) {
+        address[] memory reserveAddresses = reserveIdToAddresses[reserveId];
 
-    function getReserveAddresses(bytes32 reserveId) internal view override returns (address[] memory) {
-        return reserveIdToAddresses[reserveId];
+        if (reserveAddresses.length != 0) {
+            reserveAddress = reserveIdToAddresses[reserveId][0];
+        }
     }
 }

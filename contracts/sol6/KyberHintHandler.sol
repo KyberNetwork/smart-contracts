@@ -297,15 +297,13 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     }
 
     /// @notice Checks if the reserveId exists
-    /// @param reserveId Reserve IDs array
+    /// @param reserveId Reserve ID to check
     function checkReserveIdsExists(bytes32 reserveId)
         internal
         view
     {
-        address[] memory reserveAddresses;
-
-        reserveAddresses = getReserveAddresses(reserveId);
-        if (reserveAddresses.length == 0) throwHintError(HintErrors.ReserveIdNotFound);
+        if (getReserveAddress(reserveId) == address(0x0))
+            throwHintError(HintErrors.ReserveIdNotFound);
     }
 
     /// @notice Ensures that the reserveIds in the hint to be parsed has no duplicates
@@ -407,5 +405,4 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     }
 
     function getReserveAddress(bytes32 reserveId) internal view virtual returns (address);
-    function getReserveAddresses(bytes32 reserveId) internal view virtual returns (address[] memory);
 }
