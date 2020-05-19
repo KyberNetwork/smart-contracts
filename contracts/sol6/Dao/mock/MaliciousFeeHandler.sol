@@ -10,7 +10,7 @@ contract MaliciousFeeHandler is KyberFeeHandler {
         address _kyberNetwork,
         IERC20 _knc,
         uint256 _burnBlockInterval,
-        address _burnConfigSetter
+        address _daoOperator
     )
         public
         KyberFeeHandler(
@@ -19,7 +19,7 @@ contract MaliciousFeeHandler is KyberFeeHandler {
             _kyberNetwork,
             _knc,
             _burnBlockInterval,
-            _burnConfigSetter
+            _daoOperator
         )
     {}
 

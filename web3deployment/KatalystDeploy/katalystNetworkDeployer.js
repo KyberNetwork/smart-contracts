@@ -122,8 +122,7 @@ let matchingEnginePermissions;
 let networkPermissions;
 let proxyPermissions;
 let storagePermissions;
-let daoCampaignCreator;
-let burnConfigSetter;
+let daoOperator;
 
 //misc variables needed for contracts deployment, should be obtained from input json
 let isFeeAccounted;
@@ -180,8 +179,7 @@ function parseInput( jsonInput ) {
     networkPermissions = jsonInput.permission["Network"];
     proxyPermissions = jsonInput.permission["Proxy"];
     storagePermissions = jsonInput.permission["Storage"];
-    daoCampaignCreator = jsonInput.permission["DAO"]["CampaignCreator"]
-    burnConfigSetter = jsonInput.permission["FeeHandler"]["BurnConfigSetter"];
+    daoOperator = jsonInput.permission["DAO"]["DaoOperator"]
 
     //constants
     isFeeAccounted = jsonInput["isFeeAccounted"];
@@ -437,7 +435,7 @@ async function deployFeeHandlerContract(output) {
     console.log("deploying feeHandler");
     [feeHandlerAddress, feeHandlerContract] = await deployContract(
       output, "KyberFeeHandler.sol", "KyberFeeHandler", 
-      [sender, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval, burnConfigSetter]
+      [sender, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval, daoOperator]
     );
     console.log(`Fee Handler: ${feeHandlerAddress}`);
   } else {
@@ -471,7 +469,7 @@ async function deployDAOContract(output) {
             output, "KyberDAO.sol", "KyberDAO",
             [
               epochPeriod, startTimestamp, stakingAddress, feeHandlerAddress, kncTokenAddress,
-              networkFeeBps, rewardFeeBps, rebateFeeBps, daoCampaignCreator
+              networkFeeBps, rewardFeeBps, rebateFeeBps, daoOperator
             ]
         );
         console.log(`DAO: ${daoAddress}`);

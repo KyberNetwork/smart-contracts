@@ -1,6 +1,7 @@
 pragma solidity 0.6.6;
 
 import "./EpochUtils.sol";
+import "./DaoOperator.sol";
 import "../IERC20.sol";
 import "./IKyberStaking.sol";
 import "../IKyberDAO.sol";
@@ -16,7 +17,7 @@ import "../IKyberFeeHandler.sol";
  *      BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
  *      General campaign: options are from 1 to num_options
  */
-contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
+contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator {
     /* Constants */
     // max number of campaigns for each epoch
     uint256 public   constant MAX_EPOCH_CAMPAIGNS = 10;
@@ -60,10 +61,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
     IKyberStaking public staking;
     IKyberFeeHandler public feeHandler;
 
-    // campaign creator permissions
-    address public campaignCreator;
-    address public pendingCampaignCreator;
-
     /* Mapping from campaign ID => data */
     // use to generate increasing campaign ID
     uint256 public numberCampaigns = 0;
@@ -90,9 +87,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
     // epoch => campaignID for brr campaigns
     mapping(uint256 => uint256) public brrCampaigns;
 
-    event TransferCampaignCreatorPending(address pendingCampaignCreator);
-    event CampaignCreatorClaimed(address newCampaignCreator, address previousCampaignCreator);
-
     event NewCampaignCreated(
         CampaignType campaignType,
         uint256 indexed campaignID,
@@ -116,14 +110,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
         uint256 _defaultNetworkFeeBps,
         uint256 _defaultRewardBps,
         uint256 _defaultRebateBps,
-        address _campaignCreator
-    ) public {
+        address _daoOperator
+    ) public DaoOperator(_daoOperator) {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
         require(_staking != address(0), "ctor: staking 0");
         require(_feeHandler != address(0), "ctor: feeHandler 0");
         require(_knc != address(0), "ctor: knc token 0");
-        require(_campaignCreator != address(0), "campaignCreator is 0");
         // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
         // so network fee should be less than 50%
         require(_defaultNetworkFeeBps < BPS / 2, "ctor: network fee high");
@@ -146,52 +139,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
             rewardInBps: _defaultRewardBps,
             rebateInBps: _defaultRebateBps
         });
-        campaignCreator = _campaignCreator;
-    }
-
-    modifier onlyCampaignCreator() {
-        require(msg.sender == campaignCreator, "only campaign creator");
-        _;
     }
 
     modifier onlyStakingContract {
         require(msg.sender == address(staking), "only staking contract");
         _;
-    }
-
-    /**
-     * @dev Allows the current campaignCreator to set the pendingCampaignCreator address.
-     * @param newCampaignCreator The address to transfer ownership to.
-     */
-    function transferCampaignCreator(address newCampaignCreator) external onlyCampaignCreator {
-        require(newCampaignCreator != address(0), "newCampaignCreator is 0");
-        emit TransferCampaignCreatorPending(newCampaignCreator);
-        pendingCampaignCreator = newCampaignCreator;
-    }
-
-    /**
-     * @dev Allows the current campCcampaignCreatorreator to set the campaignCreator in one tx.
-            Useful initial deployment.
-     * @param newCampaignCreator The address to transfer ownership to.
-     */
-    function transferCampaignCreatorQuickly(address newCampaignCreator)
-        external
-        onlyCampaignCreator
-    {
-        require(newCampaignCreator != address(0), "newCampaignCreator is 0");
-        emit TransferCampaignCreatorPending(newCampaignCreator);
-        emit CampaignCreatorClaimed(newCampaignCreator, campaignCreator);
-        campaignCreator = newCampaignCreator;
-    }
-
-    /**
-     * @dev Allows the pendingCampaignCreator address to finalize the change campaign creator process.
-     */
-    function claimCampaignCreator() external {
-        require(pendingCampaignCreator == msg.sender, "only pending campaign creator");
-        emit CampaignCreatorClaimed(pendingCampaignCreator, campaignCreator);
-        campaignCreator = pendingCampaignCreator;
-        pendingCampaignCreator = address(0);
     }
 
     /**
@@ -239,7 +191,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
     }
 
     /**
-     * @dev create new campaign, only called by campaignCreator
+     * @dev create new campaign, only called by daoOperator
      * @param campaignType type of campaign (General, NetworkFee, FeeHandlerBRR)
      * @param startTimestamp timestamp to start running the campaign
      * @param endTimestamp timestamp to end this campaign
@@ -258,7 +210,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
         uint256 tInPrecision,
         uint256[] calldata options,
         bytes calldata link
-    ) external onlyCampaignCreator returns (uint256 campaignID) {
+    ) external onlyDaoOperator returns (uint256 campaignID) {
         // campaign epoch could be different from current epoch
         // as we allow to create campaign of next epoch as well
         uint256 campaignEpoch = getEpochNumber(startTimestamp);
@@ -342,11 +294,11 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
     }
 
     /**
-     * @dev  cancel a campaign with given id, called by campaignCreator only
+     * @dev  cancel a campaign with given id, called by daoOperator only
      *       only can cancel campaigns that have not started yet
      * @param campaignID id of the campaign to cancel
      */
-    function cancelCampaign(uint256 campaignID) external onlyCampaignCreator {
+    function cancelCampaign(uint256 campaignID) external onlyDaoOperator {
         Campaign storage campaign = campaignData[campaignID];
         require(campaign.campaignExists, "cancelCampaign: campaignID doesn't exist");
 
