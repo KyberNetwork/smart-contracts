@@ -4,6 +4,7 @@ const Helper = require("../helper.js");
 const Reserve = artifacts.require("KyberReserve.sol");
 const ConversionRates = artifacts.require("ConversionRates.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const KyberHistory = artifacts.require("KyberHistory.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
@@ -48,6 +49,25 @@ const burnBlockInterval = new BN(30);
 module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, ZERO_RESERVE_ID, type_apr, type_fpr, type_MOCK,
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType};
 
+module.exports.setupStorage = setupStorage;
+async function setupStorage(admin) {
+    let networkHistory = await KyberHistory.new(admin);
+    let feeHandlerHistory = await KyberHistory.new(admin);
+    let kyberDAOHistory = await KyberHistory.new(admin);
+    let matchingEngineHistory = await KyberHistory.new(admin);
+    kyberStorage = await KyberStorage.new(
+        admin,
+        networkHistory.address,
+        feeHandlerHistory.address,
+        kyberDAOHistory.address,
+        matchingEngineHistory.address
+        );
+    await networkHistory.setStorageContract(kyberStorage.address, {from: admin});
+    await feeHandlerHistory.setStorageContract(kyberStorage.address, {from: admin});
+    await kyberDAOHistory.setStorageContract(kyberStorage.address, {from: admin});
+    await matchingEngineHistory.setStorageContract(kyberStorage.address, {from: admin});
+    return kyberStorage;
+}
 
 module.exports.setupReserves = setupReserves;
 async function setupReserves
@@ -189,7 +209,7 @@ async function listTokenForRedeployNetwork(storageInstance, reserveInstances, to
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
     (NetworkArtifact, networkProxyAddress, KNCAddress, DAOAddress, admin, operator) {
-    const storage =  await KyberStorage.new(admin);
+    const storage =  await setupStorage(admin);
     const network = await NetworkArtifact.new(admin, storage.address);
     await storage.setNetworkContract(network.address, {from: admin});
     await storage.addOperator(operator, {from: admin});
