@@ -5,11 +5,11 @@ import "../KyberStaking.sol";
 
 contract MockStakingContract is KyberStaking {
     constructor(
-        address _kncToken,
+        address _knc,
         uint256 _epochPeriod,
         uint256 _startBlock,
         address _admin
-    ) public KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) {}
+    ) public KyberStaking(_knc, _epochPeriod, _startBlock, _admin) {}
 
     function setDAOAddressWithoutCheck(address dao) public {
         daoContract = IKyberDAO(dao);

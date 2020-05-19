@@ -1,6 +1,7 @@
 pragma solidity 0.6.6;
 
 import "./Dao/IEpochUtils.sol";
+import "./IERC20.sol";
 
 
 interface IKyberDAO is IEpochUtils {
@@ -33,4 +34,5 @@ interface IKyberDAO is IEpochUtils {
         returns (uint256 feeInBps, uint256 expiryTimestamp);
 
     function shouldBurnRewardForEpoch(uint256 epoch) external view returns (bool);
+    function knc() external view returns (IERC20);
 }

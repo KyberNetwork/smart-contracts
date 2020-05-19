@@ -5,11 +5,11 @@ import "../KyberStaking.sol";
 
 contract MockKyberStakingMalicious is KyberStaking {
     constructor(
-        address _kncToken,
+        address _knc,
         uint256 _epochPeriod,
         uint256 _startBlock,
         address _admin
-    ) public KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) {}
+    ) public KyberStaking(_knc, _epochPeriod, _startBlock, _admin) {}
 
     function setLatestStake(address staker, uint256 amount) public {
         stakerLatestData[staker].stake = amount;

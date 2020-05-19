@@ -1,6 +1,5 @@
 pragma solidity 0.6.6;
 
-import "../IERC20.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "./IKyberStaking.sol";
 import "../IKyberDAO.sol";
@@ -18,7 +17,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         address delegatedAddress;
     }
 
-    IERC20 public kncToken;
+    IERC20 public override knc;
     IKyberDAO public daoContract;
     address public daoContractSetter;
 
@@ -36,19 +35,19 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     event WithdrawDataUpdateFailed(uint256 curEpoch, address staker, uint256 amount);
 
     constructor(
-        address _kncToken,
+        address _knc,
         uint256 _epochPeriod,
         uint256 _startTimestamp,
         address _daoContractSetter
     ) public {
         require(_epochPeriod > 0, "ctor: epoch duration must be positive");
         require(_startTimestamp >= now, "ctor: start timestamp should not be in the past");
-        require(_kncToken != address(0), "ctor: KNC address is missing");
+        require(_knc != address(0), "ctor: KNC address is missing");
         require(_daoContractSetter != address(0), "ctor: daoContractSetter address is missing");
 
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
-        kncToken = IERC20(_kncToken);
+        knc = IERC20(_knc);
         daoContractSetter = _daoContractSetter;
     }
 
@@ -73,6 +72,11 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         require(
             daoContract.firstEpochStartTimestamp() == firstEpochStartTimestamp,
             "updateDAO: DAO and Staking have different start timestamp"
+        );
+
+        require(
+            daoContract.knc() == knc,
+            "updateDAO: different knc address"
         );
 
         emit DAOAddressSet(_daoAddress);
@@ -145,7 +149,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
         // collect KNC token from staker
         require(
-            kncToken.transferFrom(staker, address(this), amount),
+            knc.transferFrom(staker, address(this), amount),
             "deposit: can not get token"
         );
 
@@ -200,7 +204,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         stakerLatestData[staker].stake = stakerLatestData[staker].stake.sub(amount);
 
         // transfer KNC back to staker
-        require(kncToken.transfer(staker, amount), "withdraw: can not transfer knc to the sender");
+        require(knc.transfer(staker, amount), "withdraw: can not transfer knc to the sender");
         emit Withdraw(curEpoch, staker, amount);
     }
 

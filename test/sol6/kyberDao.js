@@ -5817,7 +5817,7 @@ contract('KyberDAO', function(accounts) {
 
       Helper.assertEqual(await daoContract.epochPeriodInSeconds(), blocksToSeconds(10), "Epoch period is wrong");
       Helper.assertEqual(await daoContract.firstEpochStartTimestamp(), daoStartTime, "Start timestamp is wrong");
-      Helper.assertEqual(await daoContract.kncToken(), kncToken.address, "KNC token is wrong");
+      Helper.assertEqual(await daoContract.knc(), kncToken.address, "KNC token is wrong");
       Helper.assertEqual(await daoContract.staking(), stakingContract.address, "Staking contract is wrong");
       Helper.assertEqual(await daoContract.feeHandler(), feeHandler.address, "Feehandler contract is wrong");
       Helper.assertEqual(await daoContract.MAX_CAMPAIGN_OPTIONS(), 8, "max camp option is wrong");
@@ -5849,6 +5849,17 @@ contract('KyberDAO', function(accounts) {
           campCreator
         ),
         "ctor: diff start timestamp"
+      )
+      // knc is different from staking
+      let token = await TestToken.new("test token", "tst", 18);
+      await expectRevert(
+        DAOContract.new(
+          blocksToSeconds(10), blockToTimestamp(currentBlock + 10),
+          stakingContract.address,  feeHandler.address, token.address,
+          minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+          campCreator
+        ),
+        "ctor: different knc address"
       )
       await DAOContract.new(
         blocksToSeconds(10), blockToTimestamp(currentBlock + 10),

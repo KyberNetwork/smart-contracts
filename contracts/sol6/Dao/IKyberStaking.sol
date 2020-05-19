@@ -1,6 +1,7 @@
 pragma solidity 0.6.6;
 
 import "./IEpochUtils.sol";
+import "../IERC20.sol";
 
 
 interface IKyberStaking is IEpochUtils {
@@ -35,4 +36,6 @@ interface IKyberStaking is IEpochUtils {
             uint256 _delegatedStake,
             address _delegatedAddress
         );
+
+    function knc() external view returns (IERC20);
 }

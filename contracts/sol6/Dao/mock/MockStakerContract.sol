@@ -7,15 +7,15 @@ import "../../IKyberDAO.sol";
 
 contract MockStakerContractNoFallback {
 
-    IERC20 public kncToken;
+    IERC20 public knc;
     IKyberStaking public staking;
     IKyberDAO public dao;
 
-    constructor(IERC20 _kncToken, IKyberStaking _staking, IKyberDAO _dao) public {
-        kncToken = _kncToken;
+    constructor(IERC20 _knc, IKyberStaking _staking, IKyberDAO _dao) public {
+        knc = _knc;
         staking = _staking;
         dao = _dao;
-        require(kncToken.approve(address(_staking), 2**255));
+        require(knc.approve(address(_staking), 2**255));
     }
 
     function deposit(uint amount) public {
@@ -40,8 +40,8 @@ contract MockStakerContractNoFallback {
 }
 
 contract MockStakerContractWithFallback is MockStakerContractNoFallback {
-    constructor(IERC20 _kncToken, IKyberStaking _staking, IKyberDAO _dao)
-        public MockStakerContractNoFallback(_kncToken, _staking, _dao) {}
+    constructor(IERC20 _knc, IKyberStaking _staking, IKyberDAO _dao)
+        public MockStakerContractNoFallback(_knc, _staking, _dao) {}
 
     receive() external payable {}
 }
