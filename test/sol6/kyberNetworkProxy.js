@@ -14,6 +14,8 @@ const MockTrader = artifacts.require("MockTrader.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
 
+const fs = require('fs');
+
 const BN = web3.utils.BN;
 
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
@@ -70,6 +72,10 @@ let tokenDecimals = [];
 
 //rates data
 ////////////
+
+//gas report
+///////////////////////////
+let gasReport = {};
 
 contract('KyberNetworkProxy', function(accounts) {
     before("one time global init", async() => {
@@ -139,6 +145,24 @@ contract('KyberNetworkProxy', function(accounts) {
         //set params, enable network
         await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
         await network.setEnable(true, {from: admin});
+    });
+
+    after("save gas report to file", async() => {
+        let reportDir = 'report';
+        let jsonContent = JSON.stringify(gasReport, null, '\t');
+        if (process.env.TRAVIS_BRANCH !== undefined) {
+          reportDir = `report/${process.env.TRAVIS_BRANCH}`;
+        }
+        let reportFile = `${reportDir}/gasUsed.json`;
+        if (!fs.existsSync(reportDir)) {
+          fs.mkdirSync(reportDir, {recursive: true});
+        }
+        fs.writeFile(reportFile, jsonContent, 'utf8', function (err) {
+            if (err) {
+                console.log('An error occured while writing JSON Object to File.');
+                return console.log(err);
+            }
+        });
     });
 
     describe("test get rates - compare proxy rate to network returned rates", async() => {
@@ -264,6 +288,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let txResult = await networkProxy.tradeWithHintAndFee(tokenAdd, srcQty, ethAddress, taker,
                     maxDestAmt, rate, platformWallet, fee, hint, {from: taker});
                 console.log(`t2e: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + ` num reserves: ` + numResForTest);
+                gasReport[`t2e trade, type: ${str}, fee: ${fee}, reserves: ${numResForTest}`] = txResult.receipt.gasUsed
             });
 
             it("should perform a e2t trade with hint", async() => {
@@ -278,6 +303,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let txResult = await networkProxy.tradeWithHintAndFee(ethAddress, srcQty, tokenAdd, taker,
                     maxDestAmt, rate, platformWallet, fee, hint, {from: taker, value: srcQty});
                 console.log(`e2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
+                gasReport[`e2t trade, type: ${str}, fee: ${fee}, reserves: ${numResForTest}`] = txResult.receipt.gasUsed
             });
 
             it("should perform a t2t trade with hint", async() => {
@@ -296,6 +322,8 @@ contract('KyberNetworkProxy', function(accounts) {
                 let txResult = await networkProxy.tradeWithHintAndFee(srcAdd, srcQty, destAdd, taker,
                     maxDestAmt, rate, platformWallet, fee, hint, {from: taker});
                 console.log(`t2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
+                gasReport[`t2t trade, type: ${str}, fee: ${fee}, reserves: ${numResForTest}`] = txResult.receipt.gasUsed
+
             });
         }
     });
@@ -327,6 +355,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let txResult = await networkProxy.tradeWithHintAndFee(tokenAdd, srcQty, ethAddress, taker,
                     maxDestAmt, addBufferToRate(rate), platformWallet, fee, hint, {from: taker});
                 console.log(`t2e: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + ` num reserves: ` + numResForTest);
+                gasReport[`t2e trade maxdest, type: ${str}, fee: ${fee}, reserves: ${numResForTest}`] = txResult.receipt.gasUsed
             });
 
             it("should perform a e2t trade with hint", async() => {
@@ -342,6 +371,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let txResult = await networkProxy.tradeWithHintAndFee(ethAddress, srcQty, tokenAdd, taker,
                     maxDestAmt, addBufferToRate(rate), platformWallet, fee, hint, {from: taker, value: srcQty});
                 console.log(`e2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
+                gasReport[`e2t trade maxdest, type: ${str}, fee: ${fee}, reserves: ${numResForTest}`] = txResult.receipt.gasUsed
             });
 
             it("should perform a t2t trade with hint", async() => {
@@ -363,6 +393,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 let txResult = await networkProxy.tradeWithHintAndFee(srcAdd, srcQty, destAdd, taker,
                     maxDestAmt, addBufferToRate(rate), platformWallet, fee, hint, {from: taker});
                 console.log(`t2t: ${txResult.receipt.gasUsed} gas used, type: ` + str + ' fee: ' + fee + " num reserves: " + numResForTest);
+                gasReport[`t2t trade maxdest, type: ${str}, fee: ${fee}, reserves: ${numResForTest}`] = txResult.receipt.gasUsed
             });
         }
     });
