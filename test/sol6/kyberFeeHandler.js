@@ -1572,17 +1572,93 @@ contract('KyberFeeHandler', function(accounts) {
         tempFeeHandler = await FeeHandler.new(daoSetter, tempProxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
         Helper.assertEqual(kyberNetwork, await tempFeeHandler.kyberNetwork(), "network does not match");
         await expectRevert(
-            tempFeeHandler.updateNetworkContract(), "only daoOperator"
+            tempFeeHandler.setNetworkContract(accounts[0]), "only daoOperator"
         )
         await expectRevert(
-            tempFeeHandler.updateNetworkContract({from: daoOperator}), "KyberNetwork 0"
+            tempFeeHandler.setNetworkContract(zeroAddress, {from: daoOperator}), "KyberNetwork 0"
         )
-        await tempProxy.setKyberNetwork(tempNetwork.address, {from: admin});
-        txResult = await tempFeeHandler.updateNetworkContract({from: daoOperator});
+        txResult = await tempFeeHandler.setNetworkContract(tempNetwork.address, {from: daoOperator});
         expectEvent(txResult, 'KyberNetworkUpdated', {
             kyberNetwork: tempNetwork.address,
         });
         Helper.assertEqual(tempNetwork.address, await tempFeeHandler.kyberNetwork(), "network does not match");
+        // should not have any event if update the same current network contract
+        txResult = await tempFeeHandler.setNetworkContract(tempNetwork.address, {from: daoOperator});
+        for (let i = 0; i < txResult.logs.length; i++) {
+            assert(txResult.logs[i].event != 'KyberNetworkUpdated', "shouldn't have network updated event");
+        }
+    });
+
+    describe("Update Network Proxy", async() => {
+        it("Test should revert new proxy is 0", async() => {
+            await expectRevert(
+                feeHandler.setNetworkProxy(zeroAddress, {from: daoOperator}),
+                "KyberNetworkProxy 0"
+            )
+        });
+
+        it("Test should revert not daoOperator", async() => {
+            await expectRevert(
+                feeHandler.setNetworkProxy(accounts[0], {from: accounts[0]}),
+                "only daoOperator"
+            )
+        })
+
+        it("Test update with event", async() => {
+            let newProxy = await KyberNetworkProxy.new(accounts[0]);
+            let txResult = await feeHandler.setNetworkProxy(newProxy.address, {from: daoOperator});
+            expectEvent(txResult, "KyberProxyUpdated", {
+                kyberProxy: newProxy.address,
+            });
+            let anotherProxy = accounts[0];
+            txResult = await feeHandler.setNetworkProxy(anotherProxy, {from: daoOperator});
+            expectEvent(txResult, "KyberProxyUpdated", {
+                kyberProxy: anotherProxy
+            });
+            txResult = await feeHandler.setNetworkProxy(anotherProxy, {from: daoOperator});
+            for (let i = 0; i < txResult.logs.length; i++) {
+                assert(txResult.logs[i].event != 'KyberProxyUpdated', "shouldn't have proxy updated event");
+            }
+        });
+
+        it("Test burn KNC after updating proxy", async() => {
+            let tempNetwork = accounts[0];
+
+            let sanityRate = await BurnKncSanityRate.new();
+            await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
+
+            let tempProxy = await Proxy.new();
+            await knc.transfer(tempProxy.address, oneKnc.mul(new BN(10000)));
+            await Helper.sendEtherWithPromise(accounts[9], tempProxy.address, oneEth);
+
+            await tempProxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
+            await tempProxy.setPairRate(knc.address, ethAddress, kncToEthPrecision);
+
+            let tempFeeHandler = await FeeHandler.new(daoSetter, tempProxy.address, tempNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+            await tempFeeHandler.setDaoContract(mockDAO.address, {from: daoSetter});
+            await tempFeeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: daoOperator});
+            await tempFeeHandler.getBRR();
+            await tempFeeHandler.setNetworkProxy(tempProxy.address, {from: daoOperator});
+
+            await tempFeeHandler.handleFees([], [], zeroAddress, 0, {from: tempNetwork, value: oneEth});
+            await tempFeeHandler.burnKnc();
+
+            await Helper.increaseBlockNumber(BURN_BLOCK_INTERVAL);
+
+            // new proxy
+            tempProxy = await Proxy.new();
+            await knc.transfer(tempProxy.address, oneKnc.mul(new BN(10000)));
+            await Helper.sendEtherWithPromise(accounts[9], tempProxy.address, oneEth);
+            await tempProxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
+            await tempProxy.setPairRate(knc.address, ethAddress, kncToEthPrecision);
+
+            await tempFeeHandler.handleFees([], [], zeroAddress, 0, {from: tempNetwork, value: oneEth});
+
+            // set new proxy for fee handler
+            await tempFeeHandler.setNetworkProxy(tempProxy.address, {from: daoOperator});
+            // burn knc
+            await tempFeeHandler.burnKnc();
+        });
     });
 });
 
