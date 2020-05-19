@@ -77,7 +77,7 @@ contract('KyberMatchingEngine', function(accounts) {
     describe("test onlyAdmin and onlyNetwork permissions", async() => {
         before("deploy matchingEngine and storage instance, 1 mock reserve and 1 mock token", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
-            storage = await KyberStorage.new(admin);
+            storage = await nwHelper.setupStorage(admin);
             await storage.setNetworkContract(network, {from:admin});
             token = await TestToken.new("test", "tst", 18);
 
@@ -209,7 +209,7 @@ contract('KyberMatchingEngine', function(accounts) {
     describe("test RateHelper getRatesForToken", async() => {
         before("setup matchingEngine instance and 2 tokens", async() => {
             matchingEngine = await KyberMatchingEngine.new(admin);
-            storage = await KyberStorage.new(admin);
+            storage = await nwHelper.setupStorage(admin);
             network = await KyberNetwork.new(admin, storage.address);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
@@ -417,7 +417,7 @@ contract('KyberMatchingEngine', function(accounts) {
     describe("test reserve matching", async() => {
         before("setup matchingEngine instance", async() => {
             matchingEngine = await MockMatchEngine.new(admin);
-            storage = await KyberStorage.new(admin);
+            storage = await nwHelper.setupStorage(admin);
             network = await KyberNetwork.new(admin, storage.address);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
@@ -474,7 +474,7 @@ contract('KyberMatchingEngine', function(accounts) {
     describe("test convertReserveIdToAddress, convertAddressToReserveId, get reserve details", async() => {
         before("setup matchingEngine instance", async() => {
             matchingEngine = await MockMatchEngine.new(admin);
-            storage = await KyberStorage.new(admin);
+            storage = await nwHelper.setupStorage(admin);
             network = await KyberNetwork.new(admin, storage.address);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
             await matchingEngine.setKyberStorage(storage.address, {from: admin});
