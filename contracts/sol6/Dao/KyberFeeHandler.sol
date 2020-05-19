@@ -8,6 +8,7 @@ import "../ISimpleKyberProxy.sol";
 import "../IBurnableToken.sol";
 import "./ISanityRate.sol";
 import "../utils/zeppelin/SafeMath.sol";
+import "./DaoOperator.sol";
 
 
 /**
@@ -37,7 +38,7 @@ interface IKyberProxy is IKyberNetworkProxy, ISimpleKyberProxy {
     function kyberNetwork() external view returns (address);
 }
 
-contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
+contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator {
     using SafeMath for uint256;
 
     uint256 internal constant DEFAULT_REWARD_BPS = 3000;
@@ -60,9 +61,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
     uint256 public lastBurnBlock;
 
     BRRData public brrAndEpochData;
-    address public burnConfigSetter;
     address public daoSetter;
-    address public pendingBurnConfigSetter;
 
     /// @dev amount of eth to burn for each burn KNC call
     uint256 public weiToBurn = 2 * 10**ETH_DECIMALS;
@@ -99,8 +98,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
     event KyberDaoAddressSet(IKyberDAO kyberDAO);
     event BurnConfigSet(ISanityRate sanityRate, uint256 weiToBurn);
     event RewardsRemovedToBurn(uint256 indexed epoch, uint256 rewardsWei);
-    event TransferBurnConfigSetter(address pendingBurnConfigSetter);
-    event BurnConfigSetterClaimed(address newBurnConfigSetter, address previousBurnConfigSetter);
     event KyberNetworkUpdated(address kyberNetwork);
 
     constructor(
@@ -109,16 +106,14 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
         address _kyberNetwork,
         IERC20 _knc,
         uint256 _burnBlockInterval,
-        address _burnConfigSetter
-    ) public {
-        require(_burnConfigSetter != address(0), "burnConfigSetter is 0");
+        address _daoOperator
+    ) public DaoOperator(_daoOperator) {
         require(_daoSetter != address(0), "daoSetter 0");
         require(address(_networkProxy) != address(0), "KyberNetworkProxy 0");
         require(_kyberNetwork != address(0), "KyberNetwork 0");
         require(address(_knc) != address(0), "knc 0");
         require(_burnBlockInterval != 0, "_burnBlockInterval 0");
 
-        burnConfigSetter = _burnConfigSetter;
         daoSetter = _daoSetter;
         networkProxy = _networkProxy;
         kyberNetwork = _kyberNetwork;
@@ -127,11 +122,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
 
         //start with epoch 0
         updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, now, 0);
-    }
-
-    modifier onlyBurnConfigSetter() {
-        require(msg.sender == burnConfigSetter, "only burnConfigSetter");
-        _;
     }
 
     modifier onlyDAO {
@@ -290,22 +280,6 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
         return amount;
     }
 
-    /// @dev Allows the pendingBurnConfigSetter address to finalize the change burn config setter process.
-    function claimBurnConfigSetter() external {
-        require(pendingBurnConfigSetter == msg.sender, "only pending burn config setter");
-        emit BurnConfigSetterClaimed(pendingBurnConfigSetter, burnConfigSetter);
-        burnConfigSetter = pendingBurnConfigSetter;
-        pendingBurnConfigSetter = address(0);
-    }
-
-    /// @dev Allows the current burnConfigSetter to set the pendingBurnConfigSetter address.
-    /// @param newSetter The address to transfer ownership to.
-    function transferBurnConfigSetter(address newSetter) external onlyBurnConfigSetter {
-        require(newSetter != address(0), "newSetter is 0");
-        emit TransferBurnConfigSetter(newSetter);
-        pendingBurnConfigSetter = newSetter;
-    }
-
     /// @dev set dao contract address once and set setter address to zero.
     /// @param _kyberDAO Dao address.
     function setDaoContract(IKyberDAO _kyberDAO) external {
@@ -318,7 +292,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
     }
 
     /// @dev update kyber network contract address via kyber proxy.
-    function updateNetworkContract() external onlyBurnConfigSetter{
+    function updateNetworkContract() external onlyDaoOperator {
         address _kyberNetwork = networkProxy.kyberNetwork();
         require(_kyberNetwork != address(0), "KyberNetwork 0");
         kyberNetwork = _kyberNetwork;
@@ -330,7 +304,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5 {
     /// @param _weiToBurn new amount of wei to burn
     function setBurnConfigParams(ISanityRate _sanityRate, uint256 _weiToBurn)
         external
-        onlyBurnConfigSetter
+        onlyDaoOperator
     {
         require(_weiToBurn > 0, "_weiToBurn is 0");
 

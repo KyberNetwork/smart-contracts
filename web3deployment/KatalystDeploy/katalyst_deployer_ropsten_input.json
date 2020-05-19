@@ -106,10 +106,10 @@
 
     "permission" : {
         "DAO": {
-            "CampaignCreator": "0xddf05698718ba8ed1c9aba198d38a825a64d69e2"
+            "DaoOperator": "0xddf05698718ba8ed1c9aba198d38a825a64d69e2"
         },
         "FeeHandler": {
-            "BurnConfigSetter": "0xea058bEa72a251039C2c9C9C103fD2a9335a781F"
+            "DaoOperator": "0xddf05698718ba8ed1c9aba198d38a825a64d69e2"
         },
         "MatchingEngine" : {
             "admin" : "0xea058bEa72a251039C2c9C9C103fD2a9335a781F",
