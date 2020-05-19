@@ -492,6 +492,17 @@ contract('KyberStorage', function(accounts) {
                     "reserveId = 0"
                 );
             });
+
+            it("should return no reserve data if reserve id does not exist", async() => {
+                let reserveId = "0xaa00000026d1e94963c8b382ad00000000000000000000000000000000000000";
+                let reserveData = await kyberStorage.getReserveDetailsById(reserveId);
+    
+                Helper.assertEqual(reserveData.reserveAddress, "0x0000000000000000000000000000000000000000", "reserve address not 0x0");
+                Helper.assertEqual(reserveData.rebateWallet, "0x0000000000000000000000000000000000000000", "rebate wallet not 0x0");
+                Helper.assertEqual(reserveData.resType, "0", "reserve type not 0");
+                Helper.assertEqual(reserveData.isFeeAccountedFlag, false, "isFeeAccountedFlag not false");
+                Helper.assertEqual(reserveData.isEntitledRebateFlag, false, "isEntitledRebateFlag not false");
+            })
         });
 
         describe("test cases for an already added reserve", async() => {
