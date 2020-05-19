@@ -94,7 +94,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await DAO.setNetworkFeeBps(networkFeeBps);
 
         //deploy storage and network
-        storage = await KyberStorage.new(admin);
+        storage = await nwHelper.setupStorage(admin);
         network = await KyberNetwork.new(admin, storage.address);
         await storage.setNetworkContract(network.address, {from: admin});
         await storage.addOperator(operator, {from: admin});
@@ -496,7 +496,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await mockDAO.setNetworkFeeBps(networkFeeBps);
 
             //deploy storage and network
-            tempStorage = await KyberStorage.new(admin);
+            tempStorage = await nwHelper.setupStorage(admin);
             mockNetwork = await KyberNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(mockNetwork.address, {from: admin});
             await tempStorage.addOperator(operator, {from: admin});
@@ -677,7 +677,7 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         it("KyberNetworkSet", async () => {
-            let tempStorage = await KyberStorage.new(admin);
+            let tempStorage = await nwHelper.setupStorage(admin);
             let newNetWork = await KyberNetwork.new(admin, tempStorage.address);
             let txResult = await networkProxy.setKyberNetwork(newNetWork.address, { from: admin });
             await expectEvent(txResult, "KyberNetworkSet", {
