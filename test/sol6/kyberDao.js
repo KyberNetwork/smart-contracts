@@ -758,7 +758,7 @@ contract('KyberDAO', function(accounts) {
         Helper.assertEqual(0, voteData.voteCounts[3], "option voted point is incorrect");
         Helper.assertEqual(0, voteData.totalVoteCount, "total voted points is incorrect");
 
-        let listCamps = await daoContract.getListCampIDs(0);
+        let listCamps = await daoContract.getListCampaignIDs(0);
         Helper.assertEqual(id + 1, listCamps.length, "number camps is incorrect");
 
         // burn KNC to reduce total supply value
@@ -771,7 +771,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(2, await daoContract.networkFeeCampaigns(0), "should have network fee camp");
       Helper.assertEqual(3, await daoContract.brrCampaigns(0), "should have brr camp");
 
-      let listCamps = await daoContract.getListCampIDs(0);
+      let listCamps = await daoContract.getListCampaignIDs(0);
       Helper.assertEqual(3, listCamps.length, "number camps is incorrect");
       Helper.assertEqual(1, listCamps[0], "camp id is incorrect");
       Helper.assertEqual(2, listCamps[1], "camp id is incorrect");
@@ -1001,11 +1001,11 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(2, data.options[1], "option value is incorrect");
       Helper.assertEqual(3, data.options[2], "option value is incorrect");
 
-      let listCampIDs = await daoContract.getListCampIDs(1);
+      let listCampIDs = await daoContract.getListCampaignIDs(1);
       Helper.assertEqual(1, listCampIDs.length, "should have added first camp");
       Helper.assertEqual(1, listCampIDs[0], "should have added first camp");
 
-      listCampIDs = await daoContract.getListCampIDs(0);
+      listCampIDs = await daoContract.getListCampaignIDs(0);
       Helper.assertEqual(0, listCampIDs.length, "shouldn't have added any camps");
 
       await submitNewCampaign(daoContract,
@@ -1013,7 +1013,7 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
       );
 
-      listCampIDs = await daoContract.getListCampIDs(1);
+      listCampIDs = await daoContract.getListCampaignIDs(1);
       Helper.assertEqual(2, listCampIDs.length, "should have added 2 camps");
       Helper.assertEqual(1, listCampIDs[0], "should have added 2 camps");
       Helper.assertEqual(2, listCampIDs[1], "should have added 2 camps");
@@ -1027,12 +1027,12 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: campCreator}
       );
 
-      listCampIDs = await daoContract.getListCampIDs(1);
+      listCampIDs = await daoContract.getListCampaignIDs(1);
       Helper.assertEqual(3, listCampIDs.length, "should have added 3 camps");
       Helper.assertEqual(1, listCampIDs[0], "should have added 3 camps");
       Helper.assertEqual(2, listCampIDs[1], "should have added 3 camps");
       Helper.assertEqual(3, listCampIDs[2], "should have added 3 camps");
-      listCampIDs = await daoContract.getListCampIDs(0);
+      listCampIDs = await daoContract.getListCampaignIDs(0);
       Helper.assertEqual(0, listCampIDs.length, "shouldn't have added any camps");
     });
 
@@ -1176,7 +1176,7 @@ contract('KyberDAO', function(accounts) {
           0, currentTimestamp - 1, currentTimestamp + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: campCreator}
         ),
-        "validateParams: can't start in the past"
+        "validateParams: start in the past"
       );
       // start in the next 2 epochs, use time to make it more accurate
       await expectRevert(
@@ -1384,14 +1384,14 @@ contract('KyberDAO', function(accounts) {
           1, currentBlock + 9, currentBlock + 9 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 5000], '0x', {from: campCreator}
         ),
-        "validateParams: Fee campaign option value is too high"
+        "validateParams: network fee must be smaller then BPS / 2"
       )
       await expectRevert(
         submitNewCampaign(daoContract,
           1, currentBlock + 11, currentBlock + 11 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 10000, 2, 3], '0x', {from: campCreator}
         ),
-        "validateParams: Fee campaign option value is too high"
+        "validateParams: network fee must be smaller then BPS / 2"
       )
       await submitNewCampaign(daoContract,
         1, currentBlock + 13, currentBlock + 13 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1403,14 +1403,14 @@ contract('KyberDAO', function(accounts) {
           2, currentBlock + 15, currentBlock + 15 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, getDataFromRebateAndReward(100, 10001 - 100), 2, 3], '0x', {from: campCreator}
         ),
-        "validateParams: RR values are too high"
+        "validateParams: rebate + reward must be smaller then BPS"
       )
       await expectRevert(
         submitNewCampaign(daoContract,
           2, currentBlock + 17, currentBlock + 17 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, getDataFromRebateAndReward(20, 10000)], '0x', {from: campCreator}
         ),
-        "validateParams: RR values are too high"
+        "validateParams: rebate + reward must be smaller then BPS"
       )
       await submitNewCampaign(daoContract,
         2, currentBlock + 19, currentBlock + 19 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1718,7 +1718,7 @@ contract('KyberDAO', function(accounts) {
 
         Helper.assertEqual(await daoContract.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
 
-        let listCamps = await daoContract.getListCampIDs(id);
+        let listCamps = await daoContract.getListCampaignIDs(id);
 
         Helper.assertEqual(listCamps.length, 4, "number camps for this epoch is incorrect");
         Helper.assertEqual(listCamps[0], campCounts - 3, "camp id for this epoch is incorrect");
@@ -1733,7 +1733,7 @@ contract('KyberDAO', function(accounts) {
           campaignID: new BN(campCounts)
         });
 
-        listCamps = await daoContract.getListCampIDs(id);
+        listCamps = await daoContract.getListCampaignIDs(id);
         Helper.assertEqual(listCamps.length, 3, "number camps for this epoch is incorrect");
         Helper.assertEqual(listCamps[0], campCounts - 3, "camp id for this epoch is incorrect");
         Helper.assertEqual(listCamps[1], campCounts - 2, "camp id for this epoch is incorrect");
@@ -1764,7 +1764,7 @@ contract('KyberDAO', function(accounts) {
           campaignID: new BN(campCounts - 3)
         });
 
-        listCamps = await daoContract.getListCampIDs(id);
+        listCamps = await daoContract.getListCampaignIDs(id);
         Helper.assertEqual(listCamps.length, 2, "number camps for this epoch is incorrect");
         Helper.assertEqual(listCamps[0], campCounts - 1, "camp id for this epoch is incorrect");
         Helper.assertEqual(listCamps[1], campCounts - 2, "camp id for this epoch is incorrect");
@@ -1796,7 +1796,7 @@ contract('KyberDAO', function(accounts) {
 
         Helper.assertEqual(await daoContract.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
 
-        listCamps = await daoContract.getListCampIDs(id);
+        listCamps = await daoContract.getListCampaignIDs(id);
 
         Helper.assertEqual(listCamps.length, 3, "number camps for this epoch is incorrect");
         Helper.assertEqual(listCamps[0], campCounts - 2, "camp id for this epoch is incorrect");
@@ -2008,13 +2008,13 @@ contract('KyberDAO', function(accounts) {
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: campCreator}
       );
 
-      let campaignIDs = await daoContract.getListCampIDs(0);
+      let campaignIDs = await daoContract.getListCampaignIDs(0);
       Helper.assertEqual(3, campaignIDs.length, "number ids for first epoch is wrong");
       Helper.assertEqual(1, campaignIDs[0], "camp id for first epoch is wrong");
       Helper.assertEqual(2, campaignIDs[1], "camp id for first epoch is wrong");
       Helper.assertEqual(3, campaignIDs[2], "camp id for first epoch is wrong");
 
-      campaignIDs = await daoContract.getListCampIDs(1);
+      campaignIDs = await daoContract.getListCampaignIDs(1);
       Helper.assertEqual(4, campaignIDs.length, "number ids for second epoch is wrong");
       Helper.assertEqual(4, campaignIDs[0], "camp id for second epoch is wrong");
       Helper.assertEqual(5, campaignIDs[1], "camp id for second epoch is wrong");
@@ -2024,14 +2024,14 @@ contract('KyberDAO', function(accounts) {
       // cancel next camp
       await daoContract.cancelCampaign(5, {from: campCreator});
 
-      campaignIDs = await daoContract.getListCampIDs(1);
+      campaignIDs = await daoContract.getListCampaignIDs(1);
       Helper.assertEqual(3, campaignIDs.length, "number ids for second epoch is wrong");
       Helper.assertEqual(4, campaignIDs[0], "camp id for second epoch is wrong");
       Helper.assertEqual(7, campaignIDs[1], "camp id for second epoch is wrong");
       Helper.assertEqual(6, campaignIDs[2], "camp id for second epoch is wrong");
 
       // epoch 1 camps shouldn't be changed
-      campaignIDs = await daoContract.getListCampIDs(0);
+      campaignIDs = await daoContract.getListCampaignIDs(0);
       Helper.assertEqual(3, campaignIDs.length, "number ids for first epoch is wrong");
       Helper.assertEqual(1, campaignIDs[0], "camp id for first epoch is wrong");
       Helper.assertEqual(2, campaignIDs[1], "camp id for first epoch is wrong");
@@ -2039,13 +2039,13 @@ contract('KyberDAO', function(accounts) {
 
       await daoContract.cancelCampaign(2, {from: campCreator});
 
-      campaignIDs = await daoContract.getListCampIDs(1);
+      campaignIDs = await daoContract.getListCampaignIDs(1);
       Helper.assertEqual(3, campaignIDs.length, "number ids for second epoch is wrong");
       Helper.assertEqual(4, campaignIDs[0], "camp id for second epoch is wrong");
       Helper.assertEqual(7, campaignIDs[1], "camp id for second epoch is wrong");
       Helper.assertEqual(6, campaignIDs[2], "camp id for second epoch is wrong");
 
-      campaignIDs = await daoContract.getListCampIDs(0);
+      campaignIDs = await daoContract.getListCampaignIDs(0);
       Helper.assertEqual(2, campaignIDs.length, "number ids for first epoch is wrong");
       Helper.assertEqual(1, campaignIDs[0], "camp id for first epoch is wrong");
       Helper.assertEqual(3, campaignIDs[1], "camp id for first epoch is wrong");
@@ -2055,7 +2055,7 @@ contract('KyberDAO', function(accounts) {
 
       await daoContract.cancelCampaign(4, {from: campCreator});
       // check camp ids
-      campaignIDs = await daoContract.getListCampIDs(1);
+      campaignIDs = await daoContract.getListCampaignIDs(1);
       Helper.assertEqual(2, campaignIDs.length, "number ids for second epoch is wrong");
       Helper.assertEqual(6, campaignIDs[0], "camp id for second epoch is wrong");
       Helper.assertEqual(7, campaignIDs[1], "camp id for second epoch is wrong");
@@ -3508,7 +3508,7 @@ contract('KyberDAO', function(accounts) {
 
       await expectRevert(
         daoContract.claimReward(mike, 1),
-        "claimReward: No reward"
+        "claimReward: no reward"
       )
 
       await feeHandler.withdrawAllETH({from: accounts[0]});
@@ -3541,12 +3541,12 @@ contract('KyberDAO', function(accounts) {
       // no stake
       await expectRevert(
         daoContract.claimReward(poolMaster, 1),
-        "claimReward: No reward"
+        "claimReward: no reward"
       )
       // already delegated
       await expectRevert(
         daoContract.claimReward(victor, 1),
-        "claimReward: No reward"
+        "claimReward: no reward"
       )
 
       // mike has no stake, but has delegated stake
@@ -3578,7 +3578,7 @@ contract('KyberDAO', function(accounts) {
       // victor didn't vote
       await expectRevert(
         daoContract.claimReward(victor, 1),
-        "claimReward: No reward"
+        "claimReward: no reward"
       )
 
       await daoContract.claimReward(mike, 1);
@@ -3671,7 +3671,7 @@ contract('KyberDAO', function(accounts) {
 
       await expectRevert(
         daoContract.claimReward(mike, 4),
-        "claimReward: No reward"
+        "claimReward: no reward"
       )
 
       await daoContract.claimReward(mike, 1);
@@ -5838,7 +5838,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
-        "ctor: diff epoch period"
+        "ctor: different epoch period"
       )
       // different start block
       await expectRevert(
@@ -5848,7 +5848,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
-        "ctor: diff start timestamp"
+        "ctor: different start timestamp"
       )
       await DAOContract.new(
         blocksToSeconds(10), blockToTimestamp(currentBlock + 10),
@@ -5889,7 +5889,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
-        "ctor: staking is missing"
+        "ctor: staking 0"
       )
       // feehandler missing
       await expectRevert(
@@ -5899,7 +5899,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
-        "ctor: feeHandler is missing"
+        "ctor: feeHandler 0"
       )
       // knc missing
       await expectRevert(
@@ -5909,7 +5909,7 @@ contract('KyberDAO', function(accounts) {
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
           campCreator
         ),
-        "ctor: knc token is missing"
+        "ctor: knc token 0"
       )
       // network fee is high (>= 50%)
       await expectRevert(
