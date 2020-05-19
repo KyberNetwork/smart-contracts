@@ -120,9 +120,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
     ) public {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
-        require(_staking != address(0), "ctor: staking is missing");
-        require(_feeHandler != address(0), "ctor: feeHandler is missing");
-        require(_knc != address(0), "ctor: knc token is missing");
+        require(_staking != address(0), "ctor: staking 0");
+        require(_feeHandler != address(0), "ctor: feeHandler 0");
+        require(_knc != address(0), "ctor: knc token 0");
         require(_campaignCreator != address(0), "campaignCreator is 0");
         // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
         // so network fee should be less than 50%
@@ -130,10 +130,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
         require(_defaultRewardBps.add(_defaultRebateBps) <= BPS, "reward plus rebate high");
 
         staking = IKyberStaking(_staking);
-        require(staking.epochPeriodInSeconds() == _epochPeriod, "ctor: diff epoch period");
+        require(staking.epochPeriodInSeconds() == _epochPeriod, "ctor: different epoch period");
         require(
             staking.firstEpochStartTimestamp() == _startTimestamp,
-            "ctor: diff start timestamp"
+            "ctor: different start timestamp"
         );
 
         epochPeriodInSeconds = _epochPeriod;
@@ -433,7 +433,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
         require(!hasClaimedReward[staker][epoch], "claimReward: already claimed");
 
         uint256 perInPrecision = getStakerRewardPercentageInPrecision(staker, epoch);
-        require(perInPrecision > 0, "claimReward: No reward");
+        require(perInPrecision > 0, "claimReward: no reward");
 
         hasClaimedReward[staker][epoch] = true;
         // call fee handler to claim reward
@@ -490,7 +490,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
     }
 
     // return list campaign ids for epoch, excluding non-existed ones
-    function getListCampIDs(uint256 epoch) external view returns (uint256[] memory campaignIDs) {
+    function getListCampaignIDs(uint256 epoch) external view returns (uint256[] memory campaignIDs) {
         campaignIDs = epochCampaigns[epoch];
     }
 
@@ -732,7 +732,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
         uint256[] memory options
     ) public view returns (bool) {
         // now <= start timestamp < end timestamp
-        require(startTimestamp >= now, "validateParams: can't start in the past");
+        require(startTimestamp >= now, "validateParams: start in the past");
         // campaign duration must be at least min campaign duration
         // endTimestamp - startTimestamp + 1 >= minCampaignDurationInSeconds,
         require(
@@ -770,7 +770,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
                 // so network fee should be less than 50%
                 require(
                     options[i] < BPS / 2,
-                    "validateParams: Fee campaign option value is too high"
+                    "validateParams: network fee must be smaller then BPS / 2"
                 );
             }
         } else {
@@ -781,7 +781,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5 {
                     getRebateAndRewardFromData(options[i]);
                 require(
                     rewardInBps.add(rebateInBps) <= BPS,
-                    "validateParams: RR values are too high"
+                    "validateParams: rebate + reward must be smaller then BPS"
                 );
             }
         }
