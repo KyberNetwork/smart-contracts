@@ -79,7 +79,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         await DAO.setNetworkFeeBps(networkFeeBps);
 
         // init storage
-        networkStorage = await KyberStorage.new(admin);
+        networkStorage = await nwHelper.setupStorage(admin);
 
         //deploy network
         network = await KyberNetwork.new(admin, networkStorage.address);

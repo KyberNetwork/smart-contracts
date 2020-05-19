@@ -1,7 +1,5 @@
 pragma solidity 0.6.6;
 
-import "./IKyberFeeHandler.sol";
-import "./IKyberDAO.sol";
 import "./IKyberNetworkProxy.sol";
 import "./IKyberReserve.sol";
 
@@ -15,10 +13,9 @@ interface IKyberStorage {
 
     function removeKyberProxy(address networkProxy) external;
 
-    function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
-        external;
+    function setContracts(address _feeHandler, address _matchingEngine) external;
 
-    function setDAOContract(IKyberDAO _kyberDAO) external;
+    function setDAOContract(address _kyberDAO) external;
 
     function getReserveId(address reserve) external view returns (bytes32 reserveId);
 
