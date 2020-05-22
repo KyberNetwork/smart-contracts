@@ -502,7 +502,25 @@ contract('KyberStorage', function(accounts) {
                 Helper.assertEqual(reserveData.resType, "0", "reserve type not 0");
                 Helper.assertEqual(reserveData.isFeeAccountedFlag, false, "isFeeAccountedFlag not false");
                 Helper.assertEqual(reserveData.isEntitledRebateFlag, false, "isEntitledRebateFlag not false");
-            })
+
+                let result = await kyberStorage.getListedTokensByReserveId(reserveId);
+                Helper.assertEqual(result.srcTokens.length, zeroBN, "src tokens not empty");
+                Helper.assertEqual(result.destTokens.length, zeroBN, "dest tokens not empty");
+            });
+
+            it("should return no reserve data if reserve address does not exist", async() => {
+                let reserveData = await kyberStorage.getReserveDetailsByAddress(admin);
+    
+                Helper.assertEqual(reserveData.reserveId, nwHelper.ZERO_RESERVE_ID, "reserve ID not 0x0");
+                Helper.assertEqual(reserveData.rebateWallet, "0x0000000000000000000000000000000000000000", "rebate wallet not 0x0");
+                Helper.assertEqual(reserveData.resType, "0", "reserve type not 0");
+                Helper.assertEqual(reserveData.isFeeAccountedFlag, false, "isFeeAccountedFlag not false");
+                Helper.assertEqual(reserveData.isEntitledRebateFlag, false, "isEntitledRebateFlag not false");
+
+                let result = await kyberStorage.getListedTokensByReserveAddress(admin);
+                Helper.assertEqual(result.srcTokens.length, zeroBN, "src tokens not empty");
+                Helper.assertEqual(result.destTokens.length, zeroBN, "dest tokens not empty");
+            });
         });
 
         describe("test cases for an already added reserve", async() => {
@@ -845,6 +863,16 @@ contract('KyberStorage', function(accounts) {
 
             result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqualArray(result, reserveIds, "E2T should be listed");
+
+            for (let reserve of Object.values(reserveInstances)) {
+                result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+                Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
+                Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
+                result = await kyberStorage.getListedTokensByReserveAddress(reserve.address);
+                Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
+                Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
+            };
+
             // delist for both side
             for (let reserve of Object.values(reserveInstances)) {
                 await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
@@ -860,6 +888,13 @@ contract('KyberStorage', function(accounts) {
 
             result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
+
+            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
+            Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
+            result = await kyberStorage.getListedTokensByReserveAddress(reserve.address);
+            Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
+            Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
         });
 
         it("should list T2E side only", async() => {
@@ -871,6 +906,13 @@ contract('KyberStorage', function(accounts) {
 
             result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
+
+            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            Helper.assertEqual(result.srcTokens[0], token.address, "T2E should be listed");
+            Helper.assertEqual(result.destTokens.length, zeroBN, "E2T should not be listed");
+            result = await kyberStorage.getListedTokensByReserveAddress(reserve.address);
+            Helper.assertEqual(result.srcTokens[0], token.address, "T2E should be listed");
+            Helper.assertEqual(result.destTokens.length, zeroBN, "E2T should not be listed");
         });
 
         it("should list both T2E and E2T", async() => {
@@ -882,6 +924,13 @@ contract('KyberStorage', function(accounts) {
 
             result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
+
+            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            Helper.assertEqual(result.srcTokens[0], token.address, "T2E should be listed");
+            Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
+            result = await kyberStorage.getListedTokensByReserveAddress(reserve.address);
+            Helper.assertEqual(result.srcTokens[0], token.address, "T2E should be listed");
+            Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
         });
 
         it("should delist T2E side only", async() => {
@@ -894,6 +943,13 @@ contract('KyberStorage', function(accounts) {
 
             result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
+
+            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
+            Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
+            result = await kyberStorage.getListedTokensByReserveAddress(reserve.address);
+            Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
+            Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
         });
 
         it("should delist E2T side only", async() => {
@@ -906,6 +962,13 @@ contract('KyberStorage', function(accounts) {
 
             result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
+
+            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            Helper.assertEqual(result.srcTokens[0], token.address, "T2E should be listed");
+            Helper.assertEqual(result.destTokens.length, zeroBN, "E2T should not be listed");
+            result = await kyberStorage.getListedTokensByReserveAddress(reserve.address);
+            Helper.assertEqual(result.srcTokens[0], token.address, "T2E should be listed");
+            Helper.assertEqual(result.destTokens.length, zeroBN, "E2T should not be listed");
         });
 
         it("should delist both T2E and E2T", async() => {
@@ -918,6 +981,13 @@ contract('KyberStorage', function(accounts) {
 
             result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
+
+            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
+            Helper.assertEqual(result.destTokens.length, zeroBN, "E2T should not be listed");
+            result = await kyberStorage.getListedTokensByReserveAddress(reserve.address);
+            Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
+            Helper.assertEqual(result.destTokens.length, zeroBN, "E2T should not be listed");
         });
 
         it("should revert for listing twice (approving)", async() => {
@@ -926,12 +996,12 @@ contract('KyberStorage', function(accounts) {
                 kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator})
             )
             let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
-            Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
+            Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
             result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
-            Helper.assertEqual(result[0], reserve.address, "E2T should be listed");
+            Helper.assertEqual(result[0], reserve.address, "T2E should be listed");
 
             result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
-            Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
+            Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
         });
 
         it("should revert when list tokens for reserve that has been removed", async() => {
@@ -944,6 +1014,52 @@ contract('KyberStorage', function(accounts) {
                 kyberStorage.listPairForReserve(mockReserveId, token.address, true, true, true, {from: operator}),
                 "reserve = 0"
            );
+        });
+
+        it("should delist all tokens automatically when only removeReserve is called", async() => {
+            let token2 = await TestToken.new("test2", "tst2", 18);
+            let token3 = await TestToken.new("test3", "tst3", 18);
+            // 1 token for only T2E, 1 token for both side, 1 token for only E2T
+            let srcTokenAddresses = [token.address, token2.address];
+            let destTokenAddresses = [token2.address, token3.address];
+            let allTokenAddresses = [token.address, token2.address, token3.address];
+            let result;
+
+            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, false, true, true, {from: operator});
+            await kyberStorage.listPairForReserve(reserve.reserveId, token2.address, true, true, true, {from: operator});
+            await kyberStorage.listPairForReserve(reserve.reserveId, token3.address, true, false, true, {from: operator});
+
+            for (let tokenAdd of Object.values(srcTokenAddresses)) {
+                result = await kyberStorage.getReserveIdsPerTokenSrc(tokenAdd);
+                Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
+            }
+
+            for (let tokenAdd of Object.values(destTokenAddresses)) {
+                result = await kyberStorage.getReserveIdsPerTokenDest(tokenAdd);
+                Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
+            }
+
+            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            Helper.assertEqualArray(result.srcTokens, srcTokenAddresses, "src tokens listed not the same");
+            Helper.assertEqualArray(result.destTokens, destTokenAddresses, "dest tokens listed not the same");
+            result = await kyberStorage.getListedTokensByReserveAddress(reserve.address);
+            Helper.assertEqualArray(result.srcTokens, srcTokenAddresses, "src tokens listed not the same");
+            Helper.assertEqualArray(result.destTokens, destTokenAddresses, "dest tokens listed not the same");
+
+            await kyberStorage.removeReserve(reserve.reserveId, 0, {from: operator});
+
+            for (let tokenAdd of Object.values(allTokenAddresses)) {
+                result = await kyberStorage.getReserveIdsPerTokenSrc(tokenAdd);
+                Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
+                result = await kyberStorage.getReserveIdsPerTokenDest(tokenAdd);
+                Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
+            }
+            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            Helper.assertEqual(result.srcTokens.length, zeroBN, "src tokens listed not the same");
+            Helper.assertEqual(result.destTokens.length, zeroBN, "dest tokens listed not the same");
+            result = await kyberStorage.getListedTokensByReserveAddress(reserve.address);
+            Helper.assertEqual(result.srcTokens.length, zeroBN, "src tokens listed not the same");
+            Helper.assertEqual(result.destTokens.length, zeroBN, "dest tokens listed not the same");
         });
     });
 
