@@ -2908,6 +2908,8 @@ contract('KyberNetwork', function(accounts) {
                 await mockReserve.setRate(tokens[1].address, MAX_RATE.div(new BN(2)), MAX_RATE.div(new BN(2)));
             }
 
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setContracts(matchingEngine.address, DAO.address, tempStorage.address, {from: admin});
         });
 
         beforeEach("zero network balance", async() => {
@@ -2947,6 +2949,40 @@ contract('KyberNetwork', function(accounts) {
                 "rate < min rate"
             );
         });
+
+        it("trade reverts when one reserve has zero qty -> expected rate returns 0", async function() {
+            // add new reserve
+            let result = await nwHelper.setupReserves(network, tokens, 1, 0, 0, 0, accounts, admin, operator);
+            let newReserveInstances = result.reserveInstances;
+            let allReserveInstances = {};
+            for (const [key, value] of Object.entries(reserveInstances)) {
+                allReserveInstances[key] = value;
+            }
+            for (const [key, value] of Object.entries(newReserveInstances)) {
+                allReserveInstances[key] = value;
+            }
+
+            //add and list pair for reserve
+            await nwHelper.addReservesToStorage(tempStorage, newReserveInstances, tokens, operator);
+            // change new reserve rate to 0
+            for (const [key, value] of Object.entries(newReserveInstances)) {
+                mockReserve = value.instance;
+                await mockReserve.setRate(tokens[0].address, 0, 0);
+                await mockReserve.setRate(tokens[1].address, 0, 0);
+            }
+
+            srcQty = new BN(10);
+            srcToken = tokens[0];
+            await srcToken.transfer(tempNetwork.address, srcQty);
+            // create hint for split trade, using both 2 reserves, but one has 0 rate
+            let hint = await nwHelper.getHint(rateHelper, matchingEngine, allReserveInstances, SPLIT_HINTTYPE, 2, srcToken.address, ethAddress, srcQty);
+            await expectRevert(
+                tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
+                    maxDestAmt, 0, platformWallet, platformFeeBps, hint),
+                "0 rate"
+            );
+            await nwHelper.removeReservesFromStorage(tempStorage, newReserveInstances, tokens, operator);
+        })
     });
 
     describe("test handle change edge case", async function(){
