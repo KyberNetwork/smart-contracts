@@ -1101,7 +1101,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         IERC20 src,
         ReservesData memory reservesData,
         TradeData memory tradeData
-    ) internal pure returns (uint256 destAmount) {
+    ) internal pure returns (uint256 totalDestAmount) {
         uint256 totalBps;
         uint256 srcDecimals = (src == ETH_TOKEN_ADDRESS) ? ETH_DECIMALS : reservesData.decimals;
         uint256 destDecimals = (src == ETH_TOKEN_ADDRESS) ? reservesData.decimals : ETH_DECIMALS;
@@ -1112,12 +1112,16 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             }
             totalBps += reservesData.splitsBps[i];
 
-            destAmount += calcDstQty(
+            uint256 destAmount = calcDstQty(
                 reservesData.srcAmounts[i],
                 srcDecimals,
                 destDecimals,
                 reservesData.rates[i]
             );
+            if (destAmount == 0) {
+                return 0;
+            }
+            totalDestAmount += destAmount;
 
             if (reservesData.isFeeAccountedFlags[i]) {
                 tradeData.feeAccountedBps += reservesData.splitsBps[i];
