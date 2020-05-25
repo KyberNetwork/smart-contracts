@@ -40,12 +40,18 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         HintErrors error;
 
         (tokenToEthType, tokenToEthReserveIds, tokenToEthSplits, error) = parseHint(hint);
-
         if (error != HintErrors.NoError) throwHintError(error);
 
         tokenToEthAddresses = new IKyberReserve[](tokenToEthReserveIds.length);
 
         for (uint256 i = 0; i < tokenToEthReserveIds.length; i++) {
+            checkReserveIdsExists(tokenToEthReserveIds[i]);
+            checkDuplicateReserveIds(tokenToEthReserveIds, i);
+
+            if (i > 0 && tokenToEthType == TradeType.Split) {
+                checkSplitReserveIdSeq(tokenToEthReserveIds[i], tokenToEthReserveIds[i - 1]);
+            }
+
             tokenToEthAddresses[i] = IKyberReserve(
                 getReserveAddress(tokenToEthReserveIds[i])
             );
@@ -72,12 +78,18 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         HintErrors error;
 
         (ethToTokenType, ethToTokenReserveIds, ethToTokenSplits, error) = parseHint(hint);
-
         if (error != HintErrors.NoError) throwHintError(error);
 
         ethToTokenAddresses = new IKyberReserve[](ethToTokenReserveIds.length);
 
         for (uint256 i = 0; i < ethToTokenReserveIds.length; i++) {
+            checkReserveIdsExists(ethToTokenReserveIds[i]);
+            checkDuplicateReserveIds(ethToTokenReserveIds, i);
+
+            if (i > 0 && ethToTokenType == TradeType.Split) {
+                checkSplitReserveIdSeq(ethToTokenReserveIds[i], ethToTokenReserveIds[i - 1]);
+            }
+
             ethToTokenAddresses[i] = IKyberReserve(
                 getReserveAddress(ethToTokenReserveIds[i])
             );
@@ -126,11 +138,26 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         ethToTokenAddresses = new IKyberReserve[](ethToTokenReserveIds.length);
 
         for (uint256 i = 0; i < tokenToEthReserveIds.length; i++) {
+            checkReserveIdsExists(tokenToEthReserveIds[i]);
+            checkDuplicateReserveIds(tokenToEthReserveIds, i);
+
+            if (i > 0 && tokenToEthType == TradeType.Split) {
+                checkSplitReserveIdSeq(tokenToEthReserveIds[i], tokenToEthReserveIds[i - 1]);
+            }
+
             tokenToEthAddresses[i] = IKyberReserve(
                 getReserveAddress(tokenToEthReserveIds[i])
             );
         }
+
         for (uint256 i = 0; i < ethToTokenReserveIds.length; i++) {
+            checkReserveIdsExists(ethToTokenReserveIds[i]);
+            checkDuplicateReserveIds(ethToTokenReserveIds, i);
+
+            if (i > 0 && ethToTokenType == TradeType.Split) {
+                checkSplitReserveIdSeq(ethToTokenReserveIds[i], ethToTokenReserveIds[i - 1]);
+            }
+
             ethToTokenAddresses[i] = IKyberReserve(
                 getReserveAddress(ethToTokenReserveIds[i])
             );
@@ -146,19 +173,27 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         TradeType tokenToEthType,
         bytes32[] memory tokenToEthReserveIds,
         uint256[] memory tokenToEthSplits
-    ) public pure override returns (bytes memory hint) {
-        bytes32[] memory seqT2EReserveIds;
-        uint256[] memory seqT2ESplits;
+    ) public view override returns (bytes memory hint) {
+        for (uint256 i = 0; i < tokenToEthReserveIds.length; i++) {
+            checkReserveIdsExists(tokenToEthReserveIds[i]);
+        }
 
-        (seqT2EReserveIds, seqT2ESplits) = ensureReserveIdSeq(
-            tokenToEthReserveIds,
-            tokenToEthSplits
-        );
-
-        HintErrors valid = verifyData(tokenToEthType, seqT2EReserveIds, seqT2ESplits);
+        HintErrors valid = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
         if (valid != HintErrors.NoError) throwHintError(valid);
 
-        hint = abi.encode(tokenToEthType, seqT2EReserveIds, seqT2ESplits);
+        if (tokenToEthType == TradeType.Split) {
+            bytes32[] memory seqT2EReserveIds;
+            uint256[] memory seqT2ESplits;
+
+            (seqT2EReserveIds, seqT2ESplits) = ensureSplitSeq(
+                tokenToEthReserveIds,
+                tokenToEthSplits
+            );
+
+            hint = abi.encode(tokenToEthType, seqT2EReserveIds, seqT2ESplits);
+        } else {
+            hint = abi.encode(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
+        }
     }
 
     /// @notice Builds the hint for a ether to token trade
@@ -170,19 +205,27 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         TradeType ethToTokenType,
         bytes32[] memory ethToTokenReserveIds,
         uint256[] memory ethToTokenSplits
-    ) public pure override returns (bytes memory hint) {
-        bytes32[] memory seqE2TReserveIds;
-        uint256[] memory seqE2TSplits;
+    ) public view override returns (bytes memory hint) {
+        for (uint256 i = 0; i < ethToTokenReserveIds.length; i++) {
+            checkReserveIdsExists(ethToTokenReserveIds[i]);
+        }
 
-        (seqE2TReserveIds, seqE2TSplits) = ensureReserveIdSeq(
-            ethToTokenReserveIds,
-            ethToTokenSplits
-        );
-
-        HintErrors valid = verifyData(ethToTokenType, seqE2TReserveIds, seqE2TSplits);
+        HintErrors valid = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
         if (valid != HintErrors.NoError) throwHintError(valid);
 
-        hint = abi.encode(ethToTokenType, seqE2TReserveIds, seqE2TSplits);
+        if (ethToTokenType == TradeType.Split) {
+            bytes32[] memory seqE2TReserveIds;
+            uint256[] memory seqE2TSplits;
+
+            (seqE2TReserveIds, seqE2TSplits) = ensureSplitSeq(
+                ethToTokenReserveIds,
+                ethToTokenSplits
+            );
+
+            hint = abi.encode(ethToTokenType, seqE2TReserveIds, seqE2TSplits);
+        } else {
+            hint = abi.encode(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
+        }
     }
 
     /// @notice Builds the hint for a token to token trade
@@ -200,7 +243,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         TradeType ethToTokenType,
         bytes32[] memory ethToTokenReserveIds,
         uint256[] memory ethToTokenSplits
-    ) public pure override returns (bytes memory hint) {
+    ) public view override returns (bytes memory hint) {
         bytes memory t2eHint = buildTokenToEthHint(
             tokenToEthType,
             tokenToEthReserveIds,
@@ -253,11 +296,49 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         (t2eHint, e2tHint) = abi.decode(hint, (bytes, bytes));
     }
 
-    /// @notice Ensures that the reserveIds passed when building hints are in increasing sequence
+    /// @notice Checks if the reserveId exists
+    /// @param reserveId Reserve ID to check
+    function checkReserveIdsExists(bytes32 reserveId)
+        internal
+        view
+    {
+        if (getReserveAddress(reserveId) == address(0x0))
+            throwHintError(HintErrors.ReserveIdNotFound);
+    }
+
+    /// @notice Ensures that the reserveIds in the hint to be parsed has no duplicates
+    /// and applies to all trade types
+    /// @param reserveIds Array of reserve IDs
+    /// @param i Starting index from outer loop
+    function checkDuplicateReserveIds(bytes32[] memory reserveIds, uint256 i)
+        internal
+        pure
+    {
+        for (uint256 j = i + 1; j < reserveIds.length; j++) {
+            if (uint256(reserveIds[i]) == uint256(reserveIds[j])) {
+                throwHintError(HintErrors.ReserveIdDupError);
+            }
+        }
+    }
+
+    /// @notice Ensures that the reserveIds in the hint to be parsed is in
+    /// sequence for and applies to only Split trade type
+    /// @param reserveId Current index Reserve ID in array
+    /// @param prevReserveId Previous index Reserve ID in array
+    function checkSplitReserveIdSeq(bytes32 reserveId, bytes32 prevReserveId)
+        internal
+        pure
+    {
+        if (uint256(reserveId) <= uint256(prevReserveId)) {
+            throwHintError(HintErrors.ReserveIdSequenceError);
+        }
+    }
+
+    /// @notice Ensures that the reserveIds and splits passed when building Split hints are in increasing sequence
     /// @param reserveIds Reserve IDs
     /// @param splits Reserve splits
     /// @return Returns a bytes32[] with reserveIds in increasing sequence and respective arranged splits
-    function ensureReserveIdSeq(
+    function ensureSplitSeq(
         bytes32[] memory reserveIds,
         uint256[] memory splits
     )
@@ -269,14 +350,12 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
             for (uint256 j = i + 1; j < reserveIds.length; j++) {
                 if (uint256(reserveIds[i]) > (uint256(reserveIds[j]))) {
                     bytes32 tempId = reserveIds[i];
+                    uint256 tempSplit = splits[i];
+
                     reserveIds[i] = reserveIds[j];
                     reserveIds[j] = tempId;
-
-                    if (splits.length > 0) {
-                        uint256 tempSplit = splits[i];
-                        splits[i] = splits[j];
-                        splits[j] = tempSplit;
-                    }
+                    splits[i] = splits[j];
+                    splits[j] = tempSplit;
                 } else if (reserveIds[i] == reserveIds[j]) {
                     throwHintError(HintErrors.ReserveIdDupError);
                 }
@@ -319,8 +398,10 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         if (error == HintErrors.ReserveIdDupError) revert("duplicate reserveId");
         if (error == HintErrors.ReserveIdEmptyError) revert("reserveIds cannot be empty");
         if (error == HintErrors.ReserveIdSplitsError) revert("reserveIds.length != splits.length");
-        if (error == HintErrors.TotalBPSError) revert("total BPS != 10000");
+        if (error == HintErrors.ReserveIdSequenceError) revert("reserveIds not in increasing order");
+        if (error == HintErrors.ReserveIdNotFound) revert("reserveId not found");
         if (error == HintErrors.SplitsNotEmptyError) revert("splits must be empty");
+        if (error == HintErrors.TotalBPSError) revert("total BPS != 10000");
     }
 
     function getReserveAddress(bytes32 reserveId) internal view virtual returns (address);

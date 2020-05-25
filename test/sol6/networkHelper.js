@@ -4,6 +4,7 @@ const Helper = require("../helper.js");
 const Reserve = artifacts.require("KyberReserve.sol");
 const ConversionRates = artifacts.require("ConversionRates.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const KyberHistory = artifacts.require("KyberHistory.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
@@ -48,6 +49,25 @@ const burnBlockInterval = new BN(30);
 module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, ZERO_RESERVE_ID, type_apr, type_fpr, type_MOCK,
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType};
 
+module.exports.setupStorage = setupStorage;
+async function setupStorage(admin) {
+    let networkHistory = await KyberHistory.new(admin);
+    let feeHandlerHistory = await KyberHistory.new(admin);
+    let kyberDAOHistory = await KyberHistory.new(admin);
+    let matchingEngineHistory = await KyberHistory.new(admin);
+    kyberStorage = await KyberStorage.new(
+        admin,
+        networkHistory.address,
+        feeHandlerHistory.address,
+        kyberDAOHistory.address,
+        matchingEngineHistory.address
+        );
+    await networkHistory.setStorageContract(kyberStorage.address, {from: admin});
+    await feeHandlerHistory.setStorageContract(kyberStorage.address, {from: admin});
+    await kyberDAOHistory.setStorageContract(kyberStorage.address, {from: admin});
+    await matchingEngineHistory.setStorageContract(kyberStorage.address, {from: admin});
+    return kyberStorage;
+}
 
 module.exports.setupReserves = setupReserves;
 async function setupReserves
@@ -78,7 +98,7 @@ async function setupReserves
             'address': reserve.address,
             'instance': reserve,
             'reserveId': reserveId,
-            'onChainType': ReserveType.FPR,
+            'onChainType': ReserveType.CUSTOM,
             'rate': new BN(0),
             'type': type_MOCK,
             'pricing': "none",
@@ -144,7 +164,7 @@ async function setupReserves
         let pricing = await setupAprPricing(token, p0, admin, operator);
         let reserve = await setupAprReserve(network, token, accounts[ethSenderIndex++], pricing.address, ethInit, admin, operator);
         await pricing.setReserveAddress(reserve.address, {from: admin});
-        let reserveId = (genReserveID(FPR_ID, reserve.address)).toLowerCase();
+        let reserveId = (genReserveID(APR_ID, reserve.address)).toLowerCase();
         let rebateWallet;
         if (rebateWallets == undefined || rebateWallets.length < i * 1 - 1 * 1) {
             rebateWallet = reserve.address;
@@ -156,7 +176,7 @@ async function setupReserves
             'address': reserve.address,
             'instance': reserve,
             'reserveId': reserveId,
-            'onChainType': ReserveType.FPR,
+            'onChainType': ReserveType.APR,
             'rate': new BN(0),
             'type': type_apr,
             'pricing': pricing.address,
@@ -184,13 +204,12 @@ async function listTokenForRedeployNetwork(storageInstance, reserveInstances, to
             await storageInstance.listPairForReserve(reserve.reserveId, tokens[j].address, true, true, true, {from: operator});
         }
     }
-
 }
 
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
     (NetworkArtifact, networkProxyAddress, KNCAddress, DAOAddress, admin, operator) {
-    const storage =  await KyberStorage.new(admin);
+    const storage =  await setupStorage(admin);
     const network = await NetworkArtifact.new(admin, storage.address);
     await storage.setNetworkContract(network.address, {from: admin});
     await storage.addOperator(operator, {from: admin});
@@ -395,6 +414,38 @@ async function setupAprPricing(token, p0, admin, operator) {
     return pricing;
 }
 
+module.exports.setupBadReserve = setupBadReserve;
+async function setupBadReserve(BadReserveArtifact, accounts, tokens) {
+    let result = {}
+    badReserve = await BadReserveArtifact.new();
+    badReserveId = genReserveID(MOCK_ID, badReserve.address);
+    result[badReserveId] = {
+        'address': badReserve.address,
+        'instance': badReserve,
+        'reserveId': badReserveId,
+        'onChainType': ReserveType.CUSTOM,
+        'rate': zeroBN,
+        'type': type_MOCK,
+        'pricing': "none",
+        'rebateWallet': badReserve.address
+    }
+
+    // send ETH and tokens
+    let ethSender = accounts[4];
+    let ethInit = (new BN(10)).pow(new BN(19)).mul(new BN(20));
+    await Helper.sendEtherWithPromise(ethSender, badReserve.address, ethInit);
+    await Helper.assertSameEtherBalance(badReserve.address, ethInit);
+
+    for (let j = 0; j < tokens.length; ++j) {
+        let token = tokens[j];
+        let initialTokenAmount = new BN(200000).mul(new BN(10).pow(new BN(await token.decimals())));
+        await token.transfer(badReserve.address, initialTokenAmount);
+        await Helper.assertSameTokenBalance(badReserve.address, token, initialTokenAmount);
+        await badReserve.setRate(token.address, precisionUnits.mul(new BN(10)));
+    }
+    return result;
+}
+
 module.exports.addReservesToStorage = addReservesToStorage;
 async function addReservesToStorage(storageInstance, reserveInstances, tokens, operator) {
     for (const [key, value] of Object.entries(reserveInstances)) {
@@ -593,6 +644,67 @@ async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, n
     );
 
     return hint;
+}
+
+module.exports.getWrongHint = getWrongHint;
+async function getWrongHint(rateHelper, matchingEngine, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
+    function buildHint(tradeType, reserveIds, splits) {
+        reserveIds.sort();
+        return web3.eth.abi.encodeParameters(
+            ['uint8', 'bytes32[]', 'uint[]'],
+            [tradeType, reserveIds, splits],
+        );
+    }
+
+    let reserveCandidates;
+    let hintedReservese2t;
+    let hintedReservest2e;
+    let hint;
+    let t2eHint;
+    let e2tHint;
+
+    if (hintType == EMPTY_HINTTYPE) hintType = MASK_IN_HINTTYPE;
+
+    if(srcAdd != ethAddress) {
+        reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, srcAdd, qty, true);
+        hintedReservest2e = applyHintToReserves(hintType, reserveCandidates, numReserves);
+
+        // Adds splits if MASK_IN or MASK_OUT
+        // Remove all splits of SPLIT
+        if (hintType === MASK_IN_HINTTYPE || hintType === MASK_OUT_HINTTYPE) {
+            hintedReservest2e.splits.push(5000);
+        } else {
+            hintedReservest2e.splits = [];
+        }
+
+        t2eHint = buildHint(hintedReservest2e.tradeType, hintedReservest2e.reservesForHint, hintedReservest2e.splits);
+        if(destAdd == ethAddress) {
+            return t2eHint;
+        }
+    }
+
+    if(destAdd != ethAddress) {
+        reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, destAdd, qty, false);
+        hintedReservese2t = applyHintToReserves(hintType, reserveCandidates, numReserves);
+
+        // Adds splits if MASK_IN or MASK_OUT
+        // Remove all splits of SPLIT
+        if (hintType === MASK_IN_HINTTYPE || hintType === MASK_OUT_HINTTYPE) {
+            hintedReservese2t.splits.push(5000);
+        } else {
+            hintedReservese2t.splits = [];
+        }
+
+        e2tHint = buildHint(hintedReservese2t.tradeType, hintedReservese2t.reservesForHint, hintedReservese2t.splits);
+        if(srcAdd == ethAddress) {
+            return e2tHint;
+        }
+    }
+
+    return web3.eth.abi.encodeParameters(
+        ['bytes', 'bytes'],
+        [t2eHint, e2tHint],
+    );
 }
 
 module.exports.minusNetworkFees = minusNetworkFees;
@@ -866,14 +978,13 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
     let reserveAddress;
     let expectedDestChange;
     let splitAmount;
-    let expectedSrcQty;
+    let expectedSrcQty = zeroBN;
     let srcDecimals = (srcToken == ethAddress) ? ethDecimals : await srcToken.decimals();
     let destDecimals = (destToken == ethAddress) ? ethDecimals : await destToken.decimals();
     networkAdd = (networkAdd == undefined) ? taker : networkAdd;
 
     if (destToken == ethAddress) {
         //token -> ETH trade
-        expectedSrcQty = new BN(0); // note total split amounts <= srcQty
         //Reserves: plus split dest amt (srcToken), minus split src amt based on rate (ETH)
         for (let i=0; i<ratesAmts.t2eAddresses.length; i++) {
             reserveAddress = ratesAmts.t2eAddresses[i];
@@ -889,7 +1000,7 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
         }
 
         //user: minus srcQty (token), plus actualDestAmt (ETH)
-        expectedTakerBalance = initialTakerBalances.src.sub(expectedSrcQty);
+        expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
         await Helper.assertSameTokenBalance(networkAdd, srcToken, expectedTakerBalance);
         expectedTakerBalance = initialTakerBalances.dest.add(ratesAmts.actualDestAmount);
         actualBalance = await Helper.getBalancePromise(taker);
@@ -898,14 +1009,9 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
     } else if (srcToken == ethAddress) {
         //ETH -> token trade
         //User: Minus srcQty (ETH), plus expectedDestAmtAfterAllFees (token)
-        //Issue: Sender has to pay network fee, so ETH calculation is a lil difficult
-        // expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
-        // await Helper.assertSameEtherBalance(taker, expectedTakerBalance);
-
         expectedTakerBalance = initialTakerBalances.dest.add(ratesAmts.actualDestAmount);
         let actualTokenBal = await destToken.balanceOf(taker);
         await Helper.assertSameTokenBalance(taker, destToken, expectedTakerBalance);
-
         //Reserves: Minus expectedDestAmtAfterAllFees (ETH), Plus destAmtAfterNetworkFees (token)
         for (let i=0; i<ratesAmts.e2tAddresses.length; i++) {
             reserveAddress = ratesAmts.e2tAddresses[i];
@@ -918,9 +1024,10 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
             expectedReserveBalance = initialReserveBalances.e2tToken[i].sub(expectedDestChange);
             await Helper.assertSameTokenBalance(reserveAddress, destToken, expectedReserveBalance);
         }
+        //Issue: Sender has to pay network fee, so ETH calculation is a lil difficult, just get from actualSrcAmount
+        expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
+        await Helper.assertSameEtherBalance(networkAdd, expectedTakerBalance);
     } else {
-        expectedSrcQty = new BN(0); // note total split amounts <= srcQty
-
         //Reserves: plus split dest amt (srcToken), minus split src amt based on rate (ETH)
         for (let i=0; i<ratesAmts.t2eAddresses.length; i++) {
             reserveAddress = ratesAmts.t2eAddresses[i];
@@ -942,7 +1049,7 @@ async function compareBalancesAfterTrade(srcToken, destToken, srcQty, initialRes
             }
         }
         //user: minus srcQty (srcToken), plus actualDestAmount (destToken)
-        expectedTakerBalance = initialTakerBalances.src.sub(expectedSrcQty);
+        expectedTakerBalance = initialTakerBalances.src.sub(srcQty);
         await Helper.assertSameTokenBalance(networkAdd, srcToken, expectedTakerBalance);
         expectedTakerBalance = initialTakerBalances.dest.add(ratesAmts.actualDestAmount);
         await Helper.assertSameTokenBalance(taker, destToken, expectedTakerBalance);

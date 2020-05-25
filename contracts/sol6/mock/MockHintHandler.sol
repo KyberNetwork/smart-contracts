@@ -6,11 +6,19 @@ import "../KyberHintHandler.sol";
 contract MockHintHandler is KyberHintHandler {
     mapping(bytes32 => address[]) public reserveIdToAddresses;
 
+    function callHintError(HintErrors error) external pure {
+        return throwHintError(error);
+    }
+
     function addReserve(address reserve, bytes32 reserveId) public {
         reserveIdToAddresses[reserveId].push(reserve);
     }
 
-    function getReserveAddress(bytes32 reserveId) internal view override returns (address) {
-        return reserveIdToAddresses[reserveId][0];
+    function getReserveAddress(bytes32 reserveId) internal view override returns (address reserveAddress) {
+        address[] memory reserveAddresses = reserveIdToAddresses[reserveId];
+
+        if (reserveAddresses.length != 0) {
+            reserveAddress = reserveIdToAddresses[reserveId][0];
+        }
     }
 }

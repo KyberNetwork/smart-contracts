@@ -29,7 +29,7 @@ let operator;
 let taker;
 
 //DAO related data
-let campCreator;
+let daoOperator;
 let daoContract;
 let victor;
 let mike;
@@ -80,7 +80,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         alerter = accounts[2];
         taker = accounts[3];
         admin = accounts[5]; // we don't want admin as account 0.
-        campCreator = accounts[6];
+        daoOperator = accounts[6];
         daoSetter = accounts[7];
         mike = accounts[8];
         victor = accounts[9];
@@ -90,7 +90,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         //init KNC
         KNC = await TestToken.new("kyber network crystal", "KNC", 18);
 
-        networkStorage = await KyberStorage.new(admin);
+        networkStorage = await nwHelper.setupStorage(admin);
         //deploy network
         network = await KyberNetwork.new(admin, networkStorage.address);
         await networkStorage.addOperator(operator, {from: admin});
@@ -198,7 +198,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
             blocksToSeconds(epochPeriod), daoStartTime,
             stakingContract.address,  feeHandler.address, KNC.address,
             minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
-            campCreator
+            daoOperator
         )
         await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter});
     };
@@ -301,7 +301,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
     };
 
     const testRedeployKyberStorage = async function(){
-        networkStorage = await KyberStorage.new(admin);
+        networkStorage = await nwHelper.setupStorage(admin);
         //deploy network
         network = await KyberNetwork.new(admin, networkStorage.address);
         await networkStorage.addOperator(operator, {from: admin});
@@ -429,7 +429,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let link = web3.utils.fromAscii("https://kyberswap.com");
                 await submitNewCampaign(daoContract,
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [0, defaultNetworkFee - 1, defaultNetworkFee + 1], link, {from: campCreator}
+                    0, 0, 0, [0, defaultNetworkFee - 1, defaultNetworkFee + 1], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -480,7 +480,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newFee3 = curNetworkFee.add(new BN(3));
                 await submitNewCampaign(daoContract,
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: daoOperator}
                 );
 
                 // create brr camp
@@ -490,7 +490,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
                 await submitNewCampaign(daoContract,
                     2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -542,7 +542,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newFee3 = curNetworkFee.add(new BN(3));
                 await submitNewCampaign(daoContract,
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: daoOperator}
                 );
 
                 // create brr camp
@@ -552,7 +552,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
                 await submitNewCampaign(daoContract,
                     2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -604,7 +604,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newFee3 = curNetworkFee.add(new BN(3));
                 await submitNewCampaign(daoContract,
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -645,7 +645,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newFee3 = curNetworkFee.add(new BN(3));
                 await submitNewCampaign(daoContract,
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: daoOperator}
                 );
 
                 // create brr camp
@@ -655,7 +655,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
                 await submitNewCampaign(daoContract,
                     2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -707,7 +707,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newFee3 = curNetworkFee.add(new BN(3));
                 await submitNewCampaign(daoContract,
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: daoOperator}
                 );
 
                 // create brr camp
@@ -717,7 +717,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
                 await submitNewCampaign(daoContract,
                     2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -787,7 +787,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newFee3 = curNetworkFee.add(new BN(3));
                 await submitNewCampaign(daoContract,
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -836,7 +836,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newFee3 = curNetworkFee.add(new BN(3));
                 await submitNewCampaign(daoContract,
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -864,7 +864,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 newFee3 = defaultNetworkFee;
                 await submitNewCampaign(daoContract,
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -892,7 +892,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newBrrData3 = getDataFromRebateAndReward(curBrrData.rebateBps.add(new BN(3)), curBrrData.rewardBps.add(new BN(3)));
                 await submitNewCampaign(daoContract,
                     2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -925,7 +925,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newBrrData3 = getDataFromRebateAndReward(6000, 3000);
                 await submitNewCampaign(daoContract,
                     2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -958,7 +958,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newBrrData3 = getDataFromRebateAndReward(6000, 3000);
                 await submitNewCampaign(daoContract,
                     2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
@@ -992,7 +992,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newFee3 = curNetworkFee.add(new BN(3));
                 await submitNewCampaign(daoContract,
                     1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: campCreator}
+                    0, 0, 0, [newFee1, newFee2, newFee3], link, {from: daoOperator}
                 );
 
                 // create brr camp
@@ -1002,7 +1002,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 let newBrrData3 = getDataFromRebateAndReward(6000, 3000);
                 await submitNewCampaign(daoContract,
                     2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: campCreator}
+                    0, 0, 0, [newBrrData1, newBrrData2, newBrrData3], link, {from: daoOperator}
                 );
                 await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 2));
 
