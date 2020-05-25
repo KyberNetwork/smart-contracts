@@ -219,18 +219,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             "newCampaign: too many campaigns"
         );
 
-        require(
-            validateCampaignParams(
-                campaignType,
-                startTimestamp,
-                endTimestamp,
-                campaignEpoch,
-                minPercentageInPrecision,
-                cInPrecision,
-                tInPrecision,
-                options
-            ),
-            "newCampaign: invalid campaign params"
+        validateCampaignParams(
+            campaignType,
+            startTimestamp,
+            endTimestamp,
+            campaignEpoch,
+            minPercentageInPrecision,
+            cInPrecision,
+            tInPrecision,
+            options
         );
 
         if (campaignType == CampaignType.NetworkFee) {
@@ -335,7 +332,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
      * @param option id of options to vote for
      */
     function vote(uint256 campaignID, uint256 option) external override {
-        require(validateVoteOption(campaignID, option), "vote: invalid campaignID or option");
+        validateVoteOption(campaignID, option);
         address staker = msg.sender;
 
         uint256 curEpoch = getCurrentEpochNumber();
@@ -669,6 +666,44 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         burnInBps = BPS.sub(rebateInBps).sub(rewardInBps);
     }
 
+    // Helper functions for squeezing data
+    function getRebateAndRewardFromData(uint256 data)
+        public
+        pure
+        returns (uint256 rebateInBps, uint256 rewardInBps)
+    {
+        rewardInBps = data & (POWER_128.sub(1));
+        rebateInBps = (data.div(POWER_128)) & (POWER_128.sub(1));
+    }
+
+    /**
+     * @dev  helper func to get encoded reward and rebate
+     *       revert if validation failed
+     */
+    function getDataFromRewardAndRebateWithValidation(uint256 rewardInBps, uint256 rebateInBps)
+        public
+        pure
+        returns (uint256 data)
+    {
+        require(rewardInBps.add(rebateInBps) <= BPS, "reward plus rebate high");
+        data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
+    }
+
+    /**
+     * @dev options are indexed from 1
+     */
+    function validateVoteOption(uint256 campaignID, uint256 option) internal view {
+        Campaign storage campaign = campaignData[campaignID];
+        require(campaign.campaignExists, "vote: campaign doesn't exist");
+
+        require(campaign.startTimestamp <= now, "vote: campaign not started");
+        require(campaign.endTimestamp >= now, "vote: campaign already ended");
+
+        // option is indexed from 1 to options.length
+        require(option > 0, "vote: option is 0");
+        require(option <= campaign.options.length, "vote: option is not in range");
+    }
+
     /**
      * @dev Validate params to check if we could submit a new campaign with these params
      */
@@ -681,7 +716,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         uint256 cInPrecision,
         uint256 tInPrecision,
         uint256[] memory options
-    ) public view returns (bool) {
+    ) internal view {
         // now <= start timestamp < end timestamp
         require(startTimestamp >= now, "validateParams: start in the past");
         // campaign duration must be at least min campaign duration
@@ -744,47 +779,5 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         require(cInPrecision <= POWER_128, "validateParams: c is high");
 
         require(tInPrecision <= POWER_128, "validateParams: t is high");
-
-        return true;
-    }
-
-    // Helper functions for squeezing data
-    function getRebateAndRewardFromData(uint256 data)
-        public
-        pure
-        returns (uint256 rebateInBps, uint256 rewardInBps)
-    {
-        rewardInBps = data & (POWER_128.sub(1));
-        rebateInBps = (data.div(POWER_128)) & (POWER_128.sub(1));
-    }
-
-    /**
-     * @dev  helper func to get encoded reward and rebate
-     *       revert if validation failed
-     */
-    function getDataFromRewardAndRebateWithValidation(uint256 rewardInBps, uint256 rebateInBps)
-        public
-        pure
-        returns (uint256 data)
-    {
-        require(rewardInBps.add(rebateInBps) <= BPS, "reward plus rebate high");
-        data = (rebateInBps.mul(POWER_128)).add(rewardInBps);
-    }
-
-    /**
-     * @dev options are indexed from 1
-     */
-    function validateVoteOption(uint256 campaignID, uint256 option) internal view returns (bool) {
-        Campaign storage campaign = campaignData[campaignID];
-        require(campaign.campaignExists, "vote: campaign doesn't exist");
-
-        require(campaign.startTimestamp <= now, "vote: campaign not started");
-        require(campaign.endTimestamp >= now, "vote: campaign already ended");
-
-        // option is indexed from 1 to options.length
-        require(option > 0, "vote: option is 0");
-        require(option <= campaign.options.length, "vote: option is not in range");
-
-        return true;
     }
 }
