@@ -665,7 +665,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 rateWithNetworkFee;
         (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tradeData, hint);
 
-        require(rateWithNetworkFee > 0, "0 rate");
+        require(rateWithNetworkFee > 0, "trade invalid, if hint involved, try parseHint API");
         require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
         require(rateWithNetworkFee >= tradeData.input.minConversionRate, "rate < min rate");
 
@@ -874,8 +874,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             (tradeData.input.src != ETH_TOKEN_ADDRESS) && (tradeData.input.dest != ETH_TOKEN_ADDRESS),
             hint
         );
-        (reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags, reservesData.addresses)
-            = kyberStorage.getReservesData(reservesData.ids);
+        bool areAllReservesListed;
+        (areAllReservesListed, reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags, reservesData.addresses)
+            = kyberStorage.getReservesData(reservesData.ids, src, dest);
+
+        if(!areAllReservesListed) {
+            return 0;
+        }
 
         require(reservesData.ids.length == reservesData.splitsBps.length, "bad split array");
         require(reservesData.ids.length == reservesData.isFeeAccountedFlags.length, "bad fee array");
