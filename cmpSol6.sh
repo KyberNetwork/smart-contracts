@@ -1,3 +1,3 @@
 #!/bin/sh
-npx buidler compile
+npx buidler compile &&
 node contractSizeReport.js
