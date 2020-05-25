@@ -22,7 +22,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     IKyberNetwork public kyberNetwork;
     IKyberStorage public kyberStorage;
 
-    uint256 public negligibleRateDiffBps = 5; // 1 bps is 0.01%
+    uint256 negligibleRateDiffBps = 5; // 1 bps is 0.01%
 
     event KyberStorageUpdated(IKyberStorage newStorage);
     event KyberNetworkUpdated(IKyberNetwork newNetwork);
@@ -37,7 +37,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         kyberStorage = _kyberStorage;
     }
 
-    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps)
+    function setNegligibleRateDiffBps(uint256 _negligibleRateDiffBps)
         external
         virtual
         override

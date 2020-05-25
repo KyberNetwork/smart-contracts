@@ -314,7 +314,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     function setParams(uint256 _maxGasPrice, uint256 _negligibleRateDiffBps) external {
         onlyAdmin();
         maxGasPriceValue = _maxGasPrice;
-        matchingEngine.setNegligbleRateDiffBps(_negligibleRateDiffBps);
+        matchingEngine.setNegligibleRateDiffBps(_negligibleRateDiffBps);
         emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
     }
 
