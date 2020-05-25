@@ -191,16 +191,15 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         epochPeriod = _epochPeriod;
         startBlock = _startBlock;
         daoStartTime = blockToTimestamp(startBlock);
-        stakingContract = await StakingContract.new(KNC.address, blocksToSeconds(epochPeriod), daoStartTime, daoSetter);
 
         minCampPeriod = _campPeriod;
         daoContract = await MockDao.new(
             blocksToSeconds(epochPeriod), daoStartTime,
-            stakingContract.address,  feeHandler.address, KNC.address,
+            feeHandler.address, KNC.address,
             minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
             daoOperator
         )
-        await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter});
+        stakingContract = await StakingContract.at(await daoContract.staking());
     };
 
     const setupSimpleStakingData = async() => {
