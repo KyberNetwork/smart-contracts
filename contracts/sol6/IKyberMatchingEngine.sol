@@ -8,7 +8,7 @@ import "./IKyberStorage.sol";
 interface IKyberMatchingEngine {
     enum ProcessWithRate {NotRequired, Required}
 
-    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps) external;
+    function setNegligibleRateDiffBps(uint256 _negligibleRateDiffBps) external;
 
     function setKyberStorage(IKyberStorage _kyberStorage) external;
 
