@@ -919,7 +919,7 @@ contract('KyberNetwork', function(accounts) {
                 let result = await nwHelper.setupReserves(network, tokens, 2,0,0,0, accounts, admin, operator);
 
                 reserveInstances = result.reserveInstances;
-                numReserves += result.numAddedReserves * 1;
+                numReserves = result.numAddedReserves * 1;
 
                 //add and list pair for reserve
                 await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
@@ -1018,10 +1018,92 @@ contract('KyberNetwork', function(accounts) {
                     await expectRevert(
                         network.tradeWithHint(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                             maxDestAmt, minConversionRate, platformWallet, hint),
-                        "0 rate"
+                        "trade invalid, if hint involved, try parseHint API"
                     );
                 });
             };
+
+            describe("should return 0 rate when trying to trade a token with a reserve that is not listed with this token", async() => {
+                let reserveIds = [];
+                let splitValueBps = [];
+                let delistedReserve;
+                before("delist 1st reserve for token", async() => {
+                    //set zero rates
+                    for (const [key, value] of Object.entries(reserveInstances)) {
+                        reserve = value.instance;
+                        for (let j = 0; j < numTokens; j++) {
+                            await reserve.setRate(tokens[j].address, precisionUnits, precisionUnits);
+                        }
+                        reserveIds.push(value.reserveId);
+                        splitValueBps.push(BPS.div(new BN(2))); // 2 mock reserve, each have splitValue is BPS/2
+                    }
+                    reserveIds.sort();
+
+                    srcToken = tokens[0];
+                    destToken = tokens[1];
+
+                    for (const [key, value] of Object.entries(reserveInstances)) {
+                        delistedReserve = value;
+                        break;
+                    }
+
+                    await storage.listPairForReserve(delistedReserve.reserveId, srcToken.address, false, true, false, {from: operator});
+                    await storage.listPairForReserve(delistedReserve.reserveId, destToken.address, true, false, false, {from: operator});
+                });
+
+                after("undo changes", async() => {
+                    for (const [key, value] of Object.entries(reserveInstances)) {
+                        reserve = value.instance;
+                        for (let j = 0; j < numTokens; j++) {
+                            await reserve.setRate(tokens[j].address, zeroBN, zeroBN);
+                        }
+                    }
+                    await storage.listPairForReserve(delistedReserve.reserveId, srcToken.address, false, true, true, {from: operator});
+                    await storage.listPairForReserve(delistedReserve.reserveId, destToken.address, true, false, true, {from: operator});
+                });
+
+                // 2 types of trade that specific which reserve will be choosen
+                for(hintType of [MASK_IN_HINTTYPE, SPLIT_HINTTYPE]) {
+                    it(`should return 0 rate for t2e trade (${tradeStr[hintType]}) if reserveID is not listed`, async() => {
+                        splits = (hintType == MASK_IN_HINTTYPE) ? [] : splitValueBps;
+                        hint = await matchingEngine.buildEthToTokenHint(hintType, reserveIds, splits);
+                    
+                        actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
+                        Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rateWithNetworkFee is not zero");
+                        Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rateWithAllFees is not zero")
+                    });
+
+                    it(`should return 0 rate for e2t trade (${tradeStr[hintType]}) if reserveID is not listed`, async() => {
+                        splits = (hintType == MASK_IN_HINTTYPE) ? [] : splitValueBps;
+                        hint = await matchingEngine.buildEthToTokenHint(hintType, reserveIds, splits);
+                    
+                        actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, hint);
+                        Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rateWithNetworkFee is not zero");
+                        Helper.assertEqual(actualResult.rateWithAllFees, zeroBN, "rateWithAllFees is not zero")
+                    });
+
+                    it(`should revert for t2e trade (${tradeStr[hintType]}) if reserveID is not listed`, async() => {
+                        splits = (hintType == MASK_IN_HINTTYPE) ? [] : splitValueBps;
+                        hint = await matchingEngine.buildEthToTokenHint(hintType, reserveIds, splits);
+                        srcToken.transfer(network.address, srcQty);
+                        await expectRevert(
+                            network.tradeWithHint(networkProxy, srcToken.address, srcQty, ethAddress, taker,
+                                maxDestAmt, minConversionRate, platformWallet, hint),
+                            "trade invalid, if hint involved, try parseHint API"
+                        );
+                    });
+
+                    it(`should revert for e2t trade (${tradeStr[hintType]}) if reserveID is not listed`, async() => {
+                        splits = (hintType == MASK_IN_HINTTYPE) ? [] : splitValueBps;
+                        hint = await matchingEngine.buildEthToTokenHint(hintType, reserveIds, splits);
+                        await expectRevert(
+                            network.tradeWithHint(networkProxy, ethAddress, ethSrcQty, destToken.address, taker,
+                                maxDestAmt, minConversionRate, platformWallet, hint, { value: ethSrcQty}),
+                            "trade invalid, if hint involved, try parseHint API"
+                        );
+                    });
+                }
+            });
         });
 
         describe("test getExpectedRate functions with rate validating reserves, valid rates", async() => {
@@ -1762,7 +1844,7 @@ contract('KyberNetwork', function(accounts) {
                 await expectRevert(
                     network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
                         maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint),
-                    "0 rate"
+                    "trade invalid, if hint involved, try parseHint API"
                 );
             });
 
@@ -1775,7 +1857,7 @@ contract('KyberNetwork', function(accounts) {
                     await expectRevert(
                         network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
                             maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint),
-                        "0 rate"
+                        "trade invalid, if hint involved, try parseHint API"
                     );
                 });
             }
@@ -1808,7 +1890,7 @@ contract('KyberNetwork', function(accounts) {
                 await expectRevert(
                     network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
                         maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint),
-                    "0 rate"
+                    "trade invalid, if hint involved, try parseHint API"
                 );
             });
 
@@ -1824,7 +1906,7 @@ contract('KyberNetwork', function(accounts) {
                 await expectRevert(
                     network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
                         maxDestAmt, minConversionRate, platformWallet, platformFeeBps, hint),
-                    "0 rate"
+                    "trade invalid, if hint involved, try parseHint API"
                 );
             });
         });
@@ -2979,7 +3061,7 @@ contract('KyberNetwork', function(accounts) {
             await expectRevert(
                 tempNetwork.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
                     maxDestAmt, 0, platformWallet, platformFeeBps, hint),
-                "0 rate"
+                "trade invalid, if hint involved, try parseHint API"
             );
             await nwHelper.removeReservesFromStorage(tempStorage, newReserveInstances, tokens, operator);
         })
