@@ -113,24 +113,24 @@ contract('KyberMatchingEngine', function(accounts) {
 
         it("should not have unauthorized personnel set negligble rate diff bps", async() => {
             await expectRevert(
-                matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: user}),
+                matchingEngine.setNegligibleRateDiffBps(negligibleRateDiffBps, {from: user}),
                 "only network"
             );
 
             await expectRevert(
-                matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: operator}),
+                matchingEngine.setNegligibleRateDiffBps(negligibleRateDiffBps, {from: operator}),
                 "only network"
             );
 
             await expectRevert(
-                matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: admin}),
+                matchingEngine.setNegligibleRateDiffBps(negligibleRateDiffBps, {from: admin}),
                 "only network"
             );
         });
 
         it("should have network set negligble rate diff bps", async() => {
-            await matchingEngine.setNegligbleRateDiffBps(negligibleRateDiffBps, {from: network});
-            let result = await matchingEngine.negligibleRateDiffBps();
+            await matchingEngine.setNegligibleRateDiffBps(negligibleRateDiffBps, {from: network});
+            let result = await matchingEngine.getNegligibleRateDiffBps();
             Helper.assertEqual(negligibleRateDiffBps, result, "negligbleRateDiffInBps not set by network");
         });
 
@@ -193,7 +193,7 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should revert if negligbleRateDiffBps > BPS", async() => {
             await matchingEngine.setNetworkContract(network, {from: admin});
             await expectRevert(
-                matchingEngine.setNegligbleRateDiffBps(BPS.add(new BN(1)), {from: network}),
+                matchingEngine.setNegligibleRateDiffBps(BPS.add(new BN(1)), {from: network}),
                 "rateDiffBps exceed BPS"
             );
         });

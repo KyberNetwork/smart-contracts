@@ -132,7 +132,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @dev Returns the indexes of the best rate from the rates array for the t2e or e2t side
     /// @param src Source token (not needed in this matchingEngine version)
     /// @param dest Destination token (not needed in this matchingEngine version)
-    /// @param srcAmounts Array of srcAmounts
+    /// @param srcAmounts Array of srcAmounts after deducting fees.
     /// @param feesAccountedDestBps Fees charged in BPS, to be deducted from calculated destAmount
     /// @param rates Rates queried from reserves
     /// @return reserveIndexes An array of the indexes most suited for the trade
@@ -162,6 +162,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint256 destAmount;
 
         for (uint256 i = 0; i < rates.length; i++) {
+            // if fee is accounted on dest amount of this reserve, should deduct it
             destAmount = (srcAmounts[i] * rates[i] * (BPS - feesAccountedDestBps[i])) / BPS;
             if (destAmount > bestReserve.destAmount) {
                 // best rate is highest rate
@@ -179,7 +180,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         reserveCandidates[0] = bestReserve.index;
 
-        // if this reserve pays fee its actual rate is less. so smallestRelevantRate is smaller.
+        // update best reserve destAmount to be its destAmount after deducting negligible diff.
+        // if any reserve has better or equal dest amount it can be considred to be chosen as best
         bestReserve.destAmount = (bestReserve.destAmount * BPS) / (BPS + negligibleRateDiffBps);
 
         for (uint256 i = 0; i < rates.length; i++) {
