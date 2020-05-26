@@ -1062,7 +1062,7 @@ contract('KyberNetwork', function(accounts) {
                 for(hintType of [MASK_IN_HINTTYPE, SPLIT_HINTTYPE]) {
                     it(`should return 0 rate for t2e trade (${tradeStr[hintType]}) if reserveID is not listed`, async() => {
                         splits = (hintType == MASK_IN_HINTTYPE) ? [] : splitValueBps;
-                        hint = await matchingEngine.buildEthToTokenHint(hintType, reserveIds, splits);
+                        hint = Helper.buildHint(tradeStr[hintType])(hintType, reserveIds, splits);
                     
                         actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, ethAddress, srcQty, platformFeeBps, hint);
                         Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rateWithNetworkFee is not zero");
@@ -1071,7 +1071,7 @@ contract('KyberNetwork', function(accounts) {
 
                     it(`should return 0 rate for e2t trade (${tradeStr[hintType]}) if reserveID is not listed`, async() => {
                         splits = (hintType == MASK_IN_HINTTYPE) ? [] : splitValueBps;
-                        hint = await matchingEngine.buildEthToTokenHint(hintType, reserveIds, splits);
+                        hint = Helper.buildHint(tradeStr[hintType])(hintType, reserveIds, splits);
                     
                         actualResult = await network.getExpectedRateWithHintAndFee(ethAddress, destToken.address, ethSrcQty, platformFeeBps, hint);
                         Helper.assertEqual(actualResult.rateWithNetworkFee, zeroBN, "rateWithNetworkFee is not zero");
@@ -1080,7 +1080,8 @@ contract('KyberNetwork', function(accounts) {
 
                     it(`should revert for t2e trade (${tradeStr[hintType]}) if reserveID is not listed`, async() => {
                         splits = (hintType == MASK_IN_HINTTYPE) ? [] : splitValueBps;
-                        hint = await matchingEngine.buildEthToTokenHint(hintType, reserveIds, splits);
+                        hint = Helper.buildHint(tradeStr[hintType])(hintType, reserveIds, splits);
+
                         srcToken.transfer(network.address, srcQty);
                         await expectRevert(
                             network.tradeWithHint(networkProxy, srcToken.address, srcQty, ethAddress, taker,
@@ -1091,7 +1092,8 @@ contract('KyberNetwork', function(accounts) {
 
                     it(`should revert for e2t trade (${tradeStr[hintType]}) if reserveID is not listed`, async() => {
                         splits = (hintType == MASK_IN_HINTTYPE) ? [] : splitValueBps;
-                        hint = await matchingEngine.buildEthToTokenHint(hintType, reserveIds, splits);
+                        hint = Helper.buildHint(tradeStr[hintType])(hintType, reserveIds, splits);
+                        
                         await expectRevert(
                             network.tradeWithHint(networkProxy, ethAddress, ethSrcQty, destToken.address, taker,
                                 maxDestAmt, minConversionRate, platformWallet, hint, { value: ethSrcQty}),
@@ -1862,6 +1864,7 @@ contract('KyberNetwork', function(accounts) {
                 let allReserves = await storage.getReserveIdsPerTokenSrc(srcToken.address);
                 let someReserveID = Object.keys(reserveInstances)[0];
                 hint = await matchingEngine.buildTokenToEthHint(
+                    srcToken.address,
                     MASK_OUT_HINTTYPE,
                     allReserves.concat(someReserveID),
                     []
@@ -2127,8 +2130,8 @@ contract('KyberNetwork', function(accounts) {
 
                 // both are split
                 hint = await mockMatchingEngine.buildTokenToTokenHint(
-                    2, t2eReserveIDs, [3333, 3333, 3334],
-                    2, e2tReserveIDs, [3333, 3333, 3334]
+                    srcToken.address, 2, t2eReserveIDs, [3333, 3333, 3334],
+                    destToken.address, 2, e2tReserveIDs, [3333, 3333, 3334]
                 );
 
                 let expectedResult = await nwHelper.getAndCalcRates(

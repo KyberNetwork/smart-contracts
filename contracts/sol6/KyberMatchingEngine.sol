@@ -204,6 +204,14 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         (reserveAddress, , , ,) = kyberStorage.getReserveDetailsById(reserveId);
     }
 
+    function areAllReservesListed(
+        bytes32[] memory reserveIds,
+        IERC20 src,
+        IERC20 dest
+    ) internal override view returns (bool allReservesListed) {
+        (allReservesListed, , ,) = kyberStorage.getReservesData(reserveIds, src, dest);
+    }
+
     /// @notice Logic for masking out reserves
     /// @param allReservesPerToken Array of reserveIds that support the t2e or e2t side of the trade
     /// @param maskedOutReserves Array of reserveIds to be excluded from allReservesPerToken
