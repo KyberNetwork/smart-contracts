@@ -2,8 +2,8 @@ pragma solidity 0.6.6;
 
 import "./EpochUtils.sol";
 import "./DaoOperator.sol";
+import "./KyberStaking.sol";
 import "../IERC20.sol";
-import "./IKyberStaking.sol";
 import "../IKyberDAO.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../utils/Utils5.sol";
@@ -58,7 +58,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     // minimum duration in seconds for a campaign
     uint256 public minCampaignDurationInSeconds = 345600; // around 4 days
     IERC20 public kncToken;
-    IKyberStaking public staking;
+    KyberStaking public staking;
     IKyberFeeHandler public feeHandler;
 
     /* Mapping from campaign ID => data */
@@ -104,9 +104,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     constructor(
         uint256 _epochPeriod,
         uint256 _startTimestamp,
-        address _staking,
-        address _feeHandler,
-        address _knc,
+        IKyberFeeHandler _feeHandler,
+        IERC20 _knc,
         uint256 _defaultNetworkFeeBps,
         uint256 _defaultRewardBps,
         uint256 _defaultRebateBps,
@@ -114,30 +113,30 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     ) public DaoOperator(_daoOperator) {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
-        require(_staking != address(0), "ctor: staking 0");
-        require(_feeHandler != address(0), "ctor: feeHandler 0");
-        require(_knc != address(0), "ctor: knc token 0");
+        require(_feeHandler != IKyberFeeHandler(0), "ctor: feeHandler 0");
+        require(_knc != IERC20(0), "ctor: knc token 0");
         // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
         // so network fee should be less than 50%
         require(_defaultNetworkFeeBps < BPS / 2, "ctor: network fee high");
         require(_defaultRewardBps.add(_defaultRebateBps) <= BPS, "reward plus rebate high");
 
-        staking = IKyberStaking(_staking);
-        require(staking.epochPeriodInSeconds() == _epochPeriod, "ctor: different epoch period");
-        require(
-            staking.firstEpochStartTimestamp() == _startTimestamp,
-            "ctor: different start timestamp"
-        );
-
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
-        feeHandler = IKyberFeeHandler(_feeHandler);
-        kncToken = IERC20(_knc);
+        feeHandler = _feeHandler;
+        kncToken = _knc;
 
         latestNetworkFeeResult = _defaultNetworkFeeBps;
         latestBrrData = BRRData({
             rewardInBps: _defaultRewardBps,
             rebateInBps: _defaultRebateBps
+        });
+
+        // deploy staking contract 
+        staking = new KyberStaking({
+            _kncToken: _knc,
+            _epochPeriod: _epochPeriod,
+            _startTimestamp: _startTimestamp,
+            _daoContract: IKyberDAO(this)
         });
     }
 

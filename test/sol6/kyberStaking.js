@@ -11,7 +11,7 @@ const BN = web3.utils.BN;
 const { precisionUnits, zeroAddress } = require("../helper.js");
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-let daoSetter;
+let daoContract;
 
 let currentBlock;
 
@@ -27,7 +27,7 @@ let mike;
 
 contract('KyberStaking', function(accounts) {
   before("one time init", async() => {
-    daoSetter = accounts[1];
+    daoContract = accounts[1];
     kncToken = await TestToken.new("Kyber Network Crystal", "KNC", 18);
     victor = accounts[2];
     loi = accounts[3];
@@ -57,7 +57,7 @@ contract('KyberStaking', function(accounts) {
       kncToken.address,
       blocksToSeconds(epochPeriod),
       blockToTimestamp(startBlock),
-      daoSetter
+      daoContract
     );
   };
 
@@ -69,32 +69,6 @@ contract('KyberStaking', function(accounts) {
 	Helper.assertEqual(delegatedStake, result._delegatedStake);
 	Helper.assertEqual(delegatedAddress, result._delegatedAddress);
   };
-
-  it("Test setting DAO address and verify inited data", async function() {
-    await deployStakingContract(10, currentBlock + 10);
-    let daoContract = await MockKyberDAO.new(
-      blocksToSeconds(10),
-      blockToTimestamp(currentBlock + 10)
-    );
-
-    assert.equal(daoSetter, await stakingContract.daoContractSetter(), "daoSetter address is wrong");
-    assert.equal(kncToken.address, await stakingContract.kncToken(), "daoSetter address is wrong");
-    assert.equal(zeroAddress, await stakingContract.daoContract(), "daoSetter address is wrong");
-    assert.equal(blocksToSeconds(epochPeriod), await stakingContract.epochPeriodInSeconds(), "daoSetter address is wrong");
-    assert.equal(blockToTimestamp(startBlock), await stakingContract.firstEpochStartTimestamp(), "daoSetter address is wrong");
-
-    let tx = await stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter});
-    expectEvent(tx, "DAOAddressSet", {_daoAddress: daoContract.address});
-    expectEvent(tx, "DAOContractSetterRemoved");
-
-    assert.equal(zeroAddress, await stakingContract.daoContractSetter(), "daoSetter address is wrong");
-    assert.equal(daoContract.address, await stakingContract.daoContract(), "daoSetter address is wrong");
-
-    await expectRevert(
-      stakingContract.updateDAOAddressAndRemoveSetter(daoContract.address, {from: daoSetter}),
-      "only daoContractSetter"
-    );
-  });
 
   it("Test get epoch number returns correct data", async function() {
     await deployStakingContract(10, currentBlock + 10);
@@ -1048,12 +1022,12 @@ contract('KyberStaking', function(accounts) {
     });
 
     it("Test withdraw should call DAO handleWithdrawal as expected", async function() {
-      await deployStakingContract(10, currentBlock + 10);
       let dao = await MockKyberDAO.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
+      daoContract = dao.address;
+      await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -1123,15 +1097,17 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(mulPrecision(40), await dao.values(victor), "dao values should be correct");
       Helper.assertEqual(mulPrecision(25), await dao.values(mike), "dao values should be correct");
       Helper.assertEqual(mulPrecision(10), await dao.values(loi), "dao values should be correct");
+
+      daoContract = accounts[1];
     });
 
     it("Test handleWithdrawal should revert sender is not staking", async() => {
-      await deployStakingContract(10, currentBlock + 10);
       let dao = await MockKyberDAO.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
+      daoContract = dao.address;
+      await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -1142,88 +1118,60 @@ contract('KyberStaking', function(accounts) {
         "only staking contract"
       )
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
+      daoContract = accounts[1];
     });
 
     it("Test withdraw gas usages", async function() {
-      await deployStakingContract(10, currentBlock + 10);
       let dao = await MockKyberDAO.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
+      daoContract = dao.address;
+      await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
 
       await stakingContract.deposit(mulPrecision(300), {from: victor});
       let tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw no delegation, no DAO : no init epoch data + no penalty amount, gas used: " + tx.receipt.gasUsed);
+      logInfo("Withdraw no delegation: no init epoch data + no penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw no delegation, no DAO : init 1 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
+      logInfo("Withdraw no delegation: init 1 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(4 * epochPeriod + startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw no delegation, no DAO : init 2 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
+      logInfo("Withdraw no delegation: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await stakingContract.deposit(mulPrecision(20), {from: victor});
       tx = await stakingContract.withdraw(mulPrecision(30), {from: victor});
-      logInfo("Withdraw no delegation, no DAO : without init epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
+      logInfo("Withdraw no delegation: without init epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await stakingContract.delegate(mike, {from: victor});
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(6 * epochPeriod + startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw has delegation, no DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
+      logInfo("Withdraw has delegation: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(7 * epochPeriod + startBlock)
       );
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw has delegation, no DAO: init 1 epoch data+ has penalty amount, gas used: " + tx.receipt.gasUsed);
+      logInfo("Withdraw has delegation: init 1 epoch data+ has penalty amount, gas used: " + tx.receipt.gasUsed);
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw has delegation, no DAO: without init epoch data, has penalty amount, gas used: " + tx.receipt.gasUsed);
+      logInfo("Withdraw has delegation: without init epoch data, has penalty amount, gas used: " + tx.receipt.gasUsed);
 
       await stakingContract.deposit(mulPrecision(20), {from: victor});
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      logInfo("Withdraw has delegation, no DAO: without init epoch data + no penalty amount, gas used: " + tx.receipt.gasUsed);
-
-      // Setting dao address
-      await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
-
-      tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw has delegation, has DAO: without init epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
-
-      await Helper.setNextBlockTimestamp(
-        blockToTimestamp(9 * epochPeriod + startBlock)
-      );
-      tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw has delegation, has DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
-      await Helper.setNextBlockTimestamp(
-        blockToTimestamp(10 * epochPeriod + startBlock)
-      );
-      tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw has delegation, has DAO: init 1 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
-
-      await stakingContract.delegate(victor, {from: victor});
-      await Helper.setNextBlockTimestamp(
-        blockToTimestamp(12 * epochPeriod + startBlock)
-      );
-      tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw no delegation, has DAO: init 2 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
-      await Helper.setNextBlockTimestamp(
-        blockToTimestamp(13 * epochPeriod + startBlock)
-      );
-      tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw no delegation, has DAO: init 1 epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
-      tx = await stakingContract.withdraw(mulPrecision(20), {from: victor});
-      logInfo("Withdraw no delegation, has DAO: no init epoch data + has penalty amount, gas used: " + tx.receipt.gasUsed);
+      logInfo("Withdraw has delegation: without init epoch data + no penalty amount, gas used: " + tx.receipt.gasUsed);
     });
+    daoContract = accounts[1];
   });
 
   describe("#Delegate Tests", () => {
@@ -2224,9 +2172,8 @@ contract('KyberStaking', function(accounts) {
     });
 
     it("Test get staker data for current epoch called by DAO", async function() {
+      daoContract = accounts[1];
       await deployStakingContract(15, currentBlock + 15);
-      let dao = accounts[8];
-      await stakingContract.setDAOAddressWithoutCheck(dao, {from: daoSetter});
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -2237,10 +2184,10 @@ contract('KyberStaking', function(accounts) {
       await kncToken.transfer(loi, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: loi});
 
-      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, dao);
+      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, daoContract);
 
       await stakingContract.deposit(mulPrecision(100), {from: victor});
-      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, dao);
+      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, daoContract);
 
       // delay to epoch 2
       await Helper.setNextBlockTimestamp(
@@ -2251,7 +2198,7 @@ contract('KyberStaking', function(accounts) {
 
       // victor: stake (100), delegated stake (0), delegated address (victor)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, victor, dao
+        victor, mulPrecision(100), 0, victor, daoContract
       );
       Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 2), "should inited value for epoch 2");
       Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 3), "should inited value for epoch 3");
@@ -2259,12 +2206,12 @@ contract('KyberStaking', function(accounts) {
       await stakingContract.delegate(mike, {from: victor});
       // victor: stake (100), delegated stake (0), delegated address (victor)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, victor, dao
+        victor, mulPrecision(100), 0, victor, daoContract
       );
 
       // mike: stake (0), delegated stake (0), delegated address (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, 0, 0, mike, dao
+        mike, 0, 0, mike, daoContract
       );
 
       await stakingContract.deposit(mulPrecision(200), {from: mike});
@@ -2275,34 +2222,34 @@ contract('KyberStaking', function(accounts) {
 
       // victor: stake (100), delegated stake (0), delegated address (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, mike, dao
+        victor, mulPrecision(100), 0, mike, daoContract
       );
 
       // mike: stake (200), delegated stake (100), delegated address (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, dao
+        mike, mulPrecision(200), mulPrecision(100), mike, daoContract
       );
 
       await stakingContract.delegate(loi, {from: victor});
 
       // mike: stake (200), delegated stake (100), delegated address (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, dao
+        mike, mulPrecision(200), mulPrecision(100), mike, daoContract
       );
       // loi: stake (0), delegated stake (0), delegated address (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, 0, loi, dao
+        loi, 0, 0, loi, daoContract
       );
 
       await stakingContract.deposit(mulPrecision(10), {from: victor});
       // loi: stake (0), delegated stake (0), delegated address (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, 0, loi, dao
+        loi, 0, 0, loi, daoContract
       );
 
       // mike: stake (200), delegated stake (100), delegated address (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, dao
+        mike, mulPrecision(200), mulPrecision(100), mike, daoContract
       );
 
       await Helper.setNextBlockTimestamp(
@@ -2311,68 +2258,17 @@ contract('KyberStaking', function(accounts) {
 
       // mike: stake (200), delegated stake (0), delegated address (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), 0, mike, dao
+        mike, mulPrecision(200), 0, mike, daoContract
       );
 
       // loi: stake (0), delegated stake (90), delegated address (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, mulPrecision(110), loi, dao
+        loi, 0, mulPrecision(110), loi, daoContract
       );
     });
   });
 
   describe("#Revert Tests", () => {
-    it("Test update DAO address should revert when sender is not daoSetter or dao address is zero", async function() {
-      await deployStakingContract(10, currentBlock + 10);
-      let dao = await MockKyberDAO.new(
-        blocksToSeconds(10),
-        blockToTimestamp(currentBlock + 10)
-      );
-      await expectRevert(
-        stakingContract.updateDAOAddressAndRemoveSetter(zeroAddress, {from: daoSetter}),
-        "updateDAO: daoAddress 0"
-      );
-      await expectRevert(
-        stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: mike}),
-        "only daoContractSetter"
-      )
-      await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
-      await expectRevert(
-        stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
-        "only daoContractSetter"
-      )
-    });
-
-    it("Test update DAO address should revert when epoch period or start timestamp is different between staking & DAO", async function() {
-      await deployStakingContract(10, currentBlock + 10);
-      let dao = await MockKyberDAO.new(
-        blocksToSeconds(9),
-        blockToTimestamp(currentBlock + 10)
-      );
-
-      // revert different epoch number
-      await expectRevert(
-        stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
-        "updateDAO: different epoch period"
-      )
-
-      dao = await MockKyberDAO.new(
-        blocksToSeconds(10),
-        blockToTimestamp(currentBlock + 9)
-      );
-      // revert different start timestamp number
-      await expectRevert(
-        stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter}),
-        "updateDAO: different start timestamp"
-      )
-
-      dao = await MockKyberDAO.new(
-        blocksToSeconds(10),
-        blockToTimestamp(currentBlock + 10)
-      );
-      await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
-    });
-
     it("Test constructor should revert with invalid arguments", async function() {
       // knc is 0
       await expectRevert(
@@ -2380,7 +2276,7 @@ contract('KyberStaking', function(accounts) {
           zeroAddress,
           blocksToSeconds(20),
           blockToTimestamp(currentBlock + 10),
-          daoSetter
+          daoContract
         ),
         "ctor: kncToken 0"
       );
@@ -2390,7 +2286,7 @@ contract('KyberStaking', function(accounts) {
           kncToken.address,
           blocksToSeconds(0),
           blockToTimestamp(currentBlock + 10),
-          daoSetter
+          daoContract
         ),
         "ctor: epoch period is 0"
       )
@@ -2400,7 +2296,7 @@ contract('KyberStaking', function(accounts) {
           kncToken.address,
           blocksToSeconds(20),
           blockToTimestamp(currentBlock - 1),
-          daoSetter
+          daoContract
         ),
         "ctor: start in the past"
       )
@@ -2412,13 +2308,13 @@ contract('KyberStaking', function(accounts) {
           blockToTimestamp(currentBlock + 10),
           zeroAddress
         ),
-        "ctor: daoContractSetter 0"
+        "ctor: daoContract 0"
       )
       stakingContract = await StakingContract.new(
         kncToken.address,
         blocksToSeconds(20),
         blockToTimestamp(currentBlock + 10),
-        daoSetter
+        daoContract
       )
     });
 
@@ -2474,21 +2370,13 @@ contract('KyberStaking', function(accounts) {
     });
 
     it("Test get staker data for current epoch should revert when sender is not dao", async function() {
+      daoContract = accounts[1];
       await deployStakingContract(10, currentBlock + 10);
       await expectRevert(
         stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike}),
         "initAndReturnData: only daoContract"
       )
-      await expectRevert(
-        stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: daoSetter}),
-        "initAndReturnData: only daoContract"
-      )
-      await stakingContract.setDAOAddressWithoutCheck(mike, {from: daoSetter});
-      await expectRevert(
-        stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: daoSetter}),
-        "initAndReturnData: only daoContract"
-      )
-      await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike});
+      await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: daoContract});
     });
 
     it("Test withdraw should revert amount is 0", async function() {
@@ -2570,7 +2458,7 @@ contract('KyberStaking', function(accounts) {
 
     it("Test delegate should revert when delegate to address 0", async function() {
       await deployStakingContract(2, currentBlock + 2);
-      await stakingContract.setDAOAddressWithoutCheck(accounts[8], {from: daoSetter});
+      await stakingContract.setDAOAddressWithoutCheck(accounts[8], {from: daoContract});
 
       await expectRevert(
         stakingContract.delegate(zeroAddress, {from: victor}),
@@ -2655,12 +2543,12 @@ contract('KyberStaking', function(accounts) {
 
   describe("Test Withdrawal shouldn't revert", () => {
     it("Test withdraw shouldn't revert when handleWithdrawal in DAO reverted", async function() {
-      await deployStakingContract(10, currentBlock + 10);
       let dao = await MockDAOWithdrawFailed.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10)
       );
-      await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
+      daoContract = dao.address;
+      await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -2675,15 +2563,16 @@ contract('KyberStaking', function(accounts) {
       );
       // shoule call DAO, but shouldn't revert, all data is updated
       await withdrawAndCheckData(victor, mulPrecision(100), false);
+      daoContract = accounts[1];
     });
 
     it("Test withdraw shouldn't revert when handleWithdrawal in DAO reverted - delegation", async function() {
-      await deployStakingContract(10, currentBlock + 10);
       let dao = await MockDAOWithdrawFailed.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10)
       );
-      await stakingContract.updateDAOAddressAndRemoveSetter(dao.address, {from: daoSetter});
+      daoContract = dao.address;
+      await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -2705,11 +2594,12 @@ contract('KyberStaking', function(accounts) {
       await withdrawAndCheckData(victor, mulPrecision(100), false);
       await stakingContract.delegate(mike, {from: victor});
       await withdrawAndCheckData(victor, mulPrecision(100), false);
+      daoContract = accounts[1];
     });
 
     it("Test withdraw shouldn't revert when DAO does not have handleWithdrawl func", async function() {
+      daoContract = accounts[1];
       await deployStakingContract(10, currentBlock + 10);
-      await stakingContract.setDAOAddressWithoutCheck(accounts[8], {from: daoSetter});
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -2734,7 +2624,6 @@ contract('KyberStaking', function(accounts) {
         stakingContract.address,
         kncToken.address
       );
-      await stakingContract.updateDAOAddressAndRemoveSetter(maliciousDao.address, {from: daoSetter});
 
       await kncToken.transfer(maliciousDao.address, mulPrecision(100));
 
@@ -2767,7 +2656,8 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        daoSetter);
+        daoContract
+      );
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -2788,7 +2678,8 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        daoSetter);
+        daoContract
+      );
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -2817,7 +2708,8 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        daoSetter);
+        daoContract
+      );
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
@@ -2840,7 +2732,8 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        daoSetter);
+        daoContract
+      );
 
       await kncToken.transfer(victor, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
