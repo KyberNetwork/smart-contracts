@@ -31,7 +31,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     mapping(address => bytes32[]) internal reservesPerTokenSrc; // reserves supporting token to eth
     mapping(address => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
 
-    mapping(bytes32 => bool) internal isListedReserveWithToken; // sha3(token, reserveId, isTokenToEth) => bool
+    mapping(address => mapping(bytes32 => bool)) internal isListedReserveWithTokenSrc;
+    mapping(address => mapping(bytes32 => bool)) internal isListedReserveWithTokenDest;
 
     uint256 internal feeAccountedPerType = 0xffffffff;
     uint256 internal entitledRebatePerType = 0xffffffff;
@@ -550,7 +551,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         entitledRebateArr = new bool[](reserveIds.length);
         reserveAddresses = new IKyberReserve[](reserveIds.length);
         areAllReservesListed = true;
-        IERC20 token = (dest == ETH_TOKEN_ADDRESS) ? src : dest;
 
         uint256 entitledRebateData = entitledRebatePerType;
         uint256 feeAccountedData = feeAccountedPerType;
@@ -561,13 +561,16 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
             feeAccountedArr[i] = (feeAccountedData & (1 << resTypeUint) > 0);
             reserveAddresses[i] = IKyberReserve(reserveIdToAddresses[reserveIds[i]][0]);
 
-            if (
-                !isListedReserveWithToken[keccak256(
-                    abi.encodePacked(address(token), reserveIds[i], dest == ETH_TOKEN_ADDRESS)
-                )]
-            ) {
-                areAllReservesListed = false;
-                break;
+            if(dest == ETH_TOKEN_ADDRESS) {
+                if(!isListedReserveWithTokenSrc[address(src)][reserveIds[i]]) {
+                    areAllReservesListed = false;
+                    break;
+                }
+            } else {
+                if(!isListedReserveWithTokenDest[address(dest)][reserveIds[i]]) {
+                    areAllReservesListed = false;
+                    break;
+                }
             }
         }
     }
@@ -594,9 +597,10 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
                     reserveArr[i] = reserveArr[reserveArr.length - 1];
                     reserveArr.pop();
 
-                    delete isListedReserveWithToken[keccak256(
-                        abi.encodePacked(address(token), reserveId, isTokenToEth)
-                    )];
+                    if(isTokenToEth)
+                        delete isListedReserveWithTokenSrc[address(token)][reserveId];
+                    else
+                        delete isListedReserveWithTokenDest[address(token)][reserveId];
                     break;
                 }
             }
@@ -605,9 +609,10 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         if (add && i == reserveArr.length) {
             // if reserve wasn't found add it
             reserveArr.push(reserveId);
-            isListedReserveWithToken[keccak256(
-                abi.encodePacked(address(token), reserveId, isTokenToEth)
-            )] = true;
+            if(isTokenToEth)
+                isListedReserveWithTokenSrc[address(token)][reserveId] = true;
+            else
+                isListedReserveWithTokenDest[address(token)][reserveId] = true;
         }
     }
 
