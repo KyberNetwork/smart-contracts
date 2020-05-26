@@ -27,7 +27,7 @@ interface IKyberStaking is IEpochUtils {
 
     function withdraw(uint256 amount) external;
 
-    function getStakerDataForPastEpoch(address staker, uint256 epoch)
+    function getStakerRawData(address staker, uint256 epoch)
         external
         view
         returns (

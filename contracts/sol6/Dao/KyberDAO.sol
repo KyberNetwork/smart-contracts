@@ -594,7 +594,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         }
 
         (uint256 stake, uint256 delegatedStake, address delegatedAddr) =
-            staking.getStakerDataForPastEpoch(staker, epoch);
+            staking.getStakerRawData(staker, epoch);
 
         uint256 totalStake = delegatedAddr == staker ? stake.add(delegatedStake) : delegatedStake;
         if (totalStake == 0) {
