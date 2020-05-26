@@ -1042,7 +1042,7 @@ contract('KyberDAO', function(accounts) {
           1, startBlock + 2, startBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: already had network fee for this epoch"
+        "validateParams: already had network fee for this epoch"
       );
 
       // still able to create for current epoch
@@ -1066,7 +1066,7 @@ contract('KyberDAO', function(accounts) {
           1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: already had network fee for this epoch"
+        "validateParams: already had network fee for this epoch"
       );
       // still able to create camp of other types
       await updateCurrentBlockAndTimestamp();
@@ -1099,7 +1099,7 @@ contract('KyberDAO', function(accounts) {
           2, startBlock + 2, startBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: already had brr for this epoch"
+        "validateParams: already had brr for this epoch"
       );
 
       // still able to create for current epoch
@@ -1124,7 +1124,7 @@ contract('KyberDAO', function(accounts) {
           2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: already had brr for this epoch"
+        "validateParams: already had brr for this epoch"
       );
       // still able to create camp of other types
       await updateCurrentBlockAndTimestamp();
@@ -1457,27 +1457,32 @@ contract('KyberDAO', function(accounts) {
         ),
         "validateParams: min percentage is high"
       )
-      // cInPrecision > 2^128
+      // cInPrecision >= 2^128
       await expectRevert(
         submitNewCampaign(daoContract,
           0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-          precisionUnits, new BN(2).pow(new BN(128)).add(new BN(1)), tInPrecision,
+          precisionUnits, new BN(2).pow(new BN(128)), tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: c is high"
       )
-      // tInPrecision > 2^128
+      // tInPrecision >= 2^128
       await expectRevert(
         submitNewCampaign(daoContract,
           0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
-          precisionUnits, tInPrecision, new BN(2).pow(new BN(128)).add(new BN(1)),
+          precisionUnits, tInPrecision, new BN(2).pow(new BN(128)),
           [1, 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: t is high"
       )
       await submitNewCampaign(daoContract,
         0, currentBlock + 5, currentBlock + 5 + minCampPeriod,
-        precisionUnits.sub(new BN(100)), cInPrecision, tInPrecision,
+        precisionUnits.sub(new BN(100)), new BN(2).pow(new BN(128)).sub(new BN(1)), tInPrecision,
+        [1, 2, 3], '0x', {from: daoOperator}
+      );
+      await submitNewCampaign(daoContract,
+        0, currentBlock + 5, currentBlock + 5 + minCampPeriod,
+        precisionUnits.sub(new BN(100)), cInPrecision, new BN(2).pow(new BN(128)).sub(new BN(1)),
         [1, 2, 3], '0x', {from: daoOperator}
       );
       await submitNewCampaign(daoContract,
@@ -1499,7 +1504,7 @@ contract('KyberDAO', function(accounts) {
           1, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: already had network fee for this epoch"
+        "validateParams: already had network fee for this epoch"
       )
       await submitNewCampaign(daoContract,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1521,7 +1526,7 @@ contract('KyberDAO', function(accounts) {
           1, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: already had network fee for this epoch"
+        "validateParams: already had network fee for this epoch"
       )
       await submitNewCampaign(daoContract,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1541,7 +1546,7 @@ contract('KyberDAO', function(accounts) {
           2, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: already had brr for this epoch"
+        "validateParams: already had brr for this epoch"
       )
       await submitNewCampaign(daoContract,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1563,7 +1568,7 @@ contract('KyberDAO', function(accounts) {
           2, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: already had brr for this epoch"
+        "validateParams: already had brr for this epoch"
       )
       await submitNewCampaign(daoContract,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
@@ -1588,7 +1593,7 @@ contract('KyberDAO', function(accounts) {
           0, daoStartTime - minCampPeriod * blockTime, daoStartTime - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: too many campaigns"
+        "validateParams: too many campaigns"
       )
 
       await daoContract.cancelCampaign(1, {from: daoOperator});
@@ -1603,7 +1608,7 @@ contract('KyberDAO', function(accounts) {
           0, daoStartTime - minCampPeriod * blockTime, daoStartTime - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: too many campaigns"
+        "validateParams: too many campaigns"
       )
 
       for(let id = 0; id < maxCamps; id++) {
@@ -1617,7 +1622,7 @@ contract('KyberDAO', function(accounts) {
           0, daoStartTime, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
-        "newCampaign: too many campaigns"
+        "validateParams: too many campaigns"
       )
       await daoContract.cancelCampaign(await daoContract.numberCampaigns(), {from: daoOperator});
       await daoContract.submitNewCampaign(
