@@ -2833,8 +2833,8 @@ contract('KyberNetwork', function(accounts) {
         it("test can not trade when platform fee is too high", async () => {
             let invalidPlatformFee = new BN(10001); // 10001 BPS = 100.01%
             await expectRevert(
-                network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
-                    maxDestAmt, minConversionRate, platformWallet, invalidPlatformFee, emptyHint),
+                network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
+                    maxDestAmt, minConversionRate, platformWallet, invalidPlatformFee, emptyHint, {value : srcQty}),
                 "platformFee high"
             );
         });
@@ -2847,8 +2847,8 @@ contract('KyberNetwork', function(accounts) {
             // expect invalidPlatformFee + networkFee*2 > BPS
 
             await expectRevert(
-                network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
-                    maxDestAmt, minConversionRate, platformWallet, invalidPlatformFee, emptyHint),
+                network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
+                    maxDestAmt, minConversionRate, platformWallet, invalidPlatformFee, emptyHint, {value: srcQty}),
                 "fees high"
             );
         });
