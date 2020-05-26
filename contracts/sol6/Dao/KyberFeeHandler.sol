@@ -34,9 +34,7 @@ import "./DaoOperator.sol";
  *          Expiry timestamp for data is set. when data expires. Fee handler reads new data from DAO.
  */
 
-interface IKyberProxy is IKyberNetworkProxy, ISimpleKyberProxy {
-    function kyberNetwork() external view returns (address);
-}
+interface IKyberProxy is ISimpleKyberProxy, IKyberNetworkProxy { }
 
 contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator {
     using SafeMath for uint256;
@@ -99,6 +97,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator {
     event BurnConfigSet(ISanityRate sanityRate, uint256 weiToBurn);
     event RewardsRemovedToBurn(uint256 indexed epoch, uint256 rewardsWei);
     event KyberNetworkUpdated(address kyberNetwork);
+    event KyberProxyUpdated(IKyberProxy kyberProxy);
 
     constructor(
         address _daoSetter,
@@ -291,12 +290,24 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator {
         daoSetter = address(0);
     }
 
-    /// @dev update kyber network contract address via kyber proxy.
-    function updateNetworkContract() external onlyDaoOperator {
-        address _kyberNetwork = networkProxy.kyberNetwork();
+    /// @dev set new kyber network address by using onlyDaoOperator
+    /// @param _kyberNetwork new Kyber Network contract
+    function setNetworkContract(address _kyberNetwork) external onlyDaoOperator {
         require(_kyberNetwork != address(0), "KyberNetwork 0");
-        kyberNetwork = _kyberNetwork;
-        emit KyberNetworkUpdated(kyberNetwork);
+        if (_kyberNetwork != kyberNetwork) {
+            kyberNetwork = _kyberNetwork;
+            emit KyberNetworkUpdated(kyberNetwork);
+        }
+    }
+
+    /// @dev Allow to set network proxy address by using onlyDaoOperator
+    /// @param _newProxy new Kyber Network Proxy contract
+    function setNetworkProxy(IKyberProxy _newProxy) external onlyDaoOperator {
+        require(_newProxy != IKyberProxy(0), "KyberNetworkProxy 0");
+        if (_newProxy != networkProxy) {
+            networkProxy = _newProxy;
+            emit KyberProxyUpdated(_newProxy);
+        }
     }
 
     /// @dev set burn KNC sanity rate contract and amount wei to burn

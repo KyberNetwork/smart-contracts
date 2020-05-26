@@ -279,7 +279,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await networkStorage.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await networkProxy.setKyberNetwork(network.address, {from: admin});
-        await feeHandler.updateNetworkContract({from: daoSetter});
+        await feeHandler.setNetworkContract(network.address, {from: daoSetter});
 
         //setup network
         ///////////////
@@ -332,7 +332,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await network.setEnable(true, {from: admin});
 
         //update  network contract
-        await feeHandler.updateNetworkContract({from: daoSetter});
+        await feeHandler.setNetworkContract(network.address, {from: daoSetter});
 
         await updateCurrentBlockAndTimestamp();
     };
