@@ -10,6 +10,7 @@ import "./EpochUtils.sol";
 /**
  * @notice   This contract is using SafeMath for uint, which is inherited from EpochUtils
  *           Some events are moved to interface, easier for public uses
+ *           Staking contract will be deployed by DAO's contract
  */
 contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     struct StakerData {
@@ -20,7 +21,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     IERC20 public kncToken;
     IKyberDAO public daoContract;
-    address public daoContractSetter;
 
     // staker data per epoch
     mapping(uint256 => mapping(address => StakerData)) internal stakerPerEpochData;
@@ -29,57 +29,25 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     // true/false: if we have inited data at an epoch for a staker
     mapping(uint256 => mapping(address => bool)) internal hasInited;
 
-    event DAOAddressSet(address _daoAddress);
-    event DAOContractSetterRemoved();
     // event is fired if something is wrong with withdrawal
     // even though the withdrawal is still successful
     event WithdrawDataUpdateFailed(uint256 curEpoch, address staker, uint256 amount);
 
     constructor(
-        address _kncToken,
+        IERC20 _kncToken,
         uint256 _epochPeriod,
         uint256 _startTimestamp,
-        address _daoContractSetter
+        IKyberDAO _daoContract
     ) public {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
-        require(_kncToken != address(0), "ctor: kncToken 0");
-        require(_daoContractSetter != address(0), "ctor: daoContractSetter 0");
+        require(_kncToken != IERC20(0), "ctor: kncToken 0");
+        require(_daoContract != IKyberDAO(0), "ctor: daoContract 0");
 
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
-        kncToken = IERC20(_kncToken);
-        daoContractSetter = _daoContractSetter;
-    }
-
-    modifier onlyDAOContractSetter() {
-        require(msg.sender == daoContractSetter, "only daoContractSetter");
-        _;
-    }
-
-    /**
-     * @dev update DAO address and set daoSetter to zero address, can only call once
-     * @param _daoAddress address of new DAO
-     */
-    function updateDAOAddressAndRemoveSetter(address _daoAddress) external onlyDAOContractSetter {
-        require(_daoAddress != address(0), "updateDAO: daoAddress 0");
-
-        daoContract = IKyberDAO(_daoAddress);
-        // verify the same epoch period + start timestamp
-        require(
-            daoContract.epochPeriodInSeconds() == epochPeriodInSeconds,
-            "updateDAO: different epoch period"
-        );
-        require(
-            daoContract.firstEpochStartTimestamp() == firstEpochStartTimestamp,
-            "updateDAO: different start timestamp"
-        );
-
-        emit DAOAddressSet(_daoAddress);
-
-        // reset dao contract setter
-        daoContractSetter = address(0);
-        emit DAOContractSetterRemoved();
+        kncToken = _kncToken;
+        daoContract = _daoContract;
     }
 
     // prettier-ignore
