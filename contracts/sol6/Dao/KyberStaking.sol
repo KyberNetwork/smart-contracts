@@ -22,11 +22,11 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     IERC20 public immutable kncToken;
     IKyberDAO public immutable daoContract;
 
-    // staker data per epoch
+    // staker data per epoch, including stake, delegated stake and delegated address
     mapping(uint256 => mapping(address => StakerData)) internal stakerPerEpochData;
     // latest data of a staker, including stake, delegated stake, representative
     mapping(address => StakerData) internal stakerLatestData;
-    // true/false: if we have inited data at an epoch for a staker
+    // true/false: if data has been initialized at an epoch for a staker
     mapping(uint256 => mapping(address => bool)) internal hasInited;
 
     // event is fired if something is wrong with withdrawal
@@ -72,9 +72,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         // reduce delegatedStake for curRepresentative if needed
         if (curRepresentative != staker) {
             initDataIfNeeded(curRepresentative, curEpoch);
-            // by right, delegatedStake should be greater than updatedStake
-            assert(stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake >= updatedStake);
-            assert(stakerLatestData[curRepresentative].delegatedStake >= updatedStake);
 
             stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake =
                 stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake.sub(updatedStake);
@@ -170,9 +167,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @dev init data if needed, then return staker's data for current epoch
+     * @dev initialize data if needed, then return staker's data for current epoch
      * @dev for safe, only allow calling this func from DAO address
-     * @param staker - staker's address to init and get data for
+     * @param staker - staker's address to initialize and get data for
      */
     function initAndReturnStakerDataForCurrentEpoch(address staker)
         external
@@ -412,8 +409,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @dev init data if it has not been inited yet
-     * @param staker staker's address to init
+     * @dev initialize data if it has not been initialized yet
+     * @param staker staker's address to initialize
      * @param epoch should be current epoch
      */
     function initDataIfNeeded(address staker, uint256 epoch) internal {
@@ -436,7 +433,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         }
 
         // whenever stakers deposit/withdraw/delegate, the current and next epoch data need to be updated
-        // as the result, we will also init data for staker at the next epoch
+        // as the result, we will also initialize data for staker at the next epoch
         if (!hasInited[epoch + 1][staker]) {
             hasInited[epoch + 1][staker] = true;
             StakerData storage nextEpochStakerData = stakerPerEpochData[epoch + 1][staker];
