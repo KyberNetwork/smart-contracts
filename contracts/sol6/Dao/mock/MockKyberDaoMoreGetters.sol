@@ -7,9 +7,8 @@ contract MockKyberDaoMoreGetters is KyberDAO {
     constructor(
         uint256 _epochPeriod,
         uint256 _startTimestamp,
-        address _staking,
-        address _feeHandler,
-        address _knc,
+        IKyberFeeHandler _feeHandler,
+        IERC20 _knc,
         uint256 _minCampDuration,
         uint256 _defaultNetworkFeeBps,
         uint256 _defaultRewardBps,
@@ -20,7 +19,6 @@ contract MockKyberDaoMoreGetters is KyberDAO {
         KyberDAO(
             _epochPeriod,
             _startTimestamp,
-            _staking,
             _feeHandler,
             _knc,
             _defaultNetworkFeeBps,
@@ -33,7 +31,7 @@ contract MockKyberDaoMoreGetters is KyberDAO {
     }
 
     function replaceStakingContract(address _staking) public {
-        staking = IKyberStaking(_staking);
+        staking = KyberStaking(_staking);
     }
 
     function setLatestNetworkFee(uint256 _fee) public {
