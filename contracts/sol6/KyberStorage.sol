@@ -518,20 +518,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         destTokens = destTokensPerReserve[reserveId];
     }
 
-    function getListedTokensByReserveAddress(address reserve)
-        external
-        view
-        returns (
-            IERC20[] memory srcTokens,
-            IERC20[] memory destTokens
-        )
-    {
-        bytes32 reserveId = reserveAddressToId[reserve];
-        srcTokens = srcTokensPerReserve[reserveId];
-        destTokens = destTokensPerReserve[reserveId];
-    }
-
-
     function getFeeAccountedData(bytes32[] calldata reserveIds)
         external
         view
