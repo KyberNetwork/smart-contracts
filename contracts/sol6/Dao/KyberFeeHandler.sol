@@ -53,9 +53,9 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator {
     IKyberDAO public kyberDAO;
     IKyberProxy public networkProxy;
     address public kyberNetwork;
-    IERC20 public knc;
+    IERC20 public immutable knc;
 
-    uint256 public burnBlockInterval = 15;
+    uint256 public immutable burnBlockInterval;
     uint256 public lastBurnBlock;
 
     BRRData public brrAndEpochData;
