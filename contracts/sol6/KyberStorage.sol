@@ -30,6 +30,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     mapping(address => bytes32) internal reserveAddressToId;
     mapping(address => bytes32[]) internal reservesPerTokenSrc; // reserves supporting token to eth
     mapping(address => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
+    mapping(bytes32 => IERC20[]) internal srcTokensPerReserve;
+    mapping(bytes32 => IERC20[]) internal destTokensPerReserve;
 
     uint256 internal feeAccountedPerType = 0xffffffff;
     uint256 internal entitledRebatePerType = 0xffffffff;
@@ -167,6 +169,9 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
         address reserve = reserveIdToAddresses[reserveId][0];
 
+        // delist all token pairs for reserve
+        delistTokensOfReserve(reserveId);
+
         uint256 reserveIndex = 2**255;
         for (uint256 i = startIndex; i < reserves.length; i++) {
             if (reserves[i] == IKyberReserve(reserve)) {
@@ -206,7 +211,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         bool ethToToken,
         bool tokenToEth,
         bool add
-    ) external {
+    ) public {
         onlyOperator();
 
         require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
@@ -501,6 +506,18 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         isEntitledRebateFlag = (entitledRebatePerType & (1 << resTypeUint)) > 0;
     }
 
+    function getListedTokensByReserveId(bytes32 reserveId)
+        external
+        view
+        returns (
+            IERC20[] memory srcTokens,
+            IERC20[] memory destTokens
+        )
+    {
+        srcTokens = srcTokensPerReserve[reserveId];
+        destTokens = destTokensPerReserve[reserveId];
+    }
+
     function getFeeAccountedData(bytes32[] calldata reserveIds)
         external
         view
@@ -555,6 +572,21 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
     }
 
+    function delistTokensOfReserve(bytes32 reserveId) internal {
+        // token to ether
+        // memory declaration instead of storage because we are modifying the storage array
+        IERC20[] memory tokensArr = srcTokensPerReserve[reserveId];
+        for (uint256 i = 0; i < tokensArr.length; i++) {
+            listPairForReserve(reserveId, tokensArr[i], false, true, false);
+        }
+
+        // ether to token
+        tokensArr = destTokensPerReserve[reserveId];
+        for (uint256 i = 0; i < tokensArr.length; i++) {
+            listPairForReserve(reserveId, tokensArr[i], true, false, false);
+        }
+    }
+
     function listPairs(
         bytes32 reserveId,
         IERC20 token,
@@ -563,17 +595,19 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     ) internal {
         uint256 i;
         bytes32[] storage reserveArr = reservesPerTokenDest[address(token)];
+        IERC20[] storage tokensArr = destTokensPerReserve[reserveId];
 
         if (isTokenToEth) {
             reserveArr = reservesPerTokenSrc[address(token)];
+            tokensArr = srcTokensPerReserve[reserveId];
         }
 
         for (i = 0; i < reserveArr.length; i++) {
             if (reserveId == reserveArr[i]) {
                 if (add) {
-                    break; // already added
+                    return; // reserve already added, no further action needed
                 } else {
-                    // remove
+                    // remove reserve from reserveArr
                     reserveArr[i] = reserveArr[reserveArr.length - 1];
                     reserveArr.pop();
                     break;
@@ -581,9 +615,19 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
             }
         }
 
-        if (add && i == reserveArr.length) {
-            // if reserve wasn't found add it
+        if (add) {
+            // add reserve and token to reserveArr and tokensArr respectively
             reserveArr.push(reserveId);
+            tokensArr.push(token);
+        } else {
+            // remove token from tokenArr
+            for (i = 0; i < tokensArr.length; i++) {
+                if (token == tokensArr[i]) {
+                    tokensArr[i] = tokensArr[tokensArr.length - 1];
+                    tokensArr.pop();
+                    break;
+                }
+            }
         }
     }
 
