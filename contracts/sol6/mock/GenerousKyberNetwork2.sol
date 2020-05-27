@@ -23,7 +23,7 @@ contract GenerousKyberNetwork2 is KyberNetwork {
     {
         tData.networkFeeBps = getAndUpdateNetworkFee();
 
-        verifyTradeInputValid(tData.input, tData.networkFeeBps);
+        validateTradeInput(tData.input);
 
         // amounts excluding fees
         uint256 rateWithNetworkFee;
