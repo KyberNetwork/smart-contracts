@@ -214,33 +214,15 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         // as we allow to create campaign of next epoch as well
         uint256 campaignEpoch = getEpochNumber(startTimestamp);
 
-        require(
-            epochCampaigns[campaignEpoch].length < MAX_EPOCH_CAMPAIGNS,
-            "newCampaign: too many campaigns"
-        );
-
         validateCampaignParams(
             campaignType,
             startTimestamp,
             endTimestamp,
-            campaignEpoch,
             minPercentageInPrecision,
             cInPrecision,
             tInPrecision,
             options
         );
-
-        if (campaignType == CampaignType.NetworkFee) {
-            require(
-                networkFeeCampaigns[campaignEpoch] == 0,
-                "newCampaign: already had network fee for this epoch"
-            );
-        } else if (campaignType == CampaignType.FeeHandlerBRR) {
-            require(
-                brrCampaigns[campaignEpoch] == 0,
-                "newCampaign: already had brr for this epoch"
-            );
-        }
 
         numberCampaigns = numberCampaigns.add(1);
         campaignID = numberCampaigns;
@@ -315,7 +297,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             if (campaignIDs[i] == campaignID) {
                 // remove this campaign id out of list
                 campaignIDs[i] = campaignIDs[campaignIDs.length - 1];
-                delete campaignIDs[campaignIDs.length - 1];
                 campaignIDs.pop();
                 break;
             }
@@ -324,7 +305,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         emit CancelledCampaign(campaignID);
     }
 
-    // prettier-ignore
     /**
      * @dev  vote for an option of a campaign
      *       options are indexed from 1 to number of options
@@ -610,7 +590,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         }
 
         (uint256 stake, uint256 delegatedStake, address delegatedAddr) =
-            staking.getStakerDataForPastEpoch(staker, epoch);
+            staking.getStakerRawData(staker, epoch);
 
         uint256 totalStake = delegatedAddr == staker ? stake.add(delegatedStake) : delegatedStake;
         if (totalStake == 0) {
@@ -711,7 +691,6 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         CampaignType campaignType,
         uint256 startTimestamp,
         uint256 endTimestamp,
-        uint256 startEpoch,
         uint256 minPercentageInPrecision,
         uint256 cInPrecision,
         uint256 tInPrecision,
@@ -726,11 +705,18 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             "validateParams: campaign duration is low"
         );
 
-        uint256 currentEpoch = getCurrentEpochNumber();
+        uint256 startEpoch = getEpochNumber(startTimestamp);
         uint256 endEpoch = getEpochNumber(endTimestamp);
+
+        require(
+            epochCampaigns[startEpoch].length < MAX_EPOCH_CAMPAIGNS,
+            "validateParams: too many campaigns"
+        );
+
         // start timestamp and end timestamp must be in the same epoch
         require(startEpoch == endEpoch, "validateParams: start & end not same epoch");
 
+        uint256 currentEpoch = getCurrentEpochNumber();
         require(
             startEpoch <= currentEpoch.add(1),
             "validateParams: only for current or next epochs"
@@ -750,6 +736,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
                 require(options[i] > 0, "validateParams: general campaign option is 0");
             }
         } else if (campaignType == CampaignType.NetworkFee) {
+            require(
+                networkFeeCampaigns[startEpoch] == 0,
+                "validateParams: already had network fee campaign for this epoch"
+            );
             // network fee campaign, option must be fee in bps
             for (uint256 i = 0; i < options.length; i++) {
                 // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
@@ -760,6 +750,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
                 );
             }
         } else {
+            require(
+                brrCampaigns[startEpoch] == 0,
+                "validateParams: already had brr campaign for this epoch"
+            );
             // brr fee handler campaign, option must be combined for reward + rebate %
             for (uint256 i = 0; i < options.length; i++) {
                 // rebate (left most 128 bits) + reward (right most 128 bits)
@@ -776,8 +770,8 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         require(minPercentageInPrecision <= PRECISION, "validateParams: min percentage is high");
 
         // limit value of c and t to avoid overflow
-        require(cInPrecision <= POWER_128, "validateParams: c is high");
+        require(cInPrecision < POWER_128, "validateParams: c is high");
 
-        require(tInPrecision <= POWER_128, "validateParams: t is high");
+        require(tInPrecision < POWER_128, "validateParams: t is high");
     }
 }

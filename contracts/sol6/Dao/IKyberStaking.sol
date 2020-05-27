@@ -27,7 +27,13 @@ interface IKyberStaking is IEpochUtils {
 
     function withdraw(uint256 amount) external;
 
-    function getStakerDataForPastEpoch(address staker, uint256 epoch)
+    /**
+     * @notice return raw data of a staker for an epoch
+     *         WARN: should be used only for initialized data
+     *          if data has not been initialized, it will return all 0
+     *          pool master shouldn't use this function to compute/distribute rewards of pool members
+     */
+    function getStakerRawData(address staker, uint256 epoch)
         external
         view
         returns (

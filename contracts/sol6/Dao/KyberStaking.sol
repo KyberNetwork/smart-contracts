@@ -50,7 +50,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         daoContract = _daoContract;
     }
 
-    // prettier-ignore
     /**
      * @dev calls to set delegation for msg.sender, will take effect from the next epoch
      * @param dAddr address to delegate to
@@ -95,12 +94,10 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
                 stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake.add(updatedStake);
             stakerLatestData[dAddr].delegatedStake =
                 stakerLatestData[dAddr].delegatedStake.add(updatedStake);
+            emit Delegated(staker, dAddr, curEpoch, true);
         }
-
-        emit Delegated(staker, dAddr, curEpoch, true);
     }
 
-    // prettier-ignore
     /**
      * @dev call to stake more KNC for msg.sender
      * @param amount amount of KNC to stake
@@ -201,11 +198,15 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @dev  in DAO contract, if staker wants to claim reward for past epoch,
+     * @notice return raw data of a staker for an epoch
+     *         WARN: should be used only for initialized data
+     *          if data has not been initialized, it will return all 0
+     *          pool master shouldn't use this function to compute/distribute rewards of pool members
+     * @dev  in KyberDao contract, if staker wants to claim reward for past epoch,
      *       we must know the staker's data for that epoch
-     *       if the data has not been inited, it means staker hasn't done any action -> no reward
+     *       if the data has not been initialized, it means staker hasn't done any action -> no reward
      */
-    function getStakerDataForPastEpoch(address staker, uint256 epoch)
+    function getStakerRawData(address staker, uint256 epoch)
         external
         view
         override
@@ -222,7 +223,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @notice don't call on-chain, possibly high gas consumption
      * @dev allow to get data up to current epoch + 1
      */
     function getStake(address staker, uint256 epoch) external view returns (uint256) {
@@ -244,7 +244,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @notice don't call on-chain, possibly high gas consumption
      * @dev allow to get data up to current epoch + 1
      */
     function getDelegatedStake(address staker, uint256 epoch) external view returns (uint256) {
@@ -266,7 +265,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @notice don't call on-chain, possibly high gas consumption
      * @dev allow to get data up to current epoch + 1
      */
     function getDelegatedAddress(address staker, uint256 epoch) external view returns (address) {
@@ -288,6 +286,43 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         return staker;
     }
 
+    /**
+     * @notice return combine data (stake, delegatedStake, delegatedAddress) of a staker
+     * @dev allow to get staker data up to current epoch + 1
+     */
+    function getStakerData(address staker, uint256 epoch)
+        external view
+        returns (
+            uint256 stake,
+            uint256 delegatedStake,
+            address delegatedAddress
+        )
+    {
+        stake = 0;
+        delegatedStake = 0;
+        delegatedAddress = address(0);
+
+        uint256 curEpoch = getCurrentEpochNumber();
+        if (epoch > curEpoch + 1) {
+            return (stake, delegatedStake, delegatedAddress);
+        }
+        uint256 i = epoch;
+        while (true) {
+            if (hasInited[i][staker]) {
+                stake = stakerPerEpochData[i][staker].stake;
+                delegatedStake = stakerPerEpochData[i][staker].delegatedStake;
+                delegatedAddress = stakerPerEpochData[i][staker].delegatedAddress;
+                return (stake, delegatedStake, delegatedAddress);
+            }
+            if (i == 0) {
+                break;
+            }
+            i--;
+        }
+        // not delegated to anyone, default to yourself
+        delegatedAddress = staker;
+    }
+
     function getLatestDelegatedAddress(address staker) external view returns (address) {
         return
             stakerLatestData[staker].delegatedAddress == address(0)
@@ -303,7 +338,21 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         return stakerLatestData[staker].stake;
     }
 
-    // prettier-ignore
+    function getLatestStakerData(address staker)
+        external view
+        returns (
+            uint256 stake,
+            uint256 delegatedStake,
+            address delegatedAddress
+        )
+    {
+        stake = stakerLatestData[staker].stake;
+        delegatedStake = stakerLatestData[staker].delegatedStake;
+        delegatedAddress = stakerLatestData[staker].delegatedAddress == address(0)
+                ? staker
+                : stakerLatestData[staker].delegatedAddress;
+    }
+
     /**
     * @dev  separate logics from withdraw, so staker can withdraw as long as amount <= staker's deposit amount
             calling this function from withdraw function, ignore reverting
@@ -315,7 +364,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         address staker,
         uint256 amount,
         uint256 curEpoch
-    ) public {
+    ) external {
         require(msg.sender == address(this), "only staking contract");
         initDataIfNeeded(staker, curEpoch);
         // Note: update latest stake will be done after this function
