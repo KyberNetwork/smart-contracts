@@ -249,13 +249,19 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     ) external {
         onlyOperator();
 
-        require(startIndex <= endIndex, "invalid indices");
+        if (startIndex > endIndex) {
+            // no need to do anything
+            return;
+        }
 
         address[] memory reserves = kyberStorage.getReserveAddressesPerTokenSrc(
             address(token), startIndex, endIndex
         );
 
-        require(reserves.length > 0, "reserve list is empty");
+        if (reserves.length == 0) {
+            // no need to do anything
+            return;
+        }
 
         for(uint i = 0; i < reserves.length; i++) {
             if (add) {
@@ -604,7 +610,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                     reservesData.rates[i],
                     true
                 ),
-                "trade failed"
+                "reserve trade failed"
             );
 
             uint256 balanceAfter;

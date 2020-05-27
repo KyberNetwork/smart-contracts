@@ -612,39 +612,35 @@ contract('KyberNetwork', function(accounts) {
             });
 
             it("test list reserves start index > end index", async() => {
-                await expectRevert(
-                    tempNetwork.listReservesForToken(
-                        token.address, 1, 0, true, {from: operator}
-                    ),
-                    "invalid indices"
-                )
+                let tx = await tempNetwork.listReservesForToken(
+                    token.address, 1, 0, true, {from: operator}
+                );
+                // no event should be emitted
+                Helper.assertEqual(tx.receipt.logs.length, 0);
             });
 
-            it("test list reserves token is not listed", async() => {
+            it("test list reserves token is not listed, list reserves is empty", async() => {
                 let newToken = await TestToken.new("test token", "tst", 18);
-                await expectRevert(
-                    tempNetwork.listReservesForToken(
-                        newToken.address, 0, 0, true, {from: operator}
-                    ),
-                    "reserve list is empty"
-                )
+                let tx = await tempNetwork.listReservesForToken(
+                    newToken.address, 0, 0, true, {from: operator}
+                );
+                // no event should be emitted
+                Helper.assertEqual(tx.receipt.logs.length, 0);
             });
 
-            it("test list reserves empty as wrong indices", async() => {
+            it("test list reserves empty as indices are higher than reserves length", async() => {
                 let newToken = await TestToken.new("test token", "tst", 18);
                 // start + end out of bound
-                await expectRevert(
-                    tempNetwork.listReservesForToken(
-                        newToken.address, 4, 5, true, {from: operator}
-                    ),
-                    "reserve list is empty"
+                let tx = await tempNetwork.listReservesForToken(
+                    newToken.address, 4, 5, true, {from: operator}
                 )
-                await expectRevert(
-                    tempNetwork.listReservesForToken(
-                        newToken.address, 4, 4, true, {from: operator}
-                    ),
-                    "reserve list is empty"
+                // no event should be emitted
+                Helper.assertEqual(tx.receipt.logs.length, 0);
+                tx = await tempNetwork.listReservesForToken(
+                    newToken.address, 4, 4, true, {from: operator}
                 )
+                // no event should be emitted
+                Helper.assertEqual(tx.receipt.logs.length, 0);
             });
 
             it("test list/unlist 1 reserve", async() => {
@@ -1944,7 +1940,7 @@ contract('KyberNetwork', function(accounts) {
                 await expectRevert(
                     network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
                         maxDestAmt, minConversionRate, platformWallet, platformFeeBps, emptyHint, {value: ethSrcQty}),
-                    "trade failed"
+                    "reserve trade failed"
                 );  
                 await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
             });
@@ -1957,7 +1953,7 @@ contract('KyberNetwork', function(accounts) {
                 await expectRevert(
                     network.tradeWithHintAndFee(network.address, ethAddress, ethSrcQty, destToken.address, taker,
                         maxDestAmt, minConversionRate, platformWallet, platformFeeBps, emptyHint, {value: ethSrcQty}),
-                    "trade failed"
+                    "reserve trade failed"
                 );  
                 await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
             });
