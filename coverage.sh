@@ -5,6 +5,8 @@ while getopts "f:" arg; do
   esac
 done
 
+export NODE_OPTIONS=--max-old-space-size=4096
+
 npx buidler clean
 npx buidler compile --config ./buidlerCoverageSol4.js
 
