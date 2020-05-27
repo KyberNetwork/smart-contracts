@@ -37,15 +37,17 @@ contract MaliciousStorage {
         networkProxy;
     }
 
-    function getReservesData(bytes32[] calldata reserveIds)
+    function getReservesData(bytes32[] calldata reserveIds, IERC20 , IERC20 )
         external
         view
         returns (
+            bool isValid,
             bool[] memory feeAccountedArr,
             bool[] memory entitledRebateArr,
             IKyberReserve[] memory reserveAddresses
             )
     {
+        isValid = true;
         reserveIds;
         feeAccountedArr = new bool[](feeArrayLength);
         entitledRebateArr = new bool[](entitledRebateLength);
