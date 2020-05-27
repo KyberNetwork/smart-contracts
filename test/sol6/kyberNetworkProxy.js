@@ -157,7 +157,7 @@ contract('KyberNetworkProxy', function(accounts) {
         if (!fs.existsSync(reportDir)) {
           fs.mkdirSync(reportDir, {recursive: true});
         }
-        fs.writeFile(reportFile, jsonContent, 'utf8', function (err) {
+        fs.writeFileSync(reportFile, jsonContent, 'utf8', function (err) {
             if (err) {
                 console.log('An error occured while writing JSON Object to File.');
                 return console.log(err);
