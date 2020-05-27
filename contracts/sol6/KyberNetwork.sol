@@ -658,12 +658,12 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     {
         tradeData.networkFeeBps = getAndUpdateNetworkFee();
 
-        verifyTradeInputValid(tradeData.input, tradeData.networkFeeBps);
+        validateTradeInput(tradeData.input);
 
         uint256 rateWithNetworkFee;
         (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tradeData, hint);
 
-        require(rateWithNetworkFee > 0, "0 rate");
+        require(rateWithNetworkFee > 0, "trade invalid, if hint involved, try parseHint API");
         require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
         require(rateWithNetworkFee >= tradeData.input.minConversionRate, "rate < min rate");
 
@@ -797,6 +797,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         view
         returns (uint256 destAmount, uint256 rateWithNetworkFee)
     {
+
+        validateFeeInput(tradeData.input, tradeData.networkFeeBps);
+
         // token to ether: find best reserves match and calculate wei amount
         tradeData.tradeWei = calcDestQtyAndMatchReserves(
             tradeData.input.src,
@@ -872,8 +875,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             (tradeData.input.src != ETH_TOKEN_ADDRESS) && (tradeData.input.dest != ETH_TOKEN_ADDRESS),
             hint
         );
-        (reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags, reservesData.addresses)
-            = kyberStorage.getReservesData(reservesData.ids);
+        bool areAllReservesListed;
+        (areAllReservesListed, reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags, reservesData.addresses)
+            = kyberStorage.getReservesData(reservesData.ids, src, dest);
+
+        if(!areAllReservesListed) {
+            return 0;
+        }
 
         require(reservesData.ids.length == reservesData.splitsBps.length, "bad split array");
         require(reservesData.ids.length == reservesData.isFeeAccountedFlags.length, "bad fee array");
@@ -1013,10 +1021,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
     /// @dev Checks a trade input validity, including correct src amounts
     /// @param input Trade input structure
-    /// @param networkFeeBps Network fee in bps.
-    function verifyTradeInputValid(TradeInput memory input, uint256 networkFeeBps)
-        internal
-        view
+    function validateTradeInput(TradeInput memory input) internal view
     {
         require(isEnabled, "network disabled");
         require(kyberProxyContracts[msg.sender], "bad sender");
@@ -1025,8 +1030,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(input.srcAmount != 0, "0 srcAmt");
         require(input.destAddress != address(0), "dest add 0");
         require(input.src != input.dest, "src = dest");
-        require(input.platformFeeBps < BPS, "platformFee high");
-        require(input.platformFeeBps + networkFeeBps + networkFeeBps < BPS, "fees high");
 
         if (input.src == ETH_TOKEN_ADDRESS) {
             require(msg.value == input.srcAmount, "bad eth qty");
@@ -1050,6 +1053,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     function readNetworkFeeData() internal view returns (uint256 feeBps, uint256 expiryTimestamp) {
         feeBps = uint256(networkFeeData.feeBps);
         expiryTimestamp = uint256(networkFeeData.expiryTimestamp);
+    }
+
+    /// @dev Checks fee input validity, including correct src amounts
+    /// @param input Trade input structure
+    /// @param networkFeeBps Network fee in bps.
+    function validateFeeInput(TradeInput memory input, uint256 networkFeeBps) internal pure {
+        require(input.platformFeeBps < BPS, "platformFee high");
+        require(input.platformFeeBps + networkFeeBps + networkFeeBps < BPS, "fees high");
     }
 
     /// @notice Update reserve data with selected reserves from matching engine
