@@ -33,6 +33,9 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     mapping(bytes32 => IERC20[]) internal srcTokensPerReserve;
     mapping(bytes32 => IERC20[]) internal destTokensPerReserve;
 
+    mapping(IERC20 => mapping(bytes32 => bool)) internal isListedReserveWithTokenSrc;
+    mapping(IERC20 => mapping(bytes32 => bool)) internal isListedReserveWithTokenDest;
+
     uint256 internal feeAccountedPerType = 0xffffffff;
     uint256 internal entitledRebatePerType = 0xffffffff;
     mapping(bytes32 => uint256) internal reserveType; // type from enum ReserveType
@@ -365,7 +368,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         returns (address[] memory rebateWallets)
     {
         rebateWallets = new address[](reserveIds.length);
-        for(uint i = 0; i < rebateWallets.length; i++) {
+        for (uint256 i = 0; i < rebateWallets.length; i++) {
             rebateWallets[i] = reserveRebateWallet[reserveIds[i]];
         }
     }
@@ -391,14 +394,14 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     {
         bytes32[] memory reserveIds = reservesPerTokenSrc[token];
         if (reserveIds.length == 0) {
-            return reserveAddresses ;
+            return reserveAddresses;
         }
         uint256 endId = (endIndex >= reserveIds.length) ? (reserveIds.length - 1) : endIndex;
         if (endId < startIndex) {
             return reserveAddresses;
         }
         reserveAddresses = new address[](endId - startIndex + 1);
-        for(uint i = startIndex; i <= endId; i++) {
+        for(uint256 i = startIndex; i <= endId; i++) {
             reserveAddresses[i - startIndex] = reserveIdToAddresses[reserveIds[i]][0];
         }
     }
@@ -548,11 +551,15 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
     }
 
-    function getReservesData(bytes32[] calldata reserveIds)
+    /// @dev Returns information about reserves given their reserve IDs
+    ///      Also check if these reserve IDs are listed for token
+    ///      Network calls this function to retrive information about fee, address and rebate information
+    function getReservesData(bytes32[] calldata reserveIds, IERC20 src, IERC20 dest)
         external
         view
         override
         returns (
+            bool areAllReservesListed,
             bool[] memory feeAccountedArr,
             bool[] memory entitledRebateArr,
             IKyberReserve[] memory reserveAddresses)
@@ -560,15 +567,25 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         feeAccountedArr = new bool[](reserveIds.length);
         entitledRebateArr = new bool[](reserveIds.length);
         reserveAddresses = new IKyberReserve[](reserveIds.length);
+        areAllReservesListed = true;
 
         uint256 entitledRebateData = entitledRebatePerType;
         uint256 feeAccountedData = feeAccountedPerType;
+
+        mapping(bytes32 => bool) storage isListedReserveWithToken = (dest == ETH_TOKEN_ADDRESS) ?
+            isListedReserveWithTokenSrc[src]:
+            isListedReserveWithTokenDest[dest];
 
         for (uint256 i = 0; i < reserveIds.length; i++) {
             uint256 resTypeUint = reserveType[reserveIds[i]];
             entitledRebateArr[i] = (entitledRebateData & (1 << resTypeUint) > 0);
             feeAccountedArr[i] = (feeAccountedData & (1 << resTypeUint) > 0);
             reserveAddresses[i] = IKyberReserve(reserveIdToAddresses[reserveIds[i]][0]);
+
+            if (!isListedReserveWithToken[reserveIds[i]]){
+                areAllReservesListed = false;
+                break;
+            }
         }
     }
 
@@ -596,10 +613,12 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         uint256 i;
         bytes32[] storage reserveArr = reservesPerTokenDest[address(token)];
         IERC20[] storage tokensArr = destTokensPerReserve[reserveId];
+        mapping(bytes32 => bool) storage isListedReserveWithToken = isListedReserveWithTokenDest[token];
 
         if (isTokenToEth) {
             reserveArr = reservesPerTokenSrc[address(token)];
             tokensArr = srcTokensPerReserve[reserveId];
+            isListedReserveWithToken = isListedReserveWithTokenSrc[token];
         }
 
         for (i = 0; i < reserveArr.length; i++) {
@@ -610,6 +629,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
                     // remove reserve from reserveArr
                     reserveArr[i] = reserveArr[reserveArr.length - 1];
                     reserveArr.pop();
+
                     break;
                 }
             }
@@ -619,6 +639,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
             // add reserve and token to reserveArr and tokensArr respectively
             reserveArr.push(reserveId);
             tokensArr.push(token);
+            isListedReserveWithToken[reserveId] = true;
         } else {
             // remove token from tokenArr
             for (i = 0; i < tokensArr.length; i++) {
@@ -628,6 +649,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
                     break;
                 }
             }
+            delete isListedReserveWithToken[reserveId];
         }
     }
 

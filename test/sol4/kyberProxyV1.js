@@ -526,7 +526,7 @@ contract('KyberProxyV1', function(accounts) {
                         hint,
                         {from: taker, value: ethSrcQty},
                     ),
-                    "0 rate"
+                    "trade invalid, if hint involved, try parseHint API"
                 );
 
                 // T2E trade
@@ -542,7 +542,7 @@ contract('KyberProxyV1', function(accounts) {
                         hint,
                         {from: taker}
                     ),
-                    "0 rate"
+                    "trade invalid, if hint involved, try parseHint API"
                 );
 
                 // T2T trade
@@ -558,7 +558,7 @@ contract('KyberProxyV1', function(accounts) {
                         hint,
                         {from: taker},
                     ),
-                    "0 rate"
+                    "trade invalid, if hint involved, try parseHint API"
                 );
                 hint = web3.utils.fromAscii("PERM");
             });
