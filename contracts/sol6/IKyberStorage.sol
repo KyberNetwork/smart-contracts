@@ -10,7 +10,6 @@ interface IKyberStorage {
     function addKyberProxy(address networkProxy, uint256 maxApprovedProxies)
         external;
 
-
     function removeKyberProxy(address networkProxy) external;
 
     function setContracts(address _feeHandler, address _matchingEngine) external;
@@ -88,10 +87,11 @@ interface IKyberStorage {
         view
         returns (bool[] memory entitledRebateArr);
 
-    function getReservesData(bytes32[] calldata reserveIds)
+    function getReservesData(bytes32[] calldata reserveIds, IERC20 src, IERC20 dest)
         external
         view
         returns (
+            bool areAllReservesListed,
             bool[] memory feeAccountedArr,
             bool[] memory entitledRebateArr,
             IKyberReserve[] memory reserveAddresses);

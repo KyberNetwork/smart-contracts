@@ -26,13 +26,13 @@ contract MaliciousKyberNetwork is KyberNetwork {
     {
         tData.networkFeeBps = getAndUpdateNetworkFee();
 
-        verifyTradeInputValid(tData.input, tData.networkFeeBps);
+        validateTradeInput(tData.input);
 
         // amounts excluding fees
         uint256 rateWithNetworkFee;
         (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
 
-        require(rateWithNetworkFee > 0, "0 rate");
+        require(rateWithNetworkFee > 0, "trade invalid, if hint involved, try parseHint API");
         require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
         require(rateWithNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
 
