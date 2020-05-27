@@ -276,9 +276,6 @@ contract('KyberStorage', function(accounts) {
                 rebateWallet: anyWallet,
                 add: true
             });
-            let reserves = await kyberStorage.getReserves();
-            Helper.assertEqual(reserves.length, 1, "number of reserve is not expected");
-            Helper.assertEqual(reserves[0], mockReserve.address, "reserve addr is not expected");
             expectEvent(txResult, 'ReserveRebateWalletSet', {
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
                 rebateWallet: anyWallet
@@ -293,18 +290,16 @@ contract('KyberStorage', function(accounts) {
         it("Remove reserve", async() => {
             let anyWallet = accounts[0];
             let mockReserve = await MockReserve.new();
-            await kyberStorage.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
-            let reserves = await kyberStorage.getReserves();
-            Helper.assertEqual(reserves.length, 1, "number of reserve is not expected");
-            Helper.assertEqual(reserves[0], mockReserve.address, "reserve addr is not expected");
+            let mockReserveID = nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase();
+            await kyberStorage.addReserve(mockReserve.address, mockReserveID, ReserveType.FPR, anyWallet, {from: operator});
             let txResult = await kyberStorage.removeReserve(
-                nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
+                mockReserveID,
                 0,
                 {from: operator}
             );
             expectEvent(txResult, 'RemoveReserveFromStorage', {
                 reserve: mockReserve.address,
-                reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase()
+                reserveId: mockReserveID
             });
         });
 
@@ -532,6 +527,25 @@ contract('KyberStorage', function(accounts) {
                 Helper.assertEqual(reserveData.isFeeAccountedFlag, false, "isFeeAccountedFlag not false");
                 Helper.assertEqual(reserveData.isEntitledRebateFlag, false, "isEntitledRebateFlag not false");
             });
+
+            it("should successfully add a reserve", async() => {
+                // before adding reserve
+                let reserves = await kyberStorage.getReserves();
+                Helper.assertEqual(reserves.length, zeroBN, "reserve arrays not equal");
+                reserves = await kyberStorage.getReservesPerType(ReserveType.FPR);
+                Helper.assertEqual(reserves.length, zeroBN, "reserve arrays not equal");
+
+                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+
+                // after adding
+                reserves = await kyberStorage.getReserves();
+                Helper.assertEqualArray(reserves, [reserve.address], "reserve arrays not equal");
+                reserves = await kyberStorage.getReservesPerType(reserve.onChainType);
+                Helper.assertEqualArray(reserves, [reserve.reserveId], "reserve arrays not equal");
+
+                // reset
+                await kyberStorage.removeReserve(reserve.reserveId, 0, {from: operator});
+            });
         });
 
         describe("test cases for an already added reserve", async() => {
@@ -568,6 +582,8 @@ contract('KyberStorage', function(accounts) {
                 let actualOldReserveAddress = reserves[1];
                 let reserveData = await kyberStorage.getReserveDetailsById(reserve.reserveId);
                 assert(reserveData.reserveAddress == newReserve.address, "new reserve address not equal to expected");
+                let reserveIds = await kyberStorage.getReservesPerType(reserve.onChainType);
+                assert(reserveIds[0], reserve.reserveId, "reserveId not found in reservesPerType");
 
                 Helper.assertEqual(newReserve.address, actualNewReserveAddress, "new reserve address not equal to expected");
                 Helper.assertEqual(reserve.address, actualOldReserveAddress, "old reserve address not equal to expected");
@@ -690,54 +706,61 @@ contract('KyberStorage', function(accounts) {
             let network = await KyberNetwork.new(admin, kyberStorage.address);
             await kyberStorage.addOperator(operator, {from: admin});
             await kyberStorage.setNetworkContract(network.address, {from: admin});
-            // set up 1 mock reserve and 1 fpr reserve, 1 with fee and 1 not
-            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-            await kyberStorage.setEntitledRebatePerReserveType(true, true, true, false, true, true, {from: admin});
-            let result = await nwHelper.setupReserves(network, [token], 1,1,0,0, accounts, admin, operator);
-            let reserveInstances = result.reserveInstances;
+            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, true, false, true, {from: admin});
+            await kyberStorage.setEntitledRebatePerReserveType(true, true, true, true, false, true, {from: admin});
+            let reserveTypes = Object.values(ReserveType);
+            // ignore ReserveType.NONE
+            reserveTypes = reserveTypes.slice(1,);
             let reserveAddresses= [];
             let reserveIds = [];
+            let reserveIdsPerType = {};
             let reserveFeeData = [];
             let reserveRebateData = [];
             let reserveRebateWalletData = [];
 
-            // add all reserve to network
-            for (const value of Object.values(reserveInstances)) {
-                let reserve = value;
-                if (reserve.type = "TYPE_MOCK") {
-                    reserve.onChainType = ReserveType.UTILITY;
+            // set up 3 mock reserves for each reserve type
+            for (const resType of reserveTypes) {
+                reserveIdsPerType[resType] = [];
+                for (let i = 0; i < 3; i++) {
+                    let reserve = await MockReserve.new();
+                    let reserveId = nwHelper.genReserveID(MOCK_ID, reserve.address).toLowerCase();
+                    reserveAddresses.push(reserve.address);
+                    reserveIds.push(reserveId);
+                    reserveFeeData.push(resType != ReserveType.CUSTOM);
+                    reserveRebateData.push(resType != ReserveType.CUSTOM);
+                    reserveRebateWalletData.push(reserve.address);
+                    reserveIdsPerType[resType].push(reserveId);
+                    await kyberStorage.addReserve(reserve.address, reserveId, resType, reserve.address, {from: operator});
+                    assert(await kyberStorage.getReserveId(reserve.address) == reserveId, "unexpected reserveId");
+                    let reserveData = await kyberStorage.getReserveDetailsById(reserveId);
+                    assert(reserveData.reserveAddress == reserve.address, "unexpected reserve address");
+                    assert(reserveData.rebateWallet == reserve.address, "unexpected rebate address");
+                    assert(reserveData.resType == resType, "unexpected reserve on chain type");
+                    assert(reserveData.isFeeAccountedFlag == (resType != ReserveType.CUSTOM), "unexpected fee accounted flag");
+                    assert(reserveData.isEntitledRebateFlag == (resType != ReserveType.CUSTOM), "unexpected entitled rebate flag");
+                    // list ethToToken
+                    await kyberStorage.listPairForReserve(reserveId, token.address, true, false, true, {from: operator});
                 }
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
-                reserveAddresses.push(reserve.address);
-                reserveIds.push(reserve.reserveId);
-                reserveFeeData.push(reserve.type != "TYPE_MOCK");
-                reserveRebateWalletData.push(reserve.rebateWallet);
-                reserveRebateData.push(reserve.type != "TYPE_MOCK");
-
-                assert(await kyberStorage.getReserveId(reserve.address) == reserve.reserveId, "unexpected reserveId");
-                let reserveData = await kyberStorage.getReserveDetailsById(reserve.reserveId);
-                assert(reserveData.reserveAddress == reserve.address, "unexpected reserve address");
-                assert(reserveData.rebateWallet == reserve.rebateWallet, "unexpected rebate address");
-                assert(reserveData.resType == reserve.onChainType, "unexpected reserve on chain type");
-                assert(reserveData.isFeeAccountedFlag == (reserve.type != "TYPE_MOCK"), "unexpected fee accounted flag");
-                assert(reserveData.isEntitledRebateFlag == (reserve.type != "TYPE_MOCK"), "unexpected entitled rebate flag");
-                // list ethToToken
-                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, false, true, {from: operator});
             }
+
             Helper.assertEqualArray(await kyberStorage.getReserves(), reserveAddresses, "unexpected reserve addresses");
+            for (const resType of reserveTypes) {
+                Helper.assertEqualArray(await kyberStorage.getReservesPerType(resType), reserveIdsPerType[resType], "unexpected reserveId");
+            }
             Helper.assertEqualArray(await kyberStorage.getReserveIdsFromAddresses(reserveAddresses), reserveIds);
             Helper.assertEqualArray(await kyberStorage.getReserveAddressesFromIds(reserveIds), reserveAddresses);
             Helper.assertEqualArray(await kyberStorage.getFeeAccountedData(reserveIds), reserveFeeData);
             Helper.assertEqualArray(await kyberStorage.getEntitledRebateData(reserveIds), reserveRebateData);
-            let feeAccountedAndRebateResult = await kyberStorage.getReservesData(reserveIds, ethAddress, token.address);
-            assert(feeAccountedAndRebateResult.areAllReservesListed, "reserveIds is invalid for eth to token")
-            Helper.assertEqualArray(feeAccountedAndRebateResult.feeAccountedArr, reserveFeeData);
-            Helper.assertEqualArray(feeAccountedAndRebateResult.entitledRebateArr, reserveRebateData);
+            let feesRebatesAndAddresses = await kyberStorage.getReservesData(reserveIds, ethAddress, token.address);
+            assert(feesRebatesAndAddresses.areAllReservesListed, "reserveIds is invalid for eth to token")
+            Helper.assertEqualArray(feesRebatesAndAddresses.feeAccountedArr, reserveFeeData);
+            Helper.assertEqualArray(feesRebatesAndAddresses.entitledRebateArr, reserveRebateData);
+            Helper.assertEqualArray(feesRebatesAndAddresses.reserveAddresses, reserveAddresses);
         });
     });
 
     describe("test listing token pair and removing reserve", async() => {
-        before("deploy and setup kyberStorage instance & add 1 mock reserve, & 1 mock token", async() => {
+        before("deploy and setup kyberStorage instance & add 2 mock reserves, & 1 mock token", async() => {
             kyberStorage = await nwHelper.setupStorage(admin);
             network = await KyberNetwork.new(admin, kyberStorage.address);
             await kyberStorage.addOperator(operator, {from: admin});
@@ -748,8 +771,7 @@ contract('KyberStorage', function(accounts) {
             let result = await nwHelper.setupReserves(network, [], 2,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
             numReserves = result.numAddedReserves * 1;
-            for (const value of Object.values(reserveInstances)) {
-                reserve = value;
+            for (const reserve of Object.values(reserveInstances)) {
                 await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             }
 
@@ -757,8 +779,10 @@ contract('KyberStorage', function(accounts) {
             token = await TestToken.new("test", "tst", 18);
         });
 
-        beforeEach("delist token pair on both sides", async() => {
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
+        afterEach("delist token pair on both sides", async() => {
+            for (const reserve of Object.values(reserveInstances)) {
+                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
+            }
         });
 
         it("should revert when listing token for non-reserve", async() => {
@@ -1072,6 +1096,50 @@ contract('KyberStorage', function(accounts) {
             result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
             Helper.assertEqual(result.srcTokens.length, zeroBN, "src tokens listed not the same");
             Helper.assertEqual(result.destTokens.length, zeroBN, "dest tokens listed not the same");
+
+            // reset
+            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+        });
+
+        it("should have reserveId and reserve address removed from reservesPerType and getReserves respectively", async() => {
+            // remove all existing reserves
+            for (const reserve of Object.values(reserveInstances)) {
+                await kyberStorage.removeReserve(reserve.reserveId, 0, {from : operator});
+            }
+
+            // add reserve for each type
+            let anyWallet = accounts[0];
+            let mockReserve;
+            let mockReserves = [];
+            let mockReserveId;
+            let mockReserveIds = [];
+            let reserveTypes = Object.values(ReserveType);
+            // ignore ReserveType.NONE
+            reserveTypes = reserveTypes.slice(1,);
+            for (const resType of reserveTypes) {
+                mockReserve = await MockReserve.new();
+                mockReserves.push(mockReserve.address);
+                mockReserveId = nwHelper.genReserveID(MOCK_ID, mockReserve.address);
+                mockReserveIds.push(mockReserveId);
+                await kyberStorage.addReserve(mockReserve.address, mockReserveId, resType, anyWallet, {from: operator});
+                Helper.assertEqualArray(await kyberStorage.getReservesPerType(resType), [mockReserveId.toLowerCase()], "reserves per type not equal");
+            }
+
+            let allReserves = await kyberStorage.getReserves();
+            Helper.assertEqualArray(allReserves, mockReserves, "all reserves not equal");
+
+            // remove each reserve
+            for (let i = reserveTypes.length - 1; i >= 0; i--) {
+                allReserves.pop();
+                await kyberStorage.removeReserve(mockReserveIds[i], 0, {from: operator});
+                Helper.assertEqualArray(await kyberStorage.getReserves(), allReserves, "reserves not equal");
+                Helper.assertEqual((await kyberStorage.getReservesPerType(reserveTypes[i])).length, zeroBN, "reserves per type not equal");
+            }
+
+            // reset
+            for (const reserve of Object.values(reserveInstances)) {
+                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+            }
         });
     });
 
