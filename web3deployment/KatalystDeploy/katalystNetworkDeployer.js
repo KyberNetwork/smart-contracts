@@ -115,7 +115,7 @@ let networkContract;
 let proxyContract;
 let stakingContract;
 let storageContract;
-let DAOContract;
+let kyberDaoContract;
 
 //permissions
 let matchingEnginePermissions;
@@ -179,7 +179,7 @@ function parseInput( jsonInput ) {
     networkPermissions = jsonInput.permission["Network"];
     proxyPermissions = jsonInput.permission["Proxy"];
     storagePermissions = jsonInput.permission["Storage"];
-    daoOperator = jsonInput.permission["DAO"]["DaoOperator"]
+    daoOperator = jsonInput.permission["KyberDao"]["DaoOperator"]
 
     //constants
     isFeeAccounted = jsonInput["isFeeAccounted"];
@@ -257,7 +257,7 @@ async function main() {
   await deployProxyContract(output);
   await deployFeeHandlerContract(output);
   await deployStakingContract(output);
-  await deployDAOContract(output);
+  await deployKyberDaoContract(output);
   /////////////////////////////////////////
 
   //IF DEPLOYMENT BREAKS:
@@ -271,7 +271,7 @@ async function main() {
   // REDEPLOYMENT //
   //////////////////
   await setupMatchingEngine();
-  await setupDAOStuff();
+  await setupKyberDaoStuff();
 
   /////////////////////
   // ADDING RESERVES //
@@ -299,9 +299,9 @@ async function fullDeployment() {
   await setNetworkAddressInStorage();
   await setStorageAddressInMatchingEngine();
   await set_Fee_MatchEngine_Gas_ContractsInNetwork();
-  await setDAOInNetwork();
-  await setDAOInFeeHandler();
-  await setDAOInStaking();
+  await setKyberDaoInNetwork();
+  await setKyberDaoInFeeHandler();
+  await setKyberDaoInStaking();
   await setProxyInNetwork();
   await setNetworkInProxy();
   await setTempOperatorToNetwork();
@@ -462,21 +462,21 @@ async function deployStakingContract(output) {
     }
 };
 
-async function deployDAOContract(output) {
+async function deployKyberDaoContract(output) {
     if (daoAddress == "") {
-        console.log("deploying DAO contract");
-        [daoAddress, DAOContract] = await deployContract(
-            output, "KyberDAO.sol", "KyberDAO",
+        console.log("deploying KyberDao contract");
+        [daoAddress, kyberDaoContract] = await deployContract(
+            output, "KyberDao.sol", "KyberDao",
             [
               epochPeriod, startTimestamp, stakingAddress, feeHandlerAddress, kncTokenAddress,
               networkFeeBps, rewardFeeBps, rebateFeeBps, daoOperator
             ]
         );
-        console.log(`DAO: ${daoAddress}`);
+        console.log(`KyberDao: ${daoAddress}`);
     } else {
-        console.log("Instantiating DAO...");
-        DAOContract = new web3.eth.Contract(
-        output.contracts["KyberDAO.sol"]["KyberDAO"].abi, daoAddress
+        console.log("Instantiating KyberDao...");
+        kyberDaoContract = new web3.eth.Contract(
+        output.contracts["KyberDao.sol"]["KyberDao"].abi, daoAddress
         );
     }
 };
@@ -515,19 +515,19 @@ async function set_Fee_MatchEngine_Gas_ContractsInNetwork() {
   ));
 }
 
-async function setDAOInNetwork() {
-  console.log("Setting DAO address in network");
-  await sendTx(networkContract.methods.setDAOContract(daoAddress));
+async function setKyberDaoInNetwork() {
+  console.log("Setting KyberDao address in network");
+  await sendTx(networkContract.methods.setKyberDaoContract(daoAddress));
 }
 
-async function setDAOInFeeHandler() {
-  console.log("Setting DAO address in fee handler");
+async function setKyberDaoInFeeHandler() {
+  console.log("Setting KyberDao address in fee handler");
   await sendTx(feeHandlerContract.methods.setDaoContract(daoAddress));
 }
 
-async function setDAOInStaking() {
-  console.log("Setting DAO address in staking");
-  await sendTx(stakingContract.methods.updateDAOAddressAndRemoveSetter(daoAddress));
+async function setKyberDaoInStaking() {
+  console.log("Setting KyberDao address in staking");
+  await sendTx(stakingContract.methods.updateKyberDaoAddressAndRemoveSetter(daoAddress));
 }
 
 async function setProxyInNetwork() {
@@ -622,10 +622,10 @@ async function setupMatchingEngine() {
   console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Set matching engine in network contract!!");
 };
 
-async function setupDAOStuff() {
-  await setDAOInFeeHandler();
-  await setDAOInStaking();
-  console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Set DAO in network contract!!");
+async function setupKyberDaoStuff() {
+  await setKyberDaoInFeeHandler();
+  await setKyberDaoInStaking();
+  console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Set KyberDao in network contract!!");
 };
 
 function lastFewThings() {

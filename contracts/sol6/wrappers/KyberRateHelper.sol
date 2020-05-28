@@ -2,7 +2,7 @@ pragma solidity 0.6.6;
 
 import "../IKyberMatchingEngine.sol";
 import "./IKyberRateHelper.sol";
-import "../IKyberDAO.sol";
+import "../IKyberDao.sol";
 import "../IKyberStorage.sol";
 import "../utils/Utils5.sol";
 import "../utils/WithdrawableNoModifiers.sol";
@@ -16,25 +16,25 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
     }
 
     IKyberMatchingEngine public matchingEngine;
-    IKyberDAO public kyberDAO;
+    IKyberDao public kyberDao;
     IKyberStorage public kyberStorage;
 
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /* empty body */
     }
 
-    event KyberDAOContractSet(IKyberDAO kyberDAO);
+    event KyberDaoContractSet(IKyberDao kyberDao);
     event KyberStorageSet(IKyberStorage kyberStorage);
     event MatchingEngineContractSet(IKyberMatchingEngine matchingEngine);
 
     function setContracts(
         IKyberMatchingEngine _matchingEngine,
-        IKyberDAO _kyberDAO,
+        IKyberDao _kyberDao,
         IKyberStorage _kyberStorage
     ) public {
         onlyAdmin();
         require(_matchingEngine != IKyberMatchingEngine(0), "matching engine 0");
-        require(_kyberDAO != IKyberDAO(0), "kyberDAO 0");
+        require(_kyberDao != IKyberDao(0), "kyberDao 0");
         require(_kyberStorage != IKyberStorage(0), "kyberStorage 0");
 
         if (matchingEngine != _matchingEngine) {
@@ -42,9 +42,9 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             emit MatchingEngineContractSet(_matchingEngine);
         }
 
-        if (kyberDAO != _kyberDAO) {
-            kyberDAO = _kyberDAO;
-            emit KyberDAOContractSet(_kyberDAO);
+        if (kyberDao != _kyberDao) {
+            kyberDao = _kyberDao;
+            emit KyberDaoContractSet(_kyberDao);
         }
 
         if (kyberStorage != _kyberStorage) {
@@ -86,7 +86,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             uint256[] memory sellRates
         )
     {
-        (uint256 feeBps, ) = kyberDAO.getLatestNetworkFeeData();
+        (uint256 feeBps, ) = kyberDao.getLatestNetworkFeeData();
         return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, feeBps);
     }
 

@@ -3,7 +3,7 @@ pragma solidity 0.6.6;
 import "./Dao/IEpochUtils.sol";
 
 
-interface IKyberDAO is IEpochUtils {
+interface IKyberDao is IEpochUtils {
     event Voted(address indexed staker, uint indexed epoch, uint indexed campaignID, uint option);
     event RewardClaimed(address indexed staker, uint256 indexed epoch, uint256 percentInPrecision);
 
