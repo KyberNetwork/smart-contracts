@@ -16,7 +16,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     struct StakerData {
         uint256 stake;
         uint256 delegatedStake;
-        address delegatedAddress;
+        address representative;
     }
 
     IERC20 public immutable kncToken;
@@ -24,7 +24,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     // staker data per epoch
     mapping(uint256 => mapping(address => StakerData)) internal stakerPerEpochData;
-    // latest data of a staker, including stake, delegated stake, delegated address
+    // latest data of a staker, including stake, delegated stake, representative
     mapping(address => StakerData) internal stakerLatestData;
     // true/false: if we have inited data at an epoch for a staker
     mapping(uint256 => mapping(address => bool)) internal hasInited;
@@ -50,57 +50,54 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         daoContract = _daoContract;
     }
 
-    // prettier-ignore
     /**
      * @dev calls to set delegation for msg.sender, will take effect from the next epoch
-     * @param dAddr address to delegate to
+     * @param newRepresentative address to delegate to
      */
-    function delegate(address dAddr) external override {
-        require(dAddr != address(0), "delegate: delegated address 0");
+    function delegate(address newRepresentative) external override {
+        require(newRepresentative != address(0), "delegate: representative 0");
         address staker = msg.sender;
         uint256 curEpoch = getCurrentEpochNumber();
 
         initDataIfNeeded(staker, curEpoch);
 
-        address curDAddr = stakerPerEpochData[curEpoch + 1][staker].delegatedAddress;
+        address curRepresentative = stakerPerEpochData[curEpoch + 1][staker].representative;
         // nothing changes here
-        if (dAddr == curDAddr) {
+        if (newRepresentative == curRepresentative) {
             return;
         }
 
         uint256 updatedStake = stakerPerEpochData[curEpoch + 1][staker].stake;
 
-        // reduce delegatedStake for curDAddr if needed
-        if (curDAddr != staker) {
-            initDataIfNeeded(curDAddr, curEpoch);
+        // reduce delegatedStake for curRepresentative if needed
+        if (curRepresentative != staker) {
+            initDataIfNeeded(curRepresentative, curEpoch);
             // by right, delegatedStake should be greater than updatedStake
-            assert(stakerPerEpochData[curEpoch + 1][curDAddr].delegatedStake >= updatedStake);
-            assert(stakerLatestData[curDAddr].delegatedStake >= updatedStake);
+            assert(stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake >= updatedStake);
+            assert(stakerLatestData[curRepresentative].delegatedStake >= updatedStake);
 
-            stakerPerEpochData[curEpoch + 1][curDAddr].delegatedStake =
-                stakerPerEpochData[curEpoch + 1][curDAddr].delegatedStake.sub(updatedStake);
-            stakerLatestData[curDAddr].delegatedStake =
-                stakerLatestData[curDAddr].delegatedStake.sub(updatedStake);
+            stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake =
+                stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake.sub(updatedStake);
+            stakerLatestData[curRepresentative].delegatedStake =
+                stakerLatestData[curRepresentative].delegatedStake.sub(updatedStake);
 
-            emit Delegated(staker, curDAddr, curEpoch, false);
+            emit Delegated(staker, curRepresentative, curEpoch, false);
         }
 
-        stakerLatestData[staker].delegatedAddress = dAddr;
-        stakerPerEpochData[curEpoch + 1][staker].delegatedAddress = dAddr;
+        stakerLatestData[staker].representative = newRepresentative;
+        stakerPerEpochData[curEpoch + 1][staker].representative = newRepresentative;
 
         // ignore if staker is delegating back to himself
-        if (dAddr != staker) {
-            initDataIfNeeded(dAddr, curEpoch);
-            stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake =
-                stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake.add(updatedStake);
-            stakerLatestData[dAddr].delegatedStake =
-                stakerLatestData[dAddr].delegatedStake.add(updatedStake);
+        if (newRepresentative != staker) {
+            initDataIfNeeded(newRepresentative, curEpoch);
+            stakerPerEpochData[curEpoch + 1][newRepresentative].delegatedStake =
+                stakerPerEpochData[curEpoch + 1][newRepresentative].delegatedStake.add(updatedStake);
+            stakerLatestData[newRepresentative].delegatedStake =
+                stakerLatestData[newRepresentative].delegatedStake.add(updatedStake);
+            emit Delegated(staker, newRepresentative, curEpoch, true);
         }
-
-        emit Delegated(staker, dAddr, curEpoch, true);
     }
 
-    // prettier-ignore
     /**
      * @dev call to stake more KNC for msg.sender
      * @param amount amount of KNC to stake
@@ -125,13 +122,13 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
             stakerLatestData[staker].stake.add(amount);
 
         // increase delegated stake for address that staker has delegated to (if it is not staker)
-        address dAddr = stakerPerEpochData[curEpoch + 1][staker].delegatedAddress;
-        if (dAddr != staker) {
-            initDataIfNeeded(dAddr, curEpoch);
-            stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake =
-                stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake.add(amount);
-            stakerLatestData[dAddr].delegatedStake =
-                stakerLatestData[dAddr].delegatedStake.add(amount);
+        address representative = stakerPerEpochData[curEpoch + 1][staker].representative;
+        if (representative != staker) {
+            initDataIfNeeded(representative, curEpoch);
+            stakerPerEpochData[curEpoch + 1][representative].delegatedStake =
+                stakerPerEpochData[curEpoch + 1][representative].delegatedStake.add(amount);
+            stakerLatestData[representative].delegatedStake =
+                stakerLatestData[representative].delegatedStake.add(amount);
         }
 
         emit Deposited(curEpoch, staker, amount);
@@ -181,9 +178,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         external
         override
         returns (
-            uint256 _stake,
-            uint256 _delegatedStake,
-            address _delegatedAddress
+            uint256 stake,
+            uint256 delegatedStake,
+            address representative
         )
     {
         require(
@@ -195,34 +192,37 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         initDataIfNeeded(staker, curEpoch);
 
         StakerData memory stakerData = stakerPerEpochData[curEpoch][staker];
-        _stake = stakerData.stake;
-        _delegatedStake = stakerData.delegatedStake;
-        _delegatedAddress = stakerData.delegatedAddress;
+        stake = stakerData.stake;
+        delegatedStake = stakerData.delegatedStake;
+        representative = stakerData.representative;
     }
 
     /**
-     * @dev  in DAO contract, if staker wants to claim reward for past epoch,
+     * @notice return raw data of a staker for an epoch
+     *         WARN: should be used only for initialized data
+     *          if data has not been initialized, it will return all 0
+     *          pool master shouldn't use this function to compute/distribute rewards of pool members
+     * @dev  in KyberDao contract, if staker wants to claim reward for past epoch,
      *       we must know the staker's data for that epoch
-     *       if the data has not been inited, it means staker hasn't done any action -> no reward
+     *       if the data has not been initialized, it means staker hasn't done any action -> no reward
      */
-    function getStakerDataForPastEpoch(address staker, uint256 epoch)
+    function getStakerRawData(address staker, uint256 epoch)
         external
         view
         override
         returns (
-            uint256 _stake,
-            uint256 _delegatedStake,
-            address _delegatedAddress
+            uint256 stake,
+            uint256 delegatedStake,
+            address representative
         )
     {
         StakerData memory stakerData = stakerPerEpochData[epoch][staker];
-        _stake = stakerData.stake;
-        _delegatedStake = stakerData.delegatedStake;
-        _delegatedAddress = stakerData.delegatedAddress;
+        stake = stakerData.stake;
+        delegatedStake = stakerData.delegatedStake;
+        representative = stakerData.representative;
     }
 
     /**
-     * @notice don't call on-chain, possibly high gas consumption
      * @dev allow to get data up to current epoch + 1
      */
     function getStake(address staker, uint256 epoch) external view returns (uint256) {
@@ -244,7 +244,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @notice don't call on-chain, possibly high gas consumption
      * @dev allow to get data up to current epoch + 1
      */
     function getDelegatedStake(address staker, uint256 epoch) external view returns (uint256) {
@@ -266,10 +265,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @notice don't call on-chain, possibly high gas consumption
      * @dev allow to get data up to current epoch + 1
      */
-    function getDelegatedAddress(address staker, uint256 epoch) external view returns (address) {
+    function getRepresentative(address staker, uint256 epoch) external view returns (address) {
         uint256 curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch + 1) {
             return address(0);
@@ -277,7 +275,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         uint256 i = epoch;
         while (true) {
             if (hasInited[i][staker]) {
-                return stakerPerEpochData[i][staker].delegatedAddress;
+                return stakerPerEpochData[i][staker].representative;
             }
             if (i == 0) {
                 break;
@@ -288,11 +286,48 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         return staker;
     }
 
-    function getLatestDelegatedAddress(address staker) external view returns (address) {
+    /**
+     * @notice return combine data (stake, delegatedStake, representative) of a staker
+     * @dev allow to get staker data up to current epoch + 1
+     */
+    function getStakerData(address staker, uint256 epoch)
+        external view
+        returns (
+            uint256 stake,
+            uint256 delegatedStake,
+            address representative
+        )
+    {
+        stake = 0;
+        delegatedStake = 0;
+        representative = address(0);
+
+        uint256 curEpoch = getCurrentEpochNumber();
+        if (epoch > curEpoch + 1) {
+            return (stake, delegatedStake, representative);
+        }
+        uint256 i = epoch;
+        while (true) {
+            if (hasInited[i][staker]) {
+                stake = stakerPerEpochData[i][staker].stake;
+                delegatedStake = stakerPerEpochData[i][staker].delegatedStake;
+                representative = stakerPerEpochData[i][staker].representative;
+                return (stake, delegatedStake, representative);
+            }
+            if (i == 0) {
+                break;
+            }
+            i--;
+        }
+        // not delegated to anyone, default to yourself
+        representative = staker;
+    }
+
+    function getLatestRepresentative(address staker) external view returns (address) {
         return
-            stakerLatestData[staker].delegatedAddress == address(0)
+            stakerLatestData[staker].representative == address(0)
                 ? staker
-                : stakerLatestData[staker].delegatedAddress;
+                : stakerLatestData[staker].representative;
     }
 
     function getLatestDelegatedStake(address staker) external view returns (uint256) {
@@ -303,7 +338,21 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         return stakerLatestData[staker].stake;
     }
 
-    // prettier-ignore
+    function getLatestStakerData(address staker)
+        external view
+        returns (
+            uint256 stake,
+            uint256 delegatedStake,
+            address representative
+        )
+    {
+        stake = stakerLatestData[staker].stake;
+        delegatedStake = stakerLatestData[staker].delegatedStake;
+        representative = stakerLatestData[staker].representative == address(0)
+                ? staker
+                : stakerLatestData[staker].representative;
+    }
+
     /**
     * @dev  separate logics from withdraw, so staker can withdraw as long as amount <= staker's deposit amount
             calling this function from withdraw function, ignore reverting
@@ -315,7 +364,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         address staker,
         uint256 amount,
         uint256 curEpoch
-    ) public {
+    ) external {
         require(msg.sender == address(this), "only staking contract");
         initDataIfNeeded(staker, curEpoch);
         // Note: update latest stake will be done after this function
@@ -323,27 +372,27 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         stakerPerEpochData[curEpoch + 1][staker].stake =
             stakerPerEpochData[curEpoch + 1][staker].stake.sub(amount);
 
-        address dAddr = stakerPerEpochData[curEpoch][staker].delegatedAddress;
+        address representative = stakerPerEpochData[curEpoch][staker].representative;
         uint256 curStake = stakerPerEpochData[curEpoch][staker].stake;
         uint256 lStakeBal = stakerLatestData[staker].stake.sub(amount);
         uint256 newStake = curStake.min(lStakeBal);
         uint256 reduceAmount = curStake.sub(newStake); // newStake is always <= curStake
 
         if (reduceAmount > 0) {
-            if (dAddr != staker) {
-                initDataIfNeeded(dAddr, curEpoch);
-                // staker has delegated to dAddr, withdraw will affect dAddr's delegated stakes
-                stakerPerEpochData[curEpoch][dAddr].delegatedStake =
-                    stakerPerEpochData[curEpoch][dAddr].delegatedStake.sub(reduceAmount);
+            if (representative != staker) {
+                initDataIfNeeded(representative, curEpoch);
+                // staker has delegated to representative, withdraw will affect representative's delegated stakes
+                stakerPerEpochData[curEpoch][representative].delegatedStake =
+                    stakerPerEpochData[curEpoch][representative].delegatedStake.sub(reduceAmount);
             }
             stakerPerEpochData[curEpoch][staker].stake = newStake;
-            // call DAO to reduce reward, if staker has delegated, then pass his delegated address
+            // call DAO to reduce reward, if staker has delegated, then pass his representative
             if (address(daoContract) != address(0)) {
                 // don't revert if DAO revert so data will be updated correctly
                 (bool success, ) = address(daoContract).call(
                     abi.encodeWithSignature(
                         "handleWithdrawal(address,uint256)",
-                        dAddr,
+                        representative,
                         reduceAmount
                     )
                 );
@@ -352,13 +401,13 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
                 }
             }
         }
-        dAddr = stakerPerEpochData[curEpoch + 1][staker].delegatedAddress;
-        if (dAddr != staker) {
-            initDataIfNeeded(dAddr, curEpoch);
-            stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake =
-                stakerPerEpochData[curEpoch + 1][dAddr].delegatedStake.sub(amount);
-            stakerLatestData[dAddr].delegatedStake =
-                stakerLatestData[dAddr].delegatedStake.sub(amount);
+        representative = stakerPerEpochData[curEpoch + 1][staker].representative;
+        if (representative != staker) {
+            initDataIfNeeded(representative, curEpoch);
+            stakerPerEpochData[curEpoch + 1][representative].delegatedStake =
+                stakerPerEpochData[curEpoch + 1][representative].delegatedStake.sub(amount);
+            stakerLatestData[representative].delegatedStake =
+                stakerLatestData[representative].delegatedStake.sub(amount);
         }
     }
 
@@ -368,11 +417,11 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
      * @param epoch should be current epoch
      */
     function initDataIfNeeded(address staker, uint256 epoch) internal {
-        address ldAddress = stakerLatestData[staker].delegatedAddress;
-        if (ldAddress == address(0)) {
+        address representative = stakerLatestData[staker].representative;
+        if (representative == address(0)) {
             // not delegate to anyone, consider as delegate to yourself
-            stakerLatestData[staker].delegatedAddress = staker;
-            ldAddress = staker;
+            stakerLatestData[staker].representative = staker;
+            representative = staker;
         }
 
         uint256 ldStake = stakerLatestData[staker].delegatedStake;
@@ -381,7 +430,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         if (!hasInited[epoch][staker]) {
             hasInited[epoch][staker] = true;
             StakerData storage stakerData = stakerPerEpochData[epoch][staker];
-            stakerData.delegatedAddress = ldAddress;
+            stakerData.representative = representative;
             stakerData.delegatedStake = ldStake;
             stakerData.stake = lStakeBal;
         }
@@ -391,7 +440,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         if (!hasInited[epoch + 1][staker]) {
             hasInited[epoch + 1][staker] = true;
             StakerData storage nextEpochStakerData = stakerPerEpochData[epoch + 1][staker];
-            nextEpochStakerData.delegatedAddress = ldAddress;
+            nextEpochStakerData.representative = representative;
             nextEpochStakerData.delegatedStake = ldStake;
             nextEpochStakerData.stake = lStakeBal;
         }
