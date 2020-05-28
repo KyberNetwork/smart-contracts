@@ -2,16 +2,16 @@ pragma solidity 0.6.6;
 
 import "../IKyberStaking.sol";
 import "../../IERC20.sol";
-import "../../IKyberDAO.sol";
+import "../../IKyberDao.sol";
 
 
 contract MockStakerContractNoFallback {
 
     IERC20 public kncToken;
     IKyberStaking public staking;
-    IKyberDAO public dao;
+    IKyberDao public dao;
 
-    constructor(IERC20 _kncToken, IKyberStaking _staking, IKyberDAO _dao) public {
+    constructor(IERC20 _kncToken, IKyberStaking _staking, IKyberDao _dao) public {
         kncToken = _kncToken;
         staking = _staking;
         dao = _dao;
@@ -40,7 +40,7 @@ contract MockStakerContractNoFallback {
 }
 
 contract MockStakerContractWithFallback is MockStakerContractNoFallback {
-    constructor(IERC20 _kncToken, IKyberStaking _staking, IKyberDAO _dao)
+    constructor(IERC20 _kncToken, IKyberStaking _staking, IKyberDao _dao)
         public MockStakerContractNoFallback(_kncToken, _staking, _dao) {}
 
     receive() external payable {}

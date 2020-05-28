@@ -3,14 +3,14 @@ pragma solidity 0.6.6;
 import "../IERC20.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "./IKyberStaking.sol";
-import "../IKyberDAO.sol";
+import "../IKyberDao.sol";
 import "./EpochUtils.sol";
 
 
 /**
  * @notice   This contract is using SafeMath for uint, which is inherited from EpochUtils
  *           Some events are moved to interface, easier for public uses
- *           Staking contract will be deployed by DAO's contract
+ *           Staking contract will be deployed by KyberDao's contract
  */
 contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     struct StakerData {
@@ -20,13 +20,13 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     IERC20 public immutable kncToken;
-    IKyberDAO public immutable daoContract;
+    IKyberDao public immutable kyberDao;
 
-    // staker data per epoch
+    // staker data per epoch, including stake, delegated stake and representative
     mapping(uint256 => mapping(address => StakerData)) internal stakerPerEpochData;
     // latest data of a staker, including stake, delegated stake, representative
     mapping(address => StakerData) internal stakerLatestData;
-    // true/false: if we have inited data at an epoch for a staker
+    // true/false: if data has been initialized at an epoch for a staker
     mapping(uint256 => mapping(address => bool)) internal hasInited;
 
     // event is fired if something is wrong with withdrawal
@@ -37,17 +37,17 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         IERC20 _kncToken,
         uint256 _epochPeriod,
         uint256 _startTimestamp,
-        IKyberDAO _daoContract
+        IKyberDao _kyberDao
     ) public {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
         require(_kncToken != IERC20(0), "ctor: kncToken 0");
-        require(_daoContract != IKyberDAO(0), "ctor: daoContract 0");
+        require(_kyberDao != IKyberDao(0), "ctor: kyberDao 0");
 
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
         kncToken = _kncToken;
-        daoContract = _daoContract;
+        kyberDao = _kyberDao;
     }
 
     /**
@@ -72,9 +72,6 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         // reduce delegatedStake for curRepresentative if needed
         if (curRepresentative != staker) {
             initDataIfNeeded(curRepresentative, curEpoch);
-            // by right, delegatedStake should be greater than updatedStake
-            assert(stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake >= updatedStake);
-            assert(stakerLatestData[curRepresentative].delegatedStake >= updatedStake);
 
             stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake =
                 stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake.sub(updatedStake);
@@ -135,7 +132,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @dev call to withdraw KNC from staking, it could affect reward when calling DAO handleWithdrawal
+     * @dev call to withdraw KNC from staking, it could affect reward when calling KyberDao handleWithdrawal
      * @param amount amount of KNC to withdraw
      */
     function withdraw(uint256 amount) external override nonReentrant {
@@ -170,9 +167,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @dev init data if needed, then return staker's data for current epoch
-     * @dev for safe, only allow calling this func from DAO address
-     * @param staker - staker's address to init and get data for
+     * @dev initialize data if needed, then return staker's data for current epoch
+     * @dev for safe, only allow calling this func from KyberDao address
+     * @param staker - staker's address to initialize and get data for
      */
     function initAndReturnStakerDataForCurrentEpoch(address staker)
         external
@@ -184,8 +181,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         )
     {
         require(
-            msg.sender == address(daoContract),
-            "initAndReturnData: only daoContract"
+            msg.sender == address(kyberDao),
+            "initAndReturnData: only kyberDao"
         );
 
         uint256 curEpoch = getCurrentEpochNumber();
@@ -386,10 +383,10 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
                     stakerPerEpochData[curEpoch][representative].delegatedStake.sub(reduceAmount);
             }
             stakerPerEpochData[curEpoch][staker].stake = newStake;
-            // call DAO to reduce reward, if staker has delegated, then pass his representative
-            if (address(daoContract) != address(0)) {
-                // don't revert if DAO revert so data will be updated correctly
-                (bool success, ) = address(daoContract).call(
+            // call KyberDao to reduce reward, if staker has delegated, then pass his representative
+            if (address(kyberDao) != address(0)) {
+                // don't revert if KyberDao revert so data will be updated correctly
+                (bool success, ) = address(kyberDao).call(
                     abi.encodeWithSignature(
                         "handleWithdrawal(address,uint256)",
                         representative,
@@ -412,8 +409,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @dev init data if it has not been inited yet
-     * @param staker staker's address to init
+     * @dev initialize data if it has not been initialized yet
+     * @param staker staker's address to initialize
      * @param epoch should be current epoch
      */
     function initDataIfNeeded(address staker, uint256 epoch) internal {
@@ -436,7 +433,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         }
 
         // whenever stakers deposit/withdraw/delegate, the current and next epoch data need to be updated
-        // as the result, we will also init data for staker at the next epoch
+        // as the result, we will also initialize data for staker at the next epoch
         if (!hasInited[epoch + 1][staker]) {
             hasInited[epoch + 1][staker] = true;
             StakerData storage nextEpochStakerData = stakerPerEpochData[epoch + 1][staker];

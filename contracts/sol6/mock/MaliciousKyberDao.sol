@@ -1,9 +1,9 @@
 pragma solidity 0.6.6;
 
-import "./MockDAO.sol";
+import "./MockKyberDao.sol";
 
 
-contract MaliciousDAO is MockDAO {
+contract MaliciousKyberDao is MockKyberDao {
     uint256 public burnInBPS;
 
     constructor(
@@ -11,7 +11,7 @@ contract MaliciousDAO is MockDAO {
         uint256 _rebateInBPS,
         uint256 _epoch,
         uint256 _expiryTimestamp
-    ) public MockDAO(_rewardInBPS, _rebateInBPS, _epoch, _expiryTimestamp) {}
+    ) public MockKyberDao(_rewardInBPS, _rebateInBPS, _epoch, _expiryTimestamp) {}
 
     function getLatestBRRDataWithCache()
         external
