@@ -1,9 +1,9 @@
 const TestToken = artifacts.require("Token.sol");
-const MockKyberDAO = artifacts.require("MockKyberDAOTestHandleWithdrawal.sol");
-const MockDAOWithdrawFailed = artifacts.require("MockKyberDaoWithdrawFailed.sol");
-const StakingContract = artifacts.require("MockStakingContract.sol");
+const MockKyberDao = artifacts.require("MockKyberDaoTestHandleWithdrawal.sol");
+const MockKyberDaoWithdrawFailed = artifacts.require("MockKyberDaoWithdrawFailed.sol");
+const StakingContract = artifacts.require("MockKyberStaking.sol");
 const MaliciousStaking = artifacts.require("MockKyberStakingMalicious.sol");
-const MaliciousDaoReentrancy = artifacts.require("MockMaliciousDaoReentrancy.sol");
+const MaliciousDaoReentrancy = artifacts.require("MockMaliciousKyberDaoReentrancy.sol");
 const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
@@ -1021,8 +1021,8 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
     });
 
-    it("Test withdraw should call DAO handleWithdrawal as expected", async function() {
-      let dao = await MockKyberDAO.new(
+    it("Test withdraw should call KyberDao handleWithdrawal as expected", async function() {
+      let dao = await MockKyberDao.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
@@ -1102,7 +1102,7 @@ contract('KyberStaking', function(accounts) {
     });
 
     it("Test handleWithdrawal should revert sender is not staking", async() => {
-      let dao = await MockKyberDAO.new(
+      let dao = await MockKyberDao.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
@@ -1122,7 +1122,7 @@ contract('KyberStaking', function(accounts) {
     });
 
     it("Test withdraw gas usages", async function() {
-      let dao = await MockKyberDAO.new(
+      let dao = await MockKyberDao.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
@@ -2363,7 +2363,7 @@ contract('KyberStaking', function(accounts) {
       verifyStakerData(stakerData, mulPrecision(100), 0, mike);
     });
 
-    it("Test get staker data for current epoch called by DAO", async function() {
+    it("Test get staker data for current epoch called by KyberDao", async function() {
       daoContract = accounts[1];
       await deployStakingContract(15, currentBlock + 15);
 
@@ -2732,8 +2732,8 @@ contract('KyberStaking', function(accounts) {
   };
 
   describe("Test Withdrawal shouldn't revert", () => {
-    it("Test withdraw shouldn't revert when handleWithdrawal in DAO reverted", async function() {
-      let dao = await MockDAOWithdrawFailed.new(
+    it("Test withdraw shouldn't revert when handleWithdrawal in KyberDao reverted", async function() {
+      let dao = await MockKyberDaoWithdrawFailed.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10)
       );
@@ -2751,13 +2751,13 @@ contract('KyberStaking', function(accounts) {
       await Helper.increaseNextBlockTimestamp(
         blocksToSeconds(epochPeriod)
       );
-      // shoule call DAO, but shouldn't revert, all data is updated
+      // shoule call KyberDao, but shouldn't revert, all data is updated
       await withdrawAndCheckData(victor, mulPrecision(100), false);
       daoContract = accounts[1];
     });
 
-    it("Test withdraw shouldn't revert when handleWithdrawal in DAO reverted - delegation", async function() {
-      let dao = await MockDAOWithdrawFailed.new(
+    it("Test withdraw shouldn't revert when handleWithdrawal in KyberDao reverted - delegation", async function() {
+      let dao = await MockKyberDaoWithdrawFailed.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10)
       );
@@ -2777,7 +2777,7 @@ contract('KyberStaking', function(accounts) {
       );
       await stakingContract.delegate(loi, {from: victor});
 
-      // shoule call DAO, but shouldn't revert, all data is updated
+      // shoule call KyberDao, but shouldn't revert, all data is updated
       await withdrawAndCheckData(victor, mulPrecision(100), false);
       // delegate back to self and check
       await stakingContract.delegate(victor, {from: victor});
@@ -2787,7 +2787,7 @@ contract('KyberStaking', function(accounts) {
       daoContract = accounts[1];
     });
 
-    it("Test withdraw shouldn't revert when DAO does not have handleWithdrawl func", async function() {
+    it("Test withdraw shouldn't revert when KyberDao does not have handleWithdrawl func", async function() {
       daoContract = accounts[1];
       await deployStakingContract(10, currentBlock + 10);
 
@@ -2806,7 +2806,7 @@ contract('KyberStaking', function(accounts) {
       await withdrawAndCheckData(victor, mulPrecision(100), false);
     });
 
-    it("Test withdraw shouldn't revert with re-entrancy from DAO", async() => {
+    it("Test withdraw shouldn't revert with re-entrancy from KyberDao", async() => {
       await deployStakingContract(10, currentBlock + 10);
       let maliciousDao = await MaliciousDaoReentrancy.new(
         blocksToSeconds(10),
@@ -2819,7 +2819,7 @@ contract('KyberStaking', function(accounts) {
 
       await maliciousDao.deposit(mulPrecision(80));
 
-      // delay to epoch 1, so withdraw will call DAO to handle withdrawal
+      // delay to epoch 1, so withdraw will call KyberDao to handle withdrawal
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(startBlock)
       );

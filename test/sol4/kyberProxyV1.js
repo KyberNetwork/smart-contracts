@@ -1,5 +1,5 @@
 const NetworkProxyV1 = artifacts.require("./KyberProxyV1.sol");
-const MockDao = artifacts.require("MockDAO.sol");
+const MockDao = artifacts.require("MockKyberDao.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
@@ -58,7 +58,7 @@ let generousNetwork;
 let networkProxyV1;
 
 let proxyForFeeHandler;
-let DAO;
+let KyberDao;
 let feeHandler;
 let matchingEngine;
 let rateHelper;
@@ -70,7 +70,7 @@ let tokens = [];
 let tokenDecimals = [];
 let ethSrcQty = precisionUnits;
 
-//DAO related data
+//KyberDao related data
 let rewardInBPS = new BN(7000);
 let rebateInBPS = new BN(2000);
 let epoch = new BN(3);
@@ -112,10 +112,10 @@ contract('KyberProxyV1', function(accounts) {
 
         Helper.assertEqual(tokens.length, numTokens, "bad number tokens");
 
-        // DAO related init.
+        // KyberDao related init.
         expiryTimestamp = new BN(await Helper.getCurrentBlockTime() + 1000000);
-        DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-        await DAO.setNetworkFeeBps(networkFeeBps);
+        KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+        await KyberDao.setNetworkFeeBps(networkFeeBps);
 
         // deploy storage and network
         storage = await KyberStorage.new(admin);
@@ -137,7 +137,7 @@ contract('KyberProxyV1', function(accounts) {
 
         // init rate helper
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, DAO.address, storage.address, {from: admin});
+        await rateHelper.setContracts(matchingEngine.address, KyberDao.address, storage.address, {from: admin});
 
         // deploy proxy
         networkProxyV1 = await NetworkProxyV1.new(admin);
@@ -145,12 +145,12 @@ contract('KyberProxyV1', function(accounts) {
 
         // setup network
         await network.addOperator(operator, {from: admin});
-        await network.setDAOContract(DAO.address, {from: admin});
+        await network.setKyberDaoContract(KyberDao.address, {from: admin});
         await network.addKyberProxy(networkProxyV1.address, {from: admin});
 
         //init feeHandler
         KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-        feeHandler = await FeeHandler.new(DAO.address, networkProxyV1.address, network.address, KNC.address, burnBlockInterval, DAO.address);
+        feeHandler = await FeeHandler.new(KyberDao.address, networkProxyV1.address, network.address, KNC.address, burnBlockInterval, KyberDao.address);
         // set params, enable network
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
         await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
@@ -1366,7 +1366,7 @@ contract('KyberProxyV1', function(accounts) {
         let tempStorage;
         before("init smart malicious network and set all contracts and params", async () => {
             networkProxyV1 = await NetworkProxyV1.new(admin);
-            [maliciousNetwork, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
+            [maliciousNetwork, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork, networkProxyV1.address, KNC.address, KyberDao.address, admin, operator);
             await networkProxyV1.setKyberNetworkContract(maliciousNetwork.address);
 
             // add reserves and list tokens
@@ -1554,7 +1554,7 @@ contract('KyberProxyV1', function(accounts) {
     describe("MaliciousNetwork2 + Proxy1", async() => {
         before("init malicious network returning wrong actual dest, and set all contracts and params", async function () {
             networkProxyV1 = await NetworkProxyV1.new(admin);
-            [maliciousNetwork2, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork2, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
+            [maliciousNetwork2, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork2, networkProxyV1.address, KNC.address, KyberDao.address, admin, operator);
             await networkProxyV1.setKyberNetworkContract(maliciousNetwork2.address);
 
             // add reserves and list tokens
@@ -1663,7 +1663,7 @@ contract('KyberProxyV1', function(accounts) {
             // 1. if src token amount after trade is higher then src amount before trade.
             // 2. if dest amount for dest token after trade is lower then before trade
             networkProxyV1 = await NetworkProxyV1.new(admin);
-            [generousNetwork, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
+            [generousNetwork, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork, networkProxyV1.address, KNC.address, KyberDao.address, admin, operator);
             await networkProxyV1.setKyberNetworkContract(generousNetwork.address);
 
             // add reserves and list tokens
@@ -1726,7 +1726,7 @@ contract('KyberProxyV1', function(accounts) {
     describe("NetworkNoMaxDest + Proxy1", async() => {
         before("init network with no max dest check. set all contracts and params", async function () {
             networkProxyV1 = await NetworkProxyV1.new(admin);
-            [networkNoMaxDest, tempStorage] = await nwHelper.setupNetwork(NetworkNoMaxDest, networkProxyV1.address, KNC.address, DAO.address, admin, operator);
+            [networkNoMaxDest, tempStorage] = await nwHelper.setupNetwork(NetworkNoMaxDest, networkProxyV1.address, KNC.address, KyberDao.address, admin, operator);
             await networkProxyV1.setKyberNetworkContract(networkNoMaxDest.address);
 
             // add reserves and list tokens

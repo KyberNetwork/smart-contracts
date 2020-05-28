@@ -4,7 +4,7 @@ import "./EpochUtils.sol";
 import "./DaoOperator.sol";
 import "./KyberStaking.sol";
 import "../IERC20.sol";
-import "../IKyberDAO.sol";
+import "../IKyberDao.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../utils/Utils5.sol";
 import "../IKyberFeeHandler.sol";
@@ -17,7 +17,7 @@ import "../IKyberFeeHandler.sol";
  *      BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
  *      General campaign: options are from 1 to num_options
  */
-contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator {
+contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator {
     // max number of campaigns for each epoch
     uint256 public   constant MAX_EPOCH_CAMPAIGNS = 10;
     // max number of options for each campaign
@@ -131,7 +131,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             _kncToken: _knc,
             _epochPeriod: _epochPeriod,
             _startTimestamp: _startTimestamp,
-            _daoContract: IKyberDAO(this)
+            _daoContract: IKyberDao(this)
         });
     }
 
@@ -367,7 +367,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     /**
      * @dev get latest network fee data + expiry timestamp
-     *    conclude network fee campaign if needed and caching latest result in DAO
+     *    conclude network fee campaign if needed and caching latest result in KyberDao
      */
     function getLatestNetworkFeeDataWithCache()
         external
@@ -381,7 +381,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     /**
      * @dev return latest burn/reward/rebate data, also affecting epoch + expiry timestamp
-     *      conclude brr campaign if needed and caching latest result in DAO
+     *      conclude brr campaign if needed and caching latest result in KyberDao
      */
     function getLatestBRRDataWithCache()
         external

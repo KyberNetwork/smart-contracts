@@ -28,7 +28,7 @@ let matchingEngine;
 let operator;
 let taker;
 
-//DAO related data
+//KyberDao related data
 let daoOperator;
 let daoContract;
 let victor;
@@ -74,7 +74,7 @@ let testSuite;
 // In this test we will need to define testSuite
 // It will init contracts with different init functions
 // After each init, will run all tests to see integration is working.
-contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrations', function(accounts) {
+contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + KyberDao integrations', function(accounts) {
     before("init accounts", async() => {
         operator = accounts[1];
         alerter = accounts[2];
@@ -103,12 +103,12 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // FeeHandler init
         feeHandler = await FeeHandler.new(daoSetter, networkProxy.address, network.address, KNC.address, burnBlockInterval, daoSetter);
-        // Staking & DAO init
+        // Staking & KyberDao init
         await updateCurrentBlockAndTimestamp();
         await deployContracts(40, currentBlock + 350, 10);
         await setupSimpleStakingData();
 
-        // set DAO for feeHandler
+        // set KyberDao for feeHandler
         await feeHandler.setDaoContract(daoContract.address, {from: daoSetter});
 
         //init matchingEngine
@@ -145,7 +145,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await network.addKyberProxy(networkProxy.address, {from: admin});
         await network.addOperator(operator, {from: admin});
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
-        await network.setDAOContract(daoContract.address, {from: admin});
+        await network.setKyberDaoContract(daoContract.address, {from: admin});
 
         //add and list pair for reserve
         await nwHelper.addReservesToStorage(networkStorage, reserveInstances, tokens, operator);
@@ -228,7 +228,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         // FeeHandler init
         feeHandler = await FeeHandler.new(daoSetter, networkProxy.address, network.address, KNC.address, burnBlockInterval, daoSetter);
 
-        // Staking & DAO init
+        // Staking & KyberDao init
         await updateCurrentBlockAndTimestamp();
         await deployContracts(40, currentBlock + 350, 10);
         await setupSimpleStakingData();
@@ -238,7 +238,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
 
         // setup network
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin})
-        await network.setDAOContract(daoContract.address, {from: admin});
+        await network.setKyberDaoContract(daoContract.address, {from: admin});
 
         // setup rateHelper
         await rateHelper.setContracts(matchingEngine.address, daoContract.address, networkStorage.address, {from: admin});
@@ -252,7 +252,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         // FeeHandler init
         feeHandler = await FeeHandler.new(daoSetter, networkProxy.address, network.address, KNC.address, burnBlockInterval, daoSetter);
 
-        // Staking & DAO init
+        // Staking & KyberDao init
         await updateCurrentBlockAndTimestamp();
         await deployContracts(40, currentBlock + 350, 10);
         await setupSimpleStakingData();
@@ -261,7 +261,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await feeHandler.setDaoContract(daoContract.address, {from: daoSetter});
 
         // setup network
-        await network.setDAOContract(daoContract.address, {from: admin});
+        await network.setKyberDaoContract(daoContract.address, {from: admin});
 
         // setup rateHelper
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin})
@@ -286,7 +286,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await network.addKyberProxy(networkProxy.address, {from: admin});
         await network.addOperator(operator, {from: admin});
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
-        await network.setDAOContract(daoContract.address, {from: admin});
+        await network.setKyberDaoContract(daoContract.address, {from: admin});
 
         //add and list pair for network
         await nwHelper.setNetworkForReserve(reserveInstances, network.address, admin);
@@ -321,7 +321,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
         await network.addKyberProxy(networkProxy.address, {from: admin});
         await network.addOperator(operator, {from: admin});
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
-        await network.setDAOContract(daoContract.address, {from: admin});
+        await network.setKyberDaoContract(daoContract.address, {from: admin});
 
         //add and list pair for reserve
         await nwHelper.setNetworkForReserve(reserveInstances, network.address, admin);
@@ -406,7 +406,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 Helper.assertEqual(brrData.expiryTimestamp, daoStartTime - 1);
                 Helper.assertEqual(brrData.epoch, 0);
 
-                // no campaign yet, so still default data from DAO
+                // no campaign yet, so still default data from KyberDao
 
                 let daoBrrData = await daoContract.getLatestBRRData();
                 let daoNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
@@ -773,7 +773,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 );
             });
 
-            it("test update network fee from DAO with fee 0, network updates network fee, feeHandler doesn't update brr data", async() => {
+            it("test update network fee from KyberDao with fee 0, network updates network fee, feeHandler doesn't update brr data", async() => {
                 let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
                 let curBrrData = await feeHandler.readBRRData();
 
@@ -801,7 +801,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 // make a simple swap, make sure data is updated for epoch 4 with concluding campaign
                 await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
 
-                // ============ check data should be updated from DAO ============
+                // ============ check data should be updated from KyberDao ============
                 // check expected network data from network and dao
                 networkData = await network.getNetworkData();
                 Helper.assertEqual(blocksToSeconds(11 * epochPeriod) + daoStartTime - 1, networkData.expiryTimestamp);
@@ -822,7 +822,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 Helper.assertEqual(brrData.rebateBps, daoBrrData.rebateInBps);
             });
 
-            it("test update network fee from DAO with fee 49.99% - max fee", async() => {
+            it("test update network fee from KyberDao with fee 49.99% - max fee", async() => {
                 let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
                 let curBrrData = await feeHandler.readBRRData();
 
@@ -978,7 +978,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 );
             });
 
-            it("test can not record new data for DAO as no trade for more than 1 epoch", async() => {
+            it("test can not record new data for KyberDao as no trade for more than 1 epoch", async() => {
                 let curNetworkFee = (await daoContract.getLatestNetworkFeeData()).feeInBps;
                 let curBrrData = await feeHandler.readBRRData();
 
@@ -1023,7 +1023,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + DAO integrat
                 Helper.assertEqual(18, await daoContract.getCurrentEpochNumber());
 
                 // make a first trade and check data changes as expected
-                // no trade at epoch 17, so can not update new data for DAO from previous network fee + brr camps
+                // no trade at epoch 17, so can not update new data for KyberDao from previous network fee + brr camps
                 await tradeAndCheckDataChangesAsExpected(
                     18, // epoch
                     curNetworkFee, // new network fee
@@ -1067,7 +1067,7 @@ async function tradeAndCheckDataChangesAsExpected (epoch, expectedNetworkFee, ex
     let txResult1 = await networkProxy.swapEtherToToken(destToken.address, 1, {from: taker, value: ethSrcQty});
     console.log("eth - token, first trade, gas used: " + txResult1.receipt.gasUsed);
 
-    // ============ check data should be updated from DAO ============
+    // ============ check data should be updated from KyberDao ============
     // check expected network data from network and dao
     networkData = await network.getNetworkData();
     Helper.assertEqual(blocksToSeconds(epoch * epochPeriod) + daoStartTime - 1, networkData.expiryTimestamp);

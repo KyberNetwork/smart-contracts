@@ -1,5 +1,5 @@
 const TestToken = artifacts.require("Token.sol");
-const MockDao = artifacts.require("MockDAO.sol");
+const MockDao = artifacts.require("MockKyberDao.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const NetworkProxyV1 = artifacts.require("KyberProxyV1.sol");
@@ -31,14 +31,14 @@ let networkProxy;
 let networkProxyV1;
 let networkStorage;
 let network;
-let DAO;
+let KyberDao;
 let feeHandler;
 let matchingEngine;
 let operator;
 let taker;
 let platformWallet;
 
-//DAO related data
+//KyberDao related data
 let rewardInBPS = new BN(7000);
 let rebateInBPS = new BN(2000);
 let epoch = new BN(3);
@@ -73,10 +73,10 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         hintParser = accounts[6];
         daoSetter = accounts[7];
 
-        //DAO related init.
+        //KyberDao related init.
         expiryTimestamp = new BN(await Helper.getCurrentBlockTime() + 1000000);
-        DAO = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-        await DAO.setNetworkFeeBps(networkFeeBps);
+        KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+        await KyberDao.setNetworkFeeBps(networkFeeBps);
 
         // init storage
         networkStorage = await nwHelper.setupStorage(admin);
@@ -101,7 +101,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         await networkStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, DAO.address, networkStorage.address, {from: admin});
+        await rateHelper.setContracts(matchingEngine.address, KyberDao.address, networkStorage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -134,7 +134,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         await network.addKyberProxy(networkProxyV1.address, {from: admin});
         await network.addOperator(operator, {from: admin});
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
-        await network.setDAOContract(DAO.address, {from: admin});
+        await network.setKyberDaoContract(KyberDao.address, {from: admin});
 
         //add and list pair for reserve
         await nwHelper.addReservesToStorage(networkStorage, reserveInstances, tokens, operator);

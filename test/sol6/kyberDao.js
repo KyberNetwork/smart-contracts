@@ -1,8 +1,8 @@
 const TestToken = artifacts.require("Token.sol");
-const DAOContract = artifacts.require("MockKyberDaoMoreGetters.sol");
+const KyberDaoContract = artifacts.require("MockKyberDaoMoreGetters.sol");
 const StakingContract = artifacts.require("KyberStaking.sol");
 const MockFeeHandler = artifacts.require("MockFeeHandlerNoContructor.sol");
-const MockMaliciousDAO = artifacts.require("MockMaliciousDAO.sol");
+const MockMaliciousKyberDao = artifacts.require("MockMaliciousKyberDao.sol");
 const MockMaliciousFeeHandlerReentrancy = artifacts.require("MockMaliciousFeeHandlerReentrancy.sol");
 const MockStakerContractNoFallback = artifacts.require("MockStakerContractNoFallback");
 const MockStakerContractWithFallback = artifacts.require("MockStakerContractWithFallback");
@@ -49,7 +49,7 @@ let initMikeStake = mulPrecision(2000);
 let initLoiStake = mulPrecision(3000);
 let initPoolMaster2Stake = mulPrecision(1000);
 
-contract('KyberDAO', function(accounts) {
+contract('KyberDao', function(accounts) {
   before("one time init", async() => {
     daoOperator = accounts[1];
     kncToken = await TestToken.new("Kyber Network Crystal", "KNC", 18);
@@ -146,7 +146,7 @@ contract('KyberDAO', function(accounts) {
     daoStartTime = blockToTimestamp(startBlock);
     console.log(`new dao contract: period: ${blocksToSeconds(epochPeriod)}, start: ${daoStartTime}`);
     minCampPeriod = _campPeriod;
-    daoContract = await DAOContract.new(
+    daoContract = await KyberDaoContract.new(
       blocksToSeconds(epochPeriod),
       daoStartTime,
       feeHandler.address,
@@ -682,7 +682,7 @@ contract('KyberDAO', function(accounts) {
     });
 
     it("Test handle withdrawal should revert when sender is not staking", async function() {
-      daoContract = await DAOContract.new(
+      daoContract = await KyberDaoContract.new(
         10, blockToTimestamp(currentBlock + 10),
         feeHandler.address, kncToken.address,
         minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -2505,7 +2505,7 @@ contract('KyberDAO', function(accounts) {
       await stakingContract.delegate(mike, {from: victor});
       await stakingContract.delegate(poolMaster, {from: mike});
 
-      // delay to start time of DAO
+      // delay to start time of KyberDao
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
@@ -3605,7 +3605,7 @@ contract('KyberDAO', function(accounts) {
       feeHandler = await MockFeeHandler.new();
     });
 
-    it("Test claim reward should revert fee handler tries to re-enter claim reward in DAO", async function() {
+    it("Test claim reward should revert fee handler tries to re-enter claim reward in KyberDao", async function() {
       feeHandler = await MockMaliciousFeeHandlerReentrancy.new();
       await deployContracts(15, currentBlock + 15, 5);
       await setupSimpleStakingData();
@@ -3624,8 +3624,8 @@ contract('KyberDAO', function(accounts) {
       await updateCurrentBlockAndTimestamp();
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      await feeHandler.setKyberDAO(daoContract.address);
-      // set tries to re-enter claimReward func in DAO
+      await feeHandler.setKyberDao(daoContract.address);
+      // set tries to re-enter claimReward func in KyberDao
       await feeHandler.setNumberCalls(1);
 
       await expectRevert(
@@ -4448,7 +4448,7 @@ contract('KyberDAO', function(accounts) {
       startBlock = currentBlock + 30;
 
       minCampPeriod = 10;
-      daoContract = await MockMaliciousDAO.new(
+      daoContract = await MockMaliciousKyberDao.new(
         blocksToSeconds(epochPeriod), blockToTimestamp(startBlock),
         feeHandler.address, kncToken.address,
         minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -5825,7 +5825,7 @@ contract('KyberDAO', function(accounts) {
     it("Test constructor should revert invalid arguments", async function() {
       // epoch period is 0
       await expectRevert(
-        DAOContract.new(
+        KyberDaoContract.new(
           0, blockToTimestamp(currentBlock + 50),
           feeHandler.address, kncToken.address,
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -5835,7 +5835,7 @@ contract('KyberDAO', function(accounts) {
       )
       // start in the past
       await expectRevert(
-        DAOContract.new(
+        KyberDaoContract.new(
           blocksToSeconds(20), blockToTimestamp(currentBlock - 1),
           feeHandler.address, kncToken.address,
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -5845,7 +5845,7 @@ contract('KyberDAO', function(accounts) {
       )
       // feehandler missing
       await expectRevert(
-        DAOContract.new(
+        KyberDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           zeroAddress, kncToken.address,
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -5855,7 +5855,7 @@ contract('KyberDAO', function(accounts) {
       )
       // knc missing
       await expectRevert(
-        DAOContract.new(
+        KyberDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           feeHandler.address, zeroAddress,
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -5865,7 +5865,7 @@ contract('KyberDAO', function(accounts) {
       )
       // network fee is high (>= 50%)
       await expectRevert(
-        DAOContract.new(
+        KyberDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           feeHandler.address, kncToken.address,
           minCampPeriod, 5000, defaultRewardBps, defaultRebateBps,
@@ -5875,7 +5875,7 @@ contract('KyberDAO', function(accounts) {
       )
       // brr is high
       await expectRevert(
-        DAOContract.new(
+        KyberDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           feeHandler.address, kncToken.address,
           minCampPeriod, defaultNetworkFee, defaultRewardBps, 10001 - defaultRewardBps,
@@ -5885,7 +5885,7 @@ contract('KyberDAO', function(accounts) {
       )
       // brr is high
       await expectRevert(
-        DAOContract.new(
+        KyberDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           feeHandler.address, kncToken.address,
           minCampPeriod, defaultNetworkFee, 10001 - defaultRebateBps, defaultRebateBps,
@@ -5895,7 +5895,7 @@ contract('KyberDAO', function(accounts) {
       )
       // creator is zero
       await expectRevert(
-        DAOContract.new(
+        KyberDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           feeHandler.address, kncToken.address,
           minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,

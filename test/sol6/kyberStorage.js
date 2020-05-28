@@ -23,7 +23,7 @@ let operator;
 let network;
 let networkHistory;
 let feeHandlerHistory;
-let kyberDAOHistory;
+let kyberDaoHistory;
 let matchingEngineHistory;
 let kyberStorage;
 let user;
@@ -47,7 +47,7 @@ contract('KyberStorage', function(accounts) {
         user = accounts[0];
         admin = accounts[1];
         operator = accounts[2];
-        DAOAddr = accounts[4];
+        KyberDaoAddr = accounts[4];
         feeHandlerAddr = accounts[6];
         matchingEngineAddr = accounts[7];
     });
@@ -56,7 +56,7 @@ contract('KyberStorage', function(accounts) {
         before("deploy historical contracts", async() => {
             networkHistory = await KyberHistory.new(admin);
             feeHandlerHistory = await KyberHistory.new(admin);
-            kyberDAOHistory = await KyberHistory.new(admin);
+            kyberDaoHistory = await KyberHistory.new(admin);
             matchingEngineHistory = await KyberHistory.new(admin);
         });
 
@@ -66,7 +66,7 @@ contract('KyberStorage', function(accounts) {
                     admin,
                     zeroAddress,
                     feeHandlerHistory.address,
-                    kyberDAOHistory.address,
+                    kyberDaoHistory.address,
                     matchingEngineHistory.address
                 ),
                 "networkHistory 0"
@@ -79,14 +79,14 @@ contract('KyberStorage', function(accounts) {
                     admin,
                     networkHistory.address,
                     zeroAddress,
-                    kyberDAOHistory.address,
+                    kyberDaoHistory.address,
                     matchingEngineHistory.address
                 ),
                 "feeHandlerHistory 0"
             );
         });
 
-        it("should revert for null kyberDAOHistory address", async() => {
+        it("should revert for null kyberDaoHistory address", async() => {
             await expectRevert(
                 KyberStorage.new(
                     admin,
@@ -95,7 +95,7 @@ contract('KyberStorage', function(accounts) {
                     zeroAddress,
                     matchingEngineHistory.address
                 ),
-                "kyberDAOHistory 0"
+                "kyberDaoHistory 0"
             );
         });
 
@@ -105,7 +105,7 @@ contract('KyberStorage', function(accounts) {
                     admin,
                     networkHistory.address,
                     feeHandlerHistory.address,
-                    kyberDAOHistory.address,
+                    kyberDaoHistory.address,
                     zeroAddress
                 ),
                 "matchingEngineHistory 0"
@@ -221,11 +221,11 @@ contract('KyberStorage', function(accounts) {
 
         it("should not have unauthorized personnel set contracts", async() => {
             await expectRevert(
-                kyberStorage.setDAOContract(DAOAddr, { from: operator}), "only network"
+                kyberStorage.setKyberDaoContract(KyberDaoAddr, { from: operator}), "only network"
             );
 
             await expectRevert(
-                kyberStorage.setDAOContract(DAOAddr, { from: admin}), "only network"
+                kyberStorage.setKyberDaoContract(KyberDaoAddr, { from: admin}), "only network"
             );
 
             await expectRevert(
@@ -240,10 +240,10 @@ contract('KyberStorage', function(accounts) {
         it("should have network set contracts", async() => {
             network = accounts[3];
             await kyberStorage.setNetworkContract(network, { from: admin});
-            await kyberStorage.setDAOContract(DAOAddr, { from: network});
+            await kyberStorage.setKyberDaoContract(KyberDaoAddr, { from: network});
             await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
             let result = await kyberStorage.getContracts();
-            Helper.assertEqualArray(result.daoAddresses, [DAOAddr], "unexpected dao history");
+            Helper.assertEqualArray(result.daoAddresses, [KyberDaoAddr], "unexpected dao history");
             Helper.assertEqualArray(result.matchingEngineAddresses, [matchingEngineAddr], "unexpected match engine history");
             Helper.assertEqualArray(result.feeHandlerAddresses, [feeHandlerAddr], "unexpected fee handler history");
         });
@@ -400,25 +400,25 @@ contract('KyberStorage', function(accounts) {
         });
 
         it("set and get contracts history", async() =>{
-            await kyberStorage.setDAOContract(DAOAddr, { from: network});
+            await kyberStorage.setKyberDaoContract(KyberDaoAddr, { from: network});
             await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
             // get and set second dao, matchingEngine, feeHandler contracts
 
-            let DAOAddr2 = accounts[8];
+            let KyberDaoAddr2 = accounts[8];
             let feeHandlerAddr2 = accounts[9];
             let matchingEngineAddr2 = accounts[10];
-            await kyberStorage.setDAOContract(DAOAddr2, { from: network});
+            await kyberStorage.setKyberDaoContract(KyberDaoAddr2, { from: network});
             await kyberStorage.setContracts(feeHandlerAddr2, matchingEngineAddr2, { from: network });
 
 
             let result= await kyberStorage.getContracts();
-            Helper.assertEqualArray(result.daoAddresses, [DAOAddr2, DAOAddr], "unexpected dao history");
+            Helper.assertEqualArray(result.daoAddresses, [KyberDaoAddr2, KyberDaoAddr], "unexpected dao history");
             Helper.assertEqualArray(result.matchingEngineAddresses, [matchingEngineAddr2, matchingEngineAddr], "unexpected match engine history");
             Helper.assertEqualArray(result.feeHandlerAddresses, [feeHandlerAddr2, feeHandlerAddr], "unexpected fee handler history");
         });
 
         it("should enable setting an empty dao contract", async function(){
-            await kyberStorage.setDAOContract(zeroAddress, {from: network});
+            await kyberStorage.setKyberDaoContract(zeroAddress, {from: network});
 
             let rxContracts = await kyberStorage.getContracts();
 
@@ -815,18 +815,18 @@ contract('KyberStorage', function(accounts) {
         it("should revert if reserveId is 0 when removing reserve", async() => {
             networkHistory = await KyberHistory.new(admin);
             feeHandlerHistory = await KyberHistory.new(admin);
-            kyberDAOHistory = await KyberHistory.new(admin);
+            kyberDaoHistory = await KyberHistory.new(admin);
             matchingEngineHistory = await KyberHistory.new(admin);
             let mockStorage = await MockStorage.new(
                 admin,
                 networkHistory.address,
                 feeHandlerHistory.address,
-                kyberDAOHistory.address,
+                kyberDaoHistory.address,
                 matchingEngineHistory.address,
                 );
             await networkHistory.setStorageContract(mockStorage.address, {from: admin});
             await feeHandlerHistory.setStorageContract(mockStorage.address, {from: admin});
-            await kyberDAOHistory.setStorageContract(mockStorage.address, {from: admin});
+            await kyberDaoHistory.setStorageContract(mockStorage.address, {from: admin});
             await matchingEngineHistory.setStorageContract(mockStorage.address, {from: admin});
             let mockNetwork = await KyberNetwork.new(admin, mockStorage.address);
             await mockStorage.addOperator(operator, {from: admin});

@@ -14,7 +14,7 @@ interface IKyberStorage {
 
     function setContracts(address _feeHandler, address _matchingEngine) external;
 
-    function setDAOContract(address _kyberDAO) external;
+    function setKyberDaoContract(address _kyberDao) external;
 
     function getReserveId(address reserve) external view returns (bytes32 reserveId);
 

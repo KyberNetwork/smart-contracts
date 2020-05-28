@@ -3,14 +3,14 @@ pragma solidity 0.6.6;
 import "../IERC20.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "./IKyberStaking.sol";
-import "../IKyberDAO.sol";
+import "../IKyberDao.sol";
 import "./EpochUtils.sol";
 
 
 /**
  * @notice   This contract is using SafeMath for uint, which is inherited from EpochUtils
  *           Some events are moved to interface, easier for public uses
- *           Staking contract will be deployed by DAO's contract
+ *           Staking contract will be deployed by KyberDao's contract
  */
 contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     struct StakerData {
@@ -20,7 +20,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     IERC20 public immutable kncToken;
-    IKyberDAO public immutable daoContract;
+    IKyberDao public immutable daoContract;
 
     // staker data per epoch, including stake, delegated stake and delegated address
     mapping(uint256 => mapping(address => StakerData)) internal stakerPerEpochData;
@@ -37,12 +37,12 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         IERC20 _kncToken,
         uint256 _epochPeriod,
         uint256 _startTimestamp,
-        IKyberDAO _daoContract
+        IKyberDao _daoContract
     ) public {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
         require(_kncToken != IERC20(0), "ctor: kncToken 0");
-        require(_daoContract != IKyberDAO(0), "ctor: daoContract 0");
+        require(_daoContract != IKyberDao(0), "ctor: daoContract 0");
 
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
@@ -132,7 +132,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @dev call to withdraw KNC from staking, it could affect reward when calling DAO handleWithdrawal
+     * @dev call to withdraw KNC from staking, it could affect reward when calling KyberDao handleWithdrawal
      * @param amount amount of KNC to withdraw
      */
     function withdraw(uint256 amount) external override nonReentrant {
@@ -168,7 +168,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
 
     /**
      * @dev initialize data if needed, then return staker's data for current epoch
-     * @dev for safe, only allow calling this func from DAO address
+     * @dev for safe, only allow calling this func from KyberDao address
      * @param staker - staker's address to initialize and get data for
      */
     function initAndReturnStakerDataForCurrentEpoch(address staker)
@@ -383,9 +383,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
                     stakerPerEpochData[curEpoch][representative].delegatedStake.sub(reduceAmount);
             }
             stakerPerEpochData[curEpoch][staker].stake = newStake;
-            // call DAO to reduce reward, if staker has delegated, then pass his representative
+            // call KyberDao to reduce reward, if staker has delegated, then pass his representative
             if (address(daoContract) != address(0)) {
-                // don't revert if DAO revert so data will be updated correctly
+                // don't revert if KyberDao revert so data will be updated correctly
                 (bool success, ) = address(daoContract).call(
                     abi.encodeWithSignature(
                         "handleWithdrawal(address,uint256)",
