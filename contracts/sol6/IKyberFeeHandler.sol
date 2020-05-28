@@ -16,6 +16,8 @@ interface IKyberFeeHandler {
 
     function claimReserveRebate(address rebateWallet) external returns (uint256);
 
+    function claimPlatformFee(address platformWallet) external returns (uint256);
+
     function claimStakerReward(
         address staker,
         uint256 percentageInPrecision,

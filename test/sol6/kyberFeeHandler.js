@@ -1,4 +1,5 @@
 const Helper = require("../helper.js");
+const nwHelper = require("./networkHelper");
 const BN = web3.utils.BN;
 
 const MockDAO = artifacts.require("MockDAO.sol");
@@ -13,6 +14,9 @@ const Proxy = artifacts.require("SimpleKyberProxy.sol");
 const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const NoPayableFallback = artifacts.require("NoPayableFallback.sol");
+const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const ReentrancyFeeClaimer = artifacts.require("ReentrancyFeeClaimer.sol");
+
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, zeroBN, MAX_RATE} = require("../helper.js");
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
@@ -1561,6 +1565,107 @@ contract('KyberFeeHandler', function(accounts) {
                 await feeHandler.setBurnConfigParams(zeroAddress, weiToBurn, {from: daoOperator});
                 Helper.assertEqual(0, await feeHandler.getLatestSanityRate());
             });
+        });
+
+        describe("test re entrance for claim fee functions is blocked", async() =>{
+            let claimer;
+            let token;
+            let taker = accounts[3];
+            let maxDestAmt = new BN(2).pow(new BN(255));
+            let srcQty = new BN(10).pow(new BN(18));
+            let networkProxy;
+            let feeHandler;
+            let reserveInstances;
+            before("set up network", async() => {
+                admin = accounts[0];
+                operator = accounts[1];
+                //deploy storage and network
+                storage = await nwHelper.setupStorage(admin);
+                network = await KyberNetwork.new(admin, storage.address);
+                await storage.setNetworkContract(network.address, {from: admin});
+                await storage.addOperator(operator, {from: admin});
+
+                // init proxy
+                networkProxy = await KyberNetworkProxy.new(admin);
+
+                //init matchingEngine
+                matchingEngine = await MatchingEngine.new(admin);
+                await matchingEngine.setNetworkContract(network.address, {from: admin});
+                await matchingEngine.setKyberStorage(storage.address, {from: admin});
+                await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
+                await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
+
+                await networkProxy.setKyberNetwork(network.address, {from: admin});
+
+                //init tokens
+                token = await Token.new("test", "tst", 18);
+                tokens = [token];
+
+                //init feeHandler
+                await mockDAO.setNetworkFeeBps(new BN(10));
+                feeHandler = await FeeHandler.new(mockDAO.address, networkProxy.address, network.address, knc.address, new BN(30), mockDAO.address);
+
+                claimer = await ReentrancyFeeClaimer.new(networkProxy.address, feeHandler.address, token.address, srcQty);
+                await token.transfer(claimer.address, srcQty);
+
+                // init and setup reserves
+                let result = await nwHelper.setupReserves(network, tokens, 1, 0, 0, 0, accounts, admin, operator);
+                reserveInstances = result.reserveInstances;
+                for (const [key, value] of Object.entries(reserveInstances)) {
+                    value.rebateWallet = claimer.address;
+                }
+
+                //setup network
+                ///////////////
+                await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
+                await network.addKyberProxy(networkProxy.address, {from: admin});
+                await network.addOperator(operator, {from: admin});
+                await network.setDAOContract(mockDAO.address, {from: admin});
+
+                //add and list pair for reserve
+                await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
+
+                //set params, enable network
+                let gasPrice = (new BN(10).pow(new BN(9)).mul(new BN(50)));
+                await network.setParams(gasPrice, new BN(10), {from: admin});
+                await network.setEnable(true, {from: admin});
+            })
+
+            it("revert if call trade during claim platform fee", async() => {
+                //trade so claimer has platfrom fee
+                await token.transfer(taker, srcQty);
+                await token.approve(networkProxy.address, srcQty, { from: taker});
+                await networkProxy.tradeWithHintAndFee(token.address, srcQty, ethAddress, taker,
+                    maxDestAmt, 0, claimer.address, new BN(100), '0x', {from: taker});
+                let platformFee = await feeHandler.feePerPlatformWallet(claimer.address);
+                Helper.assertGreater(platformFee, new BN(1), "platform fee should be enough to withdraw");
+                await expectRevert(
+                    feeHandler.claimPlatformFee(claimer.address),
+                    "platform fee transfer failed"
+                );
+                // when no re entrance, claim fee succeeds
+                await claimer.setReentrancy(false);
+                await feeHandler.claimPlatformFee(claimer.address);
+                await claimer.setReentrancy(true);
+            })
+
+            it("revert if call trade during claim rebate", async() => {
+                //trade so claimer has platfrom fee
+                await token.transfer(taker, srcQty);
+                await token.approve(networkProxy.address, srcQty, { from: taker});
+                await networkProxy.tradeWithHintAndFee(token.address, srcQty, ethAddress, taker,
+                    maxDestAmt, 0, zeroAddress, new BN(100), '0x', {from: taker});
+                let rebateWei = await feeHandler.rebatePerWallet(claimer.address);
+                Helper.assertGreater(rebateWei, new BN(1), "rebateWei should be enough to withdraw");
+                await expectRevert(
+                    feeHandler.claimReserveRebate(claimer.address),
+                    "rebate transfer failed"
+                );
+                // when no re entrance, claim fee succeeds
+                await claimer.setReentrancy(false);
+                await feeHandler.claimReserveRebate(claimer.address);
+                await claimer.setReentrancy(true);
+            })
         });
     });
 

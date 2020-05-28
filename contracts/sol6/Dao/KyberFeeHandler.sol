@@ -1,6 +1,7 @@
 pragma solidity 0.6.6;
 
 import "../utils/Utils5.sol";
+import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../IKyberDAO.sol";
 import "../IKyberFeeHandler.sol";
 import "../IKyberNetworkProxy.sol";
@@ -36,7 +37,7 @@ import "./DaoOperator.sol";
 
 interface IKyberProxy is ISimpleKyberProxy, IKyberNetworkProxy { }
 
-contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator {
+contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 internal constant DEFAULT_REWARD_BPS = 3000;
@@ -152,7 +153,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator {
         uint256[] calldata rebateBpsPerWallet,
         address platformWallet,
         uint256 platformFeeWei
-    ) external payable override onlyKyberNetwork {
+    ) external payable override onlyKyberNetwork nonReentrant {
         require(msg.value >= platformFeeWei, "msg.value low");
 
         // handle platform fee
@@ -238,7 +239,12 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator {
     /// @dev claim reabate per reserve wallet. called by any address
     /// @param rebateWallet the wallet to claim rebates for. Total accumulated rebate sent to this wallet.
     /// @return amount of rebate claimed
-    function claimReserveRebate(address rebateWallet) external override returns (uint256) {
+    function claimReserveRebate(address rebateWallet) 
+        external 
+        override 
+        nonReentrant 
+        returns (uint256) 
+    {
         require(rebatePerWallet[rebateWallet] > 1, "no rebate to claim");
         // Get total amount of rebate accumulated
         uint256 amount = rebatePerWallet[rebateWallet].sub(1);
@@ -261,7 +267,12 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator {
     /// @dev claim accumulated fee per platform wallet. Called by any address
     /// @param platformWallet the wallet to claim fee for. Total accumulated fee sent to this wallet.
     /// @return feeWei amount of fee claimed
-    function claimPlatformFee(address platformWallet) external returns (uint256 feeWei) {
+    function claimPlatformFee(address platformWallet)
+        external
+        override
+        nonReentrant
+        returns (uint256 feeWei)
+    {
         require(feePerPlatformWallet[platformWallet] > 1, "no fee to claim");
         // Get total amount of fees accumulated
         uint256 amount = feePerPlatformWallet[platformWallet].sub(1);
