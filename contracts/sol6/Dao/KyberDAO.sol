@@ -316,10 +316,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         address staker = msg.sender;
 
         uint256 curEpoch = getCurrentEpochNumber();
-        (uint256 stake, uint256 dStake, address dAddress) =
+        (uint256 stake, uint256 dStake, address representative) =
             staking.initAndReturnStakerDataForCurrentEpoch(staker);
 
-        uint256 totalStake = dAddress == staker ? stake.add(dStake) : dStake;
+        uint256 totalStake = representative == staker ? stake.add(dStake) : dStake;
         uint256 lastVotedOption = stakerVotedOption[staker][campaignID];
 
         CampaignVoteData storage voteData = campaignData[campaignID].campaignVoteData;
@@ -589,10 +589,10 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             return 0;
         }
 
-        (uint256 stake, uint256 delegatedStake, address delegatedAddr) =
+        (uint256 stake, uint256 delegatedStake, address representative) =
             staking.getStakerRawData(staker, epoch);
 
-        uint256 totalStake = delegatedAddr == staker ? stake.add(delegatedStake) : delegatedStake;
+        uint256 totalStake = representative == staker ? stake.add(delegatedStake) : delegatedStake;
         if (totalStake == 0) {
             return 0;
         }

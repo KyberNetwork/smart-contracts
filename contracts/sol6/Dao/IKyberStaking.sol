@@ -6,7 +6,7 @@ import "./IEpochUtils.sol";
 interface IKyberStaking is IEpochUtils {
     event Delegated(
         address indexed staker,
-        address indexed delegatedAddress,
+        address indexed representative,
         uint256 indexed epoch,
         bool isDelegated
     );
@@ -16,9 +16,9 @@ interface IKyberStaking is IEpochUtils {
     function initAndReturnStakerDataForCurrentEpoch(address staker)
         external
         returns (
-            uint256 _stake,
-            uint256 _delegatedStake,
-            address _delegatedAddress
+            uint256 stake,
+            uint256 delegatedStake,
+            address representative
         );
 
     function deposit(uint256 amount) external;
@@ -37,8 +37,8 @@ interface IKyberStaking is IEpochUtils {
         external
         view
         returns (
-            uint256 _stake,
-            uint256 _delegatedStake,
-            address _delegatedAddress
+            uint256 stake,
+            uint256 delegatedStake,
+            address representative
         );
 }

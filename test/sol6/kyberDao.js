@@ -2577,7 +2577,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
       Helper.assertEqual(0, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
-      // Check: vote from someone has stake, no delegated stake, no delegated address
+      // Check: vote from someone has stake, no delegated stake, no representative
       await daoContract.vote(1, 1, {from: loi});
 
       epochPoints.iadd(initLoiStake);
@@ -2595,7 +2595,7 @@ contract('KyberDAO', function(accounts) {
       Helper.assertEqual(1, await daoContract.getNumberVotes(mike, 1), "number votes should be correct");
       Helper.assertEqual(1, await daoContract.getNumberVotes(loi, 1), "number votes should be correct");
 
-      // Check: withdraw from staker with no delegated address
+      // Check: withdraw from staker with no representative
       await stakingContract.withdraw(mulPrecision(100), {from: loi});
 
       epochPoints.isub(mulPrecision(100));
@@ -4065,12 +4065,12 @@ contract('KyberDAO', function(accounts) {
       totalEpochPoints.isub(mulPrecision(100 * 2));
       mikePoints.isub(mulPrecision(100 * 2));
 
-      // loi's delegated address voted 3 camp
+      // loi's representative voted 3 camp
       await stakingContract.withdraw(mulPrecision(150), {from: loi});
       totalEpochPoints.isub(mulPrecision(150 * 3));
       poolMasterPoints.isub(mulPrecision(150 * 3));
 
-      // victor's delegated address voted 1 camp
+      // victor's representative voted 1 camp
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
       await stakingContract.withdraw(mulPrecision(50), {from: poolMaster2});
       totalEpochPoints.isub(mulPrecision(100 + 50));

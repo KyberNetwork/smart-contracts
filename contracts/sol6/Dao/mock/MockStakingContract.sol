@@ -27,11 +27,11 @@ contract MockStakingContract is KyberStaking {
         return stakerPerEpochData[epoch][staker].delegatedStake;
     }
 
-    function getDelegatedAddressValue(address staker, uint256 epoch)
+    function getRepresentativeValue(address staker, uint256 epoch)
         public
         view
         returns (address)
     {
-        return stakerPerEpochData[epoch][staker].delegatedAddress;
+        return stakerPerEpochData[epoch][staker].representative;
     }
 }
