@@ -39,6 +39,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     uint256 internal feeAccountedPerType = 0xffffffff;
     uint256 internal entitledRebatePerType = 0xffffffff;
     mapping(bytes32 => uint256) internal reserveType; // type from enum ReserveType
+    mapping(ReserveType => bytes32[]) internal reservesPerType;
 
     IKyberNetwork public kyberNetwork;
 
@@ -154,6 +155,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
 
         reserves.push(IKyberReserve(reserve));
+        reservesPerType[resType].push(reserveId);
         reserveAddressToId[reserve] = reserveId;
         reserveType[reserveId] = uint256(resType);
 
@@ -192,6 +194,16 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         // update reserve mappings
         reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
         reserveIdToAddresses[reserveId][0] = address(0);
+
+        // remove reserveId from reservesPerType
+        bytes32[] storage reservesOfType = reservesPerType[ReserveType(reserveType[reserveId])];
+        for (uint256 i = 0; i < reservesOfType.length; i++) {
+            if (reserveId == reservesOfType[i]) {
+                reservesOfType[i] = reservesOfType[reservesOfType.length - 1];
+                reservesOfType.pop();
+                break;
+            }
+        }
 
         delete reserveAddressToId[reserve];
         delete reserveType[reserveId];
@@ -330,6 +342,10 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     /// @return An array of all reserves
     function getReserves() external view returns (IKyberReserve[] memory) {
         return reserves;
+    }
+
+    function getReservesPerType(ReserveType resType) external view returns (bytes32[] memory) {
+        return reservesPerType[resType];
     }
 
     function getReserveId(address reserve) external view override returns (bytes32) {
