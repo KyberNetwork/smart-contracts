@@ -2650,8 +2650,6 @@ contract('KyberStaking', function(accounts) {
 
     it("Test delegate should revert when delegate to address 0", async function() {
       await deployStakingContract(2, currentBlock + 2);
-      await stakingContract.setDAOAddressWithoutCheck(accounts[8], {from: daoContract});
-
       await expectRevert(
         stakingContract.delegate(zeroAddress, {from: victor}),
         "delegate: representative 0"

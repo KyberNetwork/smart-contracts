@@ -46,6 +46,6 @@
     "got": "^11.1.0",
     "prettier": "2.0.4",
     "prettier-plugin-solidity": "1.0.0-alpha.48",
-    "solidity-coverage": "0.7.4"
+    "solidity-coverage": "0.7.5"
   }
 }

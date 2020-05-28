@@ -37,8 +37,8 @@ contract MaliciousMatchingEngine is Utils5 {
         isTokenToToken;
         hint;
         reserveIds = (dest == ETH_TOKEN_ADDRESS)
-            ? kyberStorage.getReserveIdsPerTokenSrc(address(src))
-            : kyberStorage.getReserveIdsPerTokenDest(address(dest));
+            ? kyberStorage.getReserveIdsPerTokenSrc(src)
+            : kyberStorage.getReserveIdsPerTokenDest(dest);
 
         splitValuesBps = populateSplitValuesBps();
         processWithRate = IKyberMatchingEngine.ProcessWithRate.Required;

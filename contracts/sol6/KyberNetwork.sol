@@ -255,7 +255,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
 
         address[] memory reserves = kyberStorage.getReserveAddressesPerTokenSrc(
-            address(token), startIndex, endIndex
+            token, startIndex, endIndex
         );
 
         if (reserves.length == 0) {

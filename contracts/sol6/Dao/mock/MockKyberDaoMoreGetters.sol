@@ -30,10 +30,6 @@ contract MockKyberDaoMoreGetters is KyberDAO {
         minCampaignDurationInSeconds = _minCampDuration;
     }
 
-    function replaceStakingContract(address _staking) public {
-        staking = KyberStaking(_staking);
-    }
-
     function setLatestNetworkFee(uint256 _fee) public {
         latestNetworkFeeResult = _fee;
     }
