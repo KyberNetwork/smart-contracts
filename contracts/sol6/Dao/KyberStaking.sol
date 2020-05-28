@@ -22,7 +22,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     IERC20 public immutable kncToken;
     IKyberDao public immutable daoContract;
 
-    // staker data per epoch, including stake, delegated stake and delegated address
+    // staker data per epoch, including stake, delegated stake and representative
     mapping(uint256 => mapping(address => StakerData)) internal stakerPerEpochData;
     // latest data of a staker, including stake, delegated stake, representative
     mapping(address => StakerData) internal stakerLatestData;
