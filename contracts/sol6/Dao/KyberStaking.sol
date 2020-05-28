@@ -20,7 +20,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     IERC20 public immutable kncToken;
-    IKyberDao public immutable daoContract;
+    IKyberDao public immutable kyberDao;
 
     // staker data per epoch, including stake, delegated stake and representative
     mapping(uint256 => mapping(address => StakerData)) internal stakerPerEpochData;
@@ -37,17 +37,17 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         IERC20 _kncToken,
         uint256 _epochPeriod,
         uint256 _startTimestamp,
-        IKyberDao _daoContract
+        IKyberDao _kyberDao
     ) public {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
         require(_kncToken != IERC20(0), "ctor: kncToken 0");
-        require(_daoContract != IKyberDao(0), "ctor: daoContract 0");
+        require(_kyberDao != IKyberDao(0), "ctor: kyberDao 0");
 
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
         kncToken = _kncToken;
-        daoContract = _daoContract;
+        kyberDao = _kyberDao;
     }
 
     /**
@@ -181,8 +181,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         )
     {
         require(
-            msg.sender == address(daoContract),
-            "initAndReturnData: only daoContract"
+            msg.sender == address(kyberDao),
+            "initAndReturnData: only kyberDao"
         );
 
         uint256 curEpoch = getCurrentEpochNumber();
@@ -384,9 +384,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
             }
             stakerPerEpochData[curEpoch][staker].stake = newStake;
             // call KyberDao to reduce reward, if staker has delegated, then pass his representative
-            if (address(daoContract) != address(0)) {
+            if (address(kyberDao) != address(0)) {
                 // don't revert if KyberDao revert so data will be updated correctly
-                (bool success, ) = address(daoContract).call(
+                (bool success, ) = address(kyberDao).call(
                     abi.encodeWithSignature(
                         "handleWithdrawal(address,uint256)",
                         representative,

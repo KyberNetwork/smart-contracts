@@ -131,7 +131,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             _kncToken: _knc,
             _epochPeriod: _epochPeriod,
             _startTimestamp: _startTimestamp,
-            _daoContract: IKyberDao(this)
+            _kyberDao: IKyberDao(this)
         });
     }
 

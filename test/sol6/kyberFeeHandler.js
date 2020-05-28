@@ -1602,8 +1602,8 @@ contract('KyberFeeHandler', function(accounts) {
                 tokens = [token];
 
                 //init feeHandler
-                await mockDAO.setNetworkFeeBps(new BN(10));
-                feeHandler = await FeeHandler.new(mockDAO.address, networkProxy.address, network.address, knc.address, new BN(30), mockDAO.address);
+                await mockKyberDao.setNetworkFeeBps(new BN(10));
+                feeHandler = await FeeHandler.new(mockKyberDao.address, networkProxy.address, network.address, knc.address, new BN(30), mockKyberDao.address);
 
                 claimer = await ReentrancyFeeClaimer.new(networkProxy.address, feeHandler.address, token.address, srcQty);
                 await token.transfer(claimer.address, srcQty);
@@ -1620,7 +1620,7 @@ contract('KyberFeeHandler', function(accounts) {
                 await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
                 await network.addKyberProxy(networkProxy.address, {from: admin});
                 await network.addOperator(operator, {from: admin});
-                await network.setDAOContract(mockDAO.address, {from: admin});
+                await network.setKyberDaoContract(mockKyberDao.address, {from: admin});
 
                 //add and list pair for reserve
                 await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
