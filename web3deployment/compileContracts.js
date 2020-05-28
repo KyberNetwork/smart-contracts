@@ -334,8 +334,8 @@ const sol6SourceFiles = {
       "utf8"
     ),
   },
-  "IKyberDAO.sol": {
-    content: fs.readFileSync(contractsSol6Path + "IKyberDAO.sol", "utf8"),
+  "IKyberDao.sol": {
+    content: fs.readFileSync(contractsSol6Path + "IKyberDao.sol", "utf8"),
   },
   "IKyberHint.sol": {
     content: fs.readFileSync(contractsSol6Path + "IKyberHint.sol", "utf8"),
@@ -388,8 +388,8 @@ const sol6SourceFiles = {
       "utf8"
     ),
   },
-  "KyberDAO.sol": {
-    content: fs.readFileSync(contractsSol6Path + "Dao/KyberDAO.sol", "utf8"),
+  "KyberDao.sol": {
+    content: fs.readFileSync(contractsSol6Path + "Dao/KyberDao.sol", "utf8"),
   },
   "KyberFeeHandler.sol": {
     content: fs.readFileSync(

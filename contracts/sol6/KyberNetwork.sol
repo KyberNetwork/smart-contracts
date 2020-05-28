@@ -7,7 +7,7 @@ import "./utils/zeppelin/SafeERC20.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberReserve.sol";
 import "./IKyberFeeHandler.sol";
-import "./IKyberDAO.sol";
+import "./IKyberDao.sol";
 import "./IKyberMatchingEngine.sol";
 import "./IKyberStorage.sol";
 import "./IGasHelper.sol";
@@ -59,7 +59,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param tradeWei Trade amount in ether wei, before deducting fees.
     /// @param networkFeeWei Network fee in ether wei. For t2t trades, it can go up to 200% of networkFeeBps
     /// @param platformFeeWei Platform fee in ether wei
-    /// @param networkFeeBps Network fee bps determined by DAO, or default value
+    /// @param networkFeeBps Network fee bps determined by KyberDao, or default value
     /// @param numEntitledRebateReserves No. of reserves that are eligible for rebates
     /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * BPS
     /// @param entitledRebateBps Proportion of reserves entitled for rebate, in BPS. Up to 2 * BPS
@@ -91,11 +91,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     uint256 internal constant PERM_HINT_GET_RATE = 1 << 255; // for backwards compatibility
-    uint256 internal constant DEFAULT_NETWORK_FEE_BPS = 25; // till we read value from DAO
+    uint256 internal constant DEFAULT_NETWORK_FEE_BPS = 25; // till we read value from KyberDao
     uint256 internal constant MAX_APPROVED_PROXIES = 2; // limit number of proxies that can trade here.
 
     IKyberFeeHandler internal feeHandler;
-    IKyberDAO internal kyberDAO;
+    IKyberDao internal kyberDao;
     IKyberMatchingEngine internal matchingEngine;
     IKyberStorage internal kyberStorage;
     IGasHelper internal gasHelper;
@@ -110,7 +110,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     event FeeHandlerUpdated(IKyberFeeHandler newHandler);
     event MatchingEngineUpdated(IKyberMatchingEngine matchingEngine);
     event GasHelperUpdated(IGasHelper gasHelper);
-    event KyberDAOUpdated(IKyberDAO newDAO);
+    event KyberDaoUpdated(IKyberDao newKyberDao);
     event KyberNetworkParamsSet(uint256 maxGasPrice, uint256 negligibleRateDiffBps);
     event KyberNetworkSetEnable(bool isEnabled);
     event KyberProxyAdded(address proxy);
@@ -301,13 +301,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(_matchingEngine != IKyberMatchingEngine(0));
     }
 
-    function setDAOContract(IKyberDAO _kyberDAO) external {
-        // enable setting 0 address DAO.
+    function setKyberDaoContract(IKyberDao _kyberDao) external {
+        // enable setting 0 address KyberDao.
         onlyAdmin();
-        if (kyberDAO != _kyberDAO) {
-            kyberDAO = _kyberDAO;
-            kyberStorage.setDAOContract(address(_kyberDAO));
-            emit KyberDAOUpdated(_kyberDAO);
+        if (kyberDao != _kyberDao) {
+            kyberDao = _kyberDao;
+            kyberStorage.setKyberDaoContract(address(_kyberDao));
+            emit KyberDaoUpdated(_kyberDao);
         }
     }
 
@@ -445,7 +445,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param negligibleDiffBps Neligible rate difference (in basis pts) when searching best rate
     /// @param networkFeeBps Network fees to be charged (in basis pts)
     /// @param expiryTimestamp Timestamp for which networkFeeBps will expire,
-    ///     and needs to be updated by calling DAO contract / set to default
+    ///     and needs to be updated by calling KyberDao contract / set to default
     function getNetworkData()
         external
         view
@@ -466,7 +466,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         view
         returns (
             IKyberFeeHandler feeHandlerAddress,
-            IKyberDAO daoAddress,
+            IKyberDao daoAddress,
             IKyberMatchingEngine matchingEngineAddress,
             IKyberStorage storageAddress,
             IGasHelper gasHelperAddress,
@@ -475,7 +475,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     {
         return (
             feeHandler,
-            kyberDAO,
+            kyberDao,
             matchingEngine,
             kyberStorage,
             gasHelper,
@@ -493,7 +493,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         return isEnabled;
     }
 
-    /// @notice Gets network fee from the DAO (or use default).
+    /// @notice Gets network fee from the KyberDao (or use default).
     ///     For trade function, so that data can be updated and cached.
     /// @dev Note that this function can be triggered by anyone, so that
     ///     the first trader of a new epoch can avoid incurring extra gas costs
@@ -502,8 +502,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         (networkFeeBps, expiryTimestamp) = readNetworkFeeData();
 
-        if (expiryTimestamp < now && kyberDAO != IKyberDAO(0)) {
-            (networkFeeBps, expiryTimestamp) = kyberDAO.getLatestNetworkFeeDataWithCache();
+        if (expiryTimestamp < now && kyberDao != IKyberDao(0)) {
+            (networkFeeBps, expiryTimestamp) = kyberDao.getLatestNetworkFeeDataWithCache();
             updateNetworkFee(expiryTimestamp, networkFeeBps);
         }
     }
@@ -1034,13 +1034,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
     }
 
-    /// @notice Gets the network fee from the DAO (or use default). View function for getExpectedRate
+    /// @notice Gets the network fee from the KyberDao (or use default). View function for getExpectedRate
     function getNetworkFee() internal view returns (uint256 networkFeeBps) {
         uint256 expiryTimestamp;
         (networkFeeBps, expiryTimestamp) = readNetworkFeeData();
 
-        if (expiryTimestamp < now && kyberDAO != IKyberDAO(0)) {
-            (networkFeeBps, expiryTimestamp) = kyberDAO.getLatestNetworkFeeData();
+        if (expiryTimestamp < now && kyberDao != IKyberDao(0)) {
+            (networkFeeBps, expiryTimestamp) = kyberDao.getLatestNetworkFeeData();
         }
     }
 

@@ -8,7 +8,7 @@ contract MockStorage is KyberStorage {
         address _admin,
         IKyberHistory _networkHistory,
         IKyberHistory _feeHandlerHistory,
-        IKyberHistory _kyberDAOHistory,
+        IKyberHistory _kyberDaoHistory,
         IKyberHistory _matchingEngineHistory
     )
         public
@@ -16,7 +16,7 @@ contract MockStorage is KyberStorage {
             _admin,
             _networkHistory,
             _feeHandlerHistory,
-            _kyberDAOHistory,
+            _kyberDaoHistory,
             _matchingEngineHistory
         )
     {}
