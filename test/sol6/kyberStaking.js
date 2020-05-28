@@ -11,7 +11,7 @@ const BN = web3.utils.BN;
 const { precisionUnits, zeroAddress } = require("../helper.js");
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-let daoContract;
+let kyberDao;
 
 let currentBlock;
 
@@ -27,7 +27,7 @@ let mike;
 
 contract('KyberStaking', function(accounts) {
   before("one time init", async() => {
-    daoContract = accounts[1];
+    kyberDao = accounts[1];
     kncToken = await TestToken.new("Kyber Network Crystal", "KNC", 18);
     victor = accounts[2];
     loi = accounts[3];
@@ -57,7 +57,7 @@ contract('KyberStaking', function(accounts) {
       kncToken.address,
       blocksToSeconds(epochPeriod),
       blockToTimestamp(startBlock),
-      daoContract
+      kyberDao
     );
   };
 
@@ -1026,7 +1026,7 @@ contract('KyberStaking', function(accounts) {
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      daoContract = dao.address;
+      kyberDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -1098,7 +1098,7 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(mulPrecision(25), await dao.values(mike), "dao values should be correct");
       Helper.assertEqual(mulPrecision(10), await dao.values(loi), "dao values should be correct");
 
-      daoContract = accounts[1];
+      kyberDao = accounts[1];
     });
 
     it("Test handleWithdrawal should revert sender is not staking", async() => {
@@ -1106,7 +1106,7 @@ contract('KyberStaking', function(accounts) {
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      daoContract = dao.address;
+      kyberDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -1118,7 +1118,7 @@ contract('KyberStaking', function(accounts) {
         "only staking contract"
       )
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
-      daoContract = accounts[1];
+      kyberDao = accounts[1];
     });
 
     it("Test withdraw gas usages", async function() {
@@ -1126,7 +1126,7 @@ contract('KyberStaking', function(accounts) {
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      daoContract = dao.address;
+      kyberDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -1171,7 +1171,7 @@ contract('KyberStaking', function(accounts) {
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
       logInfo("Withdraw has delegation: without init epoch data + no penalty amount, gas used: " + tx.receipt.gasUsed);
     });
-    daoContract = accounts[1];
+    kyberDao = accounts[1];
   });
 
   describe("#Delegate Tests", () => {
@@ -2364,7 +2364,7 @@ contract('KyberStaking', function(accounts) {
     });
 
     it("Test get staker data for current epoch called by KyberDao", async function() {
-      daoContract = accounts[1];
+      kyberDao = accounts[1];
       await deployStakingContract(15, currentBlock + 15);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2376,10 +2376,10 @@ contract('KyberStaking', function(accounts) {
       await kncToken.transfer(loi, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: loi});
 
-      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, daoContract);
+      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, kyberDao);
 
       await stakingContract.deposit(mulPrecision(100), {from: victor});
-      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, daoContract);
+      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, kyberDao);
 
       // delay to epoch 2
       await Helper.setNextBlockTimestamp(
@@ -2390,7 +2390,7 @@ contract('KyberStaking', function(accounts) {
 
       // victor: stake (100), delegated stake (0), representative (victor)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, victor, daoContract
+        victor, mulPrecision(100), 0, victor, kyberDao
       );
       Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 2), "should inited value for epoch 2");
       Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 3), "should inited value for epoch 3");
@@ -2398,12 +2398,12 @@ contract('KyberStaking', function(accounts) {
       await stakingContract.delegate(mike, {from: victor});
       // victor: stake (100), delegated stake (0), representative (victor)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, victor, daoContract
+        victor, mulPrecision(100), 0, victor, kyberDao
       );
 
       // mike: stake (0), delegated stake (0), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, 0, 0, mike, daoContract
+        mike, 0, 0, mike, kyberDao
       );
 
       await stakingContract.deposit(mulPrecision(200), {from: mike});
@@ -2414,34 +2414,34 @@ contract('KyberStaking', function(accounts) {
 
       // victor: stake (100), delegated stake (0), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, mike, daoContract
+        victor, mulPrecision(100), 0, mike, kyberDao
       );
 
       // mike: stake (200), delegated stake (100), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, daoContract
+        mike, mulPrecision(200), mulPrecision(100), mike, kyberDao
       );
 
       await stakingContract.delegate(loi, {from: victor});
 
       // mike: stake (200), delegated stake (100), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, daoContract
+        mike, mulPrecision(200), mulPrecision(100), mike, kyberDao
       );
       // loi: stake (0), delegated stake (0), representative (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, 0, loi, daoContract
+        loi, 0, 0, loi, kyberDao
       );
 
       await stakingContract.deposit(mulPrecision(10), {from: victor});
       // loi: stake (0), delegated stake (0), representative (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, 0, loi, daoContract
+        loi, 0, 0, loi, kyberDao
       );
 
       // mike: stake (200), delegated stake (100), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, daoContract
+        mike, mulPrecision(200), mulPrecision(100), mike, kyberDao
       );
 
       await Helper.setNextBlockTimestamp(
@@ -2450,12 +2450,12 @@ contract('KyberStaking', function(accounts) {
 
       // mike: stake (200), delegated stake (0), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), 0, mike, daoContract
+        mike, mulPrecision(200), 0, mike, kyberDao
       );
 
       // loi: stake (0), delegated stake (90), representative (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, mulPrecision(110), loi, daoContract
+        loi, 0, mulPrecision(110), loi, kyberDao
       );
     });
   });
@@ -2468,7 +2468,7 @@ contract('KyberStaking', function(accounts) {
           zeroAddress,
           blocksToSeconds(20),
           blockToTimestamp(currentBlock + 10),
-          daoContract
+          kyberDao
         ),
         "ctor: kncToken 0"
       );
@@ -2478,7 +2478,7 @@ contract('KyberStaking', function(accounts) {
           kncToken.address,
           blocksToSeconds(0),
           blockToTimestamp(currentBlock + 10),
-          daoContract
+          kyberDao
         ),
         "ctor: epoch period is 0"
       )
@@ -2488,7 +2488,7 @@ contract('KyberStaking', function(accounts) {
           kncToken.address,
           blocksToSeconds(20),
           blockToTimestamp(currentBlock - 1),
-          daoContract
+          kyberDao
         ),
         "ctor: start in the past"
       )
@@ -2500,13 +2500,13 @@ contract('KyberStaking', function(accounts) {
           blockToTimestamp(currentBlock + 10),
           zeroAddress
         ),
-        "ctor: daoContract 0"
+        "ctor: kyberDao 0"
       )
       stakingContract = await StakingContract.new(
         kncToken.address,
         blocksToSeconds(20),
         blockToTimestamp(currentBlock + 10),
-        daoContract
+        kyberDao
       )
     });
 
@@ -2562,13 +2562,13 @@ contract('KyberStaking', function(accounts) {
     });
 
     it("Test get staker data for current epoch should revert when sender is not dao", async function() {
-      daoContract = accounts[1];
+      kyberDao = accounts[1];
       await deployStakingContract(10, currentBlock + 10);
       await expectRevert(
         stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike}),
-        "initAndReturnData: only daoContract"
+        "initAndReturnData: only kyberDao"
       )
-      await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: daoContract});
+      await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: kyberDao});
     });
 
     it("Test withdraw should revert amount is 0", async function() {
@@ -2737,7 +2737,7 @@ contract('KyberStaking', function(accounts) {
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10)
       );
-      daoContract = dao.address;
+      kyberDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2753,7 +2753,7 @@ contract('KyberStaking', function(accounts) {
       );
       // shoule call KyberDao, but shouldn't revert, all data is updated
       await withdrawAndCheckData(victor, mulPrecision(100), false);
-      daoContract = accounts[1];
+      kyberDao = accounts[1];
     });
 
     it("Test withdraw shouldn't revert when handleWithdrawal in KyberDao reverted - delegation", async function() {
@@ -2761,7 +2761,7 @@ contract('KyberStaking', function(accounts) {
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10)
       );
-      daoContract = dao.address;
+      kyberDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2784,11 +2784,11 @@ contract('KyberStaking', function(accounts) {
       await withdrawAndCheckData(victor, mulPrecision(100), false);
       await stakingContract.delegate(mike, {from: victor});
       await withdrawAndCheckData(victor, mulPrecision(100), false);
-      daoContract = accounts[1];
+      kyberDao = accounts[1];
     });
 
     it("Test withdraw shouldn't revert when KyberDao does not have handleWithdrawl func", async function() {
-      daoContract = accounts[1];
+      kyberDao = accounts[1];
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2846,7 +2846,7 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        daoContract
+        kyberDao
       );
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2868,7 +2868,7 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        daoContract
+        kyberDao
       );
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2898,7 +2898,7 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        daoContract
+        kyberDao
       );
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2922,7 +2922,7 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        daoContract
+        kyberDao
       );
 
       await kncToken.transfer(victor, mulPrecision(500));
