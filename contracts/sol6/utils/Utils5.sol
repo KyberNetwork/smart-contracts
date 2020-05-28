@@ -20,28 +20,28 @@ contract Utils5 {
     uint256 internal constant ETH_DECIMALS = 18;
     uint256 constant BPS = 10000; // Basic Price Steps. 1 step = 0.01%
 
-    mapping(address => uint256) internal decimals;
+    mapping(IERC20 => uint256) internal decimals;
 
     function getUpdateDecimals(IERC20 token) internal returns (uint256) {
         if (token == ETH_TOKEN_ADDRESS) return ETH_DECIMALS; // save storage access
-        uint256 tokenDecimals = decimals[address(token)];
+        uint256 tokenDecimals = decimals[token];
         // moreover, very possible that old tokens have decimals 0
         // these tokens will just have higher gas fees.
         if (tokenDecimals == 0) {
             tokenDecimals = token.decimals();
-            decimals[address(token)] = tokenDecimals;
+            decimals[token] = tokenDecimals;
         }
 
         return tokenDecimals;
     }
 
     function setDecimals(IERC20 token) internal {
-        if (decimals[address(token)] != 0) return; //already set
+        if (decimals[token] != 0) return; //already set
 
         if (token == ETH_TOKEN_ADDRESS) {
-            decimals[address(token)] = ETH_DECIMALS;
+            decimals[token] = ETH_DECIMALS;
         } else {
-            decimals[address(token)] = token.decimals();
+            decimals[token] = token.decimals();
         }
     }
 
@@ -58,7 +58,7 @@ contract Utils5 {
 
     function getDecimals(IERC20 token) internal view returns (uint256) {
         if (token == ETH_TOKEN_ADDRESS) return ETH_DECIMALS; // save storage access
-        uint256 tokenDecimals = decimals[address(token)];
+        uint256 tokenDecimals = decimals[token];
         // moreover, very possible that old tokens have decimals 0
         // these tokens will just have higher gas fees.
         if (tokenDecimals == 0) return token.decimals();

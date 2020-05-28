@@ -40,7 +40,7 @@ contract MockUtils5 is Utils5 {
     }
 
     function mockGetDecimalsMap(IERC20 token) public view returns (uint256) {
-        return decimals[address(token)];
+        return decimals[token];
     }
 
     function mockCalcDstQty(
