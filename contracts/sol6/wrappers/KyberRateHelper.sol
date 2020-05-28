@@ -90,7 +90,6 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, feeBps);
     }
 
-    // prettier-ignore
     function getRatesForTokenWithCustomFee(
         IERC20 token,
         uint256 optionalBuyAmount,
