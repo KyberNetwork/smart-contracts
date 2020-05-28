@@ -221,11 +221,11 @@ contract('KyberStorage', function(accounts) {
 
         it("should not have unauthorized personnel set contracts", async() => {
             await expectRevert(
-                kyberStorage.setKyberDaoContract(kyberDaoAddr, { from: operator}), "only network"
+                kyberStorage.setKyberDaoContract(kyberDaoAddr, { from: operator}), "only kyberNetwork"
             );
 
             await expectRevert(
-                kyberStorage.setKyberDaoContract(kyberDaoAddr, { from: admin}), "only network"
+                kyberStorage.setKyberDaoContract(kyberDaoAddr, { from: admin}), "only kyberNetwork"
             );
 
             await expectRevert(
@@ -238,14 +238,16 @@ contract('KyberStorage', function(accounts) {
         });
 
         it("should have network set contracts", async() => {
+            let oldNetwork = await kyberStorage.kyberNetwork();
             network = accounts[3];
             await kyberStorage.setNetworkContract(network, { from: admin});
             await kyberStorage.setKyberDaoContract(kyberDaoAddr, { from: network});
             await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
             let result = await kyberStorage.getContracts();
-            Helper.assertEqualArray(result.daoAddresses, [kyberDaoAddr], "unexpected dao history");
-            Helper.assertEqualArray(result.matchingEngineAddresses, [matchingEngineAddr], "unexpected match engine history");
-            Helper.assertEqualArray(result.feeHandlerAddresses, [feeHandlerAddr], "unexpected fee handler history");
+            Helper.assertEqualArray(result.kyberDaoAddresses, [kyberDaoAddr], "unexpected dao history");
+            Helper.assertEqualArray(result.kyberMatchingEngineAddresses, [matchingEngineAddr], "unexpected match engine history");
+            Helper.assertEqualArray(result.kyberFeeHandlerAddresses, [feeHandlerAddr], "unexpected fee handler history");
+            Helper.assertEqualArray(result.kyberNetworkAddresses, [network, oldNetwork], "unexpected network history");
         });
     });
 
@@ -402,19 +404,25 @@ contract('KyberStorage', function(accounts) {
         it("set and get contracts history", async() =>{
             await kyberStorage.setKyberDaoContract(kyberDaoAddr, { from: network});
             await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
-            // get and set second dao, matchingEngine, feeHandler contracts
+            
+            // get and set second dao, matchingEngine, feeHandler and network contracts
+            let kyberDaoAddr2 = accounts[7];
+            let feeHandlerAddr2 = accounts[8];
+            let matchingEngineAddr2 = accounts[9];
+            let networkAddr2 = accounts[10];
 
-            let kyberDaoAddr2 = accounts[8];
-            let feeHandlerAddr2 = accounts[9];
-            let matchingEngineAddr2 = accounts[10];
             await kyberStorage.setKyberDaoContract(kyberDaoAddr2, { from: network});
             await kyberStorage.setContracts(feeHandlerAddr2, matchingEngineAddr2, { from: network });
-
+            await kyberStorage.setNetworkContract(networkAddr2, { from: admin});
 
             let result= await kyberStorage.getContracts();
-            Helper.assertEqualArray(result.daoAddresses, [kyberDaoAddr2, kyberDaoAddr], "unexpected dao history");
-            Helper.assertEqualArray(result.matchingEngineAddresses, [matchingEngineAddr2, matchingEngineAddr], "unexpected match engine history");
-            Helper.assertEqualArray(result.feeHandlerAddresses, [feeHandlerAddr2, feeHandlerAddr], "unexpected fee handler history");
+            Helper.assertEqualArray(result.kyberDaoAddresses, [kyberDaoAddr2, kyberDaoAddr], "unexpected dao history");
+            Helper.assertEqualArray(result.kyberMatchingEngineAddresses, [matchingEngineAddr2, matchingEngineAddr], "unexpected match engine history");
+            Helper.assertEqualArray(result.kyberFeeHandlerAddresses, [feeHandlerAddr2, feeHandlerAddr], "unexpected fee handler history");
+            Helper.assertEqualArray(result.kyberNetworkAddresses, [networkAddr2, network], "unexpected network history");
+
+            // reset network contract
+            await kyberStorage.setNetworkContract(network, { from: admin});
         });
 
         it("should enable setting an empty dao contract", async function(){
@@ -422,7 +430,7 @@ contract('KyberStorage', function(accounts) {
 
             let rxContracts = await kyberStorage.getContracts();
 
-            assert.equal(rxContracts.daoAddresses[0], zeroAddress);
+            assert.equal(rxContracts.kyberDaoAddresses[0], zeroAddress);
         });
     });
 

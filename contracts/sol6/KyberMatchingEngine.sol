@@ -57,7 +57,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @dev Returns trading reserves info for a trade
     /// @param src Source token
     /// @param dest Destination token
-    /// @param isTokenToToken Whether the trade is T2T
+    /// @param isTokenToToken Whether the trade is t2t
     /// @param hint Advanced instructions for running the trade
     /// @return reserveIds Array of reserve IDs for the trade, each being 32 bytes. 1st byte is reserve type
     /// @return splitValuesBps Array of split values (in basis points) for the trade

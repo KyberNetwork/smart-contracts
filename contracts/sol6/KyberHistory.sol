@@ -5,8 +5,8 @@ import "./utils/PermissionGroupsNoModifiers.sol";
 
 
 /**
- *   @title KyberHistory contract
- *   The contract provides the following functions for KyberStorage contract:
+ *   @title kyberHistory contract
+ *   The contract provides the following functions for kyberStorage contract:
  *   - Record contract changes for a set of contracts
  */
 contract KyberHistory is IKyberHistory, PermissionGroupsNoModifiers {

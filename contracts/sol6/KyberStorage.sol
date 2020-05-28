@@ -245,7 +245,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
     }
 
-    /// @dev No. of KyberNetworkProxies are capped
+    /// @dev No. of kyberProxies are capped
     function addKyberProxy(address kyberProxy, uint256 maxApprovedProxies)
         external
         override
@@ -398,7 +398,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         reserveIds = reservesPerTokenSrc[token];
     }
 
-    /// @dev Network is calling this function to approve (allowance) for list of reserves for a token
+    /// @dev kyberNetwork is calling this function to approve (allowance) for list of reserves for a token
     ///      in case we have a long list of reserves, approving all of them could run out of gas
     ///      using startIndex and endIndex to prevent above scenario
     ///      also enable us to approve reserve one by one
@@ -447,16 +447,16 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         external
         view
         returns (
-            address[] memory daoAddresses,
-            address[] memory feeHandlerAddresses,
-            address[] memory matchingEngineAddresses,
-            address[] memory previousNetworkContracts
+            address[] memory kyberDaoAddresses,
+            address[] memory kyberFeeHandlerAddresses,
+            address[] memory kyberMatchingEngineAddresses,
+            address[] memory kyberNetworkAddresses
         )
     {
-        daoAddresses = kyberDaoHistory.getContracts();
-        feeHandlerAddresses = kyberFeeHandlerHistory.getContracts();
-        matchingEngineAddresses = kyberMatchingEngineHistory.getContracts();
-        previousNetworkContracts = kyberNetworkHistory.getContracts();
+        kyberDaoAddresses = kyberDaoHistory.getContracts();
+        kyberFeeHandlerAddresses = kyberFeeHandlerHistory.getContracts();
+        kyberMatchingEngineAddresses = kyberMatchingEngineHistory.getContracts();
+        kyberNetworkAddresses = kyberNetworkHistory.getContracts();
     }
 
     /// @notice Should be called off chain

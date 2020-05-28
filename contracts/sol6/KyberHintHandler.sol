@@ -274,7 +274,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         hint = abi.encode(t2eHint, e2tHint);
     }
 
-    /// @notice Parses or decodes the Token to ETH or ETH to Token bytes hint
+    /// @notice Parses or decodes the token to ether or ether to token bytes hint
     /// @param hint token to ether or ether to token trade hint
     /// @return tradeType Decoded hint type
     /// @return reserveIds Decoded reserve IDs
@@ -317,7 +317,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         internal
         view
     {
-        if (getReserveAddress(reserveId) == address(0x0))
+        if (getReserveAddress(reserveId) == address(0))
             throwHintError(HintErrors.ReserveIdNotFound);
     }
 

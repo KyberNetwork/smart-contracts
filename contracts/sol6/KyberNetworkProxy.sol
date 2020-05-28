@@ -10,7 +10,7 @@ import "./IKyberHint.sol";
 
 
 /**
- *   @title kyberProxy for kyberNetworkContract
+ *   @title kyberProxy for kyberNetwork contract
  *   The contract provides the following functions:
  *   - Get rates
  *   - Trade execution

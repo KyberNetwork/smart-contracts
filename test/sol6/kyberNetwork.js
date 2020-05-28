@@ -2193,11 +2193,12 @@ contract('KyberNetwork', function(accounts) {
         describe("test trades with very small and very big numbers", async() => {
         });
 
-        it("test contract addresses for fee handler and KyberDao", async() => {
+        it("test contract addresses for kyberStorage, kyberFeeHandler and kyberDao", async() => {
             let contracts = await network.getContracts();
-            Helper.assertEqual(contracts.daoAddress, kyberDao.address)
-            Helper.assertEqual(contracts.feeHandlerAddress, feeHandler.address)
-            Helper.assertEqual(contracts.matchingEngineAddress, matchingEngine.address);
+            Helper.assertEqual(contracts.kyberDaoAddress, kyberDao.address)
+            Helper.assertEqual(contracts.kyberFeeHandlerAddress, feeHandler.address)
+            Helper.assertEqual(contracts.kyberMatchingEngineAddress, matchingEngine.address);
+            Helper.assertEqual(contracts.kyberStorageAddress, storage.address);
         });
 
         it("test encode decode network fee data with mock setter getter", async() => {

@@ -20,7 +20,7 @@ import "./IGasHelper.sol";
  *       kyberFeeHandler: accumulates and distributes trade fees
  *       kyberMatchingEngine: parse user hint and run reserve matching algorithm
  *       kyberStorage: store / access reserves, token listings and contract addresses
- *       kyberReserve: query rate and trade
+ *       kyberReserve(s): query rate and trade
  */
 contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -53,7 +53,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Main trade data structure, is initialised and used for the entire trade flow
-    /// @param input Initialised when initialiseTradeInput is called. Stores basic trade info
+    /// @param input Initialised when initTradeInput is called. Stores basic trade info
     /// @param tokenToEth Stores information about reserves that were selected for src -> ETH side of trade
     /// @param ethToToken Stores information about reserves that were selected for ETH -> dest side of trade
     /// @param tradeWei Trade amount in ether wei, before deducting fees.
@@ -95,7 +95,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     uint256 internal constant MAX_APPROVED_PROXIES = 2; // limit number of proxies that can trade here
 
     IKyberFeeHandler internal kyberFeeHandler;
-    IKyberDAO internal kyberDao;
+    IKyberDao internal kyberDao;
     IKyberMatchingEngine internal kyberMatchingEngine;
     IKyberStorage internal kyberStorage;
     IGasHelper internal gasHelper;
@@ -110,7 +110,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     event KyberFeeHandlerUpdated(IKyberFeeHandler newKyberFeeHandler);
     event KyberMatchingEngineUpdated(IKyberMatchingEngine newKyberMatchingEngine);
     event GasHelperUpdated(IGasHelper newGasHelper);
-    event KyberDaoUpdated(IKyberDAO newKyberDao);
+    event KyberDaoUpdated(IKyberDao newKyberDao);
     event KyberNetworkParamsSet(uint256 maxGasPrice, uint256 negligibleRateDiffBps);
     event KyberNetworkSetEnable(bool isEnabled);
     event KyberProxyAdded(address kyberProxy);
@@ -214,10 +214,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Can be called only by kyberStorage
-    /// @dev Allow or prevent to trade token -> eth for a reserve
+    /// @dev Allow or prevent to trade token -> ETH for a reserve
     /// @param reserve The reserve address
     /// @param token Token address
-    /// @param add If true then list token->eth pair, otherwise unlist it
+    /// @param add If true, then list token -> ETH pair, otherwise unlist it
     function listTokenForReserve(
         address reserve,
         IERC20 token,
@@ -234,13 +234,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Can be called only by operator
-    /// @dev Allow or prevent to trade token -> eth for list of reserves
-    ///      Useful for migration new network
-    ///      Call storage to get list of reserves that are supported token->eth
+    /// @dev Allow or prevent to trade token -> ETH for list of reserves
+    ///      Useful for migration to new network contract
+    ///      Call storage to get list of reserves supporting token -> ETH
     /// @param token Token address
     /// @param startIndex start index in reserves list
     /// @param endIndex end index in reserves list (can be larger)
-    /// @param add If true then list token->eth pair, otherwise unlist it
+    /// @param add If true, then list token -> ETH pair, otherwise unlist it
     function listReservesForToken(
         IERC20 token,
         uint256 startIndex,
@@ -442,7 +442,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Returns some data about the network
-    /// @param negligibleDiffBps Neligible rate difference (in basis pts) when searching best rate
+    /// @param negligibleDiffBps Negligible rate difference (in basis pts) when searching best rate
     /// @param networkFeeBps Network fees to be charged (in basis pts)
     /// @param expiryTimestamp Timestamp for which networkFeeBps will expire,
     ///     and needs to be updated by calling kyberDao contract / set to default
@@ -466,7 +466,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         view
         returns (
             IKyberFeeHandler kyberFeeHandlerAddress,
-            IKyberDAO kyberDaoAddress,
+            IKyberDao kyberDaoAddress,
             IKyberMatchingEngine kyberMatchingEngineAddress,
             IKyberStorage kyberStorageAddress,
             IGasHelper gasHelperAddress,
@@ -776,19 +776,20 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         tradeData.ethToToken.decimals = getDecimals(dest);
     }
 
-    /// @notice Calls kyberMatchingEngine that determines all the information necessary for the trade
-    ///     (to be stored in tradeData) such as what reserves were selected (their addresses and ids),
-    ///     what rates they offer, fee paying information, tradeWei amount,
-    ///     network fee, platform fee, etc. WITHOUT accounting for maxDestAmount.
-    ///     This function should set all TradeData information so that it can be used after without any ambiguity
+    /// @notice This function does all calculations to find trade dest amount without accounting 
+    ///        for maxDestAmount. part of this process includes:
+    ///        - Call kyberMatchingEnging to Parse hint and get an optional reserve list to trade.
+    ///        - Query reserve rates and call kyberMatchingEngine to use best reserve.
+    ///        - Calculate trade values and fee values.
+    ///     This function should set all TradeData information so that it can be later used without 
+    ///         any ambiguity
     /// @param tradeData Main trade data object for trade info to be stored
-    /// @param hint Advanced instructions for running the trade 
+    /// @param hint Advanced user instructions for the trade 
     function calcRatesAndAmounts(TradeData memory tradeData, bytes memory hint)
         internal
         view
         returns (uint256 destAmount, uint256 rateWithNetworkFee)
     {
-
         validateFeeInput(tradeData.input, tradeData.networkFeeBps);
 
         // token to ether: find best reserves match and calculate wei amount
@@ -920,7 +921,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         if (src == ETH_TOKEN_ADDRESS) {
             // @notice srcAmount is after deducting fees from tradeWei
-            // @notice using tradeWei to calculate fee so Eth to token symmetric to token to eth
+            // @notice using tradeWei to calculate fee so eth to token symmetric to token to eth
             srcAmountAfterFee = srcAmount - 
                 (tradeData.tradeWei * tradeData.networkFeeBps / BPS);
         } else { 
