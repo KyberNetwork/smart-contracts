@@ -31,7 +31,7 @@ let networkProxy;
 let networkProxyV1;
 let networkStorage;
 let network;
-let KyberDao;
+let kyberDao;
 let feeHandler;
 let matchingEngine;
 let operator;
@@ -75,8 +75,8 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
 
         //KyberDao related init.
         expiryTimestamp = new BN(await Helper.getCurrentBlockTime() + 1000000);
-        KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-        await KyberDao.setNetworkFeeBps(networkFeeBps);
+        kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+        await kyberDao.setNetworkFeeBps(networkFeeBps);
 
         // init storage
         networkStorage = await nwHelper.setupStorage(admin);
@@ -101,7 +101,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         await networkStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, KyberDao.address, networkStorage.address, {from: admin});
+        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, networkStorage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -134,7 +134,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         await network.addKyberProxy(networkProxyV1.address, {from: admin});
         await network.addOperator(operator, {from: admin});
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
-        await network.setKyberDaoContract(KyberDao.address, {from: admin});
+        await network.setKyberDaoContract(kyberDao.address, {from: admin});
 
         //add and list pair for reserve
         await nwHelper.addReservesToStorage(networkStorage, reserveInstances, tokens, operator);

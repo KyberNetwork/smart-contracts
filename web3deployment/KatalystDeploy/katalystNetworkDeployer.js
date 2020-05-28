@@ -115,7 +115,7 @@ let networkContract;
 let proxyContract;
 let stakingContract;
 let storageContract;
-let KyberDaoContract;
+let kyberDaoContract;
 
 //permissions
 let matchingEnginePermissions;
@@ -465,7 +465,7 @@ async function deployStakingContract(output) {
 async function deployKyberDaoContract(output) {
     if (daoAddress == "") {
         console.log("deploying KyberDao contract");
-        [daoAddress, KyberDaoContract] = await deployContract(
+        [daoAddress, kyberDaoContract] = await deployContract(
             output, "KyberDao.sol", "KyberDao",
             [
               epochPeriod, startTimestamp, stakingAddress, feeHandlerAddress, kncTokenAddress,
@@ -475,7 +475,7 @@ async function deployKyberDaoContract(output) {
         console.log(`KyberDao: ${daoAddress}`);
     } else {
         console.log("Instantiating KyberDao...");
-        KyberDaoContract = new web3.eth.Contract(
+        kyberDaoContract = new web3.eth.Contract(
         output.contracts["KyberDao.sol"]["KyberDao"].abi, daoAddress
         );
     }

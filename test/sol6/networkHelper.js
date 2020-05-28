@@ -208,7 +208,7 @@ async function listTokenForRedeployNetwork(storageInstance, reserveInstances, to
 
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
-    (NetworkArtifact, networkProxyAddress, KNCAddress, KyberDaoAddress, admin, operator) {
+    (NetworkArtifact, networkProxyAddress, KNCAddress, kyberDaoAddress, admin, operator) {
     const storage =  await setupStorage(admin);
     const network = await NetworkArtifact.new(admin, storage.address);
     await storage.setNetworkContract(network.address, {from: admin});
@@ -221,10 +221,10 @@ async function setupNetwork
     await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
     await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
-    let feeHandler = await FeeHandler.new(KyberDaoAddress, network.address, network.address, KNCAddress, burnBlockInterval, KyberDaoAddress);
+    let feeHandler = await FeeHandler.new(kyberDaoAddress, network.address, network.address, KNCAddress, burnBlockInterval, kyberDaoAddress);
     await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
     // set KyberDao contract
-    await network.setKyberDaoContract(KyberDaoAddress, { from: admin });
+    await network.setKyberDaoContract(kyberDaoAddress, { from: admin });
     // point proxy to network
     await network.addKyberProxy(networkProxyAddress, { from: admin });
     //set params, enable network

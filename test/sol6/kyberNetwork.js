@@ -45,7 +45,7 @@ let platformFeeArray = [zeroBN, new BN(50), new BN(100)];
 let admin;
 let storage;
 let network;
-let KyberDao;
+let kyberDao;
 let networkProxy;
 let feeHandler;
 let matchingEngine;
@@ -105,8 +105,8 @@ contract('KyberNetwork', function(accounts) {
 
         //KyberDao related init.
         expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
-        KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-        await KyberDao.setNetworkFeeBps(networkFeeBps);
+        kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+        await kyberDao.setNetworkFeeBps(networkFeeBps);
 
         //init tokens
         for (let i = 0; i < numTokens; i++) {
@@ -337,7 +337,7 @@ contract('KyberNetwork', function(accounts) {
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
 
             await tempNetwork.addOperator(operator, {from: admin});
-            await tempNetwork.setKyberDaoContract(KyberDao.address, {from: admin});
+            await tempNetwork.setKyberDaoContract(kyberDao.address, {from: admin});
         });
 
         it("set empty fee handler contract", async() => {
@@ -362,7 +362,7 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("should do nothing if setting to same KyberDao address, check no event emitted", async() => {
-            let txResult = await tempNetwork.setKyberDaoContract(KyberDao.address, {from: admin});
+            let txResult = await tempNetwork.setKyberDaoContract(kyberDao.address, {from: admin});
             Helper.assertEqual(txResult.logs.length, zeroBN, "event emitted");
         });
     });
@@ -432,9 +432,9 @@ contract('KyberNetwork', function(accounts) {
             //init feeHandler
             proxyForFeeHandler = tempNetwork;
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(KyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, KyberDao.address);
+            feeHandler = await FeeHandler.new(kyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, kyberDao.address);
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, KyberDao.address, tempStorage.address, {from: admin});
+            await rateHelper.setContracts(tempMatchingEngine.address, kyberDao.address, tempStorage.address, {from: admin});
         });
 
         it("ETH receival", async() => {
@@ -765,9 +765,9 @@ contract('KyberNetwork', function(accounts) {
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             proxyForFeeHandler = tempNetwork;
-            feeHandler = await FeeHandler.new(KyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, KyberDao.address);
+            feeHandler = await FeeHandler.new(kyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, kyberDao.address);
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, KyberDao.address, tempStorage.address, {from: admin});
+            await rateHelper.setContracts(tempMatchingEngine.address, kyberDao.address, tempStorage.address, {from: admin});
         });
 
         it("set enable without feeHandler", async function(){
@@ -804,9 +804,9 @@ contract('KyberNetwork', function(accounts) {
             //init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             proxyForFeeHandler = tempNetwork;
-            feeHandler = await FeeHandler.new(KyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, KyberDao.address);
+            feeHandler = await FeeHandler.new(kyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, kyberDao.address);
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, KyberDao.address, tempStorage.address, {from: admin});
+            await rateHelper.setContracts(tempMatchingEngine.address, kyberDao.address, tempStorage.address, {from: admin});
             await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
         });
 
@@ -851,8 +851,8 @@ contract('KyberNetwork', function(accounts) {
         before("initialise KyberDao, network and reserves", async() => {
             // KyberDao related init.
             expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
-            KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-            await KyberDao.setNetworkFeeBps(networkFeeBps);
+            kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+            await kyberDao.setNetworkFeeBps(networkFeeBps);
 
             // init storage and network
             storage = await nwHelper.setupStorage(admin);
@@ -865,7 +865,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-            feeHandler = await FeeHandler.new(KyberDao.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, KyberDao.address);
+            feeHandler = await FeeHandler.new(kyberDao.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, kyberDao.address);
 
             // init matchingEngine
             matchingEngine = await MatchingEngine.new(admin);
@@ -876,7 +876,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init rateHelper
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, KyberDao.address, storage.address, {from: admin});
+            await rateHelper.setContracts(matchingEngine.address, kyberDao.address, storage.address, {from: admin});
 
             // init gas helper
             // tests gasHelper when gasHelper != address(0), and when a trade is being done
@@ -887,7 +887,7 @@ contract('KyberNetwork', function(accounts) {
                 gasHelperAdd.address, {from: admin});
             await network.addOperator(operator, {from: admin});
             await network.addKyberProxy(networkProxy, {from: admin});
-            await network.setKyberDaoContract(KyberDao.address, {from: admin});
+            await network.setKyberDaoContract(kyberDao.address, {from: admin});
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
             await network.setEnable(true, {from: admin});
@@ -1158,7 +1158,7 @@ contract('KyberNetwork', function(accounts) {
                     actualResult = await network.getExpectedRate(srcToken.address, destToken.address, srcQty);
                     Helper.assertEqual(expectedResult.rateWithNetworkFee, actualResult.expectedRate, "expected rate with network fee != actual rate for T2T");
 
-                    await network.setKyberDaoContract(KyberDao.address, {from: admin});
+                    await network.setKyberDaoContract(kyberDao.address, {from: admin});
                 });
 
                 it("should return rates for pseudo-zero srcQty", async() => {
@@ -1239,7 +1239,7 @@ contract('KyberNetwork', function(accounts) {
                     actualResult = await network.getExpectedRateWithHintAndFee(srcToken.address, destToken.address, srcQty, zeroBN, emptyHint);
                     nwHelper.assertRatesEqual(expectedResult, actualResult);
 
-                    await network.setKyberDaoContract(KyberDao.address, {from: admin});
+                    await network.setKyberDaoContract(kyberDao.address, {from: admin});
                 });
 
                 it("should return rates for pseudo-zero srcQty", async() => {
@@ -1975,8 +1975,8 @@ contract('KyberNetwork', function(accounts) {
             before("setup contracts", async() => {
                 // KyberDao related init.
                 let expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
-                let KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-                await KyberDao.setNetworkFeeBps(networkFeeBps);
+                let kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+                await kyberDao.setNetworkFeeBps(networkFeeBps);
                 networkProxy = accounts[2];
                 srcToken = tokens[0];
                 srcDecimals = tokenDecimals[0];
@@ -1991,7 +1991,7 @@ contract('KyberNetwork', function(accounts) {
 
                 // init feeHandler
                 let KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-                let feeHandler = await FeeHandler.new(KyberDao.address, mockNetwork.address, mockNetwork.address, KNC.address, burnBlockInterval, KyberDao.address);
+                let feeHandler = await FeeHandler.new(kyberDao.address, mockNetwork.address, mockNetwork.address, KNC.address, burnBlockInterval, kyberDao.address);
 
                 // init matchingEngine
                 mockMatchingEngine = await MatchingEngine.new(admin);
@@ -2002,7 +2002,7 @@ contract('KyberNetwork', function(accounts) {
 
                 // init rateHelper
                 mockRateHelper = await RateHelper.new(admin);
-                await mockRateHelper.setContracts(mockMatchingEngine.address, KyberDao.address, mockStorage.address, {from: admin});
+                await mockRateHelper.setContracts(mockMatchingEngine.address, kyberDao.address, mockStorage.address, {from: admin});
 
                 // init gas helper
                 // tests gasHelper when gasHelper != address(0), and when a trade is being done
@@ -2013,7 +2013,7 @@ contract('KyberNetwork', function(accounts) {
                     gasHelperAdd.address, {from: admin});
                 await mockNetwork.addOperator(operator, {from: admin});
                 await mockNetwork.addKyberProxy(networkProxy, {from: admin});
-                await mockNetwork.setKyberDaoContract(KyberDao.address, {from: admin});
+                await mockNetwork.setKyberDaoContract(kyberDao.address, {from: admin});
                 //set params, enable network
                 await mockNetwork.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
                 await mockNetwork.setEnable(true, {from: admin});
@@ -2192,7 +2192,7 @@ contract('KyberNetwork', function(accounts) {
 
         it("test contract addresses for fee handler and KyberDao", async() => {
             let contracts = await network.getContracts();
-            Helper.assertEqual(contracts.daoAddress, KyberDao.address)
+            Helper.assertEqual(contracts.daoAddress, kyberDao.address)
             Helper.assertEqual(contracts.feeHandlerAddress, feeHandler.address)
             Helper.assertEqual(contracts.matchingEngineAddress, matchingEngine.address);
         });
@@ -2227,12 +2227,12 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.setContracts(feeHandler.address, matchingEngine.address,
                 zeroAddress, { from: admin });
 
-            let KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-            await KyberDao.setNetworkFeeBps(networkFeeBps);
+            let kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+            await kyberDao.setNetworkFeeBps(networkFeeBps);
 
-            await tempNetwork.setKyberDaoContract(KyberDao.address, { from: admin });
+            await tempNetwork.setKyberDaoContract(kyberDao.address, { from: admin });
             let highNetworkFee = new BN(5001);
-            await KyberDao.setNetworkFeeBps(highNetworkFee, { from: admin });
+            await kyberDao.setNetworkFeeBps(highNetworkFee, { from: admin });
             await expectRevert(tempNetwork.getAndUpdateNetworkFee(), "fees exceed BPS");
         });
 
@@ -2565,7 +2565,7 @@ contract('KyberNetwork', function(accounts) {
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             proxyForFeeHandler = network;
-            feeHandler = await FeeHandler.new(KyberDao.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, KyberDao.address);
+            feeHandler = await FeeHandler.new(kyberDao.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, kyberDao.address);
 
             // init matchingEngine
             matchingEngine = await MatchingEngine.new(admin);
@@ -2581,14 +2581,14 @@ contract('KyberNetwork', function(accounts) {
             await network.addOperator(operator, { from: admin });
             await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, { from: admin });
             await network.addKyberProxy(networkProxy, { from: admin });
-            await network.setKyberDaoContract(KyberDao.address, { from: admin });
+            await network.setKyberDaoContract(kyberDao.address, { from: admin });
 
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
             await network.setEnable(true, { from: admin });
 
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, KyberDao.address, storage.address, { from: admin });
+            await rateHelper.setContracts(matchingEngine.address, kyberDao.address, storage.address, { from: admin });
 
             // setup + add reserves
             reserveInstances = {};
@@ -2721,7 +2721,7 @@ contract('KyberNetwork', function(accounts) {
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             proxyForFeeHandler = network;
-            feeHandler = await FeeHandler.new(KyberDao.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, KyberDao.address);
+            feeHandler = await FeeHandler.new(kyberDao.address, proxyForFeeHandler.address, network.address, KNC.address, burnBlockInterval, kyberDao.address);
 
             // init matchingEngine
             matchingEngine = await MatchingEngine.new(admin);
@@ -2737,7 +2737,7 @@ contract('KyberNetwork', function(accounts) {
             await network.addOperator(operator, { from: admin });
             await network.setContracts(feeHandler.address, matchingEngine.address, gasHelperAdd.address, { from: admin });
             await network.addKyberProxy(networkProxy, { from: admin });
-            await network.setKyberDaoContract(KyberDao.address, { from: admin });
+            await network.setKyberDaoContract(kyberDao.address, { from: admin });
 
             //set params, enable network
             await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
@@ -2923,9 +2923,9 @@ contract('KyberNetwork', function(accounts) {
         it("test get network fee from KyberDao", async function(){
             expiryTimestamp = await Helper.getCurrentBlockTime();
             feeBPS = new BN(99);
-            KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-            await KyberDao.setNetworkFeeBps(feeBPS);
-            await tempNetwork.setKyberDaoContract(KyberDao.address, {from: admin});
+            kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+            await kyberDao.setNetworkFeeBps(feeBPS);
+            await tempNetwork.setKyberDaoContract(kyberDao.address, {from: admin});
             actualFeeBPS = await tempNetwork.getAndUpdateNetworkFee.call();
             Helper.assertEqual(actualFeeBPS, feeBPS, "fee bps not correct");
             await tempNetwork.getAndUpdateNetworkFee.call();
@@ -2951,15 +2951,15 @@ contract('KyberNetwork', function(accounts) {
             await matchingEngine.setKyberStorage(tempStorage.address, { from: admin });
 
             // init KyberDao
-            KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-            await tempNetwork.setKyberDaoContract(KyberDao.address, { from: admin });
+            kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+            await tempNetwork.setKyberDaoContract(kyberDao.address, { from: admin });
             feeBPS = new BN(100);
             expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
 
             // init feeHandler
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             proxyForFeeHandler = tempNetwork;
-            feeHandler = await FeeHandler.new(KyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, KyberDao.address);
+            feeHandler = await FeeHandler.new(kyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, kyberDao.address);
 
             // setup network
             await tempNetwork.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
@@ -2987,7 +2987,7 @@ contract('KyberNetwork', function(accounts) {
             }
 
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, KyberDao.address, tempStorage.address, {from: admin});
+            await rateHelper.setContracts(matchingEngine.address, kyberDao.address, tempStorage.address, {from: admin});
         });
 
         beforeEach("zero network balance", async() => {
@@ -3196,12 +3196,12 @@ contract('KyberNetwork', function(accounts) {
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
             await storage.setEntitledRebatePerReserveType(true, true, true, false, true, true, { from: admin });
             // setup KyberDao and feeHandler 
-            let KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-            await KyberDao.setNetworkFeeBps(new BN(0));
-            let feeHandler = await FeeHandler.new(KyberDao.address, network.address, network.address, KNC.address, burnBlockInterval, KyberDao.address);
+            let kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+            await kyberDao.setNetworkFeeBps(new BN(0));
+            let feeHandler = await FeeHandler.new(kyberDao.address, network.address, network.address, KNC.address, burnBlockInterval, kyberDao.address);
             await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
             // set KyberDao contract
-            await network.setKyberDaoContract(KyberDao.address, { from: admin });
+            await network.setKyberDaoContract(kyberDao.address, { from: admin });
             // point proxy to network
             await network.addKyberProxy(kyberProxy, { from: admin });
             //set params, enable network
@@ -3222,7 +3222,7 @@ contract('KyberNetwork', function(accounts) {
                 await reserve.setRate(normalToken2.address, tokensPerEther, ethersPerToken);
             }
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, KyberDao.address, storage.address, {from: admin});
+            await rateHelper.setContracts(matchingEngine.address, kyberDao.address, storage.address, {from: admin});
         });
 
         beforeEach("ensure each reserve have max eth-token value", async() => {

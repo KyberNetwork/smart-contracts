@@ -38,7 +38,7 @@ let networkProxy;
 let network;
 let storage;
 let rateHelper;
-let KyberDao;
+let kyberDao;
 let feeHandler;
 let matchingEngine;
 let operator;
@@ -90,8 +90,8 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //KyberDao related init.
         expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
-        KyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-        await KyberDao.setNetworkFeeBps(networkFeeBps);
+        kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+        await kyberDao.setNetworkFeeBps(networkFeeBps);
 
         //deploy storage and network
         storage = await nwHelper.setupStorage(admin);
@@ -110,7 +110,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, KyberDao.address, storage.address, {from: admin});
+        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, storage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -125,7 +125,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
         //init feeHandler
         KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-        feeHandler = await FeeHandler.new(KyberDao.address, networkProxy.address, network.address, KNC.address, burnBlockInterval, KyberDao.address);
+        feeHandler = await FeeHandler.new(kyberDao.address, networkProxy.address, network.address, KNC.address, burnBlockInterval, kyberDao.address);
 
         // init and setup reserves
         let result = await nwHelper.setupReserves(network, tokens, 0, 5, 0, 0, accounts, admin, operator);
@@ -137,7 +137,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
         await network.addKyberProxy(networkProxy.address, {from: admin});
         await network.addOperator(operator, {from: admin});
-        await network.setKyberDaoContract(KyberDao.address, {from: admin});
+        await network.setKyberDaoContract(kyberDao.address, {from: admin});
 
         //add and list pair for reserve
         await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
@@ -803,15 +803,15 @@ contract('KyberNetworkProxy', function(accounts) {
         let maliciousNetwork;
         before("init 'generous' network and 'malicious' network", async () => {
             // set up generousNetwork
-            [generousNetwork, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork, networkProxy.address, KNC.address, KyberDao.address, admin, operator);
+            [generousNetwork, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork, networkProxy.address, KNC.address, kyberDao.address, admin, operator);
             let result = await nwHelper.setupReserves(generousNetwork, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToStorage(tempStorage, result.reserveInstances, tokens, operator);
             // set up maliciousNetwork
-            [maliciousNetwork, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork, networkProxy.address, KNC.address, KyberDao.address, admin, operator);
+            [maliciousNetwork, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork, networkProxy.address, KNC.address, kyberDao.address, admin, operator);
             result = await nwHelper.setupReserves(maliciousNetwork, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToStorage(tempStorage, result.reserveInstances, tokens, operator);
             // set up generousNetwork2
-            [generousNetwork2, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork2, networkProxy.address, KNC.address, KyberDao.address, admin, operator);
+            [generousNetwork2, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork2, networkProxy.address, KNC.address, kyberDao.address, admin, operator);
             result = await nwHelper.setupReserves(generousNetwork2, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToStorage(tempStorage, result.reserveInstances, tokens, operator);
         });
