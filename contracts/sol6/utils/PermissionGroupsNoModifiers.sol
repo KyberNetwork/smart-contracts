@@ -59,7 +59,7 @@ contract PermissionGroupsNoModifiers {
     function removeAlerter(address alerter) public {
         onlyAdmin();
         require(alerters[alerter], "not alerter");
-        alerters[alerter] = false;
+        delete alerters[alerter];
 
         for (uint256 i = 0; i < alertersGroup.length; ++i) {
             if (alertersGroup[i] == alerter) {
@@ -74,7 +74,7 @@ contract PermissionGroupsNoModifiers {
     function removeOperator(address operator) public {
         onlyAdmin();
         require(operators[operator], "not operator");
-        operators[operator] = false;
+        delete operators[operator];
 
         for (uint256 i = 0; i < operatorsGroup.length; ++i) {
             if (operatorsGroup[i] == operator) {

@@ -28,8 +28,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     mapping(bytes32 => address[]) internal reserveIdToAddresses;
     mapping(bytes32 => address) internal reserveRebateWallet;
     mapping(address => bytes32) internal reserveAddressToId;
-    mapping(address => bytes32[]) internal reservesPerTokenSrc; // reserves supporting token to eth
-    mapping(address => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
+    mapping(IERC20 => bytes32[]) internal reservesPerTokenSrc; // reserves supporting token to eth
+    mapping(IERC20 => bytes32[]) internal reservesPerTokenDest; // reserves support eth to token
     mapping(bytes32 => IERC20[]) internal srcTokensPerReserve;
     mapping(bytes32 => IERC20[]) internal destTokensPerReserve;
 
@@ -192,11 +192,10 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         // update reserve mappings
         reserveIdToAddresses[reserveId].push(reserveIdToAddresses[reserveId][0]);
         reserveIdToAddresses[reserveId][0] = address(0);
-        reserveAddressToId[reserve] = bytes32(0);
 
-        reserveType[reserveId] = uint256(ReserveType.NONE);
-
-        reserveRebateWallet[reserveId] = address(0);
+        delete reserveAddressToId[reserve];
+        delete reserveType[reserveId];
+        delete reserveRebateWallet[reserveId];
 
         emit RemoveReserveFromStorage(reserve, reserveId);
     }
@@ -373,7 +372,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
     }
 
-    function getReserveIdsPerTokenSrc(address token)
+    function getReserveIdsPerTokenSrc(IERC20 token)
         external
         view
         override
@@ -386,7 +385,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     ///      in case we have a long list of reserves, approving all of them could run out of gas
     ///      using startIndex and endIndex to prevent above scenario
     ///      also enable us to approve reserve one by one
-    function getReserveAddressesPerTokenSrc(address token, uint256 startIndex, uint256 endIndex)
+    function getReserveAddressesPerTokenSrc(IERC20 token, uint256 startIndex, uint256 endIndex)
         external
         view
         override
@@ -406,7 +405,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
     }
 
-    function getReserveIdsPerTokenDest(address token)
+    function getReserveIdsPerTokenDest(IERC20 token)
         external
         view
         override
@@ -577,9 +576,9 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
             isListedReserveWithTokenDest[dest];
 
         for (uint256 i = 0; i < reserveIds.length; i++) {
-            uint256 resTypeUint = reserveType[reserveIds[i]];
-            entitledRebateArr[i] = (entitledRebateData & (1 << resTypeUint) > 0);
-            feeAccountedArr[i] = (feeAccountedData & (1 << resTypeUint) > 0);
+            uint256 resType = reserveType[reserveIds[i]];
+            entitledRebateArr[i] = (entitledRebateData & (1 << resType) > 0);
+            feeAccountedArr[i] = (feeAccountedData & (1 << resType) > 0);
             reserveAddresses[i] = IKyberReserve(reserveIdToAddresses[reserveIds[i]][0]);
 
             if (!isListedReserveWithToken[reserveIds[i]]){
@@ -611,12 +610,12 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         bool add
     ) internal {
         uint256 i;
-        bytes32[] storage reserveArr = reservesPerTokenDest[address(token)];
+        bytes32[] storage reserveArr = reservesPerTokenDest[token];
         IERC20[] storage tokensArr = destTokensPerReserve[reserveId];
         mapping(bytes32 => bool) storage isListedReserveWithToken = isListedReserveWithTokenDest[token];
 
         if (isTokenToEth) {
-            reserveArr = reservesPerTokenSrc[address(token)];
+            reserveArr = reservesPerTokenSrc[token];
             tokensArr = srcTokensPerReserve[reserveId];
             isListedReserveWithToken = isListedReserveWithTokenSrc[token];
         }

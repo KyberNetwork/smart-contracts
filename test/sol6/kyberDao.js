@@ -687,9 +687,7 @@ contract('KyberDAO', function(accounts) {
         feeHandler.address, kncToken.address,
         minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
         daoOperator
-      )
-      await daoContract.replaceStakingContract(mike);
-      Helper.assertEqual(mike, await daoContract.staking(), "staking contract is setting wrongly");
+      );
 
       await expectRevert(
         daoContract.handleWithdrawal(victor, 0, {from: victor}),
@@ -699,8 +697,6 @@ contract('KyberDAO', function(accounts) {
         daoContract.handleWithdrawal(victor, mulPrecision(10), {from: daoOperator}),
         "only staking contract"
       );
-
-      await daoContract.handleWithdrawal(victor, 0, {from: mike});
     });
   });
 
