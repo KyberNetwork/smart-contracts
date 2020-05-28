@@ -623,8 +623,14 @@ async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, n
         reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, srcAdd, qty, true);
         hintedReservest2e = applyHintToReserves(hintType, reserveCandidates, numReserves);
         if(destAdd == ethAddress) {
-            return (await matchingEngine.buildTokenToEthHint(
-                hintedReservest2e.tradeType, hintedReservest2e.reservesForHint, hintedReservest2e.splits));
+            return (
+                await matchingEngine.buildTokenToEthHint(
+                    srcAdd,
+                    hintedReservest2e.tradeType,
+                    hintedReservest2e.reservesForHint,
+                    hintedReservest2e.splits
+                )
+            );
         }
     }
 
@@ -633,14 +639,26 @@ async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, n
         hintedReservese2t = applyHintToReserves(hintType, reserveCandidates, numReserves);
 
         if(srcAdd == ethAddress) {
-            return (await matchingEngine.buildEthToTokenHint(
-                hintedReservese2t.tradeType, hintedReservese2t.reservesForHint, hintedReservese2t.splits));
+            return (
+                await matchingEngine.buildEthToTokenHint(
+                    destAdd,
+                    hintedReservese2t.tradeType,
+                    hintedReservese2t.reservesForHint,
+                    hintedReservese2t.splits
+                )
+            );
         }
     }
 
     hint = await matchingEngine.buildTokenToTokenHint(
-        hintedReservest2e.tradeType, hintedReservest2e.reservesForHint, hintedReservest2e.splits,
-        hintedReservese2t.tradeType, hintedReservese2t.reservesForHint, hintedReservese2t.splits
+        srcAdd,
+        hintedReservest2e.tradeType,
+        hintedReservest2e.reservesForHint,
+        hintedReservest2e.splits,
+        destAdd,
+        hintedReservese2t.tradeType,
+        hintedReservese2t.reservesForHint,
+        hintedReservese2t.splits
     );
 
     return hint;

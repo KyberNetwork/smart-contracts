@@ -580,7 +580,11 @@ async function getHintedReserves(
         res.reservesT2E = nwHelper.applyHintToReserves(t2eHintType, reserveCandidates, t2eNumReserves, t2eSplits);
         if(destAdd == ethAddress) {
             res.hint = await matchingEngine.buildTokenToEthHint(
-                res.reservesT2E.tradeType, res.reservesT2E.reservesForHint, res.reservesT2E.splits);
+                srcAdd,
+                res.reservesT2E.tradeType,
+                res.reservesT2E.reservesForHint,
+                res.reservesT2E.splits
+            );
             return res;
         }
     }
@@ -590,14 +594,18 @@ async function getHintedReserves(
         res.reservesE2T = nwHelper.applyHintToReserves(e2tHintType, reserveCandidates, e2tNumReserves, e2tSplits);
         if(srcAdd == ethAddress) {
             res.hint = await matchingEngine.buildEthToTokenHint(
-                res.reservesE2T.tradeType, res.reservesE2T.reservesForHint, res.reservesE2T.splits);
+                destAdd,
+                res.reservesE2T.tradeType,
+                res.reservesE2T.reservesForHint,
+                res.reservesE2T.splits
+            );
             return res;
         }
     }
 
     res.hint = await matchingEngine.buildTokenToTokenHint(
-        res.reservesT2E.tradeType, res.reservesT2E.reservesForHint, res.reservesT2E.splits,
-        res.reservesE2T.tradeType, res.reservesE2T.reservesForHint, res.reservesE2T.splits
+        srcAdd, res.reservesT2E.tradeType, res.reservesT2E.reservesForHint, res.reservesT2E.splits,
+        destAdd, res.reservesE2T.tradeType, res.reservesE2T.reservesForHint, res.reservesE2T.splits
     );
 
     return res;

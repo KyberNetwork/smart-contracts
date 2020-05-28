@@ -426,3 +426,55 @@ module.exports.mineNewBlockAfter = async function(duration) {
     );
   });
 }
+
+module.exports.buildHint = function(tradeType) {
+  if (tradeType == 'SPLIT') {
+      return (tradeType, reserveIds, splits) => {
+          let sortedReserveIds = [];
+          let sortedSplits = [];
+      
+          reserveIds.map(function (v, i) {
+              return {
+                  id: v,
+                  split: splits[i],
+              };
+          }).sort(function (a, b) {
+              return ((a.id < b.id) ? -1 : ((a.id === b.id) ? 0 : 1));
+          }).forEach(function (v, i) {
+              sortedReserveIds[i] = v.id;
+              if (v.split) sortedSplits[i] = v.split.toString();
+          });
+      
+          return web3.eth.abi.encodeParameters(
+              ['uint8', 'bytes32[]', 'uint[]'],
+              [tradeType, sortedReserveIds, sortedSplits],
+          );
+      }
+  } else {
+      return (tradeType, reserveIds, splits) => {
+          return web3.eth.abi.encodeParameters(
+              ['uint8', 'bytes32[]', 'uint[]'],
+              [tradeType, reserveIds, splits],
+          );
+      }
+  }
+}
+
+module.exports.buildHintT2T = function(
+  t2eType,
+  t2eOpcode,
+  t2eReserveIds,
+  t2eSplits,
+  e2tType,
+  e2tOpcode,
+  e2tReserveIds,
+  e2tSplits
+) {
+  const t2eHint = this.buildHint(t2eType)(t2eOpcode, t2eReserveIds, t2eSplits);
+  const e2tHint = this.buildHint(e2tType)(e2tOpcode, e2tReserveIds, e2tSplits);
+
+  return web3.eth.abi.encodeParameters(
+      ['bytes', 'bytes'],
+      [t2eHint, e2tHint],
+  );
+}
