@@ -4,8 +4,8 @@ import "../EpochUtils.sol";
 import "../KyberStaking.sol";
 
 
-/// @notice Mock Malicious DAO tries to re-enter withdraw function in Staking
-contract MockMaliciousDaoReentrancy is EpochUtils {
+/// @notice Mock Malicious KyberDao tries to re-enter withdraw function in Staking
+contract MockMaliciousKyberDaoReentrancy is EpochUtils {
     KyberStaking public staking;
     IERC20 public knc;
 

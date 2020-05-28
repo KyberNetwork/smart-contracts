@@ -1,18 +1,18 @@
 pragma solidity 0.6.6;
 
-import "../KyberDAO.sol";
+import "../KyberDao.sol";
 
 
-/// @notice Mock Malicious Fee Handler tries to en-enter claim reward in DAO
+/// @notice Mock Malicious Fee Handler tries to en-enter claim reward in KyberDao
 contract MockMaliciousFeeHandlerReentrancy {
-    KyberDAO public dao;
+    KyberDao public kyberDao;
 
     uint256 public numberCalls;
 
     constructor() public {}
 
-    function setKyberDAO(KyberDAO _dao) public {
-        dao = _dao;
+    function setDaoContract(KyberDao _kyberDao) public {
+        kyberDao = _kyberDao;
     }
 
     function setNumberCalls(uint256 _numberCalls) public {
@@ -26,7 +26,7 @@ contract MockMaliciousFeeHandlerReentrancy {
     ) public returns (bool) {
         if (numberCalls > 0) {
             numberCalls--;
-            dao.claimReward(staker, epoch);
+            kyberDao.claimReward(staker, epoch);
         }
         return true;
     }

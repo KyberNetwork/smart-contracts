@@ -8,7 +8,7 @@ contract MockKyberStakingMalicious is KyberStaking {
         IERC20 _kncToken,
         uint256 _epochPeriod,
         uint256 _startBlock,
-        IKyberDAO _admin
+        IKyberDao _admin
     ) public KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) {}
 
     function setLatestStake(address staker, uint256 amount) public {
