@@ -439,7 +439,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param negligibleDiffBps Neligible rate difference (in basis pts) when searching best rate
     /// @param networkFeeBps Network fees to be charged (in basis pts)
     /// @param expiryTimestamp Timestamp for which networkFeeBps will expire,
-    ///     and needs to be updated by calling DAO contract / set to default
+    ///     and needs to be updated by calling kyberDao contract / set to default
     function getNetworkData()
         external
         view
@@ -487,7 +487,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         return isEnabled;
     }
 
-    /// @notice Gets network fee from the DAO (or use default).
+    /// @notice Gets network fee from the kyberDao (or use default).
     ///     For trade function, so that data can be updated and cached.
     /// @dev Note that this function can be triggered by anyone, so that
     ///     the first trader of a new epoch can avoid incurring extra gas costs
@@ -1040,7 +1040,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
     }
 
-    /// @notice Gets the network fee from the DAO (or use default). View function for getExpectedRate
+    /// @notice Gets the network fee from the kyberDao (or use default). View function for getExpectedRate
     function getNetworkFee() internal view returns (uint256 networkFeeBps) {
         uint256 expiryTimestamp;
         (networkFeeBps, expiryTimestamp) = readNetworkFeeData();
