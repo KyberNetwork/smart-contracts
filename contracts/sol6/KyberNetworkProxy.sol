@@ -10,7 +10,7 @@ import "./IKyberHint.sol";
 
 
 /**
- *   @title Kyber Network proxy for network contract
+ *   @title kyberProxy for kyberNetworkContract
  *   The contract provides the following functions:
  *   - Get rates
  *   - Trade execution
@@ -26,10 +26,10 @@ contract KyberNetworkProxy is
     using SafeERC20 for IERC20;
 
     IKyberNetwork public kyberNetwork;
-    IKyberHint public hintHandler; // hint handler pointer for users.
+    IKyberHint public kyberHintHandler; // kyberHintHhandler pointer for users.
 
-    event KyberNetworkSet(IKyberNetwork newNetwork, IKyberNetwork oldNetwork);
-    event HintHandlerSet(IKyberHint hintHandler);
+    event KyberNetworkSet(IKyberNetwork newKyberNetwork, IKyberNetwork oldKyberNetwork);
+    event KyberHintHandlerSet(IKyberHint kyberHintHandler);
 
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /*empty body*/
@@ -226,18 +226,18 @@ contract KyberNetworkProxy is
 
     function setKyberNetwork(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
-        require(_kyberNetwork != IKyberNetwork(0), "KyberNetwork 0");
+        require(_kyberNetwork != IKyberNetwork(0), "kyberNetwork 0");
         emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
 
         kyberNetwork = _kyberNetwork;
     }
 
-    function setHintHandler(IKyberHint _hintHandler) external {
+    function setHintHandler(IKyberHint _kyberHintHandler) external {
         onlyAdmin();
-        require(_hintHandler != IKyberHint(0), "hintHandler 0");
-        emit HintHandlerSet(_hintHandler);
+        require(_kyberHintHandler != IKyberHint(0), "kyberHintHandler 0");
+        emit KyberHintHandlerSet(_kyberHintHandler);
 
-        hintHandler = _hintHandler;
+        kyberHintHandler = _kyberHintHandler;
     }
 
     /// @notice Backward compatible function
@@ -340,7 +340,7 @@ contract KyberNetworkProxy is
 
         require(
             tradeOutcome.userDeltaDestToken == reportedDestAmount,
-            "network returned wrong amount"
+            "kyberNetwork returned wrong amount"
         );
         require(
             tradeOutcome.userDeltaDestToken <= maxDestAmount,

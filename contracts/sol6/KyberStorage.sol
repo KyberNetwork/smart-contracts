@@ -8,19 +8,20 @@ import "./utils/Utils5.sol";
 
 
 /**
- *   @title KyberStorage contract
- *   The contract provides the following functions for KyberNetwork contract:
- *   - Stores reserve and token listing information by the network
+ *   @title kyberStorage contract
+ *   The contract provides the following functions for kyberNetwork contract:
+ *   - Stores reserve and token listing information by the kyberNetwork
  *   - Stores feeAccounted data for reserve types
- *   - Record contract changes for reserves and network proxies
- *   - Points to historical contracts that record contract changes for network, feeHandler, KyberDao and matchingEngine
+ *   - Record contract changes for reserves and kyberProxies
+ *   - Points to historical contracts that record contract changes for kyberNetwork,
+ *        kyberFeeHandler, kyberDao and kyberMatchingEngine
  */
 contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     // store current and previous contracts
-    IKyberHistory public networkHistory;
-    IKyberHistory public feeHandlerHistory;
+    IKyberHistory public kyberNetworkHistory;
+    IKyberHistory public kyberFeeHandlerHistory;
     IKyberHistory public kyberDaoHistory;
-    IKyberHistory public matchingEngineHistory;
+    IKyberHistory public kyberMatchingEngineHistory;
 
     IKyberReserve[] internal reserves;
     IKyberNetworkProxy[] internal kyberProxyArray;
@@ -45,23 +46,23 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
     constructor(
         address _admin,
-        IKyberHistory _networkHistory,
-        IKyberHistory _feeHandlerHistory,
+        IKyberHistory _kyberNetworkHistory,
+        IKyberHistory _kyberFeeHandlerHistory,
         IKyberHistory _kyberDaoHistory,
-        IKyberHistory _matchingEngineHistory
+        IKyberHistory _kyberMatchingEngineHistory
     ) public PermissionGroupsNoModifiers(_admin) {
-        require(_networkHistory != IKyberHistory(0), "networkHistory 0");
-        require(_feeHandlerHistory != IKyberHistory(0), "feeHandlerHistory 0");
+        require(_kyberNetworkHistory != IKyberHistory(0), "kyberNetworkHistory 0");
+        require(_kyberFeeHandlerHistory != IKyberHistory(0), "kyberFeeHandlerHistory 0");
         require(_kyberDaoHistory != IKyberHistory(0), "kyberDaoHistory 0");
-        require(_matchingEngineHistory != IKyberHistory(0), "matchingEngineHistory 0");
+        require(_kyberMatchingEngineHistory != IKyberHistory(0), "kyberMatchingEngineHistory 0");
 
-        networkHistory = _networkHistory;
-        feeHandlerHistory = _feeHandlerHistory;
+        kyberNetworkHistory = _kyberNetworkHistory;
+        kyberFeeHandlerHistory = _kyberFeeHandlerHistory;
         kyberDaoHistory = _kyberDaoHistory;
-        matchingEngineHistory = _matchingEngineHistory;
+        kyberMatchingEngineHistory = _kyberMatchingEngineHistory;
     }
 
-    event KyberNetworkUpdated(IKyberNetwork newNetwork);
+    event KyberNetworkUpdated(IKyberNetwork newKyberNetwork);
     event RemoveReserveFromStorage(address indexed reserve, bytes32 indexed reserveId);
 
     event AddReserveToStorage(
@@ -87,9 +88,9 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
     function setNetworkContract(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
-        require(_kyberNetwork != IKyberNetwork(0), "network 0");
+        require(_kyberNetwork != IKyberNetwork(0), "kyberNetwork 0");
         emit KyberNetworkUpdated(_kyberNetwork);
-        networkHistory.saveContract(address(_kyberNetwork));
+        kyberNetworkHistory.saveContract(address(_kyberNetwork));
         kyberNetwork = _kyberNetwork;
     }
 
@@ -104,16 +105,16 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         emit ReserveRebateWalletSet(reserveId, rebateWallet);
     }
 
-    function setContracts(address _feeHandler, address _matchingEngine)
+    function setContracts(address _kyberFeeHandler, address _kyberMatchingEngine)
         external
         override
     {
         onlyNetwork();
-        require(_feeHandler != address(0), "feeHandler 0");
-        require(_matchingEngine != address(0), "matchingEngine 0");
+        require(_kyberFeeHandler != address(0), "kyberFeeHandler 0");
+        require(_kyberMatchingEngine != address(0), "kyberMatchingEngine 0");
 
-        feeHandlerHistory.saveContract(_feeHandler);
-        matchingEngineHistory.saveContract(_matchingEngine);
+        kyberFeeHandlerHistory.saveContract(_kyberFeeHandler);
+        kyberMatchingEngineHistory.saveContract(_kyberMatchingEngine);
     }
 
     function setKyberDaoContract(address _kyberDao) external override {
@@ -245,29 +246,29 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     }
 
     /// @dev No. of KyberNetworkProxies are capped
-    function addKyberProxy(address networkProxy, uint256 maxApprovedProxies)
+    function addKyberProxy(address kyberProxy, uint256 maxApprovedProxies)
         external
         override
     {
         onlyNetwork();
-        require(networkProxy != address(0), "proxy 0");
-        require(kyberProxyArray.length < maxApprovedProxies, "max proxies limit reached");
+        require(kyberProxy != address(0), "kyberProxy 0");
+        require(kyberProxyArray.length < maxApprovedProxies, "max kyberProxies limit reached");
 
-        kyberProxyArray.push(IKyberNetworkProxy(networkProxy));
+        kyberProxyArray.push(IKyberNetworkProxy(kyberProxy));
     }
 
-    function removeKyberProxy(address networkProxy) external override {
+    function removeKyberProxy(address kyberProxy) external override {
         onlyNetwork();
         uint256 proxyIndex = 2**255;
 
         for (uint256 i = 0; i < kyberProxyArray.length; i++) {
-            if (kyberProxyArray[i] == IKyberNetworkProxy(networkProxy)) {
+            if (kyberProxyArray[i] == IKyberNetworkProxy(kyberProxy)) {
                 proxyIndex = i;
                 break;
             }
         }
 
-        require(proxyIndex != 2**255, "proxy not found");
+        require(proxyIndex != 2**255, "kyberProxy not found");
         kyberProxyArray[proxyIndex] = kyberProxyArray[kyberProxyArray.length - 1];
         kyberProxyArray.pop();
     }
@@ -440,7 +441,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     }
 
     /// @notice Should be called off chain
-    /// @dev Returns list of KyberDao, feeHandler, matchingEngine and previous network contracts
+    /// @dev Returns list of kyberDao, kyberFeeHandler, kyberMatchingEngine and kyberNetwork contracts
     /// @dev Index 0 is currently used contract address, indexes > 0 are older versions
     function getContracts()
         external
@@ -453,9 +454,9 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         )
     {
         daoAddresses = kyberDaoHistory.getContracts();
-        feeHandlerAddresses = feeHandlerHistory.getContracts();
-        matchingEngineAddresses = matchingEngineHistory.getContracts();
-        previousNetworkContracts = networkHistory.getContracts();
+        feeHandlerAddresses = kyberFeeHandlerHistory.getContracts();
+        matchingEngineAddresses = kyberMatchingEngineHistory.getContracts();
+        previousNetworkContracts = kyberNetworkHistory.getContracts();
     }
 
     /// @notice Should be called off chain
@@ -669,6 +670,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     }
 
     function onlyNetwork() internal view {
-        require(msg.sender == address(kyberNetwork), "only network");
+        require(msg.sender == address(kyberNetwork), "only kyberNetwork");
     }
 }

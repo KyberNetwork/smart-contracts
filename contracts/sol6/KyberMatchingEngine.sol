@@ -8,7 +8,7 @@ import "./IKyberStorage.sol";
 
 
 /**
- *   @title Kyber matching engine contract
+ *   @title kyberMatchingEngine contract
  *   During getExpectedRate flow and trade flow this contract is called for:
  *       - parsing hint and returning reserve list (function getTradingReserves)
  *       - matching best reserves to trade with (function doMatch)
@@ -24,8 +24,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
     uint256 negligibleRateDiffBps = 5; // 1 bps is 0.01%
 
-    event KyberStorageUpdated(IKyberStorage newStorage);
-    event KyberNetworkUpdated(IKyberNetwork newNetwork);
+    event KyberStorageUpdated(IKyberStorage newKyberStorage);
+    event KyberNetworkUpdated(IKyberNetwork newKyberNetwork);
 
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /* empty body */
@@ -49,7 +49,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
     function setNetworkContract(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
-        require(_kyberNetwork != IKyberNetwork(0), "network 0");
+        require(_kyberNetwork != IKyberNetwork(0), "kyberNetwork 0");
         emit KyberNetworkUpdated(_kyberNetwork);
         kyberNetwork = _kyberNetwork;
     }
@@ -130,8 +130,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     /// @dev Returns the indexes of the best rate from the rates array for the t2e or e2t side
-    /// @param src Source token (not needed in this matchingEngine version)
-    /// @param dest Destination token (not needed in this matchingEngine version)
+    /// @param src Source token (not needed in this kyberMatchingEngine version)
+    /// @param dest Destination token (not needed in this kyberMatchingEngine version)
     /// @param srcAmounts Array of srcAmounts after deducting fees.
     /// @param feesAccountedDestBps Fees charged in BPS, to be deducted from calculated destAmount
     /// @param rates Rates queried from reserves
@@ -246,7 +246,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     function onlyNetwork() internal view {
-        require(msg.sender == address(kyberNetwork), "only network");
+        require(msg.sender == address(kyberNetwork), "only kyberNetwork");
     }
 
     function populateSplitValuesBps(uint256 length)

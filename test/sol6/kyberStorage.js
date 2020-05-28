@@ -21,10 +21,10 @@ let txResult;
 let admin;
 let operator;
 let network;
-let networkHistory;
-let feeHandlerHistory;
+let kyberNetworkHistory;
+let kyberFeeHandlerHistory;
 let kyberDaoHistory;
-let matchingEngineHistory;
+let kyberMatchingEngineHistory;
 let kyberStorage;
 let user;
 let feeHandlerAddr;
@@ -54,35 +54,35 @@ contract('KyberStorage', function(accounts) {
 
     describe("test init reverts with null historical address", async() => {
         before("deploy historical contracts", async() => {
-            networkHistory = await KyberHistory.new(admin);
-            feeHandlerHistory = await KyberHistory.new(admin);
+            kyberNetworkHistory = await KyberHistory.new(admin);
+            kyberFeeHandlerHistory = await KyberHistory.new(admin);
             kyberDaoHistory = await KyberHistory.new(admin);
-            matchingEngineHistory = await KyberHistory.new(admin);
+            kyberMatchingEngineHistory = await KyberHistory.new(admin);
         });
 
-        it("should revert for null networkHistory address", async() => {
+        it("should revert for null kyberNetworkHistory address", async() => {
             await expectRevert(
                 KyberStorage.new(
                     admin,
                     zeroAddress,
-                    feeHandlerHistory.address,
+                    kyberFeeHandlerHistory.address,
                     kyberDaoHistory.address,
-                    matchingEngineHistory.address
+                    kyberMatchingEngineHistory.address
                 ),
-                "networkHistory 0"
+                "kyberNetworkHistory 0"
             );
         });
 
-        it("should revert for null feeHandlerHistory address", async() => {
+        it("should revert for null kyberFeeHandlerHistory address", async() => {
             await expectRevert(
                 KyberStorage.new(
                     admin,
-                    networkHistory.address,
+                    kyberNetworkHistory.address,
                     zeroAddress,
                     kyberDaoHistory.address,
-                    matchingEngineHistory.address
+                    kyberMatchingEngineHistory.address
                 ),
-                "feeHandlerHistory 0"
+                "kyberFeeHandlerHistory 0"
             );
         });
 
@@ -90,25 +90,25 @@ contract('KyberStorage', function(accounts) {
             await expectRevert(
                 KyberStorage.new(
                     admin,
-                    networkHistory.address,
-                    feeHandlerHistory.address,
+                    kyberNetworkHistory.address,
+                    kyberFeeHandlerHistory.address,
                     zeroAddress,
-                    matchingEngineHistory.address
+                    kyberMatchingEngineHistory.address
                 ),
                 "kyberDaoHistory 0"
             );
         });
 
-        it("should revert for null matchingEngineHistory address", async() => {
+        it("should revert for null kyberMatchingEngineHistory address", async() => {
             await expectRevert(
                 KyberStorage.new(
                     admin,
-                    networkHistory.address,
-                    feeHandlerHistory.address,
+                    kyberNetworkHistory.address,
+                    kyberFeeHandlerHistory.address,
                     kyberDaoHistory.address,
                     zeroAddress
                 ),
-                "matchingEngineHistory 0"
+                "kyberMatchingEngineHistory 0"
             );
         });
     });
@@ -229,11 +229,11 @@ contract('KyberStorage', function(accounts) {
             );
 
             await expectRevert(
-                kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: operator}), "only network"
+                kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: operator}), "only kyberNetwork"
             );
 
             await expectRevert(
-                kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: admin}), "only network"
+                kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: admin}), "only kyberNetwork"
             );
         });
 
@@ -261,7 +261,7 @@ contract('KyberStorage', function(accounts) {
         it("shoud test set network event", async() => {
             txResult = await kyberStorage.setNetworkContract(network.address, {from: admin});
             expectEvent(txResult, "KyberNetworkUpdated", {
-                newNetwork: network.address
+                newKyberNetwork: network.address
             });
         });
 
@@ -382,20 +382,20 @@ contract('KyberStorage', function(accounts) {
         it("should revert setting zero address for network", async() => {
             await expectRevert(
                 kyberStorage.setNetworkContract(zeroAddress, {from: admin}),
-                "network 0");
+                "kyberNetwork 0");
         });
 
         it("set empty fee handler contract", async function(){
             await expectRevert(
                 kyberStorage.setContracts(zeroAddress, matchingEngineAddr, {from: network}),
-                "feeHandler 0"
+                "kyberFeeHandler 0"
             );
         });
 
         it("set empty matching engine contract", async function(){
             await expectRevert(
                 kyberStorage.setContracts(feeHandlerAddr, zeroAddress, {from: network}),
-                "matchingEngine 0"
+                "kyberMatchingEngine 0"
             );
         });
 
@@ -446,7 +446,7 @@ contract('KyberStorage', function(accounts) {
 
             await expectRevert(
                 kyberStorage.addKyberProxy(proxy3, maxProxies, {from: network}),
-                "max proxies limit reached"
+                "max kyberProxies limit reached"
             );
 
             proxies = await kyberStorage.getKyberProxies();
@@ -457,7 +457,7 @@ contract('KyberStorage', function(accounts) {
             await kyberStorage.addKyberProxy(proxy2, maxProxies, {from: network});
             await expectRevert(
                 kyberStorage.removeKyberProxy(proxy1, {from: network}),
-                "proxy not found"
+                "kyberProxy not found"
             );
             await kyberStorage.addKyberProxy(proxy1, maxProxies, {from: network});
             await kyberStorage.removeKyberProxy(proxy1, {from: network});
@@ -466,14 +466,14 @@ contract('KyberStorage', function(accounts) {
         it("test only admin can add proxies", async() => {
             await expectRevert(
                 kyberStorage.addKyberProxy(proxy1, new BN(100), {from: accounts[0]}),
-                "only network"
+                "only kyberNetwork"
             );
         });
 
         it("test can't add proxy zero address", async() => {
             await expectRevert(
                 kyberStorage.addKyberProxy(zeroAddress, maxProxies, {from: network}),
-                "proxy 0"
+                "kyberProxy 0"
             );
         });
     });
@@ -813,21 +813,21 @@ contract('KyberStorage', function(accounts) {
         });
 
         it("should revert if reserveId is 0 when removing reserve", async() => {
-            networkHistory = await KyberHistory.new(admin);
-            feeHandlerHistory = await KyberHistory.new(admin);
+            kyberNetworkHistory = await KyberHistory.new(admin);
+            kyberFeeHandlerHistory = await KyberHistory.new(admin);
             kyberDaoHistory = await KyberHistory.new(admin);
-            matchingEngineHistory = await KyberHistory.new(admin);
+            kyberMatchingEngineHistory = await KyberHistory.new(admin);
             let mockStorage = await MockStorage.new(
                 admin,
-                networkHistory.address,
-                feeHandlerHistory.address,
+                kyberNetworkHistory.address,
+                kyberFeeHandlerHistory.address,
                 kyberDaoHistory.address,
-                matchingEngineHistory.address,
+                kyberMatchingEngineHistory.address,
                 );
-            await networkHistory.setStorageContract(mockStorage.address, {from: admin});
-            await feeHandlerHistory.setStorageContract(mockStorage.address, {from: admin});
+            await kyberNetworkHistory.setStorageContract(mockStorage.address, {from: admin});
+            await kyberFeeHandlerHistory.setStorageContract(mockStorage.address, {from: admin});
             await kyberDaoHistory.setStorageContract(mockStorage.address, {from: admin});
-            await matchingEngineHistory.setStorageContract(mockStorage.address, {from: admin});
+            await kyberMatchingEngineHistory.setStorageContract(mockStorage.address, {from: admin});
             let mockNetwork = await KyberNetwork.new(admin, mockStorage.address);
             await mockStorage.addOperator(operator, {from: admin});
             await mockStorage.setNetworkContract(mockNetwork.address, {from: admin});

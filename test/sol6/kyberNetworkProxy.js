@@ -661,27 +661,27 @@ contract('KyberNetworkProxy', function(accounts) {
         it("test reading public values", async () => {
             let networkAddr = await networkProxy.kyberNetwork();
             assert(networkAddr == network.address, "missmatch network address");
-            let hintHandlerAddr = await networkProxy.hintHandler();
-            assert(hintHandlerAddr == matchingEngine.address, "missmatch network address");
+            let hintHandlerAddr = await networkProxy.kyberHintHandler();
+            assert(hintHandlerAddr == matchingEngine.address, "missmatch hint handler address");
         });
     });
 
     describe("test events", async () => {
-        it("HintHandlerSet", async () => {
+        it("KyberHintHandlerSet", async () => {
             let newHintHandler = await MatchingEngine.new(admin);
             let txResult = await networkProxy.setHintHandler(newHintHandler.address, { from: admin });
-            await expectEvent(txResult, "HintHandlerSet", {
-                hintHandler: newHintHandler.address
+            await expectEvent(txResult, "KyberHintHandlerSet", {
+                kyberHintHandler: newHintHandler.address
             });
             await networkProxy.setHintHandler(matchingEngine.address, { from: admin });
         });
 
         it("KyberNetworkSet", async () => {
             let tempStorage = await nwHelper.setupStorage(admin);
-            let newNetWork = await KyberNetwork.new(admin, tempStorage.address);
-            let txResult = await networkProxy.setKyberNetwork(newNetWork.address, { from: admin });
+            let newKyberNetwork = await KyberNetwork.new(admin, tempStorage.address);
+            let txResult = await networkProxy.setKyberNetwork(newKyberNetwork.address, { from: admin });
             await expectEvent(txResult, "KyberNetworkSet", {
-                newNetwork: newNetWork.address, oldNetwork: network.address,
+                newKyberNetwork: newKyberNetwork.address, oldKyberNetwork: network.address,
             })
             await networkProxy.setKyberNetwork(network.address, { from: admin });
         });
@@ -718,11 +718,11 @@ contract('KyberNetworkProxy', function(accounts) {
 
     describe("test reverting when using contract zero address", async () => {
         it("test set network to zero address", async () => {
-            await expectRevert(networkProxy.setKyberNetwork(zeroAddress, { from: admin }), "KyberNetwork 0");
+            await expectRevert(networkProxy.setKyberNetwork(zeroAddress, { from: admin }), "kyberNetwork 0");
         });
 
         it("test set hint handler to zero address", async () => {
-            await expectRevert(networkProxy.setHintHandler(zeroAddress, { from: admin }), "hintHandler 0");
+            await expectRevert(networkProxy.setHintHandler(zeroAddress, { from: admin }), "kyberHintHandler 0");
         });
     });
 
@@ -874,7 +874,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     zeroAddress,
                     { from: taker }
-                ), "network returned wrong amount"
+                ), "kyberNetwork returned wrong amount"
             );
             // change the amount and see trade success
             await networkProxy.trade(

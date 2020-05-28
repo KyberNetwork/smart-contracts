@@ -114,17 +114,17 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should not have unauthorized personnel set negligble rate diff bps", async() => {
             await expectRevert(
                 matchingEngine.setNegligibleRateDiffBps(negligibleRateDiffBps, {from: user}),
-                "only network"
+                "only kyberNetwork"
             );
 
             await expectRevert(
                 matchingEngine.setNegligibleRateDiffBps(negligibleRateDiffBps, {from: operator}),
-                "only network"
+                "only kyberNetwork"
             );
 
             await expectRevert(
                 matchingEngine.setNegligibleRateDiffBps(negligibleRateDiffBps, {from: admin}),
-                "only network"
+                "only kyberNetwork"
             );
         });
 
@@ -172,7 +172,7 @@ contract('KyberMatchingEngine', function(accounts) {
         it("shoud test set network event", async() => {
             txResult = await matchingEngine.setNetworkContract(network, {from: admin});
             expectEvent(txResult, "KyberNetworkUpdated", {
-                newNetwork: network
+                newKyberNetwork: network
             });
         });
 
@@ -180,7 +180,7 @@ contract('KyberMatchingEngine', function(accounts) {
             await matchingEngine.setNetworkContract(network, {from: admin});
             txResult = await matchingEngine.setKyberStorage(storage.address, {from: admin});
             expectEvent(txResult, "KyberStorageUpdated", {
-                newStorage: storage.address
+                newKyberStorage: storage.address
             });
         });
     });
@@ -201,7 +201,7 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should revert setting zero address for network", async() => {
             await expectRevert(
                 matchingEngine.setNetworkContract(zeroAddress, {from: admin}),
-                "network 0"
+                "kyberNetwork 0"
             );
         });
     });

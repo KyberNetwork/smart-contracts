@@ -14,13 +14,13 @@ import "./IGasHelper.sol";
 
 
 /**
- *   @title Kyber Network main contract
+ *   @title kyberNetwork main contract
  *   Interacts with contracts:
- *       KyberDao: to retrieve fee data
- *       KyberFeeHandler: accumulates and distributes trade fees
- *       KyberMatchingEngine: parse user hint and run reserve matching algorithm
- *       KyberStorage: store / access reserves, token listings and contract addresses
- *       Kyber Reserves: query rate and trade.
+ *       kyberDao: to retrieve fee data
+ *       kyberFeeHandler: accumulates and distributes trade fees
+ *       kyberMatchingEngine: parse user hint and run reserve matching algorithm
+ *       kyberStorage: store / access reserves, token listings and contract addresses
+ *       kyberReserve: query rate and trade
  */
 contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -59,7 +59,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param tradeWei Trade amount in ether wei, before deducting fees.
     /// @param networkFeeWei Network fee in ether wei. For t2t trades, it can go up to 200% of networkFeeBps
     /// @param platformFeeWei Platform fee in ether wei
-    /// @param networkFeeBps Network fee bps determined by KyberDao, or default value
+    /// @param networkFeeBps Network fee bps determined by kyberDao, or default value
     /// @param numEntitledRebateReserves No. of reserves that are eligible for rebates
     /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * BPS
     /// @param entitledRebateBps Proportion of reserves entitled for rebate, in BPS. Up to 2 * BPS
@@ -91,12 +91,12 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     uint256 internal constant PERM_HINT_GET_RATE = 1 << 255; // for backwards compatibility
-    uint256 internal constant DEFAULT_NETWORK_FEE_BPS = 25; // till we read value from KyberDao
-    uint256 internal constant MAX_APPROVED_PROXIES = 2; // limit number of proxies that can trade here.
+    uint256 internal constant DEFAULT_NETWORK_FEE_BPS = 25; // till we read value from kyberDao
+    uint256 internal constant MAX_APPROVED_PROXIES = 2; // limit number of proxies that can trade here
 
-    IKyberFeeHandler internal feeHandler;
-    IKyberDao internal kyberDao;
-    IKyberMatchingEngine internal matchingEngine;
+    IKyberFeeHandler internal kyberFeeHandler;
+    IKyberDAO internal kyberDao;
+    IKyberMatchingEngine internal kyberMatchingEngine;
     IKyberStorage internal kyberStorage;
     IGasHelper internal gasHelper;
 
@@ -107,14 +107,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     mapping(address => bool) internal kyberProxyContracts;
 
     event EtherReceival(address indexed sender, uint256 amount);
-    event FeeHandlerUpdated(IKyberFeeHandler newHandler);
-    event MatchingEngineUpdated(IKyberMatchingEngine matchingEngine);
-    event GasHelperUpdated(IGasHelper gasHelper);
-    event KyberDaoUpdated(IKyberDao newKyberDao);
+    event KyberFeeHandlerUpdated(IKyberFeeHandler newKyberFeeHandler);
+    event KyberMatchingEngineUpdated(IKyberMatchingEngine newKyberMatchingEngine);
+    event GasHelperUpdated(IGasHelper newGasHelper);
+    event KyberDaoUpdated(IKyberDAO newKyberDao);
     event KyberNetworkParamsSet(uint256 maxGasPrice, uint256 negligibleRateDiffBps);
     event KyberNetworkSetEnable(bool isEnabled);
-    event KyberProxyAdded(address proxy);
-    event KyberProxyRemoved(address proxy);
+    event KyberProxyAdded(address kyberProxy);
+    event KyberProxyRemoved(address kyberProxy);
 
     event ListedReservesForToken(
         IERC20 indexed token,
@@ -213,7 +213,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         return trade(tradeData, hint);
     }
 
-    /// @notice Can be called only by storage
+    /// @notice Can be called only by kyberStorage
     /// @dev Allow or prevent to trade token -> eth for a reserve
     /// @param reserve The reserve address
     /// @param token Token address
@@ -223,7 +223,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         IERC20 token,
         bool add
     ) external override {
-        require(msg.sender == address(kyberStorage), "only kyber storage");
+        require(msg.sender == address(kyberStorage), "only kyberStorage");
 
         if (add) {
             token.safeApprove(reserve, 2**255);
@@ -275,20 +275,20 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     function setContracts(
-        IKyberFeeHandler _feeHandler,
-        IKyberMatchingEngine _matchingEngine,
+        IKyberFeeHandler _kyberFeeHandler,
+        IKyberMatchingEngine _kyberMatchingEngine,
         IGasHelper _gasHelper
     ) external virtual {
         onlyAdmin();
 
-        if (feeHandler != _feeHandler) {
-            feeHandler = _feeHandler;
-            emit FeeHandlerUpdated(_feeHandler);
+        if (kyberFeeHandler != _kyberFeeHandler) {
+            kyberFeeHandler = _kyberFeeHandler;
+            emit KyberFeeHandlerUpdated(_kyberFeeHandler);
         }
 
-        if (matchingEngine != _matchingEngine) {
-            matchingEngine = _matchingEngine;
-            emit MatchingEngineUpdated(_matchingEngine);
+        if (kyberMatchingEngine != _kyberMatchingEngine) {
+            kyberMatchingEngine = _kyberMatchingEngine;
+            emit KyberMatchingEngineUpdated(_kyberMatchingEngine);
         }
 
         if ((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
@@ -296,13 +296,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             emit GasHelperUpdated(_gasHelper);
         }
 
-        kyberStorage.setContracts(address(_feeHandler), address(_matchingEngine));
-        require(_feeHandler != IKyberFeeHandler(0));
-        require(_matchingEngine != IKyberMatchingEngine(0));
+        kyberStorage.setContracts(address(_kyberFeeHandler), address(_kyberMatchingEngine));
+        require(_kyberFeeHandler != IKyberFeeHandler(0));
+        require(_kyberMatchingEngine != IKyberMatchingEngine(0));
     }
 
     function setKyberDaoContract(IKyberDao _kyberDao) external {
-        // enable setting 0 address KyberDao.
+        // enable setting null kyberDao address
         onlyAdmin();
         if (kyberDao != _kyberDao) {
             kyberDao = _kyberDao;
@@ -314,7 +314,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     function setParams(uint256 _maxGasPrice, uint256 _negligibleRateDiffBps) external {
         onlyAdmin();
         maxGasPriceValue = _maxGasPrice;
-        matchingEngine.setNegligibleRateDiffBps(_negligibleRateDiffBps);
+        kyberMatchingEngine.setNegligibleRateDiffBps(_negligibleRateDiffBps);
         emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
     }
 
@@ -322,8 +322,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         onlyAdmin();
 
         if (enable) {
-            require(feeHandler != IKyberFeeHandler(0));
-            require(matchingEngine != IKyberMatchingEngine(0));
+            require(kyberFeeHandler != IKyberFeeHandler(0));
+            require(kyberMatchingEngine != IKyberMatchingEngine(0));
             require(kyberStorage.isKyberProxyAdded());
         }
 
@@ -332,28 +332,28 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         emit KyberNetworkSetEnable(isEnabled);
     }
 
-    /// @dev No. of KyberNetworkProxies is capped
-    function addKyberProxy(address networkProxy) external virtual {
+    /// @dev No. of kyberProxies is capped
+    function addKyberProxy(address kyberProxy) external virtual {
         onlyAdmin();
-        kyberStorage.addKyberProxy(networkProxy, MAX_APPROVED_PROXIES);
-        require(networkProxy != address(0));
-        require(!kyberProxyContracts[networkProxy]);
+        kyberStorage.addKyberProxy(kyberProxy, MAX_APPROVED_PROXIES);
+        require(kyberProxy != address(0));
+        require(!kyberProxyContracts[kyberProxy]);
 
-        kyberProxyContracts[networkProxy] = true;
+        kyberProxyContracts[kyberProxy] = true;
 
-        emit KyberProxyAdded(networkProxy);
+        emit KyberProxyAdded(kyberProxy);
     }
 
-    function removeKyberProxy(address networkProxy) external virtual {
+    function removeKyberProxy(address kyberProxy) external virtual {
         onlyAdmin();
 
-        kyberStorage.removeKyberProxy(networkProxy);
+        kyberStorage.removeKyberProxy(kyberProxy);
 
-        require(kyberProxyContracts[networkProxy]);
+        require(kyberProxyContracts[kyberProxy]);
 
-        kyberProxyContracts[networkProxy] = false;
+        kyberProxyContracts[kyberProxy] = false;
 
-        emit KyberProxyRemoved(networkProxy);
+        emit KyberProxyRemoved(kyberProxy);
     }
 
     /// @dev gets the expected rates when trading src -> dest token, with / without fees
@@ -457,7 +457,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         )
     {
         (networkFeeBps, expiryTimestamp) = readNetworkFeeData();
-        negligibleDiffBps = matchingEngine.getNegligibleRateDiffBps();
+        negligibleDiffBps = kyberMatchingEngine.getNegligibleRateDiffBps();
         return (negligibleDiffBps, networkFeeBps, expiryTimestamp);
     }
 
@@ -465,18 +465,18 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         external
         view
         returns (
-            IKyberFeeHandler feeHandlerAddress,
-            IKyberDao daoAddress,
-            IKyberMatchingEngine matchingEngineAddress,
-            IKyberStorage storageAddress,
+            IKyberFeeHandler kyberFeeHandlerAddress,
+            IKyberDAO kyberDaoAddress,
+            IKyberMatchingEngine kyberMatchingEngineAddress,
+            IKyberStorage kyberStorageAddress,
             IGasHelper gasHelperAddress,
-            IKyberNetworkProxy[] memory proxyAddresses
+            IKyberNetworkProxy[] memory kyberProxyAddresses
         )
     {
         return (
-            feeHandler,
+            kyberFeeHandler,
             kyberDao,
-            matchingEngine,
+            kyberMatchingEngine,
             kyberStorage,
             gasHelper,
             kyberStorage.getKyberProxies()
@@ -509,7 +509,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Calculates platform fee and reserve rebate percentages for the trade.
-    ///     Transfers ETH and rebate wallet data to feeHandler
+    ///     Transfers ETH and rebate wallet data to kyberFeeHandler
     function handleFees(TradeData memory tradeData) internal {
         uint256 sentFee = tradeData.networkFeeWei + tradeData.platformFeeWei;
         //no need to handle fees if total fee is zero
@@ -523,7 +523,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         ) = calculateRebates(tradeData);
 
         // send total fee amount to fee handler with reserve data
-        feeHandler.handleFees{value: sentFee}(
+        kyberFeeHandler.handleFees{value: sentFee}(
             rebateWallets,
             rebatePercentBps,
             tradeData.input.platformWallet,
@@ -639,7 +639,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev Trade API for kyber network
+    /// @dev Trade API for kyberNetwork
     /// @param tradeData Main trade data object for trade info to be stored
     function trade(TradeData memory tradeData, bytes memory hint)
         internal
@@ -669,17 +669,15 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
 
         // token to ether
-        require(
-            doReserveTrades(
-                tradeData.input.src,
-                ETH_TOKEN_ADDRESS,
-                address(this),
-                tradeData.tokenToEth,
-                tradeData.tradeWei,
-                tradeData.tokenToEth.decimals,
-                ETH_DECIMALS
-            )
-        ); 
+        doReserveTrades(
+            tradeData.input.src,
+            ETH_TOKEN_ADDRESS,
+            address(this),
+            tradeData.tokenToEth,
+            tradeData.tradeWei,
+            tradeData.tokenToEth.decimals,
+            ETH_DECIMALS
+        );
 
         // ether to token
         doReserveTrades(
@@ -778,7 +776,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         tradeData.ethToToken.decimals = getDecimals(dest);
     }
 
-    /// @notice Calls matching engine that determines all the information necessary for the trade
+    /// @notice Calls kyberMatchingEngine that determines all the information necessary for the trade
     ///     (to be stored in tradeData) such as what reserves were selected (their addresses and ids),
     ///     what rates they offer, fee paying information, tradeWei amount,
     ///     network fee, platform fee, etc. WITHOUT accounting for maxDestAmount.
@@ -860,9 +858,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         IKyberMatchingEngine.ProcessWithRate processWithRate;
 
-        // get reserve list from matching engine.
+        // get reserve list from kyberMatchingEngine
         (reservesData.ids, reservesData.splitsBps, processWithRate) =
-            matchingEngine.getTradingReserves(
+            kyberMatchingEngine.getTradingReserves(
             src,
             dest,
             (tradeData.input.src != ETH_TOKEN_ADDRESS) && (tradeData.input.dest != ETH_TOKEN_ADDRESS),
@@ -891,9 +889,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             tradeData
         );
 
-        // if matching engine requires processing with rate data. call do match and update reserve list
+        // if matching engine requires processing with rate data. call doMatch and update reserve list
         if (processWithRate == IKyberMatchingEngine.ProcessWithRate.Required) {
-            uint256[] memory selectedIndexes = matchingEngine.doMatch(
+            uint256[] memory selectedIndexes = kyberMatchingEngine.doMatch(
                 src,
                 dest,
                 reservesData.srcAmounts,
@@ -1056,7 +1054,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(input.platformFeeBps + networkFeeBps + networkFeeBps < BPS, "fees high");
     }
 
-    /// @notice Update reserve data with selected reserves from matching engine
+    /// @notice Update reserve data with selected reserves from kyberMatchingEngine
     function updateReservesList(ReservesData memory reservesData, uint256[] memory selectedIndexes)
         internal
         pure
@@ -1236,7 +1234,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
             newSrcAmount += newSrcAmounts[i];
         }
-        // new src amounts are used only when any of them isn't greater then current srcAmount.
+        // new src amounts are used only when all of them aren't greater then current srcAmounts
         reservesData.srcAmounts = newSrcAmounts;
     }
 }
