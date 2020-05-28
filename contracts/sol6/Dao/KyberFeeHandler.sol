@@ -2,7 +2,7 @@ pragma solidity 0.6.6;
 
 import "../utils/Utils5.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
-import "../IKyberDAO.sol";
+import "../IKyberDao.sol";
 import "../IKyberFeeHandler.sol";
 import "../IKyberNetworkProxy.sol";
 import "../ISimpleKyberProxy.sol";
@@ -15,11 +15,11 @@ import "./DaoOperator.sol";
 /**
  * @title Kyber fee handler
  *
- * @dev Kyber fee Handler works tightly with contracts KyberNetwork and KyberDAO.
+ * @dev Kyber fee Handler works tightly with contracts KyberNetwork and KyberDao.
  *      Some events are moved to interface, easier for public uses
  * @dev Terminology:
- *          Epoch - DAO Voting campaign time frame.
- *              Kyber DAO voting campaigns have pre defined time period defined in number of blocks.
+ *          Epoch - KyberDao Voting campaign time frame.
+ *              KyberDao voting campaigns have pre defined time period defined in number of blocks.
  *          BRR - Burn / Reward / Rebate. Kyber network fee is used for 3 purposes:
  *              Burning KNC
  *              Reward addresse that stake KNC in KyberStaking contract. AKA - stakers
@@ -27,12 +27,12 @@ import "./DaoOperator.sol";
  * @dev Code flow:
  *      1. Accumulating && claiming Fees. Per trade on KyberNetwork, it calls handleFees() function which
  *          internally accounts for network & platform fees from the trade. Fee distribution:
- *              rewards: accumulated per epoch. can be claimed by the DAO after epoch is concluded.
+ *              rewards: accumulated per epoch. can be claimed by the KyberDao after epoch is concluded.
  *              rebates: accumulated per rebate wallet, can be claimed any time.
  *              Burn: accumulated in the contract. Burned value and interval limited with safe check using sanity rate
  *              Platfrom fee: accumulated per platform wallet, can be claimed any time.
- *      2. Network Fee distribution. per epoch Kyber fee Handler reads current distribution from Kyber DAO.
- *          Expiry timestamp for data is set. when data expires. Fee handler reads new data from DAO.
+ *      2. Network Fee distribution. per epoch Kyber fee Handler reads current distribution from KyberDao.
+ *          Expiry timestamp for data is set. when data expires. Fee handler reads new data from KyberDao.
  */
 
 interface IKyberProxy is ISimpleKyberProxy, IKyberNetworkProxy { }
@@ -51,7 +51,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         uint16 rebateBps;
     }
 
-    IKyberDAO public kyberDAO;
+    IKyberDao public kyberDao;
     IKyberProxy public networkProxy;
     address public kyberNetwork;
     IERC20 public immutable knc;
@@ -94,7 +94,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     );
 
     event EthReceived(uint256 amount);
-    event KyberDaoAddressSet(IKyberDAO kyberDAO);
+    event KyberDaoAddressSet(IKyberDao kyberDao);
     event BurnConfigSet(ISanityRate sanityRate, uint256 weiToBurn);
     event RewardsRemovedToBurn(uint256 indexed epoch, uint256 rewardsWei);
     event KyberNetworkUpdated(address kyberNetwork);
@@ -124,8 +124,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         updateBRRData(DEFAULT_REWARD_BPS, DEFAULT_REBATE_BPS, now, 0);
     }
 
-    modifier onlyDAO {
-        require(msg.sender == address(kyberDAO), "only DAO");
+    modifier onlyKyberDao {
+        require(msg.sender == address(kyberDao), "only KyberDao");
         _;
     }
 
@@ -215,7 +215,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         address staker,
         uint256 percentageInPrecision,
         uint256 epoch
-    ) external override onlyDAO {
+    ) external override onlyKyberDao {
         // Amount of reward to be sent to staker
         require(percentageInPrecision <= PRECISION, "percentage too high");
         uint256 amount = rewardsPerEpoch[epoch].mul(percentageInPrecision).div(PRECISION);
@@ -291,12 +291,12 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     }
 
     /// @dev set dao contract address once and set setter address to zero.
-    /// @param _kyberDAO Dao address.
-    function setDaoContract(IKyberDAO _kyberDAO) external {
+    /// @param _kyberDao Dao address.
+    function setDaoContract(IKyberDao _kyberDao) external {
         require(msg.sender == daoSetter, "only daoSetter");
 
-        kyberDAO = _kyberDAO;
-        emit KyberDaoAddressSet(kyberDAO);
+        kyberDao = _kyberDao;
+        emit KyberDaoAddressSet(kyberDao);
 
         daoSetter = address(0);
     }
@@ -386,12 +386,12 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     }
 
     /// @dev if no one voted for an epoch (like epoch 0). no one gets rewards. so should reward amount.
-    ///         call DAO contract to check if for this epoch any votes occured.
+    ///         call KyberDao contract to check if for this epoch any votes occured.
     /// @param epoch epoch number to check if should burn accumulated rewards.
     function shouldBurnEpochReward(uint256 epoch) external {
-        require(address(kyberDAO) != address(0), "kyberDAO addr missing");
+        require(address(kyberDao) != address(0), "kyberDao addr missing");
 
-        require(kyberDAO.shouldBurnRewardForEpoch(epoch), "should not burn reward");
+        require(kyberDao.shouldBurnRewardForEpoch(epoch), "should not burn reward");
 
         uint256 rewardAmount = rewardsPerEpoch[epoch];
         require(rewardAmount > 0, "reward is 0");
@@ -431,10 +431,10 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         (rewardBps, rebateBps, expiryTimestamp, epoch) = readBRRData();
 
         // Check current timestamp
-        if (now > expiryTimestamp && kyberDAO != IKyberDAO(0)) {
+        if (now > expiryTimestamp && kyberDao != IKyberDao(0)) {
             uint256 burnBps;
 
-            (burnBps, rewardBps, rebateBps, epoch, expiryTimestamp) = kyberDAO
+            (burnBps, rewardBps, rebateBps, epoch, expiryTimestamp) = kyberDao
                 .getLatestBRRDataWithCache();
             require(burnBps + rewardBps + rebateBps == BPS, "Bad BRR values");
             require(burnBps <= BPS, "burnBps overflow");

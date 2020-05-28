@@ -4,7 +4,7 @@ import "./EpochUtils.sol";
 import "./DaoOperator.sol";
 import "./KyberStaking.sol";
 import "../IERC20.sol";
-import "../IKyberDAO.sol";
+import "../IKyberDao.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../utils/Utils5.sol";
 import "../IKyberFeeHandler.sol";
@@ -17,8 +17,7 @@ import "../IKyberFeeHandler.sol";
  *      BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
  *      General campaign: options are from 1 to num_options
  */
-contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator {
-    /* Constants */
+contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator {
     // max number of campaigns for each epoch
     uint256 public   constant MAX_EPOCH_CAMPAIGNS = 10;
     // max number of options for each campaign
@@ -55,30 +54,26 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         uint256 rebateInBps;
     }
 
-    // minimum duration in seconds for a campaign
-    uint256 public minCampaignDurationInSeconds = 345600; // around 4 days
+    uint256 public minCampaignDurationInSeconds = 4 days;
     IERC20 public immutable kncToken;
     IKyberStaking public immutable staking;
     IKyberFeeHandler public immutable feeHandler;
 
-    /* Mapping from campaign ID => data */
     // use to generate increasing campaign ID
     uint256 public numberCampaigns = 0;
     mapping(uint256 => Campaign) internal campaignData;
 
-    /** Mapping from epoch => data */
-    // epochCampaigns[epoch]: list campaign IDs for each epoch (epoch => campaign IDs)
+    // epochCampaigns[epoch]: list campaign IDs for an epoch (epoch => campaign IDs)
     mapping(uint256 => uint256[]) internal epochCampaigns;
     // totalEpochPoints[epoch]: total points for an epoch (epoch => total points)
     mapping(uint256 => uint256) internal totalEpochPoints;
-    // numberVotes[staker][epoch]: number of campaigns that the staker has voted at an epoch
+    // numberVotes[staker][epoch]: number of campaigns that the staker has voted in an epoch
     mapping(address => mapping(uint256 => uint256)) public numberVotes;
     // hasClaimedReward[staker][epoch]: true/false if the staker has/hasn't claimed the reward for an epoch
     mapping(address => mapping(uint256 => bool)) public hasClaimedReward;
     // stakerVotedOption[staker][campaignID]: staker's voted option ID for a campaign
     mapping(address => mapping(uint256 => uint256)) public stakerVotedOption;
 
-    /* Configuration Campaign Data */
     uint256 internal latestNetworkFeeResult;
     // epoch => campaignID for network fee campaigns
     mapping(uint256 => uint256) public networkFeeCampaigns;
@@ -136,7 +131,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             _kncToken: _knc,
             _epochPeriod: _epochPeriod,
             _startTimestamp: _startTimestamp,
-            _daoContract: IKyberDAO(this)
+            _kyberDao: IKyberDao(this)
         });
     }
 
@@ -157,13 +152,13 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         }
         uint256 curEpoch = getCurrentEpochNumber();
 
-        // update total points for epoch
         uint256 numVotes = numberVotes[staker][curEpoch];
         // staker has not participated in any campaigns at the current epoch
         if (numVotes == 0) {
             return;
         }
 
+        // update total points for current epoch
         totalEpochPoints[curEpoch] = totalEpochPoints[curEpoch].sub(numVotes.mul(reduceAmount));
 
         // update voted count for each campaign staker has voted
@@ -372,7 +367,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     /**
      * @dev get latest network fee data + expiry timestamp
-     *    conclude network fee campaign if needed and caching latest result in DAO
+     *    conclude network fee campaign if needed and caching latest result in KyberDao
      */
     function getLatestNetworkFeeDataWithCache()
         external
@@ -386,7 +381,7 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     /**
      * @dev return latest burn/reward/rebate data, also affecting epoch + expiry timestamp
-     *      conclude brr campaign if needed and caching latest result in DAO
+     *      conclude brr campaign if needed and caching latest result in KyberDao
      */
     function getLatestBRRDataWithCache()
         external
@@ -599,13 +594,9 @@ contract KyberDAO is IKyberDAO, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
         uint256 points = numVotes.mul(totalStake);
         uint256 totalPts = totalEpochPoints[epoch];
-        if (totalPts == 0) {
-            return 0;
-        }
-        // something is wrong here, points should never be greater than total pts
-        if (points > totalPts) {
-            return 0;
-        }
+
+        // staker's reward percentage should be <= 100%
+        assert(points <= totalPts);
 
         return points.mul(PRECISION).div(totalPts);
     }

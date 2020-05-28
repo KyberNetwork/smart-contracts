@@ -13,13 +13,13 @@ import "./utils/Utils5.sol";
  *   - Stores reserve and token listing information by the network
  *   - Stores feeAccounted data for reserve types
  *   - Record contract changes for reserves and network proxies
- *   - Points to historical contracts that record contract changes for network, feeHandler, DAO and matchingEngine
+ *   - Points to historical contracts that record contract changes for network, feeHandler, KyberDao and matchingEngine
  */
 contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     // store current and previous contracts
     IKyberHistory public networkHistory;
     IKyberHistory public feeHandlerHistory;
-    IKyberHistory public kyberDAOHistory;
+    IKyberHistory public kyberDaoHistory;
     IKyberHistory public matchingEngineHistory;
 
     IKyberReserve[] internal reserves;
@@ -47,17 +47,17 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         address _admin,
         IKyberHistory _networkHistory,
         IKyberHistory _feeHandlerHistory,
-        IKyberHistory _kyberDAOHistory,
+        IKyberHistory _kyberDaoHistory,
         IKyberHistory _matchingEngineHistory
     ) public PermissionGroupsNoModifiers(_admin) {
         require(_networkHistory != IKyberHistory(0), "networkHistory 0");
         require(_feeHandlerHistory != IKyberHistory(0), "feeHandlerHistory 0");
-        require(_kyberDAOHistory != IKyberHistory(0), "kyberDAOHistory 0");
+        require(_kyberDaoHistory != IKyberHistory(0), "kyberDaoHistory 0");
         require(_matchingEngineHistory != IKyberHistory(0), "matchingEngineHistory 0");
 
         networkHistory = _networkHistory;
         feeHandlerHistory = _feeHandlerHistory;
-        kyberDAOHistory = _kyberDAOHistory;
+        kyberDaoHistory = _kyberDaoHistory;
         matchingEngineHistory = _matchingEngineHistory;
     }
 
@@ -116,10 +116,10 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         matchingEngineHistory.saveContract(_matchingEngine);
     }
 
-    function setDAOContract(address _kyberDAO) external override {
+    function setKyberDaoContract(address _kyberDao) external override {
         onlyNetwork();
 
-        kyberDAOHistory.saveContract(_kyberDAO);
+        kyberDaoHistory.saveContract(_kyberDao);
     }
 
     /// @notice Can be called only by operator
@@ -440,7 +440,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     }
 
     /// @notice Should be called off chain
-    /// @dev Returns list of DAO, feeHandler, matchingEngine and previous network contracts
+    /// @dev Returns list of KyberDao, feeHandler, matchingEngine and previous network contracts
     /// @dev Index 0 is currently used contract address, indexes > 0 are older versions
     function getContracts()
         external
@@ -452,7 +452,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
             address[] memory previousNetworkContracts
         )
     {
-        daoAddresses = kyberDAOHistory.getContracts();
+        daoAddresses = kyberDaoHistory.getContracts();
         feeHandlerAddresses = feeHandlerHistory.getContracts();
         matchingEngineAddresses = matchingEngineHistory.getContracts();
         previousNetworkContracts = networkHistory.getContracts();

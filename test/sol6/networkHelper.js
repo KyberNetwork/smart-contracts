@@ -53,18 +53,18 @@ module.exports.setupStorage = setupStorage;
 async function setupStorage(admin) {
     let networkHistory = await KyberHistory.new(admin);
     let feeHandlerHistory = await KyberHistory.new(admin);
-    let kyberDAOHistory = await KyberHistory.new(admin);
+    let kyberDaoHistory = await KyberHistory.new(admin);
     let matchingEngineHistory = await KyberHistory.new(admin);
     kyberStorage = await KyberStorage.new(
         admin,
         networkHistory.address,
         feeHandlerHistory.address,
-        kyberDAOHistory.address,
+        kyberDaoHistory.address,
         matchingEngineHistory.address
         );
     await networkHistory.setStorageContract(kyberStorage.address, {from: admin});
     await feeHandlerHistory.setStorageContract(kyberStorage.address, {from: admin});
-    await kyberDAOHistory.setStorageContract(kyberStorage.address, {from: admin});
+    await kyberDaoHistory.setStorageContract(kyberStorage.address, {from: admin});
     await matchingEngineHistory.setStorageContract(kyberStorage.address, {from: admin});
     return kyberStorage;
 }
@@ -208,7 +208,7 @@ async function listTokenForRedeployNetwork(storageInstance, reserveInstances, to
 
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
-    (NetworkArtifact, networkProxyAddress, KNCAddress, DAOAddress, admin, operator) {
+    (NetworkArtifact, networkProxyAddress, KNCAddress, kyberDaoAddress, admin, operator) {
     const storage =  await setupStorage(admin);
     const network = await NetworkArtifact.new(admin, storage.address);
     await storage.setNetworkContract(network.address, {from: admin});
@@ -221,10 +221,10 @@ async function setupNetwork
     await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
     await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
-    let feeHandler = await FeeHandler.new(DAOAddress, network.address, network.address, KNCAddress, burnBlockInterval, DAOAddress);
+    let feeHandler = await FeeHandler.new(kyberDaoAddress, network.address, network.address, KNCAddress, burnBlockInterval, kyberDaoAddress);
     await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
-    // set DAO contract
-    await network.setDAOContract(DAOAddress, { from: admin });
+    // set KyberDao contract
+    await network.setKyberDaoContract(kyberDaoAddress, { from: admin });
     // point proxy to network
     await network.addKyberProxy(networkProxyAddress, { from: admin });
     //set params, enable network

@@ -3,7 +3,7 @@ pragma solidity 0.6.6;
 import "../EpochUtils.sol";
 
 
-contract MockKyberDAOTestHandleWithdrawal is EpochUtils {
+contract MockKyberDaoTestHandleWithdrawal is EpochUtils {
     mapping(address => uint256) public values;
 
     constructor(uint256 _epochPeriod, uint256 _startTimestamp) public {

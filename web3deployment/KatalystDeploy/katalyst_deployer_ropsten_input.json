@@ -105,7 +105,7 @@
     "wallets": [],
 
     "permission" : {
-        "DAO": {
+        "KyberDao": {
             "DaoOperator": "0xddf05698718ba8ed1c9aba198d38a825a64d69e2"
         },
         "FeeHandler": {
