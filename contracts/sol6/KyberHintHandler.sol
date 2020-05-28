@@ -21,13 +21,14 @@ import "./IKyberHint.sol";
  */
 abstract contract KyberHintHandler is IKyberHint, Utils5 {
     /// @notice Parses the hint for a token to ether trade
+    /// @param tokenSrc source token to trade
     /// @param hint The ABI encoded hint, built using the build*Hint functions
     /// @return tokenToEthType Decoded hint type
     /// @return tokenToEthReserveIds Decoded reserve IDs
     /// @return tokenToEthAddresses Reserve addresses corresponding to reserve IDs
     /// @return tokenToEthSplits Decoded splits
-    function parseTokenToEthHint(bytes calldata hint)
-        external
+    function parseTokenToEthHint(IERC20 tokenSrc, bytes memory hint)
+        public
         view
         override
         returns (
@@ -41,6 +42,10 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
 
         (tokenToEthType, tokenToEthReserveIds, tokenToEthSplits, error) = parseHint(hint);
         if (error != HintErrors.NoError) throwHintError(error);
+
+        if (tokenToEthType == TradeType.MaskIn || tokenToEthType == TradeType.Split) {
+            checkTokenListedForReserve(tokenSrc, tokenToEthReserveIds, true);
+        }
 
         tokenToEthAddresses = new IKyberReserve[](tokenToEthReserveIds.length);
 
@@ -59,13 +64,14 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     }
 
     /// @notice Parses the hint for a ether to token trade
+    /// @param tokenDest destination token to trade
     /// @param hint The ABI encoded hint, built using the build*Hint functions
     /// @return ethToTokenType Decoded hint type
     /// @return ethToTokenReserveIds Decoded reserve IDs
     /// @return ethToTokenAddresses Reserve addresses corresponding to reserve IDs
     /// @return ethToTokenSplits Decoded splits
-    function parseEthToTokenHint(bytes calldata hint)
-        external
+    function parseEthToTokenHint(IERC20 tokenDest, bytes memory hint)
+        public
         view
         override
         returns (
@@ -79,6 +85,10 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
 
         (ethToTokenType, ethToTokenReserveIds, ethToTokenSplits, error) = parseHint(hint);
         if (error != HintErrors.NoError) throwHintError(error);
+
+        if (ethToTokenType == TradeType.MaskIn || ethToTokenType == TradeType.Split) {
+            checkTokenListedForReserve(tokenDest, ethToTokenReserveIds, false);
+        }
 
         ethToTokenAddresses = new IKyberReserve[](ethToTokenReserveIds.length);
 
@@ -97,6 +107,8 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     }
 
     /// @notice Parses the hint for a token to token trade
+    /// @param tokenSrc source token to trade
+    /// @param tokenDest destination token to trade
     /// @param hint The ABI encoded hint, built using the build*Hint functions
     /// @return tokenToEthType Decoded hint type
     /// @return tokenToEthReserveIds Decoded reserve IDs
@@ -106,8 +118,8 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     /// @return ethToTokenReserveIds Decoded reserve IDs
     /// @return ethToTokenAddresses Reserve addresses corresponding to reserve IDs
     /// @return ethToTokenSplits Decoded splits
-    function parseTokenToTokenHint(bytes calldata hint)
-        external
+    function parseTokenToTokenHint(IERC20 tokenSrc, IERC20 tokenDest, bytes memory hint)
+        public
         view
         override
         returns (
@@ -123,53 +135,32 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     {
         bytes memory t2eHint;
         bytes memory e2tHint;
-        HintErrors t2eError;
-        HintErrors e2tError;
 
         (t2eHint, e2tHint) = unpackT2THint(hint);
 
-        (tokenToEthType, tokenToEthReserveIds, tokenToEthSplits, t2eError) = parseHint(t2eHint);
-        if (t2eError != HintErrors.NoError) throwHintError(t2eError);
+        (
+            tokenToEthType,
+            tokenToEthReserveIds,
+            tokenToEthAddresses,
+            tokenToEthSplits
+        ) = parseTokenToEthHint(tokenSrc, t2eHint);
 
-        (ethToTokenType, ethToTokenReserveIds, ethToTokenSplits, e2tError) = parseHint(e2tHint);
-        if (e2tError != HintErrors.NoError) throwHintError(e2tError);
-
-        tokenToEthAddresses = new IKyberReserve[](tokenToEthReserveIds.length);
-        ethToTokenAddresses = new IKyberReserve[](ethToTokenReserveIds.length);
-
-        for (uint256 i = 0; i < tokenToEthReserveIds.length; i++) {
-            checkReserveIdsExists(tokenToEthReserveIds[i]);
-            checkDuplicateReserveIds(tokenToEthReserveIds, i);
-
-            if (i > 0 && tokenToEthType == TradeType.Split) {
-                checkSplitReserveIdSeq(tokenToEthReserveIds[i], tokenToEthReserveIds[i - 1]);
-            }
-
-            tokenToEthAddresses[i] = IKyberReserve(
-                getReserveAddress(tokenToEthReserveIds[i])
-            );
-        }
-
-        for (uint256 i = 0; i < ethToTokenReserveIds.length; i++) {
-            checkReserveIdsExists(ethToTokenReserveIds[i]);
-            checkDuplicateReserveIds(ethToTokenReserveIds, i);
-
-            if (i > 0 && ethToTokenType == TradeType.Split) {
-                checkSplitReserveIdSeq(ethToTokenReserveIds[i], ethToTokenReserveIds[i - 1]);
-            }
-
-            ethToTokenAddresses[i] = IKyberReserve(
-                getReserveAddress(ethToTokenReserveIds[i])
-            );
-        }
+        (
+            ethToTokenType,
+            ethToTokenReserveIds,
+            ethToTokenAddresses,
+            ethToTokenSplits
+        ) = parseEthToTokenHint(tokenDest, e2tHint);
     }
 
     /// @notice Builds the hint for a token to ether trade
+    /// @param tokenSrc source token to trade
     /// @param tokenToEthType token to ether trade hint type
     /// @param tokenToEthReserveIds token to ether reserve IDs
     /// @param tokenToEthSplits token to ether reserve splits
     /// @return hint The ABI encoded hint
     function buildTokenToEthHint(
+        IERC20 tokenSrc,
         TradeType tokenToEthType,
         bytes32[] memory tokenToEthReserveIds,
         uint256[] memory tokenToEthSplits
@@ -178,8 +169,16 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
             checkReserveIdsExists(tokenToEthReserveIds[i]);
         }
 
-        HintErrors valid = verifyData(tokenToEthType, tokenToEthReserveIds, tokenToEthSplits);
+        HintErrors valid = verifyData(
+            tokenToEthType,
+            tokenToEthReserveIds,
+            tokenToEthSplits
+        );
         if (valid != HintErrors.NoError) throwHintError(valid);
+
+        if (tokenToEthType == TradeType.MaskIn || tokenToEthType == TradeType.Split) {
+            checkTokenListedForReserve(tokenSrc, tokenToEthReserveIds, true);
+        }
 
         if (tokenToEthType == TradeType.Split) {
             bytes32[] memory seqT2EReserveIds;
@@ -197,11 +196,13 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     }
 
     /// @notice Builds the hint for a ether to token trade
+    /// @param tokenDest destination token to trade
     /// @param ethToTokenType ether to token trade hint type
     /// @param ethToTokenReserveIds ether to token reserve IDs
     /// @param ethToTokenSplits ether to token reserve splits
     /// @return hint The ABI encoded hint
     function buildEthToTokenHint(
+        IERC20 tokenDest,
         TradeType ethToTokenType,
         bytes32[] memory ethToTokenReserveIds,
         uint256[] memory ethToTokenSplits
@@ -210,8 +211,16 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
             checkReserveIdsExists(ethToTokenReserveIds[i]);
         }
 
-        HintErrors valid = verifyData(ethToTokenType, ethToTokenReserveIds, ethToTokenSplits);
+        HintErrors valid = verifyData(
+            ethToTokenType,
+            ethToTokenReserveIds,
+            ethToTokenSplits
+        );
         if (valid != HintErrors.NoError) throwHintError(valid);
+
+        if (ethToTokenType == TradeType.MaskIn || ethToTokenType == TradeType.Split) {
+            checkTokenListedForReserve(tokenDest, ethToTokenReserveIds, false);
+        }
 
         if (ethToTokenType == TradeType.Split) {
             bytes32[] memory seqE2TReserveIds;
@@ -229,28 +238,34 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     }
 
     /// @notice Builds the hint for a token to token trade
+    /// @param tokenSrc source token to trade
     /// @param tokenToEthType token to ether trade hint type
     /// @param tokenToEthReserveIds token to ether reserve IDs
     /// @param tokenToEthSplits token to ether reserve splits
+    /// @param tokenDest destination token to trade
     /// @param ethToTokenType ether to token trade hint type
     /// @param ethToTokenReserveIds ether to token reserve IDs
     /// @param ethToTokenSplits ether to token reserve splits
     /// @return hint The ABI encoded hint
     function buildTokenToTokenHint(
+        IERC20 tokenSrc,
         TradeType tokenToEthType,
         bytes32[] memory tokenToEthReserveIds,
         uint256[] memory tokenToEthSplits,
+        IERC20 tokenDest,
         TradeType ethToTokenType,
         bytes32[] memory ethToTokenReserveIds,
         uint256[] memory ethToTokenSplits
     ) public view override returns (bytes memory hint) {
         bytes memory t2eHint = buildTokenToEthHint(
+            tokenSrc,
             tokenToEthType,
             tokenToEthReserveIds,
             tokenToEthSplits
         );
 
         bytes memory e2tHint = buildEthToTokenHint(
+            tokenDest,
             ethToTokenType,
             ethToTokenReserveIds,
             ethToTokenSplits
@@ -259,7 +274,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         hint = abi.encode(t2eHint, e2tHint);
     }
 
-    /// @notice Parses or decodes the token to ether or ether to token bytes hint
+    /// @notice Parses or decodes the Token to ETH or ETH to Token bytes hint
     /// @param hint token to ether or ether to token trade hint
     /// @return tradeType Decoded hint type
     /// @return reserveIds Decoded reserve IDs
@@ -304,6 +319,22 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     {
         if (getReserveAddress(reserveId) == address(0x0))
             throwHintError(HintErrors.ReserveIdNotFound);
+    }
+
+    /// @notice Checks that the token is listed for the reserves
+    /// @param token ERC20 token
+    /// @param reserveIds Reserve IDs
+    /// @param isTokenToEth Flag to indicate Token to ETH or ETH to Token
+    function checkTokenListedForReserve(
+        IERC20 token,
+        bytes32[] memory reserveIds,
+        bool isTokenToEth
+    ) internal view {
+        IERC20 src = (isTokenToEth) ? token : ETH_TOKEN_ADDRESS;
+        IERC20 dest = (isTokenToEth) ? ETH_TOKEN_ADDRESS : token;
+
+        if (!areAllReservesListed(reserveIds, src, dest))
+            throwHintError(HintErrors.TokenListedError);
     }
 
     /// @notice Ensures that the reserveIds in the hint to be parsed has no duplicates
@@ -375,7 +406,11 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         bytes32[] memory reserveIds,
         uint256[] memory splits
     ) internal pure returns (HintErrors) {
-        if (reserveIds.length == 0) return HintErrors.ReserveIdEmptyError;
+        if (
+            (tradeType == TradeType.MaskIn || tradeType == TradeType.Split) &&
+            reserveIds.length == 0
+        ) return HintErrors.ReserveIdEmptyError;
+
         if (tradeType == TradeType.Split) {
             if (reserveIds.length != splits.length) return HintErrors.ReserveIdSplitsError;
 
@@ -401,8 +436,15 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         if (error == HintErrors.ReserveIdSequenceError) revert("reserveIds not in increasing order");
         if (error == HintErrors.ReserveIdNotFound) revert("reserveId not found");
         if (error == HintErrors.SplitsNotEmptyError) revert("splits must be empty");
+        if (error == HintErrors.TokenListedError) revert("token is not listed for reserveId");
         if (error == HintErrors.TotalBPSError) revert("total BPS != 10000");
     }
 
     function getReserveAddress(bytes32 reserveId) internal view virtual returns (address);
+
+    function areAllReservesListed(
+        bytes32[] memory reserveIds,
+        IERC20 src,
+        IERC20 dest
+    ) internal virtual view returns (bool);
 }
