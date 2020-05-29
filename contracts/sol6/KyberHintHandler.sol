@@ -20,7 +20,7 @@ import "./IKyberHint.sol";
  *             returns 0 rate for bad hint values
  */
 abstract contract KyberHintHandler is IKyberHint, Utils5 {
-    /// @notice Parses the hint for a token to ether trade
+    /// @notice Parses the hint for a token -> eth trade
     /// @param tokenSrc source token to trade
     /// @param hint The ABI encoded hint, built using the build*Hint functions
     /// @return tokenToEthType Decoded hint type
@@ -63,7 +63,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         }
     }
 
-    /// @notice Parses the hint for a ether to token trade
+    /// @notice Parses the hint for a eth -> token trade
     /// @param tokenDest destination token to trade
     /// @param hint The ABI encoded hint, built using the build*Hint functions
     /// @return ethToTokenType Decoded hint type
@@ -153,11 +153,11 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         ) = parseEthToTokenHint(tokenDest, e2tHint);
     }
 
-    /// @notice Builds the hint for a token to ether trade
+    /// @notice Builds the hint for a token -> eth trade
     /// @param tokenSrc source token to trade
-    /// @param tokenToEthType token to ether trade hint type
-    /// @param tokenToEthReserveIds token to ether reserve IDs
-    /// @param tokenToEthSplits token to ether reserve splits
+    /// @param tokenToEthType token -> eth trade hint type
+    /// @param tokenToEthReserveIds token -> eth reserve IDs
+    /// @param tokenToEthSplits token -> eth reserve splits
     /// @return hint The ABI encoded hint
     function buildTokenToEthHint(
         IERC20 tokenSrc,
@@ -195,11 +195,11 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         }
     }
 
-    /// @notice Builds the hint for a ether to token trade
+    /// @notice Builds the hint for a eth -> token trade
     /// @param tokenDest destination token to trade
-    /// @param ethToTokenType ether to token trade hint type
-    /// @param ethToTokenReserveIds ether to token reserve IDs
-    /// @param ethToTokenSplits ether to token reserve splits
+    /// @param ethToTokenType eth -> token trade hint type
+    /// @param ethToTokenReserveIds eth -> token reserve IDs
+    /// @param ethToTokenSplits eth -> token reserve splits
     /// @return hint The ABI encoded hint
     function buildEthToTokenHint(
         IERC20 tokenDest,
@@ -239,13 +239,13 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
 
     /// @notice Builds the hint for a token to token trade
     /// @param tokenSrc source token to trade
-    /// @param tokenToEthType token to ether trade hint type
-    /// @param tokenToEthReserveIds token to ether reserve IDs
-    /// @param tokenToEthSplits token to ether reserve splits
+    /// @param tokenToEthType token -> eth trade hint type
+    /// @param tokenToEthReserveIds token -> eth reserve IDs
+    /// @param tokenToEthSplits token -> eth reserve splits
     /// @param tokenDest destination token to trade
-    /// @param ethToTokenType ether to token trade hint type
-    /// @param ethToTokenReserveIds ether to token reserve IDs
-    /// @param ethToTokenSplits ether to token reserve splits
+    /// @param ethToTokenType eth -> token trade hint type
+    /// @param ethToTokenReserveIds eth -> token reserve IDs
+    /// @param ethToTokenSplits eth -> token reserve splits
     /// @return hint The ABI encoded hint
     function buildTokenToTokenHint(
         IERC20 tokenSrc,
@@ -274,8 +274,8 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         hint = abi.encode(t2eHint, e2tHint);
     }
 
-    /// @notice Parses or decodes the token to ether or ether to token bytes hint
-    /// @param hint token to ether or ether to token trade hint
+    /// @notice Parses or decodes the token -> eth or eth -> token bytes hint
+    /// @param hint token -> eth or eth -> token trade hint
     /// @return tradeType Decoded hint type
     /// @return reserveIds Decoded reserve IDs
     /// @return splits Reserve addresses corresponding to reserve IDs
@@ -299,10 +299,10 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         }
     }
 
-    /// @notice Unpacks the token to token hint to token to ether and ether to token hints
+    /// @notice Unpacks the token to token hint to token -> eth and eth -> token hints
     /// @param hint token to token trade hint
-    /// @return t2eHint The ABI encoded token to ether hint
-    /// @return e2tHint The ABI encoded ether to token hint
+    /// @return t2eHint The ABI encoded token -> eth hint
+    /// @return e2tHint The ABI encoded eth -> token hint
     function unpackT2THint(bytes memory hint)
         internal
         pure
@@ -324,7 +324,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     /// @notice Checks that the token is listed for the reserves
     /// @param token ERC20 token
     /// @param reserveIds Reserve IDs
-    /// @param isTokenToEth Flag to indicate Token to ETH or ETH to Token
+    /// @param isTokenToEth Flag to indicate token -> eth or eth -> token
     function checkTokenListedForReserve(
         IERC20 token,
         bytes32[] memory reserveIds,

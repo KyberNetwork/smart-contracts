@@ -172,7 +172,7 @@ contract KyberNetworkProxy is
             );
     }
 
-    /// @dev Trade from ether to token. Sends token to msg sender
+    /// @dev Trade from eth -> token. Sends token to msg sender
     /// @param token Destination token
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
     /// @return Amount of actual dest tokens in twei
@@ -198,7 +198,7 @@ contract KyberNetworkProxy is
             );
     }
 
-    /// @dev Trade from token to ether. Sends ether to msg sender
+    /// @dev Trade from token -> eth. Sends eth to msg sender
     /// @param token Source token
     /// @param srcAmount Amount of src tokens in twei
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
