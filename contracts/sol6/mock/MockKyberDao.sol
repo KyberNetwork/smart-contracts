@@ -56,7 +56,7 @@ contract MockKyberDao is IKyberDao, Utils5 {
         address staker,
         uint256 percentageInPrecision,
         uint256 forEpoch
-    ) external {
+    ) external returns (uint256 amountWei) {
         return feeHandler.claimStakerReward(staker, percentageInPrecision, forEpoch);
     }
 
