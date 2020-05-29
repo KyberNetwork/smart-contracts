@@ -22,5 +22,5 @@ interface IKyberFeeHandler {
         address staker,
         uint256 percentageInPrecision,
         uint256 epoch
-    ) external;
+    ) external returns(uint amountWei);
 }
