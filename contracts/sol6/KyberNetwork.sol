@@ -217,7 +217,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @dev Allow or prevent to trade token -> eth for a reserve
     /// @param reserve The reserve address
     /// @param token Token address
-    /// @param add If true, then list token -> eth pair, otherwise unlist it
+    /// @param add If true, then give reserve token allowance, otherwise set zero allowance
     function listTokenForReserve(
         address reserve,
         IERC20 token,
@@ -240,7 +240,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param token Token address
     /// @param startIndex start index in reserves list
     /// @param endIndex end index in reserves list (can be larger)
-    /// @param add If true, then list token -> eth pair, otherwise unlist it
+    /// @param add If true, then give reserve token allowance, otherwise set zero allowance
     function listReservesForToken(
         IERC20 token,
         uint256 startIndex,
@@ -540,10 +540,15 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev Do one trade with a reserve
+    /// @dev Do one trade with each reserve in reservesData, verifying network balance 
+    ///    as expected to ensure reserves take correct src amount
     /// @param src Source token
     /// @param dest Destination token
     /// @param destAddress Address to send tokens to
+    /// @param reservesData reservesData to trade
+    /// @param expectedDestAmount Amount to be transferred to destAddress
+    /// @param srcDecimals Decimals of source token
+    /// @param destDecimals Decimals of destination token
     function doReserveTrades(
         IERC20 src,
         IERC20 dest,
@@ -579,10 +584,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
     /// @dev call trade from reserves and verify balances
     /// @param reservesData reservesData to trade
-    /// @param src src token of the trade
-    /// @param dest dest token of the trade
-    /// @param srcDecimals decimals of src token
-    /// @param destDecimals decimals of dest token
+    /// @param src Source token of trade
+    /// @param dest Destination token of trade
+    /// @param srcDecimals Decimals of source token
+    /// @param destDecimals Decimals of destination token
     function tradeAndVerifyNetworkBalance(
         ReservesData memory reservesData,
         IERC20 src,
@@ -774,8 +779,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice This function does all calculations to find trade dest amount without accounting 
-    ///        for maxDestAmount. part of this process includes:
-    ///        - Call kyberMatchingEnging to Parse hint and get an optional reserve list to trade.
+    ///        for maxDestAmount. Part of this process includes:
+    ///        - Call kyberMatchingEngine to parse hint and get an optional reserve list to trade.
     ///        - Query reserve rates and call kyberMatchingEngine to use best reserve.
     ///        - Calculate trade values and fee values.
     ///     This function should set all TradeData information so that it can be later used without 
@@ -1080,7 +1085,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             rates[i] = reservesData.rates[selectedIndexes[i]];
         }
 
-        //update values
+        // update values
         reservesData.addresses = reserveAddresses;
         reservesData.ids = reserveIds;
         reservesData.splitsBps = splitsBps;
