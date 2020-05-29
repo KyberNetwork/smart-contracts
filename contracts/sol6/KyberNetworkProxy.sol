@@ -5,7 +5,6 @@ import "./utils/Utils5.sol";
 import "./utils/zeppelin/SafeERC20.sol";
 import "./IKyberNetwork.sol";
 import "./IKyberNetworkProxy.sol";
-import "./ISimpleKyberProxy.sol";
 import "./IKyberHint.sol";
 
 
@@ -19,7 +18,6 @@ import "./IKyberHint.sol";
  */
 contract KyberNetworkProxy is
     IKyberNetworkProxy,
-    ISimpleKyberProxy,
     WithdrawableNoModifiers,
     Utils5
 {
