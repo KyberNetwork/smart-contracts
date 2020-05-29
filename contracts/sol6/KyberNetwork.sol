@@ -529,7 +529,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             tradeData.input.platformWallet,
             tradeData.platformFeeWei
         );
-        return;
     }
 
     function updateNetworkFee(uint256 expiryTimestamp, uint256 feeBps) internal {
@@ -576,8 +575,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             // for eth -> token / token -> token, transfer tokens to destAddress
             dest.safeTransfer(destAddress, expectedDestAmount);
         }
-
-        return;
     }
 
     /// @dev call trade from reserves and verify balances
