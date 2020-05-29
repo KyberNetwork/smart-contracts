@@ -201,7 +201,7 @@ contract TestTokenNotReturn is StandardToken {
         balances[msg.sender] = balances[msg.sender].sub(_value);
         totalSupply = totalSupply.sub(_value);
         emit Burn(msg.sender, _value);
-        emit Transfer(msg.sender, address(0x0), _value);
+        emit Transfer(msg.sender, address(0), _value);
     }
 
     // save some gas by making only one contract call

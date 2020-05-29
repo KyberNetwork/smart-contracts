@@ -10,7 +10,7 @@ import "./IKyberHint.sol";
 
 
 /**
- *   @title Kyber Network proxy for network contract
+ *   @title kyberProxy for kyberNetwork contract
  *   The contract provides the following functions:
  *   - Get rates
  *   - Trade execution
@@ -26,10 +26,10 @@ contract KyberNetworkProxy is
     using SafeERC20 for IERC20;
 
     IKyberNetwork public kyberNetwork;
-    IKyberHint public hintHandler; // hint handler pointer for users.
+    IKyberHint public kyberHintHandler; // kyberHintHhandler pointer for users.
 
-    event KyberNetworkSet(IKyberNetwork newNetwork, IKyberNetwork oldNetwork);
-    event HintHandlerSet(IKyberHint hintHandler);
+    event KyberNetworkSet(IKyberNetwork newKyberNetwork, IKyberNetwork previousKyberNetwork);
+    event KyberHintHandlerSet(IKyberHint kyberHintHandler);
 
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /*empty body*/
@@ -87,10 +87,10 @@ contract KyberNetworkProxy is
         ERC20 src,
         uint256 srcAmount,
         ERC20 dest,
-        address destAddress,
+        address payable destAddress,
         uint256 maxDestAmount,
         uint256 minConversionRate,
-        address walletId,
+        address payable walletId,
         bytes calldata hint
     ) external payable override returns (uint256) {
         return
@@ -98,10 +98,10 @@ contract KyberNetworkProxy is
                 src,
                 srcAmount,
                 dest,
-                address(uint160(destAddress)),
+                destAddress,
                 maxDestAmount,
                 minConversionRate,
-                address(uint160(walletId)),
+                walletId,
                 0,
                 hint
             );
@@ -172,7 +172,7 @@ contract KyberNetworkProxy is
             );
     }
 
-    /// @dev Trade from ether to token. Sends token to msg sender
+    /// @dev Trade from eth -> token. Sends token to msg sender
     /// @param token Destination token
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
     /// @return Amount of actual dest tokens in twei
@@ -198,7 +198,7 @@ contract KyberNetworkProxy is
             );
     }
 
-    /// @dev Trade from token to ether. Sends ether to msg sender
+    /// @dev Trade from token -> eth. Sends eth to msg sender
     /// @param token Source token
     /// @param srcAmount Amount of src tokens in twei
     /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
@@ -226,18 +226,18 @@ contract KyberNetworkProxy is
 
     function setKyberNetwork(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
-        require(_kyberNetwork != IKyberNetwork(0), "KyberNetwork 0");
+        require(_kyberNetwork != IKyberNetwork(0), "kyberNetwork 0");
         emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
 
         kyberNetwork = _kyberNetwork;
     }
 
-    function setHintHandler(IKyberHint _hintHandler) external {
+    function setHintHandler(IKyberHint _kyberHintHandler) external {
         onlyAdmin();
-        require(_hintHandler != IKyberHint(0), "hintHandler 0");
-        emit HintHandlerSet(_hintHandler);
+        require(_kyberHintHandler != IKyberHint(0), "kyberHintHandler 0");
+        emit KyberHintHandlerSet(_kyberHintHandler);
 
-        hintHandler = _hintHandler;
+        kyberHintHandler = _kyberHintHandler;
     }
 
     /// @notice Backward compatible function
@@ -340,7 +340,7 @@ contract KyberNetworkProxy is
 
         require(
             tradeOutcome.userDeltaDestToken == reportedDestAmount,
-            "network returned wrong amount"
+            "kyberNetwork returned wrong amount"
         );
         require(
             tradeOutcome.userDeltaDestToken <= maxDestAmount,

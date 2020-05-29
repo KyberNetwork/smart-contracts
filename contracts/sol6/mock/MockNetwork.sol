@@ -12,18 +12,18 @@ contract MockNetwork is KyberNetwork {
 
     // allow set zero contract
     function setContracts(
-        IKyberFeeHandler _feeHandler,
-        IKyberMatchingEngine _matchingEngine,
+        IKyberFeeHandler _kyberFeeHandler,
+        IKyberMatchingEngine _kyberMatchingEngine,
         IGasHelper _gasHelper
     ) external override {
-        if (feeHandler != _feeHandler) {
-            feeHandler = _feeHandler;
-            emit FeeHandlerUpdated(_feeHandler);
+        if (kyberFeeHandler != _kyberFeeHandler) {
+            kyberFeeHandler = _kyberFeeHandler;
+            emit KyberFeeHandlerUpdated(_kyberFeeHandler);
         }
 
-        if (matchingEngine != _matchingEngine) {
-            matchingEngine = _matchingEngine;
-            emit MatchingEngineUpdated(_matchingEngine);
+        if (kyberMatchingEngine != _kyberMatchingEngine) {
+            kyberMatchingEngine = _kyberMatchingEngine;
+            emit KyberMatchingEngineUpdated(_kyberMatchingEngine);
         }
 
         if ((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {

@@ -8,7 +8,7 @@ import "./IKyberStorage.sol";
 
 
 /**
- *   @title Kyber matching engine contract
+ *   @title kyberMatchingEngine contract
  *   During getExpectedRate flow and trade flow this contract is called for:
  *       - parsing hint and returning reserve list (function getTradingReserves)
  *       - matching best reserves to trade with (function doMatch)
@@ -22,10 +22,10 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     IKyberNetwork public kyberNetwork;
     IKyberStorage public kyberStorage;
 
-    uint256 public negligibleRateDiffBps = 5; // 1 bps is 0.01%
+    uint256 negligibleRateDiffBps = 5; // 1 bps is 0.01%
 
-    event KyberStorageUpdated(IKyberStorage newStorage);
-    event KyberNetworkUpdated(IKyberNetwork newNetwork);
+    event KyberStorageUpdated(IKyberStorage newKyberStorage);
+    event KyberNetworkUpdated(IKyberNetwork newKyberNetwork);
 
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /* empty body */
@@ -37,7 +37,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         kyberStorage = _kyberStorage;
     }
 
-    function setNegligbleRateDiffBps(uint256 _negligibleRateDiffBps)
+    function setNegligibleRateDiffBps(uint256 _negligibleRateDiffBps)
         external
         virtual
         override
@@ -49,7 +49,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
     function setNetworkContract(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
-        require(_kyberNetwork != IKyberNetwork(0), "network 0");
+        require(_kyberNetwork != IKyberNetwork(0), "kyberNetwork 0");
         emit KyberNetworkUpdated(_kyberNetwork);
         kyberNetwork = _kyberNetwork;
     }
@@ -57,7 +57,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @dev Returns trading reserves info for a trade
     /// @param src Source token
     /// @param dest Destination token
-    /// @param isTokenToToken Whether the trade is T2T
+    /// @param isTokenToToken Whether the trade is token -> token
     /// @param hint Advanced instructions for running the trade
     /// @return reserveIds Array of reserve IDs for the trade, each being 32 bytes. 1st byte is reserve type
     /// @return splitValuesBps Array of split values (in basis points) for the trade
@@ -119,7 +119,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         }
 
-        // for split no need to know rate. User defines full trade details in advance.
+        // for split no need to search for best rate. User defines full trade details in advance.
         processWithRate = (tradeType == TradeType.Split)
             ? ProcessWithRate.NotRequired
             : ProcessWithRate.Required;
@@ -129,10 +129,11 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return negligibleRateDiffBps;
     }
 
-    /// @dev Returns the indexes of the best rate from the rates array for the t2e or e2t side
-    /// @param src Source token (not needed in this matchingEngine version)
-    /// @param dest Destination token (not needed in this matchingEngine version)
-    /// @param srcAmounts Array of srcAmounts
+    /// @dev Returns the indexes of the best rate from the rates array
+    ///     for token -> eth or eth -> token side of trade
+    /// @param src Source token (not needed in this kyberMatchingEngine version)
+    /// @param dest Destination token (not needed in this kyberMatchingEngine version)
+    /// @param srcAmounts Array of srcAmounts after deducting fees.
     /// @param feesAccountedDestBps Fees charged in BPS, to be deducted from calculated destAmount
     /// @param rates Rates queried from reserves
     /// @return reserveIndexes An array of the indexes most suited for the trade
@@ -162,6 +163,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         uint256 destAmount;
 
         for (uint256 i = 0; i < rates.length; i++) {
+            // if fee is accounted on dest amount of this reserve, should deduct it
             destAmount = (srcAmounts[i] * rates[i] * (BPS - feesAccountedDestBps[i])) / BPS;
             if (destAmount > bestReserve.destAmount) {
                 // best rate is highest rate
@@ -179,7 +181,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         reserveCandidates[0] = bestReserve.index;
 
-        // if this reserve pays fee its actual rate is less. so smallestRelevantRate is smaller.
+        // update best reserve destAmount to be its destAmount after deducting negligible diff.
+        // if any reserve has better or equal dest amount it can be considred to be chosen as best
         bestReserve.destAmount = (bestReserve.destAmount * BPS) / (BPS + negligibleRateDiffBps);
 
         for (uint256 i = 0; i < rates.length; i++) {
@@ -213,7 +216,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     /// @notice Logic for masking out reserves
-    /// @param allReservesPerToken Array of reserveIds that support the t2e or e2t side of the trade
+    /// @param allReservesPerToken Array of reserveIds that support
+    ///     the token -> eth or eth -> token side of the trade
     /// @param maskedOutReserves Array of reserveIds to be excluded from allReservesPerToken
     /// @return filteredReserves An array of reserveIds that can be used for the trade
     function maskOutReserves(
@@ -244,7 +248,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     function onlyNetwork() internal view {
-        require(msg.sender == address(kyberNetwork), "only network");
+        require(msg.sender == address(kyberNetwork), "only kyberNetwork");
     }
 
     function populateSplitValuesBps(uint256 length)
