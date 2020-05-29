@@ -511,8 +511,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @notice Calculates platform fee and reserve rebate percentages for the trade.
     ///     Transfers ETH and rebate wallet data to feeHandler
     function handleFees(TradeData memory tradeData) internal {
-        //no need to handle fees if no fee paying reserves
-        if ((tradeData.numEntitledRebateReserves == 0) && (tradeData.platformFeeWei == 0))
+        uint256 sentFee = tradeData.networkFeeWei + tradeData.platformFeeWei;
+        //no need to handle fees if total fee is zero
+        if (sentFee == 0)
             return;
 
         // update reserve eligibility and rebate percentages
@@ -520,8 +521,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             address[] memory rebateWallets,
             uint256[] memory rebatePercentBps
         ) = calculateRebates(tradeData);
-
-        uint256 sentFee = tradeData.networkFeeWei + tradeData.platformFeeWei;
 
         // send total fee amount to fee handler with reserve data
         feeHandler.handleFees{value: sentFee}(
