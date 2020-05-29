@@ -11,6 +11,16 @@ import "./ISanityRate.sol";
 import "../utils/zeppelin/SafeMath.sol";
 import "./DaoOperator.sol";
 
+/**
+ * @title IKyberProxy
+ *  This interface combines two interfaces.
+ *  It is needed since we use one function from each of the interfaces.
+ *
+ */
+interface IKyberProxy is IKyberNetworkProxy, ISimpleKyberProxy {
+    // empty block
+}
+
 
 /**
  * @title kyberFeeHandler
@@ -35,11 +45,6 @@ import "./DaoOperator.sol";
  *      2. Network Fee distribution: Per epoch kyberFeeHandler contract reads BRR distribution percentage 
  *          from kyberDao. When the data expires, kyberFeeHandler reads updated values.
  */
-
-interface IKyberProxy is IKyberNetworkProxy, ISimpleKyberProxy {
-    function kyberNetwork() external view returns (address);
-}
-
 contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGuard {
     using SafeMath for uint256;
 
