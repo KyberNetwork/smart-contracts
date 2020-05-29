@@ -57,7 +57,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @dev Returns trading reserves info for a trade
     /// @param src Source token
     /// @param dest Destination token
-    /// @param isTokenToToken Whether the trade is t2t
+    /// @param isTokenToToken Whether the trade is token -> token
     /// @param hint Advanced instructions for running the trade
     /// @return reserveIds Array of reserve IDs for the trade, each being 32 bytes. 1st byte is reserve type
     /// @return splitValuesBps Array of split values (in basis points) for the trade
@@ -119,7 +119,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         }
 
-        // for split no need to know rate. User defines full trade details in advance.
+        // for split no need to search for best rate. User defines full trade details in advance.
         processWithRate = (tradeType == TradeType.Split)
             ? ProcessWithRate.NotRequired
             : ProcessWithRate.Required;
@@ -129,7 +129,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         return negligibleRateDiffBps;
     }
 
-    /// @dev Returns the indexes of the best rate from the rates array for the t2e or e2t side
+    /// @dev Returns the indexes of the best rate from the rates array
+    ///     for token -> eth or eth -> token side of trade
     /// @param src Source token (not needed in this kyberMatchingEngine version)
     /// @param dest Destination token (not needed in this kyberMatchingEngine version)
     /// @param srcAmounts Array of srcAmounts after deducting fees.
@@ -215,7 +216,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     /// @notice Logic for masking out reserves
-    /// @param allReservesPerToken Array of reserveIds that support the t2e or e2t side of the trade
+    /// @param allReservesPerToken Array of reserveIds that support
+    ///     the token -> eth or eth -> token side of the trade
     /// @param maskedOutReserves Array of reserveIds to be excluded from allReservesPerToken
     /// @return filteredReserves An array of reserveIds that can be used for the trade
     function maskOutReserves(
