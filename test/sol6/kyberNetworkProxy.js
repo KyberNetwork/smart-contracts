@@ -681,7 +681,7 @@ contract('KyberNetworkProxy', function(accounts) {
             let newKyberNetwork = await KyberNetwork.new(admin, tempStorage.address);
             let txResult = await networkProxy.setKyberNetwork(newKyberNetwork.address, { from: admin });
             await expectEvent(txResult, "KyberNetworkSet", {
-                newKyberNetwork: newKyberNetwork.address, oldKyberNetwork: network.address,
+                newKyberNetwork: newKyberNetwork.address, previousKyberNetwork: network.address,
             })
             await networkProxy.setKyberNetwork(network.address, { from: admin });
         });

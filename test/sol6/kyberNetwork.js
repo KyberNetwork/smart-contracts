@@ -2419,12 +2419,12 @@ contract('KyberNetwork', function(accounts) {
             [network, storage] = await nwHelper.setupNetwork(KyberNetwork, networkProxy, KNC.address, kyberDao.address, admin, operator);
 
             contracts = await network.getContracts();
-            feeHandler = await FeeHandler.at(contracts.feeHandlerAddress);
-            matchingEngine = await MatchingEngine.at(contracts.matchingEngineAddress);
+            feeHandler = await FeeHandler.at(contracts.kyberFeeHandlerAddress);
+            matchingEngine = await MatchingEngine.at(contracts.kyberMatchingEngineAddress);
 
             // init rateHelper
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(contracts.matchingEngineAddress, kyberDao.address, storage.address, {from: admin});
+            await rateHelper.setContracts(contracts.kyberMatchingEngineAddress, kyberDao.address, storage.address, {from: admin});
             
             //init reserves
             rebateWallets = [accounts[7], accounts[8]];
