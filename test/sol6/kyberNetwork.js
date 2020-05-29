@@ -167,7 +167,7 @@ contract('KyberNetwork', function(accounts) {
 
             await expectRevert(
                 tempNetwork.addKyberProxy(proxy3, {from: admin}),
-                "max proxies limit reached"
+                "max kyberProxies limit reached"
             );
         });
 
@@ -189,7 +189,7 @@ contract('KyberNetwork', function(accounts) {
         it("test can't add proxy zero address", async() => {
             await expectRevert(
                 tempNetwork.addKyberProxy(zeroAddress, {from: admin}),
-                "proxy 0"
+                "kyberProxy 0"
             );
         });
 
@@ -197,12 +197,12 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
 
             let contracts = await tempNetwork.getContracts();
-            let rxProxy = contracts.proxyAddresses;
+            let rxProxy = contracts.kyberProxyAddresses;
             Helper.assertEqual(rxProxy[0], proxy1);
 
             await tempNetwork.addKyberProxy(proxy2, {from: admin});
             contracts = await tempNetwork.getContracts();
-            rxProxy = contracts.proxyAddresses;
+            rxProxy = contracts.kyberProxyAddresses;
             Helper.assertEqual(rxProxy[0], proxy1);
             Helper.assertEqual(rxProxy[1], proxy2);
         });
@@ -212,7 +212,7 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.removeKyberProxy(proxy1, {from: admin});
 
             let contracts = await tempNetwork.getContracts();
-            let rxProxy = contracts.proxyAddresses;
+            let rxProxy = contracts.kyberProxyAddresses;
             Helper.assertEqual(rxProxy.length, 0);
 
             await tempNetwork.addKyberProxy(proxy1, {from: admin});
@@ -221,7 +221,7 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.removeKyberProxy(proxy1, {from: admin});
 
             contracts = await tempNetwork.getContracts();
-            rxProxy = contracts.proxyAddresses;
+            rxProxy = contracts.kyberProxyAddresses;
             Helper.assertEqual(rxProxy[0], proxy2);
         });
 
@@ -231,7 +231,7 @@ contract('KyberNetwork', function(accounts) {
 
             await expectRevert(
                 tempNetwork.addKyberProxy(proxy3, {from: admin}),
-                "max proxies limit reached"
+                "max kyberProxies limit reached"
             );
 
             await tempNetwork.removeKyberProxy(proxy1, {from: admin});
@@ -243,13 +243,13 @@ contract('KyberNetwork', function(accounts) {
             let txResult = await tempNetwork.addKyberProxy(proxy1, {from: admin});
 
             expectEvent(txResult, 'KyberProxyAdded', {
-                proxy: proxy1
+                kyberProxy: proxy1
             });
 
             txResult = await tempNetwork.removeKyberProxy(proxy1, {from: admin});
 
             expectEvent(txResult, 'KyberProxyRemoved', {
-                proxy: proxy1
+                kyberProxy: proxy1
             });
         });
 
@@ -259,62 +259,62 @@ contract('KyberNetwork', function(accounts) {
                 newKyberDao : dao1
             });
             let contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.daoAddress, dao1);
+            Helper.assertEqual(contracts.kyberDaoAddress, dao1);
 
             txResult = await tempNetwork.setKyberDaoContract(dao2, {from: admin});
             expectEvent(txResult, 'KyberDaoUpdated', {
                 newKyberDao : dao2
             });
             contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.daoAddress, dao2);
+            Helper.assertEqual(contracts.kyberDaoAddress, dao2);
 
             txResult = await tempNetwork.setKyberDaoContract(dao3, {from: admin});
             expectEvent(txResult, 'KyberDaoUpdated', {
                 newKyberDao : dao3
             });
             contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.daoAddress, dao3);
+            Helper.assertEqual(contracts.kyberDaoAddress, dao3);
         });
 
         it("add a few matchingEngine + feeHandler contracts, see event + updated in getter.", async() => {
             tempMatchingEngine1 = await MatchingEngine.new(admin);
             await tempMatchingEngine1.setNetworkContract(tempNetwork.address, {from: admin});
             let txResult = await tempNetwork.setContracts(handler1, tempMatchingEngine1.address, zeroAddress, {from: admin});
-            expectEvent(txResult, 'MatchingEngineUpdated', {
-                matchingEngine : tempMatchingEngine1.address
+            expectEvent(txResult, 'KyberMatchingEngineUpdated', {
+                newKyberMatchingEngine : tempMatchingEngine1.address
             });
-            expectEvent(txResult, 'FeeHandlerUpdated', {
-                newHandler : handler1
+            expectEvent(txResult, 'KyberFeeHandlerUpdated', {
+                newKyberFeeHandler : handler1
             });
 
             let contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.feeHandlerAddress, handler1);
-            Helper.assertEqual(contracts.matchingEngineAddress, tempMatchingEngine1.address);
+            Helper.assertEqual(contracts.kyberFeeHandlerAddress, handler1);
+            Helper.assertEqual(contracts.kyberMatchingEngineAddress, tempMatchingEngine1.address);
 
             tempMatchingEngine2 = await MatchingEngine.new(admin);
             await tempMatchingEngine2.setNetworkContract(tempNetwork.address, {from: admin});
             txResult = await tempNetwork.setContracts(handler1, tempMatchingEngine2.address, zeroAddress, {from: admin});
-            expectEvent(txResult, 'MatchingEngineUpdated', {
-                matchingEngine : tempMatchingEngine2.address
+            expectEvent(txResult, 'KyberMatchingEngineUpdated', {
+                newKyberMatchingEngine : tempMatchingEngine2.address
             });
             contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.feeHandlerAddress, handler1);
-            Helper.assertEqual(contracts.matchingEngineAddress, tempMatchingEngine2.address);
+            Helper.assertEqual(contracts.kyberFeeHandlerAddress, handler1);
+            Helper.assertEqual(contracts.kyberMatchingEngineAddress, tempMatchingEngine2.address);
 
             txResult = await tempNetwork.setContracts(handler2, tempMatchingEngine2.address, zeroAddress, {from: admin});
-            expectEvent(txResult, 'FeeHandlerUpdated', {
-                newHandler : handler2
+            expectEvent(txResult, 'KyberFeeHandlerUpdated', {
+                newKyberFeeHandler : handler2
             });
             contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.feeHandlerAddress, handler2);
-            Helper.assertEqual(contracts.matchingEngineAddress, tempMatchingEngine2.address);
+            Helper.assertEqual(contracts.kyberFeeHandlerAddress, handler2);
+            Helper.assertEqual(contracts.kyberMatchingEngineAddress, tempMatchingEngine2.address);
 
             tempMatchingEngine3 = await MatchingEngine.new(admin);
             await tempMatchingEngine3.setNetworkContract(tempNetwork.address, {from: admin});
             await tempNetwork.setContracts(handler3, tempMatchingEngine3.address, zeroAddress, {from: admin});
             contracts = await tempNetwork.getContracts();
-            Helper.assertEqual(contracts.feeHandlerAddress, handler3);
-            Helper.assertEqual(contracts.matchingEngineAddress, tempMatchingEngine3.address);
+            Helper.assertEqual(contracts.kyberFeeHandlerAddress, handler3);
+            Helper.assertEqual(contracts.kyberMatchingEngineAddress, tempMatchingEngine3.address);
         });
     });
 
@@ -343,14 +343,14 @@ contract('KyberNetwork', function(accounts) {
         it("set empty fee handler contract", async() => {
             await expectRevert(
                 tempNetwork.setContracts(zeroAddress, tempMatchingEngine.address, gasHelperAdd, {from: admin}),
-                "feeHandler 0"
+                "kyberFeeHandler 0"
             );
         });
 
         it("set empty matching engine contract", async() => {
             await expectRevert(
                 tempNetwork.setContracts(feeHandler, zeroAddress, gasHelperAdd, {from: admin}),
-                "matchingEngine 0"
+                "kyberMatchingEngine 0"
             );
         });
 
@@ -358,7 +358,7 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.setKyberDaoContract(zeroAddress, {from: admin});
             
             let rxContracts = await tempNetwork.getContracts();
-            assert.equal(rxContracts.daoAddress, zeroAddress);
+            assert.equal(rxContracts.kyberDaoAddress, zeroAddress);
         });
 
         it("should do nothing if setting to same KyberDao address, check no event emitted", async() => {
@@ -451,14 +451,14 @@ contract('KyberNetwork', function(accounts) {
             gasHelperAdd = accounts[9];
 
             let txResult = await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
-            expectEvent(txResult, 'FeeHandlerUpdated', {
-                newHandler: feeHandler.address
+            expectEvent(txResult, 'KyberFeeHandlerUpdated', {
+                newKyberFeeHandler: feeHandler.address
             });
-            expectEvent(txResult, 'MatchingEngineUpdated', {
-                matchingEngine: tempMatchingEngine.address
+            expectEvent(txResult, 'KyberMatchingEngineUpdated', {
+                newKyberMatchingEngine: tempMatchingEngine.address
             });
             expectEvent(txResult, 'GasHelperUpdated', {
-                gasHelper: gasHelperAdd
+                newGasHelper: gasHelperAdd
             });
         });
 
@@ -487,7 +487,7 @@ contract('KyberNetwork', function(accounts) {
             let fakeProxy = accounts[3];
             let txResult = await tempNetwork.addKyberProxy(fakeProxy, {from: admin});
             expectEvent(txResult, 'KyberProxyAdded', {
-                proxy: fakeProxy
+                kyberProxy: fakeProxy
             });
         });
 
@@ -496,12 +496,12 @@ contract('KyberNetwork', function(accounts) {
             await tempNetwork.addKyberProxy(fakeProxy, {from: admin});
             let txResult = await tempNetwork.removeKyberProxy(fakeProxy, {from: admin});
             expectEvent(txResult, 'KyberProxyRemoved', {
-                proxy: fakeProxy
+                kyberProxy: fakeProxy
             });
         });
 
         it("Remove proxy not avaiable", async() => {
-            await expectRevert(tempNetwork.removeKyberProxy(ethAddress, {from: admin}), "proxy not found");
+            await expectRevert(tempNetwork.removeKyberProxy(ethAddress, {from: admin}), "kyberProxy not found");
         });
 
         it("Set enable", async() => {
@@ -539,7 +539,7 @@ contract('KyberNetwork', function(accounts) {
                     true,
                     {from: accounts[0]}
                 ),
-                "only kyber storage"
+                "only kyberStorage"
             );
         });
 
@@ -2193,11 +2193,12 @@ contract('KyberNetwork', function(accounts) {
         describe("test trades with very small and very big numbers", async() => {
         });
 
-        it("test contract addresses for fee handler and KyberDao", async() => {
+        it("test contract addresses for kyberStorage, kyberFeeHandler and kyberDao", async() => {
             let contracts = await network.getContracts();
-            Helper.assertEqual(contracts.daoAddress, kyberDao.address)
-            Helper.assertEqual(contracts.feeHandlerAddress, feeHandler.address)
-            Helper.assertEqual(contracts.matchingEngineAddress, matchingEngine.address);
+            Helper.assertEqual(contracts.kyberDaoAddress, kyberDao.address)
+            Helper.assertEqual(contracts.kyberFeeHandlerAddress, feeHandler.address)
+            Helper.assertEqual(contracts.kyberMatchingEngineAddress, matchingEngine.address);
+            Helper.assertEqual(contracts.kyberStorageAddress, storage.address);
         });
 
         it("test encode decode network fee data with mock setter getter", async() => {
@@ -2418,12 +2419,12 @@ contract('KyberNetwork', function(accounts) {
             [network, storage] = await nwHelper.setupNetwork(KyberNetwork, networkProxy, KNC.address, kyberDao.address, admin, operator);
 
             contracts = await network.getContracts();
-            feeHandler = await FeeHandler.at(contracts.feeHandlerAddress);
-            matchingEngine = await MatchingEngine.at(contracts.matchingEngineAddress);
+            feeHandler = await FeeHandler.at(contracts.kyberFeeHandlerAddress);
+            matchingEngine = await MatchingEngine.at(contracts.kyberMatchingEngineAddress);
 
             // init rateHelper
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(contracts.matchingEngineAddress, kyberDao.address, storage.address, {from: admin});
+            await rateHelper.setContracts(contracts.kyberMatchingEngineAddress, kyberDao.address, storage.address, {from: admin});
             
             //init reserves
             rebateWallets = [accounts[7], accounts[8]];
@@ -2800,7 +2801,7 @@ contract('KyberNetwork', function(accounts) {
         it("test can not trade when caller is not proxy", async () => {
             let notAProxy = accounts[9];
             let contracts = await network.getContracts();
-            let proxies = contracts.proxyAddresses;
+            let proxies = contracts.kyberProxyAddresses;
             Helper.assertEqual(proxies.length, 1);
             assert.notEqual(proxies, notAProxy)
 

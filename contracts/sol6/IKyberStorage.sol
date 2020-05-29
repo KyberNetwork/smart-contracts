@@ -7,12 +7,12 @@ import "./IKyberReserve.sol";
 interface IKyberStorage {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
 
-    function addKyberProxy(address networkProxy, uint256 maxApprovedProxies)
+    function addKyberProxy(address kyberProxy, uint256 maxApprovedProxies)
         external;
 
-    function removeKyberProxy(address networkProxy) external;
+    function removeKyberProxy(address kyberProxy) external;
 
-    function setContracts(address _feeHandler, address _matchingEngine) external;
+    function setContracts(address _kyberFeeHandler, address _kyberMatchingEngine) external;
 
     function setKyberDaoContract(address _kyberDao) external;
 

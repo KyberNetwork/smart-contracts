@@ -21,10 +21,10 @@ interface IKyberNetworkProxy {
         ERC20 src,
         uint256 srcAmount,
         ERC20 dest,
-        address destAddress,
+        address payable destAddress,
         uint256 maxDestAmount,
         uint256 minConversionRate,
-        address walletId,
+        address payable walletId,
         bytes calldata hint
     ) external payable returns (uint256);
 
