@@ -2399,78 +2399,119 @@ contract('KyberNetwork', function(accounts) {
 
     describe("test fee handler integrations with 1 mock and 1 apr", async() => {
         let platformFee = new BN(200);
-        let networkFeeBps;
-        let rebateBps;
-        let rewardBps;
         let reserveIdToWallet = [];
         let rebateWallets;
+        let storage;
+        let network;
+        let feeHandler;
+        let numReserves;
+
+        let beforePlatformFee;
+        let beforeRebate;
+        let beforeTotalBalancePayout;
 
         before("setup, add and list reserves", async() => {
+            // set up network, dao and feehandler
+            kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+            await kyberDao.setNetworkFeeBps(networkFeeBps);
+            KNC = await TestToken.new("kyber network crystal", "KNC", 18);
+            [network, storage] = await nwHelper.setupNetwork(KyberNetwork, networkProxy, KNC.address, kyberDao.address, admin, operator);
+
+            contracts = await network.getContracts();
+            feeHandler = await FeeHandler.at(contracts.feeHandlerAddress);
+            matchingEngine = await MatchingEngine.at(contracts.matchingEngineAddress);
+
+            // init rateHelper
+            rateHelper = await RateHelper.new(admin);
+            await rateHelper.setContracts(contracts.matchingEngineAddress, kyberDao.address, storage.address, {from: admin});
+            
             //init reserves
             rebateWallets = [accounts[7], accounts[8]];
-
+            // 1 mock, 1 fpr
             let result = await nwHelper.setupReserves(network, tokens, 1,1,0,0, accounts, admin, operator, rebateWallets);
 
             reserveInstances = result.reserveInstances;
-            numReserves += result.numAddedReserves * 1;
+            numReserves = result.numAddedReserves;
             reserveIdToWallet = result.reserveIdToRebateWallet;
 
             //add and list pair for reserve
             await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
+            // enable fee and rebate for all types
+            await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, { from: admin });
+            await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
         });
+
+        beforeEach("update state of fee handler", async() => {
+            beforePlatformFee = await feeHandler.feePerPlatformWallet(platformWallet);
+            beforeTotalBalancePayout = await feeHandler.totalPayoutBalance();
+            beforeRebate = {};
+            for (let i = 0; i < rebateWallets.length; i++) {
+                beforeRebate[rebateWallets[i]] = await feeHandler.rebatePerWallet(rebateWallets[i]);
+            }
+        })
 
         after("unlist and remove reserve", async() => {
             await nwHelper.removeReservesFromStorage(storage, reserveInstances, tokens, operator);
             reserveInstances = {};
         });
 
-        beforeEach("update fee values", async() => {
-            await network.getAndUpdateNetworkFee();
-            const data = await network.getNetworkData();
-            networkFeeBps = data.networkFeeBps;
-            const BRRData = await feeHandler.readBRRData();
-            // log(BRRData)
-            rebateBps = BRRData.rebateBps;
-            rewardBps = BRRData.rewardBps;
-        });
+        async function assertFeeHandlerUpdate(tradeWei, platfromFeeBps, feeAccountedBps, rebatePerWallet){
+            platformFeeWei = tradeWei.mul(platfromFeeBps).div(BPS);
+            Helper.assertEqual(await feeHandler.feePerPlatformWallet(platformWallet), beforePlatformFee.add(platformFeeWei), "unexpected rebate value");
+            networkFeeWei = tradeWei.mul(networkFeeBps).div(BPS).mul(feeAccountedBps).div(BPS);
+            let hasRebate = false;
+            for (const [rebateWallet, beforeBalance] of Object.entries(beforeRebate)) {
+                if (rebateWallet in rebatePerWallet) {
+                    Helper.assertApproximate(await feeHandler.rebatePerWallet(rebateWallet), beforeBalance.add(rebatePerWallet[rebateWallet]), "unexpected rebate value");
+                    hasRebate = true;
+                }else {
+                    Helper.assertApproximate(await feeHandler.rebatePerWallet(rebateWallet), beforeBalance, "unexpected rebate value");
+                }
+            }
+            if (hasRebate) {
+                totalPayout = platformFeeWei.add(networkFeeWei.mul(rewardInBPS).div(BPS)).add(networkFeeWei.mul(rebateInBPS).div(BPS));
+            } else {
+                totalPayout = platformFeeWei.add(networkFeeWei.mul(rewardInBPS).div(BPS));
+            }
+            Helper.assertApproximate(await feeHandler.totalPayoutBalance(), beforeTotalBalancePayout.add(totalPayout), "unexpected payout balance");
+            
+        }
 
-        it("t2e trade. see rebate per wallet updated in fee handler.", async() => {
-            let payoutBalance0 = await feeHandler.totalPayoutBalance();
+        it("e2t trade. see fee updated in fee handler.", async() => {
             let rebateWalletBalance0 = {};
             for (let i = 0; i < rebateWallets.length; i++) {
                 rebateWalletBalance0[rebateWallets[i]] = await feeHandler.rebatePerWallet(rebateWallets[i]);
             }
             let srcQty = oneEth;
-            // log("network fee bps: " + networkFeeBps + " rebate bps: " + rebateBps);
-            let expectedRebate = srcQty.mul(networkFeeBps).div(BPS).mul(rebateBps).div(BPS);
-            let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
+            let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, destToken.address, taker,
                 maxDestAmt, minConversionRate, platformWallet, platformFee, '0x', {from: networkProxy, value: srcQty});
 
-            let reserves = nwHelper.getEt2ReservesFromTradeTx(txResult);
-            let tradedReserve = reserves['e2tIds'][0];
+            let tradeEventArgs = nwHelper.getTradeEventArgs(txResult);
+            let tradedReserve = tradeEventArgs.e2tIds[0];
             let rebateWallet = reserveIdToWallet[tradedReserve];
-            // log("tradedReserve " + tradedReserve)
-            // log("rebate wallet " + rebateWallet)
-
-            let expectedBalance = rebateWalletBalance0[rebateWallet].add(expectedRebate);
-            let actualBalance = await feeHandler.rebatePerWallet(rebateWallet);
-            // log("actual balance " + actualBalance);
-            Helper.assertEqual(actualBalance, expectedBalance);
+            let expectedRebate = new BN(tradeEventArgs.ethWeiValue).mul(networkFeeBps).div(BPS).mul(rebateInBPS).div(BPS);
+            let rebatePerWallet = {}
+            rebatePerWallet[rebateWallet] = expectedRebate;
+            await assertFeeHandlerUpdate(tradeEventArgs.ethWeiValue, platformFee, BPS, rebatePerWallet);
         });
 
-        it("e2t trade. see total payout amount updated in fee handler.", async() => {
-            let payoutBalance0 = await feeHandler.totalPayoutBalance();
-
+        it("t2e trade. see fee in fee handler.", async() => {
+            let rebateWalletBalance0 = {};
+            for (let i = 0; i < rebateWallets.length; i++) {
+                rebateWalletBalance0[rebateWallets[i]] = await feeHandler.rebatePerWallet(rebateWallets[i]);
+            }
             let srcQty = oneEth;
-            await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
-                maxDestAmt, minConversionRate, platformWallet, 0, '0x', {from: networkProxy, value: srcQty});
+            await srcToken.transfer(network.address, srcQty);
+            let txResult = await network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
+                maxDestAmt, minConversionRate, platformWallet, platformFee, '0x', {from: networkProxy});
 
-            let expectedAddedRebate = srcQty.mul(networkFeeBps).div(BPS).mul(rebateBps).div(BPS);
-            let expectedAddedReward = srcQty.mul(networkFeeBps).div(BPS).mul(rewardBps).div(BPS);
-
-            let expectedAddedAmount = expectedAddedRebate.add(expectedAddedReward);
-            let payoutBalance1 = await feeHandler.totalPayoutBalance();
-            Helper.assertEqual(payoutBalance0.add(expectedAddedAmount), payoutBalance1);
+            let tradeEventArgs = nwHelper.getTradeEventArgs(txResult);
+            let tradedReserve = tradeEventArgs.t2eIds[0];
+            let rebateWallet = reserveIdToWallet[tradedReserve];
+            let expectedRebate = new BN(tradeEventArgs.ethWeiValue).mul(networkFeeBps).div(BPS).mul(rebateInBPS).div(BPS);
+            let rebatePerWallet = {}
+            rebatePerWallet[rebateWallet] = expectedRebate;
+            await assertFeeHandlerUpdate(tradeEventArgs.ethWeiValue, platformFee, BPS, rebatePerWallet);
         });
 
         it("should have rebate given only to rebate entitled reserve.", async() => {
@@ -2485,20 +2526,18 @@ contract('KyberNetwork', function(accounts) {
 
             let srcQty = oneEth;
             await srcToken.transfer(network.address, srcQty);
-            hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, undefined, 
+            hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, SPLIT_HINTTYPE, numReserves, 
                 srcToken.address, destToken.address, srcQty);
-            await network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, destToken.address, taker,
+            txResult = await network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, destToken.address, taker,
                 maxDestAmt, minConversionRate, platformWallet, platformFee, hint, {from: networkProxy});
-
-            // first rebate wallet rebate entitled
-            let rebateWallet = rebateWallets[0];
-            let actualBalance = await feeHandler.rebatePerWallet(rebateWallet);
-            Helper.assertGreater(actualBalance, rebateWalletBalance0[rebateWallet]);
-            
-            // second rebate wallet not rebate entitled
-            rebateWallet = rebateWallets[1];
-            actualBalance = await feeHandler.rebatePerWallet(rebateWallet);
-            Helper.assertEqual(actualBalance, rebateWalletBalance0[rebateWallet]);
+            // assert first rebateWallet is received enitled rebate value
+            let tradeEventArgs = nwHelper.getTradeEventArgs(txResult);
+            let rebatePerWallet = {}
+            let expectedRebate = new BN(tradeEventArgs.ethWeiValue).mul(networkFeeBps).div(BPS).mul(new BN(2)).mul(rebateInBPS).div(BPS);
+            rebatePerWallet[rebateWallets[0]] = expectedRebate
+            await assertFeeHandlerUpdate(tradeEventArgs.ethWeiValue, platformFee, BPS.mul(new BN(2)), rebatePerWallet);
+            // revert changes
+            await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
         });
 
         it("should not have any fees if fee accounted data set to false", async() => {
@@ -2506,35 +2545,35 @@ contract('KyberNetwork', function(accounts) {
             await storage.setFeeAccountedPerReserveType(false, false, false, false, false, false, {from: admin});
             await storage.setEntitledRebatePerReserveType(false, false, false, false, false, false, {from: admin});
             
-            let payoutBalance0 = await feeHandler.totalPayoutBalance();
             let srcQty = oneEth;
+            let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
+                maxDestAmt, minConversionRate, platformWallet, zeroBN, '0x', {from: networkProxy, value: srcQty});
+            let tradeEventArgs = nwHelper.getTradeEventArgs(txResult);
+            await assertFeeHandlerUpdate(tradeEventArgs.ethWeiValue, zeroBN, zeroBN, {});
 
-            await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
-                maxDestAmt, minConversionRate, platformWallet, 0, '0x', {from: networkProxy, value: srcQty});
-            let payoutBalance1 = await feeHandler.totalPayoutBalance();
-            Helper.assertEqual(payoutBalance0, payoutBalance1);
-
-            // reset fees
-            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
-            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+            // revert changes
+            await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, { from: admin });
+            await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
         });
 
-        it("should not have any fees if entitled rebate data is set to false", async() => {
+        it("should have no rebate fee if entitled rebate data is set to false", async() => {
             await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
             // set entitled rebate data to false
             await storage.setEntitledRebatePerReserveType(false, false, false, false, false, false, {from: admin});
             
-            let payoutBalance0 = await feeHandler.totalPayoutBalance();
+            // let payoutBalance0 = await feeHandler.totalPayoutBalance();
             let srcQty = oneEth;
 
-            await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
-                maxDestAmt, minConversionRate, platformWallet, 0, '0x', {from: networkProxy, value: srcQty});
-            let payoutBalance1 = await feeHandler.totalPayoutBalance();
-            Helper.assertEqual(payoutBalance0, payoutBalance1);
+            let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
+                maxDestAmt, minConversionRate, platformWallet, zeroBN, '0x', {from: networkProxy, value: srcQty});
+            // let payoutBalance1 = await feeHandler.totalPayoutBalance();
+            // Helper.assertEqual(payoutBalance0, payoutBalance1);
+            let tradeEventArgs = nwHelper.getTradeEventArgs(txResult);
+            await assertFeeHandlerUpdate(tradeEventArgs.ethWeiValue, zeroBN, BPS, {});
 
             // reset fees
-            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
-            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+            await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, { from: admin });
+            await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
         });
 
         it("should have fees only for platform wallet if fee accounted data set to false", async() => {
@@ -2542,17 +2581,15 @@ contract('KyberNetwork', function(accounts) {
             await storage.setFeeAccountedPerReserveType(false, false, false, false, false, false, {from: admin});
             await storage.setEntitledRebatePerReserveType(false, false, false, false, false, false, {from: admin});
             
-            let payoutBalance0 = await feeHandler.feePerPlatformWallet(platformWallet);
             let srcQty = oneEth;
-
-            await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
-                maxDestAmt, minConversionRate, platformWallet, new BN(5), '0x', {from: networkProxy, value: srcQty});
-            let payoutBalance1 = await feeHandler.feePerPlatformWallet(platformWallet);
-            await Helper.assertGreater(payoutBalance1, payoutBalance0, "platform received no fees");
+            let txResult = await network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
+                maxDestAmt, minConversionRate, platformWallet, platformFee, '0x', {from: networkProxy, value: srcQty});
+            let tradeEventArgs = nwHelper.getTradeEventArgs(txResult);
+            await assertFeeHandlerUpdate(tradeEventArgs.ethWeiValue, platformFee, zeroBN, {});
 
             // reset fees
-            await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
-            await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+            await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, { from: admin });
+            await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
         });
     });
 
