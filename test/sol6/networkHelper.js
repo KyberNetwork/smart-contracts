@@ -221,7 +221,8 @@ async function setupNetwork
     await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
     await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
-    let feeHandler = await FeeHandler.new(kyberDaoAddress, network.address, network.address, KNCAddress, burnBlockInterval, kyberDaoAddress);
+    let feeHandler = await FeeHandler.new(admin, network.address, network.address, KNCAddress, burnBlockInterval, admin);
+    feeHandler.setDaoContract(kyberDaoAddress, {from: admin});
     await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
     // set KyberDao contract
     await network.setKyberDaoContract(kyberDaoAddress, { from: admin });
@@ -460,14 +461,14 @@ async function addReservesToStorage(storageInstance, reserveInstances, tokens, o
     }
 }
 
-module.exports.getEt2ReservesFromTradeTx = function(tradeTx) {
+module.exports.getTradeEventArgs = function(tradeTx) {
     let result = {}
 
     for (let event of tradeTx.logs) {
-        console.log("event.event: " + event.event)
         if(event.event == 'KyberTrade') {
             result['t2eIds'] = event.args.t2eIds;
             result['e2tIds'] = event.args.e2tIds;
+            result['ethWeiValue'] = event.args.ethWeiValue;
             return result;
         }
     }
