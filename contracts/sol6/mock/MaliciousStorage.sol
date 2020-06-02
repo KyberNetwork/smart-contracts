@@ -25,12 +25,12 @@ contract MaliciousStorage {
         _matchingEngine;
     }
 
-    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
+    function addKyberProxy(address networkProxy, uint256 maxApprovedProxies)
         external
         pure
     {
         networkProxy;
-        max_approved_proxies;
+        maxApprovedProxies;
     }
 
     function removeKyberProxy(address networkProxy) external pure {

@@ -486,7 +486,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         brrAndEpochData.epoch = uint32(epoch);
     }
 
-    function getRRWeiValues(uint256 RRAmountWei)
+    function getRRWeiValues(uint256 amountRRWei)
         internal
         returns (
             uint256 rewardWei,
@@ -499,8 +499,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         uint256 rebateInBps;
         (rewardInBps, rebateInBps, epoch) = getBRR();
 
-        rebateWei = RRAmountWei.mul(rebateInBps).div(BPS);
-        rewardWei = RRAmountWei.mul(rewardInBps).div(BPS);
+        rebateWei = amountRRWei.mul(rebateInBps).div(BPS);
+        rewardWei = amountRRWei.mul(rewardInBps).div(BPS);
     }
 
     function updateRebateValues(

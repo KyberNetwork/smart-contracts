@@ -9,7 +9,7 @@ contract MockMaliciousKyberDaoReentrancy is EpochUtils {
     KyberStaking public staking;
     IERC20 public knc;
 
-    uint256 totalDeposit = 0;
+    uint256 public totalDeposit = 0;
 
     constructor(
         uint256 _epochPeriod,

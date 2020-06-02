@@ -123,11 +123,11 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 optionalBuyAmount,
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory buyReserves, uint256[] memory buyRates) {
-        Amounts memory A;
+        Amounts memory amts;
         bool[] memory isFeeAccountedFlags;
         address reserve;
 
-        A.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
+        amts.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
         (buyReserves, , ) = matchingEngine.getTradingReserves(ETH_TOKEN_ADDRESS, token, false, "");
         isFeeAccountedFlags = kyberStorage.getFeeAccountedData(buyReserves);
         buyRates = new uint256[](buyReserves.length);
@@ -138,29 +138,29 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
                 buyRates[i] = IKyberReserve(reserve).getConversionRate(
                     ETH_TOKEN_ADDRESS,
                     token,
-                    A.srcAmount,
+                    amts.srcAmount,
                     block.number
                 );
                 continue;
             }
 
-            A.ethSrcAmount = A.srcAmount - ((A.srcAmount * networkFeeBps) / BPS);
+            amts.ethSrcAmount = amts.srcAmount - ((amts.srcAmount * networkFeeBps) / BPS);
             buyRates[i] = IKyberReserve(reserve).getConversionRate(
                 ETH_TOKEN_ADDRESS,
                 token,
-                A.ethSrcAmount,
+                amts.ethSrcAmount,
                 block.number
             );
-            A.destAmount = calcDstQty(
-                A.ethSrcAmount,
+            amts.destAmount = calcDstQty(
+                amts.ethSrcAmount,
                 ETH_DECIMALS,
                 getDecimals(token),
                 buyRates[i]
             );
             //use amount instead of ethSrcAmount to account for network fee
             buyRates[i] = calcRateFromQty(
-                A.srcAmount,
-                A.destAmount,
+                amts.srcAmount,
+                amts.destAmount,
                 ETH_DECIMALS,
                 getDecimals(token)
             );
@@ -172,11 +172,11 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 optionalSellAmount,
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory sellReserves, uint256[] memory sellRates) {
-        Amounts memory A;
+        Amounts memory amts;
         bool[] memory isFeeAccountedFlags;
         address reserve;
 
-        A.srcAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
+        amts.srcAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
         (sellReserves, , ) = matchingEngine.getTradingReserves(
             token,
             ETH_TOKEN_ADDRESS,
@@ -191,17 +191,17 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             sellRates[i] = IKyberReserve(reserve).getConversionRate(
                 token,
                 ETH_TOKEN_ADDRESS,
-                A.srcAmount,
+                amts.srcAmount,
                 block.number
             );
             if (networkFeeBps == 0 || !isFeeAccountedFlags[i]) {
                 continue;
             }
-            A.destAmount = calcDstQty(A.srcAmount, getDecimals(token), ETH_DECIMALS, sellRates[i]);
-            A.destAmount -= (networkFeeBps * A.destAmount) / BPS;
+            amts.destAmount = calcDstQty(amts.srcAmount, getDecimals(token), ETH_DECIMALS, sellRates[i]);
+            amts.destAmount -= (networkFeeBps * amts.destAmount) / BPS;
             sellRates[i] = calcRateFromQty(
-                A.srcAmount,
-                A.destAmount,
+                amts.srcAmount,
+                amts.destAmount,
                 getDecimals(token),
                 ETH_DECIMALS
             );

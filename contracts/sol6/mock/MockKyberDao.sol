@@ -14,7 +14,7 @@ contract MockKyberDao is IKyberDao, Utils5 {
     uint256 public feeBps;
     uint256 public epochPeriod = 160;
     uint256 public startTimestamp;
-    uint256 data;
+    uint256 public data;
     mapping(uint256 => bool) public shouldBurnRewardEpoch;
 
     constructor(

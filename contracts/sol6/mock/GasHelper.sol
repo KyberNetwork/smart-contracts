@@ -14,10 +14,10 @@ interface IGST2 {
 
 
 contract GasHelper is IGasHelper, WithdrawableNoModifiers {
-    address kyberNetwork;
+    address public kyberNetwork;
 
-    IGST2 constant GST2 = IGST2(0x0000000000b3F879cb30FE243b4Dfee438691c04);
-    uint256 constant MIN_ACTIVATE_PRICE = 8 * 1000 * 1000 * 1000; // 8 gwei
+    IGST2 public constant GST2 = IGST2(0x0000000000b3F879cb30FE243b4Dfee438691c04);
+    uint256 public constant MIN_ACTIVATE_PRICE = 8 * 1000 * 1000 * 1000; // 8 gwei
 
     constructor(address _kyberNetwork, address _admin) public WithdrawableNoModifiers(_admin) {
         require(_kyberNetwork != address(0));
@@ -45,20 +45,20 @@ contract GasHelper is IGasHelper, WithdrawableNoModifiers {
         freeGas(gasleft() / 2);
     }
 
-    function freeGas(uint256 num_tokens) internal returns (uint256 freed) {
-        uint256 safe_num_tokens = 0;
+    function freeGas(uint256 numTokens) internal returns (uint256 freed) {
+        uint256 safeNumTokens = 0;
         uint256 gas = gasleft();
 
         if (gas >= 27710) {
-            safe_num_tokens = (gas - 27710) / (1148 + 5722 + 150);
+            safeNumTokens = (gas - 27710) / (1148 + 5722 + 150);
         }
 
-        if (num_tokens > safe_num_tokens) {
-            num_tokens = safe_num_tokens;
+        if (numTokens > safeNumTokens) {
+            numTokens = safeNumTokens;
         }
 
-        if (num_tokens > 0) {
-            return GST2.freeUpTo(num_tokens);
+        if (numTokens > 0) {
+            return GST2.freeUpTo(numTokens);
         } else {
             return 0;
         }

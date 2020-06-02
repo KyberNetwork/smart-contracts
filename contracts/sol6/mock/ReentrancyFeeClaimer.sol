@@ -6,12 +6,12 @@ import "../IKyberFeeHandler.sol";
 
 /// @dev contract to call trade when claimPlatformFee
 contract ReentrancyFeeClaimer is Utils5 {
-    IKyberNetworkProxy kyberProxy;
-    IKyberFeeHandler feeHandler;
-    IERC20 token;
-    uint256 amount;
+    IKyberNetworkProxy public kyberProxy;
+    IKyberFeeHandler public feeHandler;
+    IERC20 public token;
+    uint256 public amount;
 
-    bool isReentrancy = true;
+    bool public isReentrancy = true;
 
     constructor(
         IKyberNetworkProxy _kyberProxy,

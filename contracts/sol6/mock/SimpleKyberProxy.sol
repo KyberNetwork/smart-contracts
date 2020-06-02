@@ -10,7 +10,7 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
 
     mapping(bytes32 => uint256) public pairRate; //rate in precision units. i.e. if rate is 10**18 its same as 1:1
 
-    uint256 networkFeeBps = 25;
+    uint256 public networkFeeBps = 25;
 
     receive() external payable {}
 

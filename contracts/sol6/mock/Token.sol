@@ -105,7 +105,7 @@ abstract contract ERC20 is ERC20Basic {
 contract BasicToken is ERC20Basic {
     using SafeMath for uint256;
 
-    mapping(address => uint256) balances;
+    mapping(address => uint256) internal balances;
 
     /*
      * Fix for the ERC20 short address attack
@@ -146,7 +146,7 @@ contract BasicToken is ERC20Basic {
  * https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
 contract StandardToken is BasicToken, ERC20 {
-    mapping(address => mapping(address => uint256)) allowed;
+    mapping(address => mapping(address => uint256)) internal allowed;
 
     function transferFrom(
         address _from,
@@ -195,7 +195,7 @@ contract Token is StandardToken {
     string public name = "Test";
     string public symbol = "TST";
     uint256 public decimals = 18;
-    uint256 public INITIAL_SUPPLY = 10**(50 + 18);
+    uint256 public constant INITIAL_SUPPLY = 10**(50 + 18);
 
     event Burn(address indexed _burner, uint256 _value);
 

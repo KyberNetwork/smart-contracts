@@ -4,7 +4,7 @@ import "../ISanityRate.sol";
 
 
 contract MockChainLinkSanityRate is ISanityRate {
-    uint256 latestAnswerValue;
+    uint256 public latestAnswerValue;
 
     function setLatestKncToEthRate(uint256 _kncEthRate) external {
         latestAnswerValue = _kncEthRate;

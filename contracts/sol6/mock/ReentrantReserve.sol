@@ -10,8 +10,8 @@ contract ReentrantReserve is IKyberReserve, Utils5 {
     using SafeERC20 for IERC20;
 
     mapping(address => uint256) public buyTokenRates;
-    IKyberNetwork network;
-    address payable scammer;
+    IKyberNetwork public network;
+    address payable public scammer;
     IERC20 public scamToken;
 
     uint256 public numRecursive = 1;

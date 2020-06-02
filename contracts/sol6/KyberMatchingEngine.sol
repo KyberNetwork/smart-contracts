@@ -22,7 +22,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     IKyberNetwork public kyberNetwork;
     IKyberStorage public kyberStorage;
 
-    uint256 negligibleRateDiffBps = 5; // 1 bps is 0.01%
+    uint256 internal negligibleRateDiffBps = 5; // 1 bps is 0.01%
 
     event KyberStorageUpdated(IKyberStorage newKyberStorage);
     event KyberNetworkUpdated(IKyberNetwork newKyberNetwork);

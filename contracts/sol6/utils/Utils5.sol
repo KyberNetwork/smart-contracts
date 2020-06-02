@@ -18,7 +18,7 @@ contract Utils5 {
     uint256 internal constant MAX_RATE = (PRECISION * 10**7); // up to 10M tokens per eth
     uint256 internal constant MAX_DECIMALS = 18;
     uint256 internal constant ETH_DECIMALS = 18;
-    uint256 constant BPS = 10000; // Basic Price Steps. 1 step = 0.01%
+    uint256 internal constant BPS = 10000; // Basic Price Steps. 1 step = 0.01%
 
     mapping(IERC20 => uint256) internal decimals;
 

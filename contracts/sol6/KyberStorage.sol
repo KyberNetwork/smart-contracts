@@ -44,24 +44,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
     IKyberNetwork public kyberNetwork;
 
-    constructor(
-        address _admin,
-        IKyberHistory _kyberNetworkHistory,
-        IKyberHistory _kyberFeeHandlerHistory,
-        IKyberHistory _kyberDaoHistory,
-        IKyberHistory _kyberMatchingEngineHistory
-    ) public PermissionGroupsNoModifiers(_admin) {
-        require(_kyberNetworkHistory != IKyberHistory(0), "kyberNetworkHistory 0");
-        require(_kyberFeeHandlerHistory != IKyberHistory(0), "kyberFeeHandlerHistory 0");
-        require(_kyberDaoHistory != IKyberHistory(0), "kyberDaoHistory 0");
-        require(_kyberMatchingEngineHistory != IKyberHistory(0), "kyberMatchingEngineHistory 0");
-
-        kyberNetworkHistory = _kyberNetworkHistory;
-        kyberFeeHandlerHistory = _kyberFeeHandlerHistory;
-        kyberDaoHistory = _kyberDaoHistory;
-        kyberMatchingEngineHistory = _kyberMatchingEngineHistory;
-    }
-
     event KyberNetworkUpdated(IKyberNetwork newKyberNetwork);
     event RemoveReserveFromStorage(address indexed reserve, bytes32 indexed reserveId);
 
@@ -85,6 +67,24 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         IERC20 indexed dest,
         bool add
     );
+
+    constructor(
+        address _admin,
+        IKyberHistory _kyberNetworkHistory,
+        IKyberHistory _kyberFeeHandlerHistory,
+        IKyberHistory _kyberDaoHistory,
+        IKyberHistory _kyberMatchingEngineHistory
+    ) public PermissionGroupsNoModifiers(_admin) {
+        require(_kyberNetworkHistory != IKyberHistory(0), "kyberNetworkHistory 0");
+        require(_kyberFeeHandlerHistory != IKyberHistory(0), "kyberFeeHandlerHistory 0");
+        require(_kyberDaoHistory != IKyberHistory(0), "kyberDaoHistory 0");
+        require(_kyberMatchingEngineHistory != IKyberHistory(0), "kyberMatchingEngineHistory 0");
+
+        kyberNetworkHistory = _kyberNetworkHistory;
+        kyberFeeHandlerHistory = _kyberFeeHandlerHistory;
+        kyberDaoHistory = _kyberDaoHistory;
+        kyberMatchingEngineHistory = _kyberMatchingEngineHistory;
+    }
 
     function setNetworkContract(IKyberNetwork _kyberNetwork) external {
         onlyAdmin();
@@ -212,7 +212,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
         emit RemoveReserveFromStorage(reserve, reserveId);
     }
-
 
     /// @dev No. of kyberProxies are capped
     function addKyberProxy(address kyberProxy, uint256 maxApprovedProxies)

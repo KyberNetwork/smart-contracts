@@ -5,8 +5,8 @@ import "../utils/Utils5.sol";
 
 contract MaliciousMatchingEngine is Utils5 {
     IKyberStorage public kyberStorage;
-    uint256 splitLength;
-    bool badValues;
+    uint256 public splitLength;
+    bool public badValues;
 
     function setKyberStorage(IKyberStorage _kyberStorage) external {
         kyberStorage = _kyberStorage;
