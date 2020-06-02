@@ -1,12 +1,15 @@
 {
-  "extends": "solhint:default",
+  "extends": "solhint:recommended",
+  "plugins": [],
   "rules": {
-    "quotes": ["error", "double"],
+    "avoid-low-level-calls": "off",
     "avoid-suicide": "error",
-    "avoid-sha3": "warn",
-    "avoid-tx-origin": "warn",
-    "const-name-snakecase": "off",
+    "avoid-tx-origin": "off",
+    "compiler-version": ["error", "0.6.6"],
     "func-order": "error",
-    "not-rely-on-block-hash": "warn"
+    "max-line-length": ["off", 120],
+    "max-states-count": ["warn", 20],
+    "not-rely-on-time": "off",
+    "no-empty-blocks": "off"
   }
 }

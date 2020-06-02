@@ -1,4 +1,3 @@
 # zeppelin contracts
-contractsSol5/utils/zeppelin
-contractsSol5/bridges
-
+contracts/sol6/utils/zeppelin
+contracts/sol5/bridges
