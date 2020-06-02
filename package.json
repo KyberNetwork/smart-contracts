@@ -42,10 +42,10 @@
     "@openzeppelin/test-helpers": "0.5.5",
     "chai": "4.2.0",
     "chai-bn": "0.2.0",
-    "mv": "2.1.1",
     "got": "^11.1.0",
-    "prettier": "2.0.4",
-    "prettier-plugin-solidity": "1.0.0-alpha.48",
+    "mv": "2.1.1",
+    "prettier": "^2.0.5",
+    "prettier-plugin-solidity": "^1.0.0-alpha.53",
     "solidity-coverage": "0.7.5"
   }
 }
