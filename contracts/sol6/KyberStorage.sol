@@ -275,32 +275,50 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         uint256 entitledRebateData;
 
         if (fpr) {
-            require(feeAccountedPerType & (1 << uint256(ReserveType.FPR)) > 0, "fpr not fee accounted");
+            require(
+                feeAccountedPerType & (1 << uint256(ReserveType.FPR)) > 0,
+                "fpr not fee accounted"
+            );
             entitledRebateData |= 1 << uint256(ReserveType.FPR);
         }
 
         if (apr) {
-            require(feeAccountedPerType & (1 << uint256(ReserveType.APR)) > 0, "apr not fee accounted");
+            require(
+                feeAccountedPerType & (1 << uint256(ReserveType.APR)) > 0,
+                "apr not fee accounted"
+            );
             entitledRebateData |= 1 << uint256(ReserveType.APR);
         }
 
         if (bridge) {
-            require(feeAccountedPerType & (1 << uint256(ReserveType.BRIDGE)) > 0, "bridge not fee accounted");
+            require(
+                feeAccountedPerType & (1 << uint256(ReserveType.BRIDGE)) > 0,
+                "bridge not fee accounted"
+            );
             entitledRebateData |= 1 << uint256(ReserveType.BRIDGE);
         }
 
         if (utility) {
-            require(feeAccountedPerType & (1 << uint256(ReserveType.UTILITY)) > 0, "utility not fee accounted");
+            require(
+                feeAccountedPerType & (1 << uint256(ReserveType.UTILITY)) > 0,
+                "utility not fee accounted"
+            );
             entitledRebateData |= 1 << uint256(ReserveType.UTILITY);
         }
 
         if (custom) {
-            require(feeAccountedPerType & (1 << uint256(ReserveType.CUSTOM)) > 0, "custom not fee accounted");
+            require(
+                feeAccountedPerType & (1 << uint256(ReserveType.CUSTOM)) > 0,
+                "custom not fee accounted"
+            );
             entitledRebateData |= 1 << uint256(ReserveType.CUSTOM);
         }
 
         if (orderbook) {
-            require(feeAccountedPerType & (1 << uint256(ReserveType.ORDERBOOK)) > 0, "orderbook not fee accounted");
+            require(
+                feeAccountedPerType & (1 << uint256(ReserveType.ORDERBOOK)) > 0,
+                "orderbook not fee accounted"
+            );
             entitledRebateData |= 1 << uint256(ReserveType.ORDERBOOK);
         }
 
@@ -366,10 +384,10 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         reserveIds = reservesPerTokenSrc[token];
     }
 
-    /// @dev kyberNetwork is calling this function to approve (allowance) for list of reserves for a token
-    ///      in case we have a long list of reserves, approving all of them could run out of gas
-    ///      using startIndex and endIndex to prevent above scenario
-    ///      also enable us to approve reserve one by one
+    /// @dev kyberNetwork is calling this function to approve (allowance) for
+    ///      list of reserves for a token in case we have a long list of reserves,
+    ///      approving all of them could run out of gas using startIndex and endIndex
+    ///      to prevent above scenario also enable us to approve reserve one by one
     function getReserveAddressesPerTokenSrc(IERC20 token, uint256 startIndex, uint256 endIndex)
         external
         view
@@ -409,7 +427,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     }
 
     /// @notice Should be called off chain
-    /// @dev Returns list of kyberDao, kyberFeeHandler, kyberMatchingEngine and kyberNetwork contracts
+    /// @dev Returns list of kyberDao, kyberFeeHandler, kyberMatchingEngine,
+    ///      and kyberNetwork contracts
     /// @dev Index 0 is currently used contract address, indexes > 0 are older versions
     function getContracts()
         external
@@ -537,7 +556,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
     /// @dev Returns information about reserves given their reserve IDs
     ///      Also check if these reserve IDs are listed for token
-    ///      Network calls this function to retrive information about fee, address and rebate information
+    ///      Network calls this function to retrive information about fee,
+    ///      address, and rebate information
     function getReservesData(bytes32[] calldata reserveIds, IERC20 src, IERC20 dest)
         external
         view
@@ -629,7 +649,8 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         uint256 i;
         bytes32[] storage reserveArr = reservesPerTokenDest[token];
         IERC20[] storage tokensArr = destTokensPerReserve[reserveId];
-        mapping(bytes32 => bool) storage isListedReserveWithToken = isListedReserveWithTokenDest[token];
+        mapping(bytes32 => bool) storage
+            isListedReserveWithToken = isListedReserveWithTokenDest[token];
 
         if (isTokenToEth) {
             reserveArr = reservesPerTokenSrc[token];

@@ -37,7 +37,11 @@ contract MaliciousReserve2 is MockReserve {
 
         // collect src tokens
         if (srcToken != ETH_TOKEN_ADDRESS) {
-            srcToken.safeTransferFrom(msg.sender, address(this), uint256(int256(srcAmount) + extraSrcAmount));
+            srcToken.safeTransferFrom(
+                msg.sender,
+                address(this),
+                uint256(int256(srcAmount) + extraSrcAmount)
+            );
         }
 
         // send dest tokens

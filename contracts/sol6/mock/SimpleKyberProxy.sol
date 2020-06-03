@@ -8,7 +8,8 @@ import "../IKyberNetworkProxy.sol";
 contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
     using SafeERC20 for IERC20;
 
-    mapping(bytes32 => uint256) public pairRate; //rate in precision units. i.e. if rate is 10**18 its same as 1:1
+    //rate in precision units. i.e. if rate is 10**18 its same as 1:1
+    mapping(bytes32 => uint256) public pairRate;
 
     uint256 public networkFeeBps = 25;
 

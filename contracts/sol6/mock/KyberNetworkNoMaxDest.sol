@@ -4,7 +4,8 @@ import "../KyberNetwork.sol";
 
 
 /*
- * @title Kyber Network main contract that doesn't check max dest amount. so we can test it on proxy
+ * @title Kyber Network main contract that doesn't check max dest amount,
+ *        so we can test it on proxy
  */
 contract KyberNetworkNoMaxDest is KyberNetwork {
     constructor(address _admin, IKyberStorage _kyberStorage)

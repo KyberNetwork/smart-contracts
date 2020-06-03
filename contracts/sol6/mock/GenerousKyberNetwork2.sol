@@ -4,8 +4,9 @@ import "../KyberNetwork.sol";
 
 
 /*
- * @title GenerousKyberNetwork2 transfer the fixed dest amount to destAddress and returns this amount to proxy
- * This would allow us to check the condition of maxDestAmount
+ * @title GenerousKyberNetwork2 transfer the fixed dest amount to destAddress
+ *        and returns this amount to proxy.
+ *        This would allow us to check the condition of maxDestAmount
  */
 contract GenerousKyberNetwork2 is KyberNetwork {
     event GenerousTrade(int256 which, int256 more, IERC20 token);

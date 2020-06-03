@@ -51,8 +51,9 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-    * @dev  separate logics from withdraw, so staker can withdraw as long as amount <= staker's deposit amount
-            calling this function from withdraw function, ignore reverting
+    * @dev  separate logics from withdraw, so staker can withdraw as long as
+    *       amount <= staker's deposit amount calling this function from withdraw
+    *       function, ignore reverting
     * @param staker staker that is withdrawing
     * @param amount amount to withdraw
     * @param curEpoch current epoch
@@ -78,12 +79,14 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         if (reduceAmount > 0) {
             if (representative != staker) {
                 initDataIfNeeded(representative, curEpoch);
-                // staker has delegated to representative, withdraw will affect representative's delegated stakes
+                // staker has delegated to representative, withdraw will affect
+                // representative's delegated stakes
                 stakerPerEpochData[curEpoch][representative].delegatedStake =
                     stakerPerEpochData[curEpoch][representative].delegatedStake.sub(reduceAmount);
             }
             stakerPerEpochData[curEpoch][staker].stake = newStake;
-            // call KyberDao to reduce reward, if staker has delegated, then pass his representative
+            // call KyberDao to reduce reward, if staker has delegated,
+            // then pass hisrepresentative
             if (address(kyberDao) != address(0)) {
                 // don't revert if KyberDao revert so data will be updated correctly
                 (bool success, ) = address(kyberDao).call(
@@ -132,9 +135,14 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
             initDataIfNeeded(curRepresentative, curEpoch);
 
             stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake =
-                stakerPerEpochData[curEpoch + 1][curRepresentative].delegatedStake.sub(updatedStake);
+                stakerPerEpochData[curEpoch + 1][curRepresentative]
+                    .delegatedStake
+                    .sub(updatedStake);
+
             stakerLatestData[curRepresentative].delegatedStake =
-                stakerLatestData[curRepresentative].delegatedStake.sub(updatedStake);
+                stakerLatestData[curRepresentative]
+                    .delegatedStake
+                    .sub(updatedStake);
 
             emit Delegated(staker, curRepresentative, curEpoch, false);
         }
@@ -145,10 +153,17 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         // ignore if staker is delegating back to himself
         if (newRepresentative != staker) {
             initDataIfNeeded(newRepresentative, curEpoch);
+
             stakerPerEpochData[curEpoch + 1][newRepresentative].delegatedStake =
-                stakerPerEpochData[curEpoch + 1][newRepresentative].delegatedStake.add(updatedStake);
+                stakerPerEpochData[curEpoch + 1][newRepresentative]
+                    .delegatedStake
+                    .add(updatedStake);
+
             stakerLatestData[newRepresentative].delegatedStake =
-                stakerLatestData[newRepresentative].delegatedStake.add(updatedStake);
+                stakerLatestData[newRepresentative]
+                    .delegatedStake
+                    .add(updatedStake);
+
             emit Delegated(staker, newRepresentative, curEpoch, true);
         }
     }
@@ -190,7 +205,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     /**
-     * @dev call to withdraw KNC from staking, it could affect reward when calling KyberDao handleWithdrawal
+     * @dev call to withdraw KNC from staking, it could affect reward when
+     *      calling KyberDao handleWithdrawal
      * @param amount amount of KNC to withdraw
      */
     function withdraw(uint256 amount) external override nonReentrant {
@@ -251,73 +267,17 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         delegatedStake = stakerData.delegatedStake;
         representative = stakerData.representative;
     }
-
-    /**
-    * @dev  separate logics from withdraw, so staker can withdraw as long as amount <= staker's deposit amount
-            calling this function from withdraw function, ignore reverting
-    * @param staker staker that is withdrawing
-    * @param amount amount to withdraw
-    * @param curEpoch current epoch
-    */
-    function handleWithdrawal(
-        address staker,
-        uint256 amount,
-        uint256 curEpoch
-    ) external {
-        require(msg.sender == address(this), "only staking contract");
-        initDataIfNeeded(staker, curEpoch);
-        // Note: update latest stake will be done after this function
-        // update staker's data for next epoch
-        stakerPerEpochData[curEpoch + 1][staker].stake =
-            stakerPerEpochData[curEpoch + 1][staker].stake.sub(amount);
-
-        address representative = stakerPerEpochData[curEpoch][staker].representative;
-        uint256 curStake = stakerPerEpochData[curEpoch][staker].stake;
-        uint256 lStakeBal = stakerLatestData[staker].stake.sub(amount);
-        uint256 newStake = curStake.min(lStakeBal);
-        uint256 reduceAmount = curStake.sub(newStake); // newStake is always <= curStake
-
-        if (reduceAmount > 0) {
-            if (representative != staker) {
-                initDataIfNeeded(representative, curEpoch);
-                // staker has delegated to representative, withdraw will affect representative's delegated stakes
-                stakerPerEpochData[curEpoch][representative].delegatedStake =
-                    stakerPerEpochData[curEpoch][representative].delegatedStake.sub(reduceAmount);
-            }
-            stakerPerEpochData[curEpoch][staker].stake = newStake;
-            // call KyberDao to reduce reward, if staker has delegated, then pass his representative
-            if (address(kyberDao) != address(0)) {
-                // don't revert if KyberDao revert so data will be updated correctly
-                (bool success, ) = address(kyberDao).call(
-                    abi.encodeWithSignature(
-                        "handleWithdrawal(address,uint256)",
-                        representative,
-                        reduceAmount
-                    )
-                );
-                if (!success) {
-                    emit WithdrawDataUpdateFailed(curEpoch, staker, amount);
-                }
-            }
-        }
-        representative = stakerPerEpochData[curEpoch + 1][staker].representative;
-        if (representative != staker) {
-            initDataIfNeeded(representative, curEpoch);
-            stakerPerEpochData[curEpoch + 1][representative].delegatedStake =
-                stakerPerEpochData[curEpoch + 1][representative].delegatedStake.sub(amount);
-            stakerLatestData[representative].delegatedStake =
-                stakerLatestData[representative].delegatedStake.sub(amount);
-        }
-    }
     
     /**
      * @notice return raw data of a staker for an epoch
      *         WARN: should be used only for initialized data
-     *          if data has not been initialized, it will return all 0
-     *          pool master shouldn't use this function to compute/distribute rewards of pool members
-     * @dev  in KyberDao contract, if staker wants to claim reward for past epoch,
-     *       we must know the staker's data for that epoch
-     *       if the data has not been initialized, it means staker hasn't done any action -> no reward
+     *         if data has not been initialized, it will return all 0
+     *         pool master shouldn't use this function to compute/distribute rewards
+     *         of pool members
+     * @dev in KyberDao contract, if staker wants to claim reward for past epoch,
+     *      we must know the staker's data for that epoch
+     *      if the data has not been initialized, it means staker hasn't done
+     *      any action -> no reward
      */
     function getStakerRawData(address staker, uint256 epoch)
         external
@@ -490,8 +450,8 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
             stakerData.stake = lStakeBal;
         }
 
-        // whenever stakers deposit/withdraw/delegate, the current and next epoch data need to be updated
-        // as the result, we will also initialize data for staker at the next epoch
+        // whenever stakers deposit/withdraw/delegate, the current and next epoch data need to
+        // be updated as the result, we will also initialize data for staker at the next epoch
         if (!hasInited[epoch + 1][staker]) {
             hasInited[epoch + 1][staker] = true;
             StakerData storage nextEpochStakerData = stakerPerEpochData[epoch + 1][staker];

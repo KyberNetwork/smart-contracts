@@ -1,6 +1,5 @@
 pragma solidity 0.6.6;
 
-
 /* all this file is based on code from open zepplin
  * https://github.com/OpenZeppelin/zeppelin-solidity/tree/master/contracts/token */
 
@@ -56,7 +55,6 @@ library SafeMath {
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
@@ -71,9 +69,8 @@ abstract contract ERC20Basic {
 
     function transfer(address to, uint256 value) external virtual returns (bool);
 
-    function balanceOf(address who) external view virtual returns (uint256);
+    function balanceOf(address who) external virtual view returns (uint256);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -92,9 +89,8 @@ abstract contract ERC20 is ERC20Basic {
 
     function approve(address spender, uint256 value) external virtual returns (bool);
 
-    function allowance(address owner, address spender) external view virtual returns (uint256);
+    function allowance(address owner, address spender) external virtual view returns (uint256);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -130,11 +126,10 @@ contract BasicToken is ERC20Basic {
         return true;
     }
 
-    function balanceOf(address _owner) public view override returns (uint256 balance) {
+    function balanceOf(address _owner) public override view returns (uint256 balance) {
         return balances[_owner];
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -155,7 +150,8 @@ contract StandardToken is BasicToken, ERC20 {
     ) public override returns (bool) {
         uint256 _allowance = allowed[_from][msg.sender];
 
-        // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
+        // Check is not needed because sub(_allowance, _value) will already revert if
+        // this condition is not met
         require(_value <= _allowance, "transfer more then allowed");
 
         balances[_to] = balances[_to].add(_value);
@@ -173,14 +169,13 @@ contract StandardToken is BasicToken, ERC20 {
 
     function allowance(address _owner, address _spender)
         public
-        view
         override
-        returns (uint256 remaining) 
+        view
+        returns (uint256 remaining)
     {
         return allowed[_owner][_spender];
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 

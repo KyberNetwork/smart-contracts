@@ -43,7 +43,8 @@ contract KyberNetworkProxy is
     /// @param dest Destination token
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens in twei
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
+    /// @param minConversionRate The minimal conversion rate. If actual rate
+    ///                          is lower, trade reverts
     /// @param platformWallet Platform wallet address for receiving fees
     /// @return Amount of actual dest tokens in twei
     function trade(
@@ -79,7 +80,8 @@ contract KyberNetworkProxy is
     /// @param dest Destination token
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens in twei
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
+    /// @param minConversionRate The minimal conversion rate.
+    ///                          If actual rate is lower, trade reverts
     /// @param walletId Platform wallet address for receiving fees
     /// @param hint Advanced instructions for running the trade 
     /// @return Amount of actual dest tokens in twei
@@ -114,9 +116,11 @@ contract KyberNetworkProxy is
     /// @param dest Destination token
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens in twei
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
+    /// @param minConversionRate The minimal conversion rate.
+    ///                          If actual rate is lower, trade reverts.
     /// @param platformWallet Platform wallet address for receiving fees
-    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
+    /// @param platformFeeBps Part of the trade that is allocated as fee
+    ///                       to platform wallet. e.g.: 10000 = 100%, 100 = 1%
     /// @param hint Advanced instructions for running the trade 
     /// @return destAmount Amount of actual dest tokens in twei
     function tradeWithHintAndFee(
@@ -148,7 +152,8 @@ contract KyberNetworkProxy is
     /// @param src Source token
     /// @param srcAmount Amount of src tokens in twei
     /// @param dest Destination token
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
+    /// @param minConversionRate The minimal conversion rate.
+    ///                          If actual rate is lower, trade reverts.
     /// @return Amount of actual dest tokens in twei
     function swapTokenToToken(
         IERC20 src,
@@ -174,7 +179,8 @@ contract KyberNetworkProxy is
 
     /// @dev Trade from eth -> token. Sends token to msg sender
     /// @param token Destination token
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
+    /// @param minConversionRate The minimal conversion rate.
+    ///                          If actual rate is lower, trade reverts.
     /// @return Amount of actual dest tokens in twei
     function swapEtherToToken(IERC20 token, uint256 minConversionRate)
         external
@@ -201,7 +207,8 @@ contract KyberNetworkProxy is
     /// @dev Trade from token -> eth. Sends eth to msg sender
     /// @param token Source token
     /// @param srcAmount Amount of src tokens in twei
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
+    /// @param minConversionRate The minimal conversion rate.
+    ///                          If actual rate is lower, trade reverts.
     /// @return Amount of actual dest tokens in twei
     function swapTokenToEther(
         IERC20 token,
@@ -242,11 +249,13 @@ contract KyberNetworkProxy is
 
     /// @notice Backward compatible function
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev Get expected rate for a trade from src to dest tokens, with amount srcQty (no platform fee)
+    /// @dev Get expected rate for a trade from src to dest tokens,
+    ///      with amount srcQty (no platform fee)
     /// @param src Source token
     /// @param dest Destination token
     /// @param srcQty Amount of src tokens in twei
-    /// @return expectedRate for a trade after deducting network fee. Rate = destQty (twei) / srcQty (twei) * 10 ** 18
+    /// @return expectedRate for a trade after deducting network fee.
+    ///         Rate = destQty (twei) / srcQty (twei) * 10 ** 18
     /// @return worstRate for a trade. Usually expectedRate * 97 / 100
     ///             Use worstRate value as trade min conversion rate at your own risk
     function getExpectedRate(
@@ -271,7 +280,8 @@ contract KyberNetworkProxy is
     /// @param src Source token
     /// @param dest Destination token
     /// @param srcQty Amount of src tokens in twei
-    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 10000 = 100%, 100 = 1%
+    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet.
+    ///                       e.g: 10000 = 100%, 100 = 1%
     /// @param hint Advanced instructions for running the trade 
     /// @return expectedRate for a trade after deducting network + platform fee
     ///             Rate = destQty (twei) / srcQty (twei) * 10 ** 18

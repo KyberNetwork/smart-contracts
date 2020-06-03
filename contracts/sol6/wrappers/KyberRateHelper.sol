@@ -59,8 +59,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 optionalSellAmount
     )
         public
-        view
         override
+        view
         returns (
             bytes32[] memory buyReserves,
             uint256[] memory buyRates,
@@ -77,8 +77,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 optionalSellAmount
     )
         public
-        view
         override
+        view
         returns (
             bytes32[] memory buyReserves,
             uint256[] memory buyRates,
@@ -97,8 +97,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 networkFeeBps
     )
         public
-        view
         override
+        view
         returns (
             bytes32[] memory buyReserves,
             uint256[] memory buyRates,
@@ -106,16 +106,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             uint256[] memory sellRates
         )
     {
-        (buyReserves, buyRates) = getBuyInfo(
-            token,
-            optionalBuyAmount,
-            networkFeeBps
-        );
-        (sellReserves, sellRates) = getSellInfo(
-            token,
-            optionalSellAmount,
-            networkFeeBps
-        );
+        (buyReserves, buyRates) = getBuyInfo(token, optionalBuyAmount, networkFeeBps);
+        (sellReserves, sellRates) = getSellInfo(token, optionalSellAmount, networkFeeBps);
     }
 
     function getBuyInfo(
@@ -123,44 +115,44 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 optionalBuyAmount,
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory buyReserves, uint256[] memory buyRates) {
-        Amounts memory amts;
+        Amounts memory amounts;
         bool[] memory isFeeAccountedFlags;
         address reserve;
 
-        amts.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
+        amounts.srcAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
         (buyReserves, , ) = matchingEngine.getTradingReserves(ETH_TOKEN_ADDRESS, token, false, "");
         isFeeAccountedFlags = kyberStorage.getFeeAccountedData(buyReserves);
         buyRates = new uint256[](buyReserves.length);
 
         for (uint256 i = 0; i < buyReserves.length; i++) {
-            (reserve, , , ,) = kyberStorage.getReserveDetailsById(buyReserves[i]);
+            (reserve, , , , ) = kyberStorage.getReserveDetailsById(buyReserves[i]);
             if (networkFeeBps == 0 || !isFeeAccountedFlags[i]) {
                 buyRates[i] = IKyberReserve(reserve).getConversionRate(
                     ETH_TOKEN_ADDRESS,
                     token,
-                    amts.srcAmount,
+                    amounts.srcAmount,
                     block.number
                 );
                 continue;
             }
 
-            amts.ethSrcAmount = amts.srcAmount - ((amts.srcAmount * networkFeeBps) / BPS);
+            amounts.ethSrcAmount = amounts.srcAmount - ((amounts.srcAmount * networkFeeBps) / BPS);
             buyRates[i] = IKyberReserve(reserve).getConversionRate(
                 ETH_TOKEN_ADDRESS,
                 token,
-                amts.ethSrcAmount,
+                amounts.ethSrcAmount,
                 block.number
             );
-            amts.destAmount = calcDstQty(
-                amts.ethSrcAmount,
+            amounts.destAmount = calcDstQty(
+                amounts.ethSrcAmount,
                 ETH_DECIMALS,
                 getDecimals(token),
                 buyRates[i]
             );
             //use amount instead of ethSrcAmount to account for network fee
             buyRates[i] = calcRateFromQty(
-                amts.srcAmount,
-                amts.destAmount,
+                amounts.srcAmount,
+                amounts.destAmount,
                 ETH_DECIMALS,
                 getDecimals(token)
             );
@@ -172,11 +164,11 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 optionalSellAmount,
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory sellReserves, uint256[] memory sellRates) {
-        Amounts memory amts;
+        Amounts memory amounts;
         bool[] memory isFeeAccountedFlags;
         address reserve;
 
-        amts.srcAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
+        amounts.srcAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
         (sellReserves, , ) = matchingEngine.getTradingReserves(
             token,
             ETH_TOKEN_ADDRESS,
@@ -187,21 +179,26 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         sellRates = new uint256[](sellReserves.length);
 
         for (uint256 i = 0; i < sellReserves.length; i++) {
-            (reserve, , , ,) = kyberStorage.getReserveDetailsById(sellReserves[i]);
+            (reserve, , , , ) = kyberStorage.getReserveDetailsById(sellReserves[i]);
             sellRates[i] = IKyberReserve(reserve).getConversionRate(
                 token,
                 ETH_TOKEN_ADDRESS,
-                amts.srcAmount,
+                amounts.srcAmount,
                 block.number
             );
             if (networkFeeBps == 0 || !isFeeAccountedFlags[i]) {
                 continue;
             }
-            amts.destAmount = calcDstQty(amts.srcAmount, getDecimals(token), ETH_DECIMALS, sellRates[i]);
-            amts.destAmount -= (networkFeeBps * amts.destAmount) / BPS;
+            amounts.destAmount = calcDstQty(
+                amounts.srcAmount,
+                getDecimals(token),
+                ETH_DECIMALS,
+                sellRates[i]
+            );
+            amounts.destAmount -= (networkFeeBps * amounts.destAmount) / BPS;
             sellRates[i] = calcRateFromQty(
-                amts.srcAmount,
-                amts.destAmount,
+                amounts.srcAmount,
+                amounts.destAmount,
                 getDecimals(token),
                 ETH_DECIMALS
             );

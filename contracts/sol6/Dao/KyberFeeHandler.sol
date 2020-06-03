@@ -35,15 +35,18 @@ interface IKyberProxy is IKyberNetworkProxy, ISimpleKyberProxy {
  *              Reward an address that staked knc in kyberStaking contract. AKA - stakers
  *              Rebate reserves for supporting trades.
  * @dev Code flow:
- *      1. Accumulating && claiming Fees. Per trade on kyberNetwork, it calls handleFees() function which
- *          internally accounts for network & platform fees from the trade. Fee distribution:
- *              rewards: accumulated per epoch. can be claimed by the kyberDao after epoch is concluded.
- *              rebates: accumulated per rebate wallet, can be claimed any time.
- *              Burn: accumulated in the contract. Burned value and interval limited with safe check using
-                    sanity rate.
- *              Platfrom fee: accumulated per platform wallet, can be claimed any time.
- *      2. Network Fee distribution: Per epoch kyberFeeHandler contract reads BRR distribution percentage 
- *          from kyberDao. When the data expires, kyberFeeHandler reads updated values.
+ *      1. Accumulating && claiming Fees. Per trade on kyberNetwork, it calls handleFees()
+ *         function which internally accounts for network & platform fees from the trade.
+ *         Fee distribution:
+ *           Rewards: accumulated per epoch. can be claimed by the kyberDao after epoch
+ *                    is concluded.
+ *           Rebates: accumulated per rebate wallet, can be claimed any time.
+ *           Burn: accumulated in the contract. Burned value and interval limited with
+ *                 safe check using sanity rate.
+ *           Platfrom fee: accumulated per platform wallet, can be claimed any time.
+ *      2. Network Fee distribution: Per epoch kyberFeeHandler contract reads BRR
+ *         distribution percentage from kyberDao. When the data expires,
+ *         kyberFeeHandler reads updated values.
  */
 contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGuard {
     using SafeMath for uint256;
@@ -77,7 +80,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     mapping(address => uint256) public rebatePerWallet;
     mapping(uint256 => uint256) public rewardsPerEpoch;
     mapping(uint256 => uint256) public rewardsPaidPerEpoch;
-    uint256 public totalPayoutBalance; // total balance in the contract that is for rebate, reward, platform fee
+    // total balance in the contract that is for rebate, reward, platform fee
+    uint256 public totalPayoutBalance;
 
     /// @dev use to get rate of KNC/ETH to check if rate to burn knc is normal
     /// @dev index 0 is currently used contract address, indexes > 0 are older versions
@@ -151,7 +155,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         emit EthReceived(msg.value);
     }
 
-    /// @dev handleFees function is called per trade on kyberNetwork. unless the trade is not involving any fees.
+    /// @dev handleFees function is called per trade on kyberNetwork,
+    ///      unless the trade is not involving any fees.
     /// @param rebateWallets a list of rebate wallets that will get rebate for this trade.
     /// @param rebateBpsPerWallet percentage of rebate for each wallet, out of total rebate.
     /// @param platformWallet Wallet address that will receive the platfrom fee.
@@ -242,7 +247,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     }
 
     /// @dev claim reabate per reserve wallet. called by any address
-    /// @param rebateWallet the wallet to claim rebates for. Total accumulated rebate sent to this wallet.
+    /// @param rebateWallet the wallet to claim rebates for.
+    ///                     Total accumulated rebate sent to this wallet.
     /// @return amountWei amount of rebate claimed
     function claimReserveRebate(address rebateWallet) 
         external 
@@ -270,7 +276,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     }
 
     /// @dev claim accumulated fee per platform wallet. Called by any address
-    /// @param platformWallet the wallet to claim fee for. Total accumulated fee sent to this wallet.
+    /// @param platformWallet the wallet to claim fee for.
+    ///                       Total accumulated fee sent to this wallet.
     /// @return amountWei amount of fee claimed
     function claimPlatformFee(address platformWallet)
         external

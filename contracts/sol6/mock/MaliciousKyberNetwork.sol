@@ -4,7 +4,8 @@ import "../KyberNetwork.sol";
 
 
 /*
- * @title Malicious Kyber Network, takes (steals) some extra fees and reports actual dest amount minus Fees.
+ * @title Malicious Kyber Network, takes (steals) some extra fees and reports
+ *        actual dest amount minus Fees.
  */
 contract MaliciousKyberNetwork is KyberNetwork {
     uint256 public myFeeWei = 10;

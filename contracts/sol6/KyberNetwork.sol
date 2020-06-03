@@ -31,16 +31,18 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Stores work data for reserves (either for token -> eth, or eth -> token)
-    /// @dev Variables are in-place, ie. reserve with addresses[i] has id of ids[i], offers rate of rates[i], etc.
+    /// @dev Variables are in-place, ie. reserve with addresses[i] has id of ids[i],
+    ///      offers rate of rates[i], etc.
     /// @param addresses List of reserve addresses selected for the trade
     /// @param ids List of reserve ids, to be used for KyberTrade event
     /// @param rates List of rates that were offered by the reserves
     /// @param isFeeAccountedFlags List of reserves requiring users to pay network fee
     /// @param isEntitledRebateFlags List of reserves eligible for rebates
     /// @param splitsBps List of proportions of trade amount allocated to the reserves.
-    ///     If there is only 1 reserve, then it should have a value of 10000 bps
+    ///                  If there is only 1 reserve, then it should have a value of 10000 bps
     /// @param srcAmounts Source amount per reserve.
-    /// @param decimals Token decimals. Src decimals when for src -> eth, dest decimals when eth -> dest
+    /// @param decimals Token decimals. Src decimals when for src -> eth,
+    ///                 dest decimals when eth -> dest
     struct ReservesData {
         IKyberReserve[] addresses;
         bytes32[] ids;
@@ -54,14 +56,18 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
     /// @notice Main trade data structure, is initialised and used for the entire trade flow
     /// @param input Initialised when initTradeInput is called. Stores basic trade info
-    /// @param tokenToEth Stores information about reserves that were selected for src -> eth side of trade
-    /// @param ethToToken Stores information about reserves that were selected for eth -> dest side of trade
+    /// @param tokenToEth Stores information about reserves that were selected
+    ///                   for src -> eth side of trade
+    /// @param ethToToken Stores information about reserves that were selected for
+    ///                   eth -> dest side of trade
     /// @param tradeWei Trade amount in ether wei, before deducting fees.
-    /// @param networkFeeWei Network fee in ether wei. For t2t trades, it can go up to 200% of networkFeeBps
+    /// @param networkFeeWei Network fee in ether wei. For t2t trades, it can go up
+    ///                      to 200% of networkFeeBps
     /// @param platformFeeWei Platform fee in ether wei
     /// @param networkFeeBps Network fee bps determined by kyberDao, or default value
     /// @param numEntitledRebateReserves No. of reserves that are eligible for rebates
-    /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * BPS
+    /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS.
+    ///                        Up to 2 * BPS
     /// @param entitledRebateBps Proportion of reserves entitled for rebate, in BPS. Up to 2 * BPS
     /// @param rateWithNetworkFee src -> dest token rate, after accounting for only network fee
     struct TradeData {
@@ -73,7 +79,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 platformFeeWei;
         uint256 networkFeeBps;
         uint256 numEntitledRebateReserves;
-        uint256 feeAccountedBps; // what part of this trade is fee paying. for token -> token - up to 200%
+        uint256 feeAccountedBps; // what part of trade is fee paying, up to 200% for token -> token
         uint256 entitledRebateBps;
         uint256 rateWithNetworkFee;
     }
@@ -92,7 +98,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
     uint256 internal constant PERM_HINT_GET_RATE = 1 << 255; // for backwards compatibility
     uint256 internal constant DEFAULT_NETWORK_FEE_BPS = 25; // till we read value from kyberDao
-    uint256 internal constant MAX_APPROVED_PROXIES = 2; // limit number of proxies that can trade here
+    uint256 internal constant MAX_APPROVED_PROXIES = 2; // limit number of proxies that can trade
 
     IKyberFeeHandler internal kyberFeeHandler;
     IKyberDao internal kyberDao;
@@ -143,7 +149,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param dest Destination token
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens in twei
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
+    /// @param minConversionRate The minimal conversion rate.
+    ///                          If actual rate is lower, trade reverts.
     /// @param walletId Platform wallet address for receiving fees
     /// @param hint Advanced instructions for running the trade 
     /// @return destAmount Amount of actual dest tokens in twei
@@ -181,9 +188,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param dest Destination token
     /// @param destAddress Address to send tokens to
     /// @param maxDestAmount A limit on the amount of dest tokens in twei
-    /// @param minConversionRate The minimal conversion rate. If actual rate is lower, trade reverts
+    /// @param minConversionRate The minimal conversion rate.
+    ///                          If actual rate is lower, trade reverts.
     /// @param platformWallet Platform wallet address for receiving fees
-    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 1000 = 10%
+    /// @param platformFeeBps Part of the trade that is allocated as fee to
+    ///                       platform wallet. e.g.: 1000 = 10%
     /// @param hint Advanced instructions for running the trade 
     /// @return destAmount Amount of actual dest tokens in twei
     function tradeWithHintAndFee(
@@ -360,10 +369,12 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param src Source token
     /// @param dest Destination token
     /// @param srcQty Amount of src tokens in twei
-    /// @param platformFeeBps Part of the trade that is allocated as fee to platform wallet. Ex: 1000 = 10%
+    /// @param platformFeeBps Part of the trade that is allocated as fee to
+    ///                       platform wallet. e.g.: 1000 = 10%
     /// @param hint Advanced instructions for running the trade 
     /// @return rateWithNetworkFee Rate after deducting network fee but excluding platform fee
-    /// @return rateWithAllFees = actual rate. Rate after accounting for both network and platform fees
+    /// @return rateWithAllFees = actual rate. Rate after accounting for both network and
+    ///         platform fees
     function getExpectedRateWithHintAndFee(
         IERC20 src,
         IERC20 dest,
@@ -560,7 +571,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     ) internal virtual {
 
         if (src == dest) {
-            // eth -> eth, need not do anything except for token -> eth: transfer eth to destAddress
+            // eth -> eth, need not do anything except for
+            // token -> eth: transfer eth to destAddress
             if (destAddress != (address(this))) {
                 (bool success, ) = destAddress.call{value: expectedDestAmount}("");
                 require(success, "send dest qty failed");
@@ -619,7 +631,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 // verify src balance only if it is not eth
                 balanceAfter = getBalance(src, address(this));
                 // verify correct src amount is taken
-                if (srcBalanceBefore >= balanceAfter && srcBalanceBefore - balanceAfter > reservesData.srcAmounts[i]) {
+                if (
+                    srcBalanceBefore >= balanceAfter &&
+                    srcBalanceBefore - balanceAfter > reservesData.srcAmounts[i]
+                ) {
                     revert("reserve takes high amount");
                 }
                 srcBalanceBefore = balanceAfter;
@@ -633,7 +648,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 reservesData.rates[i]
             );
             balanceAfter = getBalance(dest, address(this));
-            if (balanceAfter < destBalanceBefore || balanceAfter - destBalanceBefore < expectedDestAmount) {
+            if (
+                balanceAfter < destBalanceBefore ||
+                balanceAfter - destBalanceBefore < expectedDestAmount
+            ) {
                 revert("reserve returns low amount");
             }
             destBalanceBefore = balanceAfter;
@@ -783,8 +801,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     ///        - Call kyberMatchingEngine to parse hint and get an optional reserve list to trade.
     ///        - Query reserve rates and call kyberMatchingEngine to use best reserve.
     ///        - Calculate trade values and fee values.
-    ///     This function should set all TradeData information so that it can be later used without 
-    ///         any ambiguity
+    ///     This function should set all TradeData information so that it can be later used 
+    ///     without any ambiguity
     /// @param tradeData Main trade data object for trade info to be stored
     /// @param hint Advanced user instructions for the trade 
     function calcRatesAndAmounts(TradeData memory tradeData, bytes memory hint)
@@ -866,22 +884,38 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             kyberMatchingEngine.getTradingReserves(
             src,
             dest,
-            (tradeData.input.src != ETH_TOKEN_ADDRESS) && (tradeData.input.dest != ETH_TOKEN_ADDRESS),
+            (tradeData.input.src != ETH_TOKEN_ADDRESS) &&
+                (tradeData.input.dest != ETH_TOKEN_ADDRESS),
             hint
         );
         bool areAllReservesListed;
-        (areAllReservesListed, reservesData.isFeeAccountedFlags,
-         reservesData.isEntitledRebateFlags, reservesData.addresses)
-            = kyberStorage.getReservesData(reservesData.ids, src, dest);
+        (
+            areAllReservesListed,
+            reservesData.isFeeAccountedFlags,
+            reservesData.isEntitledRebateFlags,
+            reservesData.addresses
+        ) = kyberStorage.getReservesData(reservesData.ids, src, dest);
 
         if(!areAllReservesListed) {
             return 0;
         }
 
-        require(reservesData.ids.length == reservesData.splitsBps.length, "bad split array");
-        require(reservesData.ids.length == reservesData.isFeeAccountedFlags.length, "bad fee array");
-        require(reservesData.ids.length == reservesData.isEntitledRebateFlags.length, "bad rebate array");
-        require(reservesData.ids.length == reservesData.addresses.length, "bad addresses array");
+        require(
+            reservesData.ids.length == reservesData.splitsBps.length,
+            "bad split array"
+        );
+        require(
+            reservesData.ids.length == reservesData.isFeeAccountedFlags.length,
+            "bad fee array"
+        );
+        require(
+            reservesData.ids.length == reservesData.isEntitledRebateFlags.length,
+            "bad rebate array"
+        );
+        require(
+            reservesData.ids.length == reservesData.addresses.length,
+            "bad addresses array"
+        );
 
         // calculate src trade amount per reserve and query rates
         // set data in reservesData struct
@@ -893,7 +927,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             tradeData
         );
 
-        // if matching engine requires processing with rate data. call doMatch and update reserve list
+        // if matching engine requires processing with rate data,
+        // call doMatch and update reserve list
         if (processWithRate == IKyberMatchingEngine.ProcessWithRate.Required) {
             uint256[] memory selectedIndexes = kyberMatchingEngine.doMatch(
                 src,
@@ -936,7 +971,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         reservesData.rates = new uint256[](numReserves);
         feesAccountedDestBps = new uint256[](numReserves);
 
-        // iterate reserve list. validate data. calculate srcAmount according to splits and fee data.
+        // iterate reserve list. validate data. calculate srcAmount according to
+        // splits and fee data.
         for (uint256 i = 0; i < numReserves; i++) {
             require(
                 reservesData.splitsBps[i] > 0 && reservesData.splitsBps[i] <= BPS,
@@ -1035,7 +1071,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
     }
 
-    /// @notice Gets the network fee from the kyberDao (or use default). View function for getExpectedRate
+    /// @notice Gets the network fee from the kyberDao (or use default).
+    ///         View function for getExpectedRate
     function getNetworkFee() internal view returns (uint256 networkFeeBps) {
         uint256 expiryTimestamp;
         (networkFeeBps, expiryTimestamp) = readNetworkFeeData();
@@ -1142,8 +1179,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         }
     }
 
-    /// @notice Recalculates tradeWei, network and platform fees, and actual source amount needed for the trade
-    /// in the event actualDestAmount > maxDestAmount
+    /// @notice Recalculates tradeWei, network and platform fees, and actual source amount
+    ///         needed for the trade in the event actualDestAmount > maxDestAmount
     function calcTradeSrcAmountFromDest(TradeData memory tradeData)
         internal
         pure
@@ -1194,9 +1231,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Recalculates srcAmounts and stores into tradingReserves, given the new destAmount.
-    ///     Uses the original proportion of srcAmounts and rates to determine new split destAmounts,
-    ///     then calculate the respective srcAmounts
-    /// @dev Due to small rounding errors, will fallback to current src amounts if new src amount is greater
+    ///         Uses the original proportion of srcAmounts and rates to determine new split
+    ///         destAmounts, then calculate the respective srcAmounts
+    /// @dev Due to small rounding errors, will fallback to current src amounts if new
+    ///      src amount is greater
     function calcTradeSrcAmount(
         uint256 srcAmount,
         uint256 srcDecimals,

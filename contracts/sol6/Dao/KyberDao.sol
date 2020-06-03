@@ -12,9 +12,10 @@ import "../IKyberFeeHandler.sol";
 
 /**
  * @notice  This contract is using SafeMath for uint, which is inherited from EpochUtils
-            Some events are moved to interface, easier for public uses
+ *          Some events are moved to interface, easier for public uses
  * @dev Network fee campaign: options are fee in bps
- *      BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
+ *      BRR fee handler campaign: options are combined of rebate
+ *      (left most 128 bits) + reward (right most 128 bits)
  *      General campaign: options are from 1 to num_options
  */
 contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator {
@@ -69,7 +70,8 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     mapping(uint256 => uint256) internal totalEpochPoints;
     // numberVotes[staker][epoch]: number of campaigns that the staker has voted in an epoch
     mapping(address => mapping(uint256 => uint256)) public numberVotes;
-    // hasClaimedReward[staker][epoch]: true/false if the staker has/hasn't claimed the reward for an epoch
+    // hasClaimedReward[staker][epoch]: true/false if the staker has/hasn't claimed the reward
+    // for an epoch
     mapping(address => mapping(uint256 => bool)) public hasClaimedReward;
     // stakerVotedOption[staker][campaignID]: staker's voted option ID for a campaign
     mapping(address => mapping(uint256 => uint256)) public stakerVotedOption;
@@ -143,9 +145,14 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     /**
      * @dev called by staking contract when staker wanted to withdraw
      * @param staker address of staker to reduce reward
-     * @param reduceAmount amount voting power to be reduced for each campaign staker has voted at this epoch
+     * @param reduceAmount amount voting power to be reduced for each campaign staker has voted
+     *                     at this epoch
      */
-    function handleWithdrawal(address staker, uint256 reduceAmount) external override onlyStakingContract {
+    function handleWithdrawal(address staker, uint256 reduceAmount)
+        external
+        override
+        onlyStakingContract
+    {
         // staking shouldn't call this func with reduce amount = 0
         if (reduceAmount == 0) {
             return;
@@ -189,7 +196,8 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
      * @param campaignType type of campaign (General, NetworkFee, FeeHandlerBRR)
      * @param startTimestamp timestamp to start running the campaign
      * @param endTimestamp timestamp to end this campaign
-     * @param minPercentageInPrecision min percentage (in precision) for formula to conclude campaign
+     * @param minPercentageInPrecision min percentage (in precision) for formula to
+     *                                 conclude campaign
      * @param cInPrecision c value (in precision) for formula to conclude campaign
      * @param tInPrecision t value (in precision) for formula to conclude campaign
      * @param options list values of options to vote for this campaign
@@ -345,7 +353,8 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     /**
      * @notice  WARNING When staker address is a contract,
-                it should be able to receive claimed reward in Eth whenever anyone calls this function.
+                it should be able to receive claimed reward in Eth whenever anyone calls
+                this function.
      * @dev call to claim reward of an epoch, can call by anyone, only once for each epoch
      * @param staker address to claim reward for
      * @param epoch to claim reward
@@ -413,7 +422,11 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     }
 
     // return list campaign ids for epoch, excluding non-existed ones
-    function getListCampaignIDs(uint256 epoch) external view returns (uint256[] memory campaignIDs) {
+    function getListCampaignIDs(uint256 epoch)
+        external
+        view
+        returns (uint256[] memory campaignIDs)
+    {
         campaignIDs = epochCampaigns[epoch];
     }
 
@@ -733,7 +746,8 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             );
             // network fee campaign, option must be fee in bps
             for (uint256 i = 0; i < options.length; i++) {
-                // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
+                // in Network, maximum fee that can be taken from 1 tx is
+                // (platform fee + 2 * network fee)
                 // so network fee should be less than 50%
                 require(
                     options[i] < BPS / 2,

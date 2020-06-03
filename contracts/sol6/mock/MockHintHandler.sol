@@ -24,7 +24,12 @@ contract MockHintHandler is KyberHintHandler {
         isListedDest[reserveId] = true;
     }
 
-    function getReserveAddress(bytes32 reserveId) internal view override returns (address reserveAddress) {
+    function getReserveAddress(bytes32 reserveId)
+        internal
+        override
+        view
+        returns (address reserveAddress)
+    {
         address[] memory reserveAddresses = reserveIdToAddresses[reserveId];
 
         if (reserveAddresses.length != 0) {

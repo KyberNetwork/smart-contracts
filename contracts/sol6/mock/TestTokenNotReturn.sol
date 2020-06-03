@@ -148,7 +148,8 @@ contract StandardToken is BasicToken, ERC20 {
     ) public override {
         uint256 _allowance = allowed[_from][msg.sender];
 
-        // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
+        // Check is not needed because sub(_allowance, _value) will already revert
+        // if this condition is not met
         if (_value > _allowance) revert();
 
         balances[_to] = balances[_to].add(_value);
@@ -162,7 +163,12 @@ contract StandardToken is BasicToken, ERC20 {
         emit Approval(msg.sender, _spender, _value);
     }
 
-    function allowance(address _owner, address _spender) public view override returns (uint256 remaining) {
+    function allowance(address _owner, address _spender)
+        public
+        override
+        view
+        returns (uint256 remaining)
+    {
         return allowed[_owner][_spender];
     }
 }

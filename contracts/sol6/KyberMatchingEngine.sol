@@ -59,7 +59,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     /// @param dest Destination token
     /// @param isTokenToToken Whether the trade is token -> token
     /// @param hint Advanced instructions for running the trade
-    /// @return reserveIds Array of reserve IDs for the trade, each being 32 bytes. 1st byte is reserve type
+    /// @return reserveIds Array of reserve IDs for the trade, each being 32 bytes.
+    ///         1st byte is reserve type.
     /// @return splitValuesBps Array of split values (in basis points) for the trade
     /// @return processWithRate Enum ProcessWithRate, whether extra processing is required or not
     function getTradingReserves(
@@ -203,8 +204,13 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         reserveIndexes[0] = bestReserve.index;
     }
 
-    function getReserveAddress(bytes32 reserveId) internal view override returns (address reserveAddress) {
-        (reserveAddress, , , ,) = kyberStorage.getReserveDetailsById(reserveId);
+    function getReserveAddress(bytes32 reserveId)
+        internal
+        override
+        view
+        returns (address reserveAddress)
+    {
+        (reserveAddress, , , , ) = kyberStorage.getReserveDetailsById(reserveId);
     }
 
     function areAllReservesListed(
