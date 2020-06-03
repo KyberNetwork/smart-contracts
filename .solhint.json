@@ -6,7 +6,7 @@
     "avoid-sha3": "warn",
     "avoid-tx-origin": "warn",
     "const-name-snakecase": "off",
-    "func-order": "warn",
+    "func-order": "error",
     "not-rely-on-block-hash": "warn"
   }
 }

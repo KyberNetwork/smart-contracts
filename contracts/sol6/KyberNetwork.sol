@@ -870,7 +870,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             hint
         );
         bool areAllReservesListed;
-        (areAllReservesListed, reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags, reservesData.addresses)
+        (areAllReservesListed, reservesData.isFeeAccountedFlags,
+         reservesData.isEntitledRebateFlags, reservesData.addresses)
             = kyberStorage.getReservesData(reservesData.ids, src, dest);
 
         if(!areAllReservesListed) {

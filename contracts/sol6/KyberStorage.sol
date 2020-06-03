@@ -213,37 +213,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         emit RemoveReserveFromStorage(reserve, reserveId);
     }
 
-    /// @notice Can be called only by operator
-    /// @dev Allow or prevent a specific reserve to trade a pair of tokens
-    /// @param reserveId The reserve id
-    /// @param token Token address
-    /// @param ethToToken Will it support ether to token trade
-    /// @param tokenToEth Will it support token to ether trade
-    /// @param add If true then list this pair, otherwise unlist it
-    function listPairForReserve(
-        bytes32 reserveId,
-        IERC20 token,
-        bool ethToToken,
-        bool tokenToEth,
-        bool add
-    ) public {
-        onlyOperator();
-
-        require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
-        address reserve = reserveIdToAddresses[reserveId][0];
-        require(reserve != address(0), "reserve = 0");
-
-        if (ethToToken) {
-            listPairs(reserveId, token, false, add);
-            emit ListReservePairs(reserveId, reserve, ETH_TOKEN_ADDRESS, token, add);
-        }
-
-        if (tokenToEth) {
-            kyberNetwork.listTokenForReserve(reserve, token, add);
-            listPairs(reserveId, token, true, add);
-            emit ListReservePairs(reserveId, reserve, token, ETH_TOKEN_ADDRESS, add);
-        }
-    }
 
     /// @dev No. of kyberProxies are capped
     function addKyberProxy(address kyberProxy, uint256 maxApprovedProxies)
@@ -602,6 +571,38 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
                 areAllReservesListed = false;
                 break;
             }
+        }
+    }
+
+    /// @notice Can be called only by operator
+    /// @dev Allow or prevent a specific reserve to trade a pair of tokens
+    /// @param reserveId The reserve id
+    /// @param token Token address
+    /// @param ethToToken Will it support ether to token trade
+    /// @param tokenToEth Will it support token to ether trade
+    /// @param add If true then list this pair, otherwise unlist it
+    function listPairForReserve(
+        bytes32 reserveId,
+        IERC20 token,
+        bool ethToToken,
+        bool tokenToEth,
+        bool add
+    ) public {
+        onlyOperator();
+
+        require(reserveIdToAddresses[reserveId].length > 0, "reserveId not found");
+        address reserve = reserveIdToAddresses[reserveId][0];
+        require(reserve != address(0), "reserve = 0");
+
+        if (ethToToken) {
+            listPairs(reserveId, token, false, add);
+            emit ListReservePairs(reserveId, reserve, ETH_TOKEN_ADDRESS, token, add);
+        }
+
+        if (tokenToEth) {
+            kyberNetwork.listTokenForReserve(reserve, token, add);
+            listPairs(reserveId, token, true, add);
+            emit ListReservePairs(reserveId, reserve, token, ETH_TOKEN_ADDRESS, add);
         }
     }
 
