@@ -6,7 +6,7 @@ import "../KyberFeeHandler.sol";
 contract MaliciousFeeHandler is KyberFeeHandler {
     constructor(
         address daoSetter,
-        IKyberProxy _kyberNetworkProxy,
+        IKyberNetworkProxy _kyberNetworkProxy,
         address _kyberNetwork,
         IERC20 _knc,
         uint256 _burnBlockInterval,

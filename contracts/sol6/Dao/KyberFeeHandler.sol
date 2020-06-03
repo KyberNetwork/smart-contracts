@@ -5,21 +5,10 @@ import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../IKyberDao.sol";
 import "../IKyberFeeHandler.sol";
 import "../IKyberNetworkProxy.sol";
-import "../ISimpleKyberProxy.sol";
 import "../IBurnableToken.sol";
 import "./ISanityRate.sol";
 import "../utils/zeppelin/SafeMath.sol";
 import "./DaoOperator.sol";
-
-/**
- * @title IKyberProxy
- *  This interface combines two interfaces.
- *  It is needed since we use one function from each of the interfaces.
- *
- */
-interface IKyberProxy is IKyberNetworkProxy, ISimpleKyberProxy {
-    // empty block
-}
 
 
 /**
@@ -60,7 +49,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     }
 
     IKyberDao public kyberDao;
-    IKyberProxy public kyberProxy;
+    IKyberNetworkProxy public kyberProxy;
     address public kyberNetwork;
     IERC20 public immutable knc;
 
@@ -106,18 +95,18 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     event BurnConfigSet(ISanityRate sanityRate, uint256 weiToBurn);
     event RewardsRemovedToBurn(uint256 indexed epoch, uint256 rewardsWei);
     event KyberNetworkUpdated(address kyberNetwork);
-    event KyberProxyUpdated(IKyberProxy kyberProxy);
+    event KyberProxyUpdated(IKyberNetworkProxy kyberProxy);
 
     constructor(
         address _daoSetter,
-        IKyberProxy _kyberProxy,
+        IKyberNetworkProxy _kyberProxy,
         address _kyberNetwork,
         IERC20 _knc,
         uint256 _burnBlockInterval,
         address _daoOperator
     ) public DaoOperator(_daoOperator) {
         require(_daoSetter != address(0), "daoSetter 0");
-        require(_kyberProxy != IKyberProxy(0), "kyberNetworkProxy 0");
+        require(_kyberProxy != IKyberNetworkProxy(0), "kyberNetworkProxy 0");
         require(_kyberNetwork != address(0), "kyberNetwork 0");
         require(_knc != IERC20(0), "knc 0");
         require(_burnBlockInterval != 0, "_burnBlockInterval 0");
@@ -318,8 +307,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
 
     /// @dev Allow to set kyberNetworkProxy address by daoOperator
     /// @param _newProxy new kyberNetworkProxy contract
-    function setKyberProxy(IKyberProxy _newProxy) external onlyDaoOperator {
-        require(_newProxy != IKyberProxy(0), "kyberNetworkProxy 0");
+    function setKyberProxy(IKyberNetworkProxy _newProxy) external onlyDaoOperator {
+        require(_newProxy != IKyberNetworkProxy(0), "kyberNetworkProxy 0");
         if (_newProxy != kyberProxy) {
             kyberProxy = _newProxy;
             emit KyberProxyUpdated(_newProxy);
