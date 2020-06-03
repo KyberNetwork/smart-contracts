@@ -82,10 +82,10 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
                 src,
                 srcAmount,
                 dest,
-                address(uint160(address(destAddress))),
+                destAddress,
                 maxDestAmount,
                 minConversionRate,
-                address(uint160(address(walletId)))
+                walletId
             );
     }
 
