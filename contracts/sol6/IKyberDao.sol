@@ -5,9 +5,6 @@ import "./Dao/IEpochUtils.sol";
 
 interface IKyberDao is IEpochUtils {
     event Voted(address indexed staker, uint indexed epoch, uint indexed campaignID, uint option);
-    event RewardClaimed(address indexed staker, uint256 indexed epoch, uint256 percentInPrecision);
-
-    function claimReward(address staker, uint256 epoch) external;
 
     function getLatestNetworkFeeDataWithCache()
         external
@@ -33,4 +30,14 @@ interface IKyberDao is IEpochUtils {
         returns (uint256 feeInBps, uint256 expiryTimestamp);
 
     function shouldBurnRewardForEpoch(uint256 epoch) external view returns (bool);
+
+    /**
+     * @dev  return staker's reward percentage in precision for an epoch
+     *       return 0 if epoch is in the future
+     *       return 0 if staker has no votes or stakes
+     */
+    function getStakerRewardPercentageInPrecision(address staker, uint256 epoch)
+        external
+        view
+        returns (uint256);
 }

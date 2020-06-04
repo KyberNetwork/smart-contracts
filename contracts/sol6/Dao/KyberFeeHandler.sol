@@ -77,6 +77,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     mapping(address => uint256) public rebatePerWallet;
     mapping(uint256 => uint256) public rewardsPerEpoch;
     mapping(uint256 => uint256) public rewardsPaidPerEpoch;
+    // hasClaimedReward[staker][epoch]: true/false if the staker has/hasn't claimed the reward for an epoch
+    mapping(address => mapping (uint256 => bool)) public hasClaimedReward;
     uint256 public totalPayoutBalance; // total balance in the contract that is for rebate, reward, platform fee
 
     /// @dev use to get rate of KNC/ETH to check if rate to burn knc is normal
@@ -212,19 +214,31 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         );
     }
 
-    /// @dev only kyberDao can claim staker rewards.
+    /// @dev not revert if already claimed or reward percentage is 0
+    ///      to allow writing a wrapper to claim for multiple epochs
     /// @param staker address.
-    /// @param percentageInPrecision the relative part of the reward the staker is entitled 
-    ///             to for this epoch.
-    ///             units Precision: 10 ** 18 = 100%
     /// @param epoch for which epoch the staker is claiming the reward
     function claimStakerReward(
         address staker,
-        uint256 percentageInPrecision,
         uint256 epoch
-    ) external override onlyKyberDao returns(uint256 amountWei) {
+    ) external override nonReentrant returns(uint256 amountWei) {
+        if (hasClaimedReward[staker][epoch]) {
+            // staker has already claimed reward for the epoch
+            return 0;
+        }
+
+        // update here so if percentage is 0, this data will still be updated
+        hasClaimedReward[staker][epoch] = true;
+
+        // the relative part of the reward the staker is entitled to for the epoch.
+        // units Precision: 10 ** 18 = 100%
+        uint256 percentageInPrecision = kyberDao.getStakerRewardPercentageInPrecision(staker, epoch);
         // Amount of reward to be sent to staker
+        if (percentageInPrecision == 0) {
+            return 0; // not revert, in case a wrapper wants to claim reward for multiple epoch
+        }
         require(percentageInPrecision <= PRECISION, "percentage too high");
+
         amountWei = rewardsPerEpoch[epoch].mul(percentageInPrecision).div(PRECISION);
 
         // redundant check, can't happen

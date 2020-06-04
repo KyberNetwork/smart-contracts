@@ -57,7 +57,6 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     uint256 public minCampaignDurationInSeconds = 4 days;
     IERC20 public immutable kncToken;
     IKyberStaking public immutable staking;
-    IKyberFeeHandler public immutable feeHandler;
 
     // use to generate increasing campaign ID
     uint256 public numberCampaigns = 0;
@@ -69,8 +68,6 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     mapping(uint256 => uint256) internal totalEpochPoints;
     // numberVotes[staker][epoch]: number of campaigns that the staker has voted in an epoch
     mapping(address => mapping(uint256 => uint256)) public numberVotes;
-    // hasClaimedReward[staker][epoch]: true/false if the staker has/hasn't claimed the reward for an epoch
-    mapping(address => mapping(uint256 => bool)) public hasClaimedReward;
     // stakerVotedOption[staker][campaignID]: staker's voted option ID for a campaign
     mapping(address => mapping(uint256 => uint256)) public stakerVotedOption;
 
@@ -99,7 +96,6 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     constructor(
         uint256 _epochPeriod,
         uint256 _startTimestamp,
-        IKyberFeeHandler _feeHandler,
         IERC20 _knc,
         uint256 _defaultNetworkFeeBps,
         uint256 _defaultRewardBps,
@@ -108,7 +104,6 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     ) public DaoOperator(_daoOperator) {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
-        require(_feeHandler != IKyberFeeHandler(0), "ctor: feeHandler 0");
         require(_knc != IERC20(0), "ctor: knc token 0");
         // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
         // so network fee should be less than 50%
@@ -117,7 +112,6 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
-        feeHandler = _feeHandler;
         kncToken = _knc;
 
         latestNetworkFeeResult = _defaultNetworkFeeBps;
@@ -344,28 +338,6 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     }
 
     /**
-     * @notice  WARNING When staker address is a contract,
-                it should be able to receive claimed reward in Eth whenever anyone calls this function.
-     * @dev call to claim reward of an epoch, can call by anyone, only once for each epoch
-     * @param staker address to claim reward for
-     * @param epoch to claim reward
-     */
-    function claimReward(address staker, uint256 epoch) external override nonReentrant {
-        uint256 curEpoch = getCurrentEpochNumber();
-        require(epoch < curEpoch, "claimReward: only for past epochs");
-        require(!hasClaimedReward[staker][epoch], "claimReward: already claimed");
-
-        uint256 perInPrecision = getStakerRewardPercentageInPrecision(staker, epoch);
-        require(perInPrecision > 0, "claimReward: no reward");
-
-        hasClaimedReward[staker][epoch] = true;
-        // call fee handler to claim reward
-        feeHandler.claimStakerReward(staker, perInPrecision, epoch);
-
-        emit RewardClaimed(staker, epoch, perInPrecision);
-    }
-
-    /**
      * @dev get latest network fee data + expiry timestamp
      *    conclude network fee campaign if needed and caching latest result in KyberDao
      */
@@ -457,6 +429,45 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         CampaignVoteData memory voteData = campaignData[campaignID].campaignVoteData;
         totalVoteCount = voteData.totalVotes;
         voteCounts = voteData.votePerOption;
+    }
+
+    /**
+     * @dev  return staker's reward percentage in precision for an epoch
+     *       return 0 if epoch is in the future
+     *       return 0 if staker has no votes or stakes
+     */
+    function getStakerRewardPercentageInPrecision(address staker, uint256 epoch)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        uint256 curEpoch = getCurrentEpochNumber();
+        if (epoch > curEpoch) {
+            return 0;
+        }
+
+        uint256 numVotes = numberVotes[staker][epoch];
+        // no votes, no rewards
+        if (numVotes == 0) {
+            return 0;
+        }
+
+        (uint256 stake, uint256 delegatedStake, address representative) =
+            staking.getStakerRawData(staker, epoch);
+
+        uint256 totalStake = representative == staker ? stake.add(delegatedStake) : delegatedStake;
+        if (totalStake == 0) {
+            return 0;
+        }
+
+        uint256 points = numVotes.mul(totalStake);
+        uint256 totalPts = totalEpochPoints[epoch];
+
+        // staker's reward percentage should be <= 100%
+        assert(points <= totalPts);
+
+        return points.mul(PRECISION).div(totalPts);
     }
 
     /**
@@ -561,44 +572,6 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             feeInBps = latestNetworkFeeResult;
         }
         return (feeInBps, expiryTimestamp);
-    }
-
-    /**
-     * @dev  return staker's reward percentage in precision for an epoch
-     *       return 0 if epoch is in the future
-     *       return 0 if staker has no votes or stakes
-     */
-    function getStakerRewardPercentageInPrecision(address staker, uint256 epoch)
-        public
-        view
-        returns (uint256)
-    {
-        uint256 curEpoch = getCurrentEpochNumber();
-        if (epoch > curEpoch) {
-            return 0;
-        }
-
-        uint256 numVotes = numberVotes[staker][epoch];
-        // no votes, no rewards
-        if (numVotes == 0) {
-            return 0;
-        }
-
-        (uint256 stake, uint256 delegatedStake, address representative) =
-            staking.getStakerRawData(staker, epoch);
-
-        uint256 totalStake = representative == staker ? stake.add(delegatedStake) : delegatedStake;
-        if (totalStake == 0) {
-            return 0;
-        }
-
-        uint256 points = numVotes.mul(totalStake);
-        uint256 totalPts = totalEpochPoints[epoch];
-
-        // staker's reward percentage should be <= 100%
-        assert(points <= totalPts);
-
-        return points.mul(PRECISION).div(totalPts);
     }
 
     /**

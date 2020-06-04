@@ -20,7 +20,6 @@ interface IKyberFeeHandler {
 
     function claimStakerReward(
         address staker,
-        uint256 percentageInPrecision,
         uint256 epoch
     ) external returns(uint amountWei);
 }
