@@ -14,6 +14,7 @@ contract MockKyberDao is IKyberDao, Utils5 {
     uint256 public feeBps;
     uint256 public epochPeriod = 160;
     uint256 public startTimestamp;
+    uint256 public rewardPercentageInPrecision;
     uint256 data;
     mapping(uint256 => bool) public shouldBurnRewardEpoch;
 
@@ -50,15 +51,21 @@ contract MockKyberDao is IKyberDao, Utils5 {
         return (BPS - rewardInBPS - rebateInBPS, rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
     }
 
-    function claimReward(address, uint256) external override {}
-
-    function claimStakerReward(
-        address staker,
-        uint256 percentageInPrecision,
-        uint256 forEpoch
-    ) external returns (uint256 amountWei) {
-        return feeHandler.claimStakerReward(staker, percentageInPrecision, forEpoch);
+    function setStakerPercentageInPrecision(uint256 percentage)
+        external
+    {
+        rewardPercentageInPrecision = percentage;
     }
+
+    function getStakerRewardPercentageInPrecision(address staker, uint256 forEpoch)
+        external
+        view
+        override
+        returns (uint256) {
+            staker;
+            forEpoch;
+            return rewardPercentageInPrecision;
+        }
 
     function handleWithdrawal(address staker, uint256 reduceAmount) external override {
         staker;

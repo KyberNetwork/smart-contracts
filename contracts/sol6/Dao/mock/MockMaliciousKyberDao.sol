@@ -7,7 +7,6 @@ contract MockMaliciousKyberDao is KyberDao {
     constructor(
         uint256 _epochPeriod,
         uint256 _startTimestamp,
-        IKyberFeeHandler _feeHandler,
         IERC20 _knc,
         uint256 _minCampDuration,
         uint256 _defaultNetworkFeeBps,
@@ -19,7 +18,6 @@ contract MockMaliciousKyberDao is KyberDao {
         KyberDao(
             _epochPeriod,
             _startTimestamp,
-            _feeHandler,
             _knc,
             _defaultNetworkFeeBps,
             _defaultRewardBps,
