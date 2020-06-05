@@ -432,42 +432,36 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     }
 
     /**
-     * @dev  return staker's reward percentage in precision for an epoch
-     *       return 0 if epoch is in the future
+     * @dev  return staker's reward percentage in precision for a past epoch only
+     *       fee handler should call this function when a staker wants to claim reward
      *       return 0 if staker has no votes or stakes
      */
-    function getStakerRewardPercentageInPrecision(address staker, uint256 epoch)
+    function getPastEpochRewardPercentageInPrecision(address staker, uint256 epoch)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        // return 0 if epoch is not past epoch
+        uint256 curEpoch = getCurrentEpochNumber();
+        if (epoch >= curEpoch) {
+            return 0;
+        }
+
+        return getRewardPercentageInPrecision(staker, epoch);
+    }
+
+    /**
+     * @dev  return staker's reward percentage in precision for the current epoch
+     */
+    function getCurrentEpochRewardPercentageInPrecision(address staker)
         external
         view
         override
         returns (uint256)
     {
         uint256 curEpoch = getCurrentEpochNumber();
-        if (epoch > curEpoch) {
-            return 0;
-        }
-
-        uint256 numVotes = numberVotes[staker][epoch];
-        // no votes, no rewards
-        if (numVotes == 0) {
-            return 0;
-        }
-
-        (uint256 stake, uint256 delegatedStake, address representative) =
-            staking.getStakerRawData(staker, epoch);
-
-        uint256 totalStake = representative == staker ? stake.add(delegatedStake) : delegatedStake;
-        if (totalStake == 0) {
-            return 0;
-        }
-
-        uint256 points = numVotes.mul(totalStake);
-        uint256 totalPts = totalEpochPoints[epoch];
-
-        // staker's reward percentage should be <= 100%
-        assert(points <= totalPts);
-
-        return points.mul(PRECISION).div(totalPts);
+        return getRewardPercentageInPrecision(staker, curEpoch);
     }
 
     /**
@@ -737,5 +731,38 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         require(cInPrecision < POWER_128, "validateParams: c is high");
 
         require(tInPrecision < POWER_128, "validateParams: t is high");
+    }
+
+    /**
+     * @dev  return staker's reward percentage in precision for an epoch
+     *       return 0 if staker has no votes or stakes
+     *       called by 2 functions in KyberDao
+     */
+    function getRewardPercentageInPrecision(address staker, uint256 epoch)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 numVotes = numberVotes[staker][epoch];
+        // no votes, no rewards
+        if (numVotes == 0) {
+            return 0;
+        }
+
+        (uint256 stake, uint256 delegatedStake, address representative) =
+            staking.getStakerRawData(staker, epoch);
+
+        uint256 totalStake = representative == staker ? stake.add(delegatedStake) : delegatedStake;
+        if (totalStake == 0) {
+            return 0;
+        }
+
+        uint256 points = numVotes.mul(totalStake);
+        uint256 totalPts = totalEpochPoints[epoch];
+
+        // staker's reward percentage should be <= 100%
+        assert(points <= totalPts);
+
+        return points.mul(PRECISION).div(totalPts);
     }
 }

@@ -3156,6 +3156,20 @@ contract('KyberDao', function(accounts) {
   });
 
   describe("#Get staker percentage tests", () => {
+    const verifyCurrentEpochStakerRewardPercentages = async function(stakers, expectedPercentages) {
+      for(let i = 0; i < stakers.length; i++) {
+        let onChainRewardPercentage = await kyberDao.getCurrentEpochRewardPercentageInPrecision(stakers[i]);
+        Helper.assertEqual(expectedPercentages[i], onChainRewardPercentage, "reward percentage is wrong");
+      }
+    }
+
+    const verifyPastEpochtStakerRewardPercentages = async function(stakers, expectedPercentages, epoch) {
+      for(let i = 0; i < stakers.length; i++) {
+        let onChainRewardPercentage = await kyberDao.getPastEpochRewardPercentageInPrecision(stakers[i], epoch);
+        Helper.assertEqual(expectedPercentages[i], onChainRewardPercentage, "reward percentage is wrong");
+      }
+    }
+
     it("Test get staker reward percentage - without delegation", async function() {
       await deployContracts(20, currentBlock + 15, 10);
       await setupSimpleStakingData();
@@ -3195,16 +3209,29 @@ contract('KyberDao', function(accounts) {
       await kyberDao.vote(1, 1, {from: victor});
       await kyberDao.vote(1, 1, {from: loi});
 
-      await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
-
       let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
       let loiPer = loiPoints.mul(precisionUnits).div(totalEpochPoints);
       let victorPer = victorPoints.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(loiPer, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
-      Helper.assertEqual(victorPer, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, loi, victor, poolMaster],
+        [mikePer, loiPer, victorPer, 0]
+      );
+
+      // should return all 0
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, loi, victor, poolMaster], // stakers
+        [0, 0, 0, 0], // expected reward percentages
+        1 // epoch
+      )
+
+      await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
+
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, loi, victor, poolMaster],
+        [mikePer, loiPer, victorPer, 0],
+        1
+      )
     });
 
     it("Test get staker reward percentage - with delegation", async function() {
@@ -3250,17 +3277,30 @@ contract('KyberDao', function(accounts) {
       await kyberDao.vote(1, 1, {from: victor});
       await kyberDao.vote(1, 1, {from: loi});
 
-      await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
-
       let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
       let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
+
+      // should return all 0
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [0, 0, 0, 0, 0],
+        1
+      )
+
+      // advance one block and test past epoch data
+      await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
+
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0],
+        1
+      )
     });
 
     it("Test get staker percentage after few epochs", async function() {
@@ -3302,11 +3342,17 @@ contract('KyberDao', function(accounts) {
       let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0],
+        1
+      )
+
+      // current epoch reward percentages should be all 0, not done anything yet
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [0, 0, 0, 0, 0]
+      )
     });
 
     it("Test get staker percentage for current and future epochs", async function() {
@@ -3325,24 +3371,34 @@ contract('KyberDao', function(accounts) {
       await kyberDao.vote(1, 2, {from: victor});
 
       // get staker percentage for next and far in the future epochs, return 0
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(mike, 2), "percentage is wrong");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 2), "percentage is wrong");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(mike, 100), "percentage is wrong");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 100), "percentage is wrong");
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, victor], [0, 0], 2
+      )
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, victor], [0, 0], 100
+      )
 
       // get staker percentage for current epoch, return 0
-      Helper.assertEqual(
-        precisionUnits.mul(initMikeStake).div(initMikeStake.add(initVictorStake)),
-        await kyberDao.getStakerRewardPercentageInPrecision(mike, 1),
-        "percentage is wrong"
-      );
-      Helper.assertEqual(
-        precisionUnits.mul(initVictorStake).div(initMikeStake.add(initVictorStake)),
-        await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "percentage is wrong"
-      );
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, victor],
+        [0, 0],
+        1
+      )
+      let mikePercentage = precisionUnits.mul(initMikeStake).div(initMikeStake.add(initVictorStake));
+      let victorPercentage = precisionUnits.mul(initVictorStake).div(initMikeStake.add(initVictorStake));
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, victor],
+        [mikePercentage, victorPercentage]
+      )
 
       // delay to epoch 2
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
+      // verify past epoch data
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, victor],
+        [mikePercentage, victorPercentage],
+        1
+      )
 
       // create campaign and vote in epoch 2
       await updateCurrentBlockAndTimestamp();
@@ -3353,15 +3409,18 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAfter(blocksToSeconds(2));
       await kyberDao.vote(2, 1, {from: mike});
 
+      // mike should be 100% reward for current epoch
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, victor],
+        [precisionUnits, 0]
+      )
+
       // check staker percentage for past epoch, should be unchanged
-      Helper.assertEqual(
-        precisionUnits.mul(initMikeStake).div(initMikeStake.add(initVictorStake)),
-        await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "percentage is wrong"
-      );
-      Helper.assertEqual(
-        precisionUnits.mul(initVictorStake).div(initMikeStake.add(initVictorStake)),
-        await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "percentage is wrong"
-      );
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, victor],
+        [mikePercentage, victorPercentage],
+        1
+      )
     });
 
     it("Test get reward percentage after new deposit", async function() {
@@ -3405,11 +3464,18 @@ contract('KyberDao', function(accounts) {
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
       // percentage no change after new deposit
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0],
+        currentEpoch
+      )
     });
 
     it("Test get reward percentage after new delegation", async function() {
@@ -3451,11 +3517,18 @@ contract('KyberDao', function(accounts) {
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
       // percentage no change after new deposit
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0],
+        currentEpoch
+      )
     });
 
     it("Test get reward percentage after revote", async function() {
@@ -3493,11 +3566,10 @@ contract('KyberDao', function(accounts) {
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
       // percentage no change after new deposit
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
 
       // revote different option
       await kyberDao.vote(1, 2, {from: mike});
@@ -3505,11 +3577,18 @@ contract('KyberDao', function(accounts) {
       await kyberDao.vote(1, 2, {from: poolMaster});
 
       // percentage no change after revoted
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0],
+        currentEpoch
+      )
     });
 
     it("Test get reward percentage after new withdraw", async function() {
@@ -3547,11 +3626,10 @@ contract('KyberDao', function(accounts) {
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
       // percentage no change after new deposit
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
 
       await stakingContract.withdraw(mulPrecision(100), {from: mike});
       await stakingContract.withdraw(mulPrecision(110), {from: victor});
@@ -3567,11 +3645,18 @@ contract('KyberDao', function(accounts) {
       poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
       poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0],
+        currentEpoch
+      )
     });
 
     it("Test get reward percentage after deposit and withdraw", async function() {
@@ -3608,11 +3693,10 @@ contract('KyberDao', function(accounts) {
       let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
 
       await stakingContract.deposit(mulPrecision(100), {from: mike});
       await stakingContract.deposit(mulPrecision(200), {from: victor});
@@ -3629,11 +3713,18 @@ contract('KyberDao', function(accounts) {
       poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
       poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0],
+        currentEpoch
+      )
     });
 
     it("Test get reward percentage with multiple campaigns", async function() {
@@ -3687,11 +3778,10 @@ contract('KyberDao', function(accounts) {
       let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
 
       // mike voted 2 camps
       await stakingContract.withdraw(mulPrecision(100), {from: mike});
@@ -3713,11 +3803,18 @@ contract('KyberDao', function(accounts) {
       poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
       poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0],
+        currentEpoch
+      )
     });
 
     it("Test get reward percentage after camp has ended", async function() {
@@ -3785,11 +3882,18 @@ contract('KyberDao', function(accounts) {
       let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, poolMaster2Per, 0, 0],
+        currentEpoch
+      )
     });
 
     it("Test get reward percentage epoch 0", async function() {
@@ -3810,11 +3914,10 @@ contract('KyberDao', function(accounts) {
       await kyberDao.vote(1, 2, {from: poolMaster});
       await kyberDao.vote(1, 2, {from: poolMaster2});
 
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(mike, 0), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 0), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 0), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 0), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 0), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [0, 0, 0, 0, 0]
+      )
     });
 
     it("Test get reward percentage and full withdrawals", async function() {
@@ -3862,11 +3965,18 @@ contract('KyberDao', function(accounts) {
       let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
       let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, 0, 0, 0]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, poolMasterPer, 0, 0, 0],
+        currentEpoch
+      )
     });
 
     it("Test get reward percentage of pool master when he is in another pool", async function() {
@@ -3899,11 +4009,18 @@ contract('KyberDao', function(accounts) {
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
       let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMasterPer, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [0, poolMasterPer, poolMaster2Per, 0, 0]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [0, poolMasterPer, poolMaster2Per, 0, 0],
+        currentEpoch
+      )
     });
 
     it("Test get reward percentage of pool master when he is also in the pool", async function() {
@@ -3935,11 +4052,18 @@ contract('KyberDao', function(accounts) {
       let poolMaster2Per = poolMaster2Points.mul(precisionUnits).div(totalEpochPoints);
       let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, 0, poolMaster2Per, 0, 0]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, 0, poolMaster2Per, 0, 0],
+        currentEpoch
+      )
     });
 
     it("Test get reward percentage with vote before delegation takes effect", async function() {
@@ -3978,11 +4102,18 @@ contract('KyberDao', function(accounts) {
       let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
       let loiPer = loiPoints.mul(precisionUnits).div(totalEpochPoints);
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(loiPer, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyCurrentEpochStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, 0, poolMaster2Per, 0, loiPer]
+      )
+      // delay one epoch and verify past epoch data
+      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, 0, poolMaster2Per, 0, loiPer],
+        currentEpoch
+      )
     });
 
     it("Test get staker percentage some epochs", async function() {
@@ -4031,15 +4162,29 @@ contract('KyberDao', function(accounts) {
         await stakingContract.deposit(mulPrecision(10), {from: loi});
         loiCurStake.iadd(mulPrecision(10));
 
-        await Helper.mineNewBlockAt(blocksToSeconds(id * epochPeriod) + daoStartTime);
-
         let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
         let victorPer = victorPoints.mul(precisionUnits).div(totalEpochPoints);
         let loiPer = loiPoints.mul(precisionUnits).div(totalEpochPoints);
 
-        Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, id), "reward per is incorrect");
-        Helper.assertEqual(victorPer, await kyberDao.getStakerRewardPercentageInPrecision(victor, id), "reward per is incorrect");
-        Helper.assertEqual(loiPer, await kyberDao.getStakerRewardPercentageInPrecision(loi, id), "reward per is incorrect");
+        // current epoch data
+        await verifyCurrentEpochStakerRewardPercentages(
+          [mike, poolMaster, poolMaster2, victor, loi],
+          [mikePer, 0, 0, victorPer, loiPer]
+        )
+        // passing current epoch should return 0
+        await verifyPastEpochtStakerRewardPercentages(
+          [mike, poolMaster, poolMaster2, victor, loi],
+          [0, 0, 0, 0, 0],
+          id
+        )
+
+        await Helper.mineNewBlockAt(blocksToSeconds(id * epochPeriod) + daoStartTime);
+
+        await verifyPastEpochtStakerRewardPercentages(
+          [mike, poolMaster, poolMaster2, victor, loi],
+          [mikePer, 0, 0, victorPer, loiPer],
+          id
+        )
       }
     });
 
@@ -4102,18 +4247,19 @@ contract('KyberDao', function(accounts) {
       await kyberDao.vote(2, 3, {from: mike});
       await kyberDao.vote(2, 3, {from: loi});
 
-      Helper.assertEqual(mikePer, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 1), "reward per is incorrect");
-      Helper.assertEqual(poolMaster2Per, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 1), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 1), "reward per is incorrect");
-      Helper.assertEqual(loiPer, await kyberDao.getStakerRewardPercentageInPrecision(loi, 1), "reward per is incorrect");
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [mikePer, 0, poolMaster2Per, 0, loiPer],
+        1
+      )
 
       // get reward percentage for epoch that stakers did nothing, data is not inited in Staking
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(mike, 3), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster, 3), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(poolMaster2, 3), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(victor, 3), "reward per is incorrect");
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(loi, 3), "reward per is incorrect");
+      await verifyPastEpochtStakerRewardPercentages(
+        [mike, poolMaster, poolMaster2, victor, loi],
+        [0, 0, 0, 0, 0],
+        3
+      )
+
     });
 
     it("Test get staker reward percentage when no votes", async function() {
@@ -4124,7 +4270,7 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       // has stake, but no vote yet
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(mike, 0), "reward percentage is wrong");
+      Helper.assertEqual(0, await kyberDao.getPastEpochRewardPercentageInPrecision(mike, 0), "reward percentage is wrong");
     });
 
     // test coverage for total epoch points = 0 or less than staker's point
@@ -4133,8 +4279,9 @@ contract('KyberDao', function(accounts) {
       startBlock = currentBlock + 30;
 
       minCampPeriod = 10;
+      daoStartTime = blockToTimestamp(startBlock);
       kyberDao = await MockMaliciousKyberDao.new(
-        blocksToSeconds(epochPeriod), blockToTimestamp(startBlock),
+        blocksToSeconds(epochPeriod), daoStartTime,
         kncToken.address, minCampPeriod,
         defaultNetworkFee, defaultRewardBps, defaultRebateBps,
         daoOperator
@@ -4157,12 +4304,12 @@ contract('KyberDao', function(accounts) {
       // set total epoch points is 0
       await kyberDao.setTotalEpochPoints(1, 0);
 
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward should be 0");
+      Helper.assertEqual(0, await kyberDao.getPastEpochRewardPercentageInPrecision(mike, 1), "reward should be 0");
 
       // set total epoch points less than point of mike
       await kyberDao.setTotalEpochPoints(1, mulPrecision(90));
 
-      Helper.assertEqual(0, await kyberDao.getStakerRewardPercentageInPrecision(mike, 1), "reward should be 0");
+      Helper.assertEqual(0, await kyberDao.getPastEpochRewardPercentageInPrecision(mike, 1), "reward should be 0");
     });
   });
 
