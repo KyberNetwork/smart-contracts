@@ -222,7 +222,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     /**
      * @dev allow to get data up to current epoch + 1
      */
-    function getStake(address staker, uint256 epoch) external view override returns (uint256) {
+    function getStake(address staker, uint256 epoch) external view returns (uint256) {
         uint256 curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch + 1) {
             return 0;
@@ -243,7 +243,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     /**
      * @dev allow to get data up to current epoch + 1
      */
-    function getDelegatedStake(address staker, uint256 epoch) external view override returns (uint256) {
+    function getDelegatedStake(address staker, uint256 epoch) external view returns (uint256) {
         uint256 curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch + 1) {
             return 0;
@@ -264,7 +264,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     /**
      * @dev allow to get data up to current epoch + 1
      */
-    function getRepresentative(address staker, uint256 epoch) external view override returns (address) {
+    function getRepresentative(address staker, uint256 epoch) external view returns (address) {
         uint256 curEpoch = getCurrentEpochNumber();
         if (epoch > curEpoch + 1) {
             return address(0);
@@ -320,18 +320,18 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
         representative = staker;
     }
 
-    function getLatestRepresentative(address staker) external view override returns (address) {
+    function getLatestRepresentative(address staker) external view returns (address) {
         return
             stakerLatestData[staker].representative == address(0)
                 ? staker
                 : stakerLatestData[staker].representative;
     }
 
-    function getLatestDelegatedStake(address staker) external view override returns (uint256) {
+    function getLatestDelegatedStake(address staker) external view returns (uint256) {
         return stakerLatestData[staker].delegatedStake;
     }
 
-    function getLatestStakeBalance(address staker) external view override returns (uint256) {
+    function getLatestStakeBalance(address staker) external view returns (uint256) {
         return stakerLatestData[staker].stake;
     }
 
