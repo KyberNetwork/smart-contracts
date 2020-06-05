@@ -174,7 +174,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         uint256 platformFeeWei,
         uint256 feeBRRWei
     ) external payable override onlyKyberNetwork nonReentrant {
-        token; // not used in this feeHandler
+        require(token == ETH_TOKEN_ADDRESS, "token not eth");
         require(msg.value == platformFeeWei.add(feeBRRWei), "msg.value not equal to total fees");
 
         // handle platform fee
@@ -197,28 +197,28 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
             return;
         }
 
-        BRRWei memory brrData;
+        BRRWei memory brrAmounts;
         uint256 epoch;
 
         // Decoding BRR data
-        (brrData.rewardWei, brrData.rebateWei, epoch) = getRRWeiValues(feeBRRWei);
+        (brrAmounts.rewardWei, brrAmounts.rebateWei, epoch) = getRRWeiValues(feeBRRWei);
 
-        brrData.rebateWei = updateRebateValues(brrData.rebateWei, rebateWallets, rebateBpsPerWallet);
+        brrAmounts.rebateWei = updateRebateValues(brrAmounts.rebateWei, rebateWallets, rebateBpsPerWallet);
 
-        rewardsPerEpoch[epoch] = rewardsPerEpoch[epoch].add(brrData.rewardWei);
+        rewardsPerEpoch[epoch] = rewardsPerEpoch[epoch].add(brrAmounts.rewardWei);
 
         // update total balance of rewards, rebates, fee
-        totalPayoutBalance = totalPayoutBalance.add(platformFeeWei).add(brrData.rewardWei).add(brrData.rebateWei);
+        totalPayoutBalance = totalPayoutBalance.add(platformFeeWei).add(brrAmounts.rewardWei).add(brrAmounts.rebateWei);
 
-        brrData.burnWei = feeBRRWei.sub(brrData.rewardWei).sub(brrData.rebateWei);
+        brrAmounts.burnWei = feeBRRWei.sub(brrAmounts.rewardWei).sub(brrAmounts.rebateWei);
         emit FeeDistributed(
             platformWallet,
             platformFeeWei,
-            brrData.rewardWei,
-            brrData.rebateWei,
+            brrAmounts.rewardWei,
+            brrAmounts.rebateWei,
             rebateWallets,
             rebateBpsPerWallet,
-            brrData.burnWei
+            brrAmounts.burnWei
         );
     }
 

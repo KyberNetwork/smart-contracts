@@ -542,6 +542,18 @@ contract('KyberFeeHandler', function(accounts) {
             Helper.assertEqual(expectedTotalPayOut, totalPayOutBalance);
         });
 
+        it("reverts if token is not ETH when calling handleFees", async() => {
+            let platformWallet = accounts[9];
+            let platformFeeWei = oneEth;
+            let feeBRRWei = oneEth;
+            let sendVal = platformFeeWei.add(feeBRRWei);
+            await expectRevert(
+                feeHandler.handleFees(knc.address, [], [] , platformWallet, platformFeeWei, feeBRRWei,
+                    {from: kyberNetwork, value: sendVal}),
+                "token not eth"
+            );
+        });
+
         it("reverts if sendVal != total fees when calling handleFees", async() => {
             let platformWallet = accounts[9];
             let platformFeeWei = oneEth;
