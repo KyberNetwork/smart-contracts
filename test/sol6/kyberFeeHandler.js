@@ -100,7 +100,7 @@ contract('KyberFeeHandler', function(accounts) {
 
         it("FeeDistributed (no BRR)", async() => {
             let platformWallet = accounts[1];
-            let txResult = await feeHandler.handleFees([], [], platformWallet, oneEth, zeroBN, {from: kyberNetwork, value: oneEth});
+            let txResult = await feeHandler.handleFees(ethAddress, [], [], platformWallet, oneEth, zeroBN, {from: kyberNetwork, value: oneEth});
             expectEvent(txResult, 'FeeDistributed', {
                 platformWallet: platformWallet,
                 platformFeeWei: oneEth,
@@ -123,7 +123,7 @@ contract('KyberFeeHandler', function(accounts) {
             let currentRewardBps = BRRData.rewardBps;
             let currentRebateBps = BRRData.rebateBps;
 
-            let txResult = await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, feeBRRWei, {from: kyberNetwork, value: sendVal});
+            let txResult = await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, feeBRRWei, {from: kyberNetwork, value: sendVal});
 
             let expectedRewardWei = oneEth.mul(currentRewardBps).div(BPS);
             let expectedRebateWei = oneEth.mul(currentRebateBps).div(BPS);
@@ -478,7 +478,7 @@ contract('KyberFeeHandler', function(accounts) {
         it("reverts handleFees if called by non-network", async() => {
             let platformWallet = accounts[1];
             await expectRevert(
-                feeHandler.handleFees([], [], platformWallet, oneEth, zeroBN, {from: user, value: oneEth}),
+                feeHandler.handleFees(ethAddress, [], [], platformWallet, oneEth, zeroBN, {from: user, value: oneEth}),
                 "only kyberNetwork"
             );
         });
@@ -512,7 +512,7 @@ contract('KyberFeeHandler', function(accounts) {
             const feeBRRWei = oneEth;
             let sendVal = platformFeeWei.add(feeBRRWei);
 
-            await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+            await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                 {from: kyberNetwork, value: sendVal});
 
             let expectedTotalReward = sendVal.mul(currentRewardBps).div(BPS);
@@ -527,7 +527,7 @@ contract('KyberFeeHandler', function(accounts) {
             Helper.assertEqual(expectedTotalPayOut, totalPayOutBalance);
 
             sendVal = oneEth.div(new BN(33));
-            await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, sendVal,
+            await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, sendVal,
                 {from: kyberNetwork, value: sendVal});
 
             expectedTotalReward = expectedTotalReward.add(sendVal.mul(currentRewardBps).div(BPS));
@@ -548,14 +548,14 @@ contract('KyberFeeHandler', function(accounts) {
             let feeBRRWei = oneEth.add(new BN(1));
             let sendVal = platformFeeWei;
             await expectRevert(
-                feeHandler.handleFees([], [] , platformWallet, platformFeeWei, feeBRRWei,
+                feeHandler.handleFees(ethAddress, [], [] , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal}),
                 "msg.value not equal to total fees"
             );
 
             sendVal = feeBRRWei;
             await expectRevert(
-                feeHandler.handleFees([], [] , platformWallet, platformFeeWei, feeBRRWei,
+                feeHandler.handleFees(ethAddress, [], [] , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal}),
                 "msg.value not equal to total fees"
             );
@@ -563,7 +563,7 @@ contract('KyberFeeHandler', function(accounts) {
             // send excess ETH
             sendVal = feeBRRWei.mul(new BN(3));
             await expectRevert(
-                feeHandler.handleFees([], [] , platformWallet, platformFeeWei, feeBRRWei,
+                feeHandler.handleFees(ethAddress, [], [] , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal}),
                 "msg.value not equal to total fees"
             );
@@ -677,7 +677,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let sendVal = platformFeeWei.add(feeBRRWei);
                 feeHandler = await BadFeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                 {from: kyberNetwork, value: sendVal});
 
                 await feeHandler.setTotalPayoutBalance(zeroBN);
@@ -1050,7 +1050,7 @@ contract('KyberFeeHandler', function(accounts) {
                 const BRRData = await feeHandler.readBRRData();
                 currentEpoch = BRRData.epoch;
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                 {from: kyberNetwork, value: sendVal});
 
                 await feeHandler.setTotalPayoutBalance(zeroBN);
@@ -1210,7 +1210,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 feeHandler = await BadFeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                 {from: kyberNetwork, value: sendVal});
 
                 await feeHandler.setTotalPayoutBalance(zeroBN);
@@ -1346,7 +1346,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let feeBRRWei = oneEth.mul(new BN(30));
                 let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal});
 
                 feeHandlerBalance = await Helper.getBalancePromise(feeHandler.address);
@@ -1363,7 +1363,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let feeBRRWei = oneEth;
                 let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 //ETH-KNC RATE > MAX_RATE
@@ -1380,7 +1380,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let feeBRRWei = oneEth;
                 let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 //ETH-KNC RATE = 0
@@ -1402,7 +1402,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
@@ -1425,7 +1425,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
@@ -1448,7 +1448,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
@@ -1469,7 +1469,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let feeBRRWei = oneEth;
                 let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
@@ -1498,7 +1498,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let feeBRRWei = oneEth;
                 let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
@@ -1520,7 +1520,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let feeBRRWei = oneEth;
                 let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
@@ -1549,7 +1549,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let feeBRRWei = oneEth;
                 let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
@@ -1582,7 +1582,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let feeBRRWei = oneEth;
                 let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei, {from: kyberNetwork, value: sendVal});
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei, {from: kyberNetwork, value: sendVal});
 
                 let currentEpoch = new BN(1);
 
@@ -1609,7 +1609,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let feeBRRWei = oneEth.mul(new BN(30));
                 let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal});
 
                 await expectRevert(
@@ -1633,7 +1633,7 @@ contract('KyberFeeHandler', function(accounts) {
                 let sendVal = platformFeeWei.add(feeBRRWei);
                 feeHandler = await BadFeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                 {from: kyberNetwork, value: sendVal});
 
                 await feeHandler.setTotalPayoutBalance(zeroBN);
@@ -1968,7 +1968,7 @@ contract('KyberFeeHandler', function(accounts) {
             await tempFeeHandler.getBRR();
             await tempFeeHandler.setKyberProxy(tempProxy.address, {from: daoOperator});
 
-            await tempFeeHandler.handleFees([], [], zeroAddress, 0, oneEth, {from: tempNetwork, value: oneEth});
+            await tempFeeHandler.handleFees(ethAddress, [], [], zeroAddress, 0, oneEth, {from: tempNetwork, value: oneEth});
             await tempFeeHandler.burnKnc();
 
             await Helper.increaseBlockNumber(BURN_BLOCK_INTERVAL);
@@ -1980,7 +1980,7 @@ contract('KyberFeeHandler', function(accounts) {
             await tempProxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
             await tempProxy.setPairRate(knc.address, ethAddress, kncToEthPrecision);
 
-            await tempFeeHandler.handleFees([], [], zeroAddress, 0, oneEth, {from: tempNetwork, value: oneEth});
+            await tempFeeHandler.handleFees(ethAddress, [], [], zeroAddress, 0, oneEth, {from: tempNetwork, value: oneEth});
 
             // set new proxy for fee handler
             await tempFeeHandler.setKyberProxy(tempProxy.address, {from: daoOperator});
@@ -2003,7 +2003,7 @@ async function callHandleFeeAndVerifyValues(sendValWei, platformWallet, platFeeW
     let expectedPlatWalletFee = (await feeHandler.feePerPlatformWallet(platformWallet)).add(new BN(platFeeWei));
 
     // handle fees
-    await feeHandler.handleFees(rebateWalletArr, rebateBpsArr, platformWallet, platFeeWei, feeAmountBRR, {from: kyberNetwork, value: sendValWei});
+    await feeHandler.handleFees(ethAddress, rebateWalletArr, rebateBpsArr, platformWallet, platFeeWei, feeAmountBRR, {from: kyberNetwork, value: sendValWei});
 
     //validate values
     let expectedRebates = [];

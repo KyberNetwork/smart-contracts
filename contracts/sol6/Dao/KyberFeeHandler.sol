@@ -59,6 +59,12 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         uint16 rebateBps;
     }
 
+    struct BRRWei {
+        uint256 rewardWei;
+        uint256 rebateWei;
+        uint256 burnWei;
+    }
+
     IKyberDao public kyberDao;
     IKyberProxy public kyberProxy;
     address public kyberNetwork;
@@ -154,17 +160,21 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     }
 
     /// @dev handleFees function is called per trade on kyberNetwork. unless the trade is not involving any fees.
+    /// @param token Token currency of fees
     /// @param rebateWallets a list of rebate wallets that will get rebate for this trade.
     /// @param rebateBpsPerWallet percentage of rebate for each wallet, out of total rebate.
     /// @param platformWallet Wallet address that will receive the platfrom fee.
     /// @param platformFeeWei Fee amount in wei the platfrom wallet is entitled to.
+    /// @param feeBRRWei Fee amount in wei to be allocated for BRR
     function handleFees(
+        IERC20 token,
         address[] calldata rebateWallets,
         uint256[] calldata rebateBpsPerWallet,
         address platformWallet,
         uint256 platformFeeWei,
         uint256 feeBRRWei
     ) external payable override onlyKyberNetwork nonReentrant {
+        token; // not used in this feeHandler
         require(msg.value == platformFeeWei.add(feeBRRWei), "msg.value not equal to total fees");
 
         // handle platform fee
@@ -187,29 +197,28 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
             return;
         }
 
-        uint256 rebateWei;
-        uint256 rewardWei;
+        BRRWei memory brrData;
         uint256 epoch;
 
         // Decoding BRR data
-        (rewardWei, rebateWei, epoch) = getRRWeiValues(feeBRRWei);
+        (brrData.rewardWei, brrData.rebateWei, epoch) = getRRWeiValues(feeBRRWei);
 
-        rebateWei = updateRebateValues(rebateWei, rebateWallets, rebateBpsPerWallet);
+        brrData.rebateWei = updateRebateValues(brrData.rebateWei, rebateWallets, rebateBpsPerWallet);
 
-        rewardsPerEpoch[epoch] = rewardsPerEpoch[epoch].add(rewardWei);
+        rewardsPerEpoch[epoch] = rewardsPerEpoch[epoch].add(brrData.rewardWei);
 
         // update total balance of rewards, rebates, fee
-        totalPayoutBalance = totalPayoutBalance.add(platformFeeWei).add(rewardWei).add(rebateWei);
+        totalPayoutBalance = totalPayoutBalance.add(platformFeeWei).add(brrData.rewardWei).add(brrData.rebateWei);
 
-        uint256 burnAmountWei = feeBRRWei.sub(rewardWei).sub(rebateWei);
+        brrData.burnWei = feeBRRWei.sub(brrData.rewardWei).sub(brrData.rebateWei);
         emit FeeDistributed(
             platformWallet,
             platformFeeWei,
-            rewardWei,
-            rebateWei,
+            brrData.rewardWei,
+            brrData.rebateWei,
             rebateWallets,
             rebateBpsPerWallet,
-            burnAmountWei
+            brrData.burnWei
         );
     }
 

@@ -524,6 +524,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         // send total fee amount to fee handler with reserve data
         kyberFeeHandler.handleFees{value: sentFee}(
+            ETH_TOKEN_ADDRESS,
             rebateWallets,
             rebatePercentBps,
             tradeData.input.platformWallet,

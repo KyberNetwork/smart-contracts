@@ -10,6 +10,7 @@ interface IKyberFeeHandler {
     event KncBurned(uint256 kncTWei, IERC20 indexed token, uint256 amountTwei);
 
     function handleFees(
+        IERC20 token,
         address[] calldata eligibleWallets,
         uint256[] calldata rebatePercentages,
         address platformWallet,
