@@ -527,7 +527,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             rebateWallets,
             rebatePercentBps,
             tradeData.input.platformWallet,
-            tradeData.platformFeeWei
+            tradeData.platformFeeWei,
+            tradeData.networkFeeWei
         );
     }
 

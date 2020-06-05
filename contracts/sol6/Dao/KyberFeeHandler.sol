@@ -162,16 +162,15 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         address[] calldata rebateWallets,
         uint256[] calldata rebateBpsPerWallet,
         address platformWallet,
-        uint256 platformFeeWei
+        uint256 platformFeeWei,
+        uint256 feeBRRWei
     ) external payable override onlyKyberNetwork nonReentrant {
-        require(msg.value >= platformFeeWei, "msg.value low");
+        require(msg.value == platformFeeWei.add(feeBRRWei), "msg.value not equal to total fees");
 
         // handle platform fee
         feePerPlatformWallet[platformWallet] = feePerPlatformWallet[platformWallet].add(
             platformFeeWei
         );
-
-        uint256 feeBRRWei = msg.value.sub(platformFeeWei);
 
         if (feeBRRWei == 0) {
             // only platform fee paid
