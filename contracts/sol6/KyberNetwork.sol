@@ -1028,9 +1028,9 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(input.src != input.dest, "src = dest");
 
         if (input.src == ETH_TOKEN_ADDRESS) {
-            require(msg.value == input.srcAmount, "bad eth qty");
+            require(msg.value == input.srcAmount);
         } else {
-            require(msg.value == 0, "eth not 0");
+            require(msg.value == 0);
             // funds should have been moved to this contract already.
             require(input.src.balanceOf(address(this)) >= input.srcAmount, "no tokens");
         }

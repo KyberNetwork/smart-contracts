@@ -2891,18 +2891,16 @@ contract('KyberNetwork', function(accounts) {
         });
 
         it("test can not trade E2T when missing ETH", async () => {
-            await expectRevert(
+            await expectRevert.unspecified(
                 network.tradeWithHintAndFee(networkProxy, ethAddress, srcQty, srcToken.address, taker,
-                    maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint, { value: new BN(0) }),
-                "bad eth qty"
+                    maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint, { value: new BN(0) })
             );
         });
 
         it("test can not trade T2T or T2E when passing ETH", async () => {
-            await expectRevert(
+            await expectRevert.unspecified(
                 network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, ethAddress, taker,
-                    maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint, { value: new BN(1) }),
-                "eth not 0"
+                    maxDestAmt, minConversionRate, platformWallet, platformFee, emptyHint, { value: new BN(1) })
             );
         });
 
