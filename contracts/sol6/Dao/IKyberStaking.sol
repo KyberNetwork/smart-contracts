@@ -40,12 +40,6 @@ interface IKyberStaking is IEpochUtils {
             address representative
         );
 
-    function getStake(address staker, uint256 epoch) external view returns (uint256);
-
-    function getDelegatedStake(address staker, uint256 epoch) external view returns (uint256);
-
-    function getRepresentative(address staker, uint256 epoch) external view returns (address);
-
     function getLatestStakerData(address staker)
         external
         view
@@ -54,12 +48,6 @@ interface IKyberStaking is IEpochUtils {
             uint256 delegatedStake,
             address representative
         );
-
-    function getLatestStakeBalance(address staker) external view returns (uint256);
-
-    function getLatestDelegatedStake(address staker) external view returns (uint256);
-
-    function getLatestRepresentative(address staker) external view returns (address);
 
     /**
      * @notice return raw data of a staker for an epoch
