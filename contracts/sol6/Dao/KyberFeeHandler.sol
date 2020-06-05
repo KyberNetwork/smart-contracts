@@ -202,7 +202,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         // update total balance of rewards, rebates, fee
         totalPayoutBalance = totalPayoutBalance.add(platformFeeWei).add(rewardWei).add(rebateWei);
 
-        uint burnAmountWei = feeBRRWei.sub(rewardWei).sub(rebateWei);
+        uint256 burnAmountWei = feeBRRWei.sub(rewardWei).sub(rebateWei);
         emit FeeDistributed(
             platformWallet,
             platformFeeWei,
@@ -214,8 +214,10 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         );
     }
 
+    /// @notice  WARNING When staker address is a contract,
+    ///          it should be able to receive claimed reward in ETH whenever anyone calls this function.
     /// @dev not revert if already claimed or reward percentage is 0
-    ///      to allow writing a wrapper to claim for multiple epochs
+    ///      allow writing a wrapper to claim for multiple epochs
     /// @param staker address.
     /// @param epoch for which epoch the staker is claiming the reward
     function claimStakerReward(
@@ -227,18 +229,16 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
             return 0;
         }
 
-        // update here so if percentage is 0, this data will still be updated
-        hasClaimedReward[staker][epoch] = true;
-
         // the relative part of the reward the staker is entitled to for the epoch.
         // units Precision: 10 ** 18 = 100%
-        uint256 percentageInPrecision = kyberDao.getStakerRewardPercentageInPrecision(staker, epoch);
-        // Amount of reward to be sent to staker
+        // if the epoch is current or in the future, kyberDao will return 0 as result
+        uint256 percentageInPrecision = kyberDao.getPastEpochRewardPercentageInPrecision(staker, epoch);
         if (percentageInPrecision == 0) {
-            return 0; // not revert, in case a wrapper wants to claim reward for multiple epoch
+            return 0; // not revert, in case a wrapper wants to claim reward for multiple epochs
         }
         require(percentageInPrecision <= PRECISION, "percentage too high");
 
+        // Amount of reward to be sent to staker
         amountWei = rewardsPerEpoch[epoch].mul(percentageInPrecision).div(PRECISION);
 
         // redundant check, can't happen
@@ -248,11 +248,13 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         rewardsPaidPerEpoch[epoch] = rewardsPaidPerEpoch[epoch].add(amountWei);
         totalPayoutBalance = totalPayoutBalance.sub(amountWei);
 
+        hasClaimedReward[staker][epoch] = true;
+
         // send reward to staker
         (bool success, ) = staker.call{value: amountWei}("");
         require(success, "staker rewards transfer failed");
 
-        emit RewardPaid(staker, epoch, amountWei);
+        emit RewardPaid(staker, epoch, ETH_TOKEN_ADDRESS, amountWei);
     }
 
     /// @dev claim reabate per reserve wallet. called by any address
@@ -278,7 +280,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         (bool success, ) = rebateWallet.call{value: amountWei}("");
         require(success, "rebate transfer failed");
 
-        emit RebatePaid(rebateWallet, amountWei);
+        emit RebatePaid(rebateWallet, ETH_TOKEN_ADDRESS, amountWei);
 
         return amountWei;
     }
@@ -305,7 +307,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         (bool success, ) = platformWallet.call{value: amountWei}("");
         require(success, "platform fee transfer failed");
 
-        emit PlatformFeePaid(platformWallet, amountWei);
+        emit PlatformFeePaid(platformWallet, ETH_TOKEN_ADDRESS, amountWei);
         return amountWei;
     }
 
@@ -401,7 +403,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
 
         require(IBurnableToken(address(knc)).burn(kncBurnAmount), "knc burn failed");
 
-        emit KncBurned(kncBurnAmount, srcAmount);
+        emit KncBurned(kncBurnAmount, ETH_TOKEN_ADDRESS, srcAmount);
         return kncBurnAmount;
     }
 

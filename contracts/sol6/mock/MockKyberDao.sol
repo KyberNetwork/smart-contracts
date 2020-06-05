@@ -57,15 +57,29 @@ contract MockKyberDao is IKyberDao, Utils5 {
         rewardPercentageInPrecision = percentage;
     }
 
-    function getStakerRewardPercentageInPrecision(address staker, uint256 forEpoch)
+    function getPastEpochRewardPercentageInPrecision(address staker, uint256 forEpoch)
         external
         view
         override
-        returns (uint256) {
-            staker;
-            forEpoch;
-            return rewardPercentageInPrecision;
+        returns (uint256)
+    {
+        staker;
+        // return 0 for current or future epochs
+        if (forEpoch >= epoch) {
+            return 0;
         }
+        return rewardPercentageInPrecision;
+    }
+
+    function getCurrentEpochRewardPercentageInPrecision(address staker)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        staker;
+        return rewardPercentageInPrecision;
+    }
 
     function handleWithdrawal(address staker, uint256 reduceAmount) external override {
         staker;
