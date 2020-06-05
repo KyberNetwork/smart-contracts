@@ -101,7 +101,7 @@ contract MockKyberDao is IKyberDao, Utils5 {
     }
 
     function getCurrentEpochNumber() external view override returns (uint256) {
-        return getEpochNumber(now);
+        return epoch;
     }
 
     function getEpochNumber(uint256 timestamp) public view override returns (uint256) {
