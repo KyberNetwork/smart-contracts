@@ -19,6 +19,7 @@ import "./IKyberHint.sol";
  */
 contract KyberNetworkProxy is
     IKyberNetworkProxy,
+    ISimpleKyberProxy,
     WithdrawableNoModifiers,
     Utils5
 {
