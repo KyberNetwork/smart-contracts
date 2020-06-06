@@ -17,7 +17,6 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
     function swapEtherToToken(IERC20 token, uint256 minConversionRate)
         external
         payable
-        override
         returns (uint256 destAmount)
     {
         return
@@ -25,40 +24,6 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
                 ETH_TOKEN_ADDRESS,
                 msg.value,
                 token,
-                msg.sender,
-                MAX_QTY,
-                minConversionRate,
-                address(0)
-            );
-    }
-
-    function swapTokenToEther(IERC20 token, uint256 srcAmount, uint256 minConversionRate)
-        external
-        override
-        returns (uint256 destAmount)
-    {
-        return
-            trade(
-                token,
-                srcAmount,
-                ETH_TOKEN_ADDRESS,
-                msg.sender,
-                MAX_QTY,
-                minConversionRate,
-                address(0)
-            );
-    }
-
-    function swapTokenToToken(IERC20 src,
-        uint256 srcAmount,
-        IERC20 dest,
-        uint256 minConversionRate
-    ) external override returns (uint256 destAmount) {
-        return
-            trade(
-                src,
-                srcAmount,
-                dest,
                 msg.sender,
                 MAX_QTY,
                 minConversionRate,

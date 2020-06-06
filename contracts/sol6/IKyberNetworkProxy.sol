@@ -1,10 +1,9 @@
 pragma solidity 0.6.6;
 
 import "./IERC20.sol";
-import "./ISimpleKyberProxy.sol";
 
 
-interface IKyberNetworkProxy is ISimpleKyberProxy {
+interface IKyberNetworkProxy {
 
     event ExecuteTrade(
         address indexed trader,
