@@ -375,7 +375,11 @@ contract KyberNetworkProxy is
         uint256 srcAmount,
         address destAddress
     ) internal returns (UserBalance memory balanceBefore) {
-        require(src == ETH_TOKEN_ADDRESS || msg.value == 0, "msg.value should be 0");
+        if (src == ETH_TOKEN_ADDRESS) {
+            require(msg.value == srcAmount, "Sent eth != srcAmount");
+        } else {
+            require(msg.value == 0, "Sent eth not 0");
+        }
 
         balanceBefore.srcTok = getBalance(src, msg.sender);
         balanceBefore.destTok = getBalance(dest, destAddress);
