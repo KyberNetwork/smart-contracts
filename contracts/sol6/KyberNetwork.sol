@@ -814,9 +814,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         tradeData.networkFeeWei =
             (((tradeData.tradeWei * tradeData.networkFeeBps) / BPS) * tradeData.feeAccountedBps) /
             BPS;
-        require(
-            tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei),
-            "fees exceed trade"
+        assert(
+            tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei)
         );
 
         // eth -> token: find best reserves match and calculate trade dest amount
@@ -1026,15 +1025,15 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(input.src != input.dest, "src = dest");
 
         if (input.src == ETH_TOKEN_ADDRESS) {
-            require(msg.value == input.srcAmount, "bad eth qty");
+            require(msg.value == input.srcAmount); // kyberProxy issues message here
         } else {
-            require(msg.value == 0, "eth not 0");
+            require(msg.value == 0); // kyberProxy issues message here
             // funds should have been moved to this contract already.
             require(input.src.balanceOf(address(this)) >= input.srcAmount, "no tokens");
         }
     }
 
-    /// @notice Gets the network fee from the kyberDao (or use default). View function for getExpectedRate
+    /// @notice Gets the network fee from kyberDao (or use default). View function for getExpectedRate
     function getNetworkFee() internal view returns (uint256 networkFeeBps) {
         uint256 expiryTimestamp;
         (networkFeeBps, expiryTimestamp) = readNetworkFeeData();
@@ -1189,7 +1188,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             actualSrcAmount = tradeData.tradeWei;
         }
 
-        require(actualSrcAmount <= tradeData.input.srcAmount, "actualSrcAmt > given srcAmt");
+        assert(actualSrcAmount <= tradeData.input.srcAmount);
     }
 
     /// @notice Recalculates srcAmounts and stores into tradingReserves, given the new destAmount.
