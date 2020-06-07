@@ -288,7 +288,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
      * @dev allow to get staker data up to current epoch + 1
      */
     function getStakerData(address staker, uint256 epoch)
-        external view
+        external view override
         returns (
             uint256 stake,
             uint256 delegatedStake,
@@ -336,7 +336,7 @@ contract KyberStaking is IKyberStaking, EpochUtils, ReentrancyGuard {
     }
 
     function getLatestStakerData(address staker)
-        external view
+        external view override
         returns (
             uint256 stake,
             uint256 delegatedStake,
