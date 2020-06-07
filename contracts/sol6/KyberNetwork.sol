@@ -814,9 +814,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         tradeData.networkFeeWei =
             (((tradeData.tradeWei * tradeData.networkFeeBps) / BPS) * tradeData.feeAccountedBps) /
             BPS;
-        assert(
-            tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei)
-        );
+
+        assert(tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei));
 
         // eth -> token: find best reserves match and calculate trade dest amount
         uint256 actualSrcWei = tradeData.tradeWei -
