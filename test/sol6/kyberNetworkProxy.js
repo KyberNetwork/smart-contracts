@@ -836,7 +836,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 rate.expectedRate,
                 zeroAddress,
                 { from: taker, value: new BN(2) }
-            ), "msg.value should be 0");
+            ), "sent eth not 0");
             // see trade is ok if msg.value == 0
             await networkProxy.trade.call(
                 srcToken.address,
@@ -847,6 +847,38 @@ contract('KyberNetworkProxy', function(accounts) {
                 rate.expectedRate,
                 zeroAddress,
                 { from: taker }
+            );
+        });
+
+        it("trade Eth to token reverts if wrong amount of eth sent", async () => {
+            let destToken = tokens[1];
+            let srcQty = new BN(3).mul(new BN(10).pow(new BN(tokenDecimals[1])));
+
+            //get rate
+            let rate = await networkProxy.getExpectedRate(ethAddress, destToken.address, srcQty);
+           let dstQty = Helper.calcDstQty(srcQty, ethDecimals, tokenDecimals[1], rate.expectedRate);
+
+           //see trade reverts
+            await expectRevert(networkProxy.trade(
+                ethAddress,
+                srcQty,
+                destToken.address,
+                taker,
+                maxDestAmt,
+                rate.expectedRate,
+                zeroAddress,
+                { from: taker, value: new BN(2) }
+            ), "sent eth not equal to srcAmount");
+            // see trade is ok for correct msg.value
+            await networkProxy.trade(
+                ethAddress,
+                srcQty,
+                destToken.address,
+                taker,
+                maxDestAmt,
+                rate.expectedRate,
+                zeroAddress,
+                { from: taker, value: srcQty }
             );
         });
 
