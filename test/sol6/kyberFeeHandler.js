@@ -175,7 +175,7 @@ contract('KyberFeeHandler', function(accounts) {
                 staker: accounts[1],
                 epoch: currentEpoch,
                 token: ethAddress,
-                amountTwei: rewardAmount.mul(claim).div(precisionUnits)
+                amount: rewardAmount.mul(claim).div(precisionUnits)
             });
 
             // no event as already claimed
@@ -205,7 +205,7 @@ contract('KyberFeeHandler', function(accounts) {
             expectEvent(txResult, "RebatePaid", {
                 rebateWallet: rebateWallets[0],
                 token: ethAddress,
-                amountTwei: expectedRebates[0].sub(new BN(1))
+                amount: expectedRebates[0].sub(new BN(1))
             });
         });
 
@@ -229,7 +229,7 @@ contract('KyberFeeHandler', function(accounts) {
             expectEvent(txResult, "PlatformFeePaid", {
                 platformWallet: platformWallet,
                 token: ethAddress,
-                amountTwei: platformFeeWei.sub(new BN(1))
+                amount: platformFeeWei.sub(new BN(1))
             });
         });
 
@@ -262,7 +262,7 @@ contract('KyberFeeHandler', function(accounts) {
             expectEvent(txResult, "KncBurned", {
                 kncTWei: (burnPerCall.sub(burnPerCall.mul(networkFeeBps).div(BPS))).mul(expectedEthtoKncRate).div(precisionUnits),
                 token: ethAddress,
-                amountTwei: burnPerCall
+                amount: burnPerCall
             });
         });
 

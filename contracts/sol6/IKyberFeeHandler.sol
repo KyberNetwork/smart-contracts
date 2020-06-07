@@ -4,10 +4,10 @@ import "./IERC20.sol";
 
 
 interface IKyberFeeHandler {
-    event RewardPaid(address indexed staker, uint256 indexed epoch, IERC20 indexed token, uint256 amountTwei);
-    event RebatePaid(address indexed rebateWallet, IERC20 indexed token, uint256 amountTwei);
-    event PlatformFeePaid(address indexed platformWallet, IERC20 indexed token, uint256 amountTwei);
-    event KncBurned(uint256 kncTWei, IERC20 indexed token, uint256 amountTwei);
+    event RewardPaid(address indexed staker, uint256 indexed epoch, IERC20 indexed token, uint256 amount);
+    event RebatePaid(address indexed rebateWallet, IERC20 indexed token, uint256 amount);
+    event PlatformFeePaid(address indexed platformWallet, IERC20 indexed token, uint256 amount);
+    event KncBurned(uint256 kncTWei, IERC20 indexed token, uint256 amount);
 
     function handleFees(
         IERC20 token,
@@ -25,5 +25,5 @@ interface IKyberFeeHandler {
     function claimStakerReward(
         address staker,
         uint256 epoch
-    ) external returns(uint amountTwei);
+    ) external returns(uint amount);
 }
