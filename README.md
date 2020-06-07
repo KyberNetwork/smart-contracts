@@ -15,11 +15,11 @@ Public facing interfaces for kyber network (folder: contracts/sol6):
 2. `npm ci`
 
 ## Compilation with Buidler
-1. `./cmp.sh` to compile contracts for all solidity verseions.
+1. `./cmp.sh` to compile contracts for all solidity versions.
 2. `./cmpSol6.sh` to compile only sol6 contracts
 
 ## Testing with Buidler
-1. If contracts have not been compiled, run `./compilation.sh`. This step can be skipped subsequently.
+1. If contracts have not been compiled, run `./cmp.sh`. This step can be skipped subsequently.
 2. Run `./tst.sh`
 3. Use `-f` for running a specific test file.
 5. Use `-a` to run tests for all solidity versions. Runs only sol6 tests by default.
