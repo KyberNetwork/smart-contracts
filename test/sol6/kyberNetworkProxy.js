@@ -836,7 +836,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 rate.expectedRate,
                 zeroAddress,
                 { from: taker, value: new BN(2) }
-            ), "Sent eth not 0");
+            ), "sent eth not 0");
             // see trade is ok if msg.value == 0
             await networkProxy.trade.call(
                 srcToken.address,
@@ -868,7 +868,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 rate.expectedRate,
                 zeroAddress,
                 { from: taker, value: new BN(2) }
-            ), "Sent eth not equal to srcAmount");
+            ), "sent eth not equal to srcAmount");
             // see trade is ok for correct msg.value
             await networkProxy.trade(
                 ethAddress,
