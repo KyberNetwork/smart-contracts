@@ -551,8 +551,13 @@ contract('KyberStorage', function(accounts) {
                 reserves = await kyberStorage.getReservesPerType(reserve.onChainType);
                 Helper.assertEqualArray(reserves, [reserve.reserveId], "reserve arrays not equal");
 
+                let reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                Helper.assertEqualArray(reserveAddresses, [reserve.address], "reserve arrays not equal");
+
                 // reset
                 await kyberStorage.removeReserve(reserve.reserveId, 0, {from: operator});
+                reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                Helper.assertEqualArray(reserveAddresses, [zeroAddress, reserve.address], "reserve arrays not equal");
             });
         });
 
@@ -578,13 +583,21 @@ contract('KyberStorage', function(accounts) {
 
             it("should be able to re-add a reserve after its removal", async() => {
                 await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
+                let reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                Helper.assertEqualArray(reserveAddresses, [zeroAddress, reserve.address, reserve.address], "reserve arrays not equal");
                 await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                Helper.assertEqualArray(reserveAddresses, [reserve.address, reserve.address ,reserve.address], "reserve arrays not equal");
             });
 
             it("should be able to add a new reserve address for an existing id after removing an old one", async() => {
                 let newReserve = await MockReserve.new();
                 await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
+                let reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                Helper.assertEqualArray(reserveAddresses, [zeroAddress, reserve.address, reserve.address ,reserve.address], "reserve arrays not equal");
                 await kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                Helper.assertEqualArray(reserveAddresses, [newReserve.address, reserve.address, reserve.address ,reserve.address], "reserve arrays not equal");
                 let reserves = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
                 let actualNewReserveAddress = reserves[0];
                 let actualOldReserveAddress = reserves[1];

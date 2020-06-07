@@ -195,8 +195,8 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + KyberDao int
         minCampPeriod = _campPeriod;
         kyberDao = await MockDao.new(
             blocksToSeconds(epochPeriod), daoStartTime,
-            feeHandler.address, KNC.address,
-            minCampPeriod, defaultNetworkFee, defaultRewardBps, defaultRebateBps,
+            KNC.address, minCampPeriod,
+            defaultNetworkFee, defaultRewardBps, defaultRebateBps,
             daoOperator
         )
         stakingContract = await StakingContract.at(await kyberDao.staking());
