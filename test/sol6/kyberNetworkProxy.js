@@ -868,7 +868,7 @@ contract('KyberNetworkProxy', function(accounts) {
                 rate.expectedRate,
                 zeroAddress,
                 { from: taker, value: new BN(2) }
-            ), "Sent eth != srcAmount");
+            ), "Sent eth not equal to srcAmount");
             // see trade is ok for correct msg.value
             await networkProxy.trade(
                 ethAddress,

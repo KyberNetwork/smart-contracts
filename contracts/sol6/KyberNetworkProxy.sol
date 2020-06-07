@@ -376,7 +376,7 @@ contract KyberNetworkProxy is
         address destAddress
     ) internal returns (UserBalance memory balanceBefore) {
         if (src == ETH_TOKEN_ADDRESS) {
-            require(msg.value == srcAmount, "Sent eth not as srcAmount");
+            require(msg.value == srcAmount, "Sent eth not equal to srcAmount");
         } else {
             require(msg.value == 0, "Sent eth not 0");
         }
