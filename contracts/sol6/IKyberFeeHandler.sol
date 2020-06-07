@@ -14,8 +14,8 @@ interface IKyberFeeHandler {
         address[] calldata eligibleWallets,
         uint256[] calldata rebatePercentages,
         address platformWallet,
-        uint256 platformFeeWei,
-        uint256 feeBRRWei
+        uint256 platformFee,
+        uint256 networkFee
     ) external payable;
 
     function claimReserveRebate(address rebateWallet) external returns (uint256);
