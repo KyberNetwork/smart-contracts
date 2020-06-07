@@ -9,11 +9,11 @@ contract EpochUtils is IEpochUtils {
     uint256 public override epochPeriodInSeconds;
     uint256 public override firstEpochStartTimestamp;
 
-    function getCurrentEpochNumber() public view returns (uint256) {
+    function getCurrentEpochNumber() public view override returns (uint256) {
         return getEpochNumber(now);
     }
 
-    function getEpochNumber(uint256 timestamp) public view returns (uint256) {
+    function getEpochNumber(uint256 timestamp) public view override returns (uint256) {
         if (timestamp < firstEpochStartTimestamp || epochPeriodInSeconds == 0) {
             return 0;
         }
