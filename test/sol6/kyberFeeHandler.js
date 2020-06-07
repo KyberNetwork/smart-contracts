@@ -16,6 +16,7 @@ const KyberNetwork = artifacts.require("KyberNetwork.sol");
 const NoPayableFallback = artifacts.require("NoPayableFallback.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
 const ReentrancyFeeClaimer = artifacts.require("ReentrancyFeeClaimer.sol");
+const MockStakerClaimRewardReentrancy = artifacts.require("MockStakerClaimRewardReentrancy.sol");
 
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, zeroBN, MAX_RATE} = require("../helper.js");
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
@@ -99,7 +100,7 @@ contract('KyberFeeHandler', function(accounts) {
 
         it("FeeDistributed (no BRR)", async() => {
             let platformWallet = accounts[1];
-            let txResult = await feeHandler.handleFees([], [], platformWallet, oneEth, {from: kyberNetwork, value: oneEth});
+            let txResult = await feeHandler.handleFees(ethAddress, [], [], platformWallet, oneEth, zeroBN, {from: kyberNetwork, value: oneEth});
             expectEvent(txResult, 'FeeDistributed', {
                 platformWallet: platformWallet,
                 platformFeeWei: oneEth,
@@ -115,13 +116,14 @@ contract('KyberFeeHandler', function(accounts) {
         it("FeeDistributed (with BRR)", async() => {
             let platformWallet = accounts[1];
             let platformFeeWei = oneEth;
+            let feeBRRWei = oneEth;
             let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
-            let sendVal = oneEth.add(oneEth);
+            let sendVal = platformFeeWei.add(feeBRRWei);
             const BRRData = await feeHandler.readBRRData();
             let currentRewardBps = BRRData.rewardBps;
             let currentRebateBps = BRRData.rebateBps;
 
-            let txResult = await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, {from: kyberNetwork, value: sendVal});
+            let txResult = await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, feeBRRWei, {from: kyberNetwork, value: sendVal});
 
             let expectedRewardWei = oneEth.mul(currentRewardBps).div(BPS);
             let expectedRebateWei = oneEth.mul(currentRebateBps).div(BPS);
@@ -155,17 +157,35 @@ contract('KyberFeeHandler', function(accounts) {
                     rebateWallets, rebateBpsPerWallet
                 );
 
-            await feeHandler.setDaoContract(user, {from: daoSetter});
+            mockKyberDao = await MockKyberDao.new(
+                rewardInBPS,
+                rebateInBPS,
+                currentEpoch.add(new BN(1)),
+                expiryTimestamp
+            );
+            await feeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter});
             let rewardAmount = await feeHandler.rewardsPerEpoch(currentEpoch);
 
             let claim = precisionUnits.div(new BN(3));
-            let txResult = await feeHandler.claimStakerReward(user, claim, currentEpoch, {from: user});
+            await mockKyberDao.setStakerPercentageInPrecision(claim);
+
+            let txResult = await feeHandler.claimStakerReward(accounts[1], currentEpoch);
 
             await expectEvent(txResult, "RewardPaid", {
-                staker: user,
+                staker: accounts[1],
                 epoch: currentEpoch,
-                amountWei: rewardAmount.mul(claim).div(precisionUnits)
+                token: ethAddress,
+                amount: rewardAmount.mul(claim).div(precisionUnits)
             });
+
+            // no event as already claimed
+            txResult = await feeHandler.claimStakerReward(accounts[1], currentEpoch);
+            Helper.assertEqual(0, txResult.receipt.logs.length);
+
+            // no event if reward percentage = 0
+            await mockKyberDao.setStakerPercentageInPrecision(0);
+            txResult = await feeHandler.claimStakerReward(accounts[2], currentEpoch);
+            Helper.assertEqual(0, txResult.receipt.logs.length);
         });
 
         it("RebatePaid", async() => {
@@ -184,7 +204,8 @@ contract('KyberFeeHandler', function(accounts) {
             let txResult = await feeHandler.claimReserveRebate(rebateWallets[0]);
             expectEvent(txResult, "RebatePaid", {
                 rebateWallet: rebateWallets[0],
-                amountWei: expectedRebates[0].sub(new BN(1))
+                token: ethAddress,
+                amount: expectedRebates[0].sub(new BN(1))
             });
         });
 
@@ -207,7 +228,8 @@ contract('KyberFeeHandler', function(accounts) {
             let txResult = await feeHandler.claimPlatformFee(platformWallet);
             expectEvent(txResult, "PlatformFeePaid", {
                 platformWallet: platformWallet,
-                amountWei: platformFeeWei.sub(new BN(1))
+                token: ethAddress,
+                amount: platformFeeWei.sub(new BN(1))
             });
         });
 
@@ -239,7 +261,8 @@ contract('KyberFeeHandler', function(accounts) {
 
             expectEvent(txResult, "KncBurned", {
                 kncTWei: (burnPerCall.sub(burnPerCall.mul(networkFeeBps).div(BPS))).mul(expectedEthtoKncRate).div(precisionUnits),
-                amountWei: burnPerCall
+                token: ethAddress,
+                amount: burnPerCall
             });
         });
 
@@ -455,18 +478,8 @@ contract('KyberFeeHandler', function(accounts) {
         it("reverts handleFees if called by non-network", async() => {
             let platformWallet = accounts[1];
             await expectRevert(
-                feeHandler.handleFees([], [], platformWallet, oneEth, {from: user, value: oneEth}),
+                feeHandler.handleFees(ethAddress, [], [], platformWallet, oneEth, zeroBN, {from: user, value: oneEth}),
                 "only kyberNetwork"
-            );
-        });
-
-        it("reverts claimStakerReward if called by non-KyberDao", async() => {
-            const BRRData = await feeHandler.readBRRData();
-            let currentEpoch = BRRData.epoch;
-
-            await expectRevert(
-                feeHandler.claimStakerReward(user, oneEth, currentEpoch, {from: user}),
-                "only kyberDao"
             );
         });
 
@@ -495,10 +508,11 @@ contract('KyberFeeHandler', function(accounts) {
 
         it("test total rebates total rewards updated correctly", async() => {
             const platformWallet = accounts[1];
-            const platformFeeWei = 0;
-            let sendVal = oneEth;
+            const platformFeeWei = zeroBN;
+            const feeBRRWei = oneEth;
+            let sendVal = platformFeeWei.add(feeBRRWei);
 
-            await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+            await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                 {from: kyberNetwork, value: sendVal});
 
             let expectedTotalReward = sendVal.mul(currentRewardBps).div(BPS);
@@ -513,7 +527,7 @@ contract('KyberFeeHandler', function(accounts) {
             Helper.assertEqual(expectedTotalPayOut, totalPayOutBalance);
 
             sendVal = oneEth.div(new BN(33));
-            await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+            await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, sendVal,
                 {from: kyberNetwork, value: sendVal});
 
             expectedTotalReward = expectedTotalReward.add(sendVal.mul(currentRewardBps).div(BPS));
@@ -528,13 +542,42 @@ contract('KyberFeeHandler', function(accounts) {
             Helper.assertEqual(expectedTotalPayOut, totalPayOutBalance);
         });
 
-        it("reverts if platformFee > sendVal when calling handleFees", async() => {
+        it("reverts if token is not ETH when calling handleFees", async() => {
             let platformWallet = accounts[9];
-            let platformFeeWei = oneEth.add(new BN(1));
+            let platformFeeWei = oneEth;
+            let feeBRRWei = oneEth;
+            let sendVal = platformFeeWei.add(feeBRRWei);
             await expectRevert(
-                feeHandler.handleFees([], [] , platformWallet, platformFeeWei,
-                    {from: kyberNetwork, value: oneEth}),
-                "msg.value low"
+                feeHandler.handleFees(knc.address, [], [] , platformWallet, platformFeeWei, feeBRRWei,
+                    {from: kyberNetwork, value: sendVal}),
+                "token not eth"
+            );
+        });
+
+        it("reverts if sendVal != total fees when calling handleFees", async() => {
+            let platformWallet = accounts[9];
+            let platformFeeWei = oneEth;
+            let feeBRRWei = oneEth.add(new BN(1));
+            let sendVal = platformFeeWei;
+            await expectRevert(
+                feeHandler.handleFees(ethAddress, [], [] , platformWallet, platformFeeWei, feeBRRWei,
+                    {from: kyberNetwork, value: sendVal}),
+                "msg.value not equal to total fees"
+            );
+
+            sendVal = feeBRRWei;
+            await expectRevert(
+                feeHandler.handleFees(ethAddress, [], [] , platformWallet, platformFeeWei, feeBRRWei,
+                    {from: kyberNetwork, value: sendVal}),
+                "msg.value not equal to total fees"
+            );
+
+            // send excess ETH
+            sendVal = feeBRRWei.mul(new BN(3));
+            await expectRevert(
+                feeHandler.handleFees(ethAddress, [], [] , platformWallet, platformFeeWei, feeBRRWei,
+                    {from: kyberNetwork, value: sendVal}),
+                "msg.value not equal to total fees"
             );
         });
 
@@ -640,12 +683,13 @@ contract('KyberFeeHandler', function(accounts) {
             });
 
             it("reverts if totalPayoutBalance < amount", async() => {
-                let sendVal = oneEth;
                 const platformWallet = accounts[1];
-                const platformFeeWei = 0;
+                const platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
                 feeHandler = await BadFeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                 {from: kyberNetwork, value: sendVal});
 
                 await feeHandler.setTotalPayoutBalance(zeroBN);
@@ -656,28 +700,24 @@ contract('KyberFeeHandler', function(accounts) {
         });
 
         describe("staking rewards", async() => {
-            it("claim reward and see total payout balance updated.", async() => {
-                let sendVal = oneEth;
+            beforeEach("init contracts before each test", async() => {
+                feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
 
-                await callHandleFeeAndVerifyValues(
-                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
-                        rebateWallets, rebateBpsPerWallet
-                    );
+                const BRRData = await feeHandler.readBRRData();
+                currentEpoch = BRRData.epoch;
 
-                let totalPayOutBalanceBefore = await feeHandler.totalPayoutBalance();
-                let rewardAmount = await feeHandler.rewardsPerEpoch(currentEpoch);
+                expiryTimestamp = await Helper.getCurrentBlockTime();
 
-                let claim = precisionUnits.div(new BN(3));
-                await mockKyberDao.claimStakerReward(user, claim, currentEpoch);
-
-                let paidReward = rewardAmount.mul(claim).div(precisionUnits);
-
-                let expectedTotalPayoutAfter = totalPayOutBalanceBefore.sub(paidReward);
-                const totalPayOutBalance = await feeHandler.totalPayoutBalance();
-                Helper.assertEqual(expectedTotalPayoutAfter, totalPayOutBalance);
+                mockKyberDao = await MockKyberDao.new(
+                    rewardInBPS,
+                    rebateInBPS,
+                    currentEpoch,
+                    expiryTimestamp
+                );
+                await feeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter});
             });
 
-            it("test reward per eopch updated correctly", async() => {
+            it("test reward per epoch updated correctly", async() => {
                 let sendVal = oneEth;
 
                 sendVal = oneEth;
@@ -732,6 +772,29 @@ contract('KyberFeeHandler', function(accounts) {
                 Helper.assertEqual(expectedRewardPerEpoch, rewardPerEpoch);
             });
 
+            it("claim reward and see total payout balance updated.", async() => {
+                let sendVal = oneEth;
+
+                await callHandleFeeAndVerifyValues(
+                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                        rebateWallets, rebateBpsPerWallet
+                    );
+
+                await mockKyberDao.advanceEpoch();
+                let totalPayOutBalanceBefore = await feeHandler.totalPayoutBalance();
+                let rewardAmount = await feeHandler.rewardsPerEpoch(currentEpoch);
+
+                let claim = precisionUnits.div(new BN(3));
+                await mockKyberDao.setStakerPercentageInPrecision(claim);
+                await feeHandler.claimStakerReward(user, currentEpoch);
+
+                let paidReward = rewardAmount.mul(claim).div(precisionUnits);
+
+                let expectedTotalPayoutAfter = totalPayOutBalanceBefore.sub(paidReward);
+                const totalPayOutBalance = await feeHandler.totalPayoutBalance();
+                Helper.assertEqual(expectedTotalPayoutAfter, totalPayOutBalance);
+            });
+
             it("claim reward and see paid so far updated.", async() => {
                 let sendVal = oneEth;
 
@@ -740,11 +803,13 @@ contract('KyberFeeHandler', function(accounts) {
                         rebateWallets, rebateBpsPerWallet
                     );
 
+                await mockKyberDao.advanceEpoch();
                 let rewardBefore = await feeHandler.rewardsPerEpoch(currentEpoch);
                 let userBal = await Helper.getBalancePromise(user);
 
                 let claim = precisionUnits.div(new BN(3));
-                await mockKyberDao.claimStakerReward(user, claim, currentEpoch); // full reward
+                await mockKyberDao.setStakerPercentageInPrecision(claim);
+                await feeHandler.claimStakerReward(user, currentEpoch); // full reward
 
                 let paidSoFar = await feeHandler.rewardsPaidPerEpoch(currentEpoch);
                 let userBalAfter = await Helper.getBalancePromise(user);
@@ -754,61 +819,25 @@ contract('KyberFeeHandler', function(accounts) {
                 Helper.assertEqual(userBalAfter, userBal.add(expectedPaid));
             });
 
-            it("reverts if staker claims more than total reward in 2 claims", async() => {
+            it("claim reward and see has claimed reward updated.", async() => {
                 let sendVal = oneEth;
 
                 await callHandleFeeAndVerifyValues(
                     sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
                         rebateWallets, rebateBpsPerWallet
                     );
-
-                let claimAmount = precisionUnits.div(new BN(2));
-
-                await mockKyberDao.claimStakerReward(user, claimAmount, currentEpoch), // full reward
-                claimAmount = precisionUnits.div(new BN(2)).add(new BN(9));
-                // claim = precisionUnits;
-
-                await expectRevert.unspecified(
-                    mockKyberDao.claimStakerReward(user, claimAmount, currentEpoch) // full reward
-                );
-            });
-
-            it("reverts if staker claims more than full reward per epoch in 2 claims", async() => {
-                let sendVal = oneEth;
-
-                await callHandleFeeAndVerifyValues(
-                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
-                    rebateWallets, rebateBpsPerWallet
-                );
 
                 await mockKyberDao.advanceEpoch();
+                Helper.assertEqual(false, await feeHandler.hasClaimedReward(user, currentEpoch));
 
-                // delay to expire time
-                let data = await feeHandler.readBRRData();
-                await Helper.mineNewBlockAt(data.expiryTimestamp * 1);
+                let claim = precisionUnits.div(new BN(3));
+                await mockKyberDao.setStakerPercentageInPrecision(claim);
+                await feeHandler.claimStakerReward(user, currentEpoch); // full reward
 
-                await feeHandler.getBRR();
-                data = await feeHandler.readBRRData();
-
-                sendVal = oneEth;
-                await callHandleFeeAndVerifyValues(
-                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch.add(new BN(1)),
-                    rebateWallets, rebateBpsPerWallet
-                );
-
-                currentEpoch++;
-
-                let claimAmount = precisionUnits.div(new BN(2));
-
-                await mockKyberDao.claimStakerReward(user, claimAmount, currentEpoch), // full reward
-                claimAmount = precisionUnits.div(new BN(2)).add(new BN(9));
-
-                await expectRevert.unspecified(
-                    mockKyberDao.claimStakerReward(user, claimAmount, currentEpoch) // full reward
-                );
+                Helper.assertEqual(true, await feeHandler.hasClaimedReward(user, currentEpoch));
             });
 
-            it("reverts if staker claims more than full reward in 1 claim", async() => {
+            it("claim reward, has claim reward data is not changed if staker has no reward", async() => {
                 let sendVal = oneEth;
 
                 await callHandleFeeAndVerifyValues(
@@ -816,10 +845,136 @@ contract('KyberFeeHandler', function(accounts) {
                         rebateWallets, rebateBpsPerWallet
                     );
 
+                await mockKyberDao.advanceEpoch();
+                let totalPayOutBalanceBefore = await feeHandler.totalPayoutBalance();
+
+                await Helper.assertEqual(false, await feeHandler.hasClaimedReward(user, currentEpoch), "wrong default data");
+                // set staker percentage is 0
+                await mockKyberDao.setStakerPercentageInPrecision(0);
+                await feeHandler.claimStakerReward(user, currentEpoch);
+                await Helper.assertEqual(false, await feeHandler.hasClaimedReward(user, currentEpoch), "wrong data");
+
+                let paidReward = zeroBN;
+
+                let expectedTotalPayoutAfter = totalPayOutBalanceBefore.sub(paidReward);
+                const totalPayOutBalance = await feeHandler.totalPayoutBalance();
+                Helper.assertEqual(expectedTotalPayoutAfter, totalPayOutBalance);
+            });
+
+            it("claim reward is successful if has no reward, balance is still the same", async() => {
+                let sendVal = oneEth;
+
+                await callHandleFeeAndVerifyValues(
+                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                        rebateWallets, rebateBpsPerWallet
+                    );
+
+                await mockKyberDao.advanceEpoch();
+                let totalPayOutBalanceBefore = await feeHandler.totalPayoutBalance();
+
+                // set staker percentage is 0
+                await mockKyberDao.setStakerPercentageInPrecision(0);
+                await feeHandler.claimStakerReward(user, currentEpoch);
+
+                let paidReward = zeroBN;
+
+                let expectedTotalPayoutAfter = totalPayOutBalanceBefore.sub(paidReward);
+                const totalPayOutBalance = await feeHandler.totalPayoutBalance();
+                Helper.assertEqual(expectedTotalPayoutAfter, totalPayOutBalance);
+            });
+
+            it("claim reward is successful even staker has already claimed, balance is still the same", async() => {
+                let sendVal = oneEth;
+
+                await callHandleFeeAndVerifyValues(
+                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                        rebateWallets, rebateBpsPerWallet
+                    );
+
+                await mockKyberDao.advanceEpoch();
+                let totalPayOutBalanceBefore = await feeHandler.totalPayoutBalance();
+
+                let percentage = precisionUnits.div(new BN(3));
+                await mockKyberDao.setStakerPercentageInPrecision(percentage);
+                await feeHandler.claimStakerReward(user, currentEpoch);
+
+                let rewardAmount = await feeHandler.rewardsPerEpoch(currentEpoch);
+                let paidReward = percentage.mul(rewardAmount).div(precisionUnits);
+
+                let expectedTotalPayoutAfter = totalPayOutBalanceBefore.sub(paidReward);
+                let totalPayOutBalance = await feeHandler.totalPayoutBalance();
+                Helper.assertEqual(expectedTotalPayoutAfter, totalPayOutBalance);
+
+                totalPayOutBalanceBefore = expectedTotalPayoutAfter;
+
+                // claim again
+                await feeHandler.claimStakerReward(user, currentEpoch);
+
+                paidReward = zeroBN;
+
+                expectedTotalPayoutAfter = totalPayOutBalanceBefore.sub(paidReward);
+                totalPayOutBalance = await feeHandler.totalPayoutBalance();
+
+                Helper.assertEqual(expectedTotalPayoutAfter, totalPayOutBalance);
+            });
+
+            it("claim reward is successful for current epoch, balance and hasClaimedReward unchange", async() => {
+                let sendVal = oneEth;
+
+                await callHandleFeeAndVerifyValues(
+                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                        rebateWallets, rebateBpsPerWallet
+                    );
+
+                let totalPayOutBalanceBefore = await feeHandler.totalPayoutBalance();
+
+                let percentage = precisionUnits.div(new BN(3));
+                await mockKyberDao.setStakerPercentageInPrecision(percentage);
+                await feeHandler.claimStakerReward(user, currentEpoch);
+
+                Helper.assertEqual(false, await feeHandler.hasClaimedReward(user, currentEpoch));
+
+                let paidReward = zeroBN;
+
+                let expectedTotalPayoutAfter = totalPayOutBalanceBefore.sub(paidReward);
+                let totalPayOutBalance = await feeHandler.totalPayoutBalance();
+                Helper.assertEqual(expectedTotalPayoutAfter, totalPayOutBalance);
+            });
+
+            it("claim reward is successful for future epoch, hasClaimedReward unchange", async() => {
+                let sendVal = oneEth;
+                await callHandleFeeAndVerifyValues(
+                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                        rebateWallets, rebateBpsPerWallet
+                    );
+                let percentage = precisionUnits.div(new BN(3));
+                await mockKyberDao.setStakerPercentageInPrecision(percentage);
+
+                for(let i = 1; i < 4; i++) {
+                    let epoch = currentEpoch.add(new BN(i));
+
+                    Helper.assertEqual(false, await feeHandler.hasClaimedReward(user, epoch));
+
+                    await feeHandler.claimStakerReward(user, epoch);
+
+                    Helper.assertEqual(false, await feeHandler.hasClaimedReward(user, epoch));
+                }
+            });
+
+            it("reverts if staker percentage is more than 100%", async() => {
+                let sendVal = oneEth;
+
+                await callHandleFeeAndVerifyValues(
+                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                        rebateWallets, rebateBpsPerWallet
+                    );
+
+                await mockKyberDao.advanceEpoch();
                 let claim = precisionUnits.add(new BN(1));
+                await mockKyberDao.setStakerPercentageInPrecision(claim);
 
                 await expectRevert(
-                    mockKyberDao.claimStakerReward(user, claim, currentEpoch), // full reward
+                    feeHandler.claimStakerReward(user, currentEpoch), // full reward
                     "percentage too high"
                 );
             });
@@ -832,17 +987,73 @@ contract('KyberFeeHandler', function(accounts) {
                         rebateWallets, rebateBpsPerWallet
                     );
 
+                await mockKyberDao.advanceEpoch();
                 let claim = precisionUnits.div(new BN(3));
+                await mockKyberDao.setStakerPercentageInPrecision(claim);
                 await expectRevert(
-                    mockKyberDao.claimStakerReward(badUser.address, claim, currentEpoch),
+                    feeHandler.claimStakerReward(badUser.address, currentEpoch),
                     "staker rewards transfer failed"
                 );
             });
 
-            it("reverts if totalPayoutBalance < stakerAmt", async() => {
+            it("reverts if staker makes reentrant call when received eth", async() => {
                 let sendVal = oneEth;
+                let badStaker = await MockStakerClaimRewardReentrancy.new(feeHandler.address);
+                await callHandleFeeAndVerifyValues(
+                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                        rebateWallets, rebateBpsPerWallet
+                    );
+
+                await mockKyberDao.advanceEpoch();
+                let claim = precisionUnits.div(new BN(3));
+                await mockKyberDao.setStakerPercentageInPrecision(claim);
+                await expectRevert(
+                    feeHandler.claimStakerReward(badStaker.address, currentEpoch),
+                    "staker rewards transfer failed"
+                );
+
+                // Test staker not reentrant, should successfully claim reward
+                let rewardAmount = await feeHandler.rewardsPerEpoch(currentEpoch);
+                let paidReward = claim.mul(rewardAmount).div(precisionUnits);
+                let totalPayOutBalanceBefore = await feeHandler.totalPayoutBalance();
+
+                await badStaker.setIsTestingReentrancy(false);
+                // not reentrant when receiving eth
+                // should claim reward successfully
+                await feeHandler.claimStakerReward(badStaker.address, currentEpoch);
+
+                let expectedTotalPayoutAfter = totalPayOutBalanceBefore.sub(paidReward);
+                const totalPayOutBalance = await feeHandler.totalPayoutBalance();
+                Helper.assertEqual(expectedTotalPayoutAfter, totalPayOutBalance);
+            });
+
+            it("reverts if total percentage of all stakers more than 100%", async() => {
+                let sendVal = oneEth;
+                await callHandleFeeAndVerifyValues(
+                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                        rebateWallets, rebateBpsPerWallet
+                    );
+
+                await mockKyberDao.advanceEpoch();
+                let claim = precisionUnits.div(new BN(3));
+                await mockKyberDao.setStakerPercentageInPrecision(claim);
+                // claim for 3 stakers, should be ok
+                for(let i = 0; i < 3; i++) {
+                    await feeHandler.claimStakerReward(accounts[i], currentEpoch);
+                }
+
+                // can not claim one more, total percentage > 100%
+                // total payout balance < this last staker percentage
+                await expectRevert.unspecified(
+                    feeHandler.claimStakerReward(accounts[4], currentEpoch)
+                )
+            });
+
+            it("reverts if totalPayoutBalance < stakerAmt", async() => {
                 const platformWallet = accounts[1];
-                const platformFeeWei = 0;
+                const platformFeeWei = zeroBN;
+                const feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
                 let claim = precisionUnits;
 
@@ -851,13 +1062,39 @@ contract('KyberFeeHandler', function(accounts) {
                 const BRRData = await feeHandler.readBRRData();
                 currentEpoch = BRRData.epoch;
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                 {from: kyberNetwork, value: sendVal});
 
                 await feeHandler.setTotalPayoutBalance(zeroBN);
                 await feeHandler.setDaoContract(user, {from: daoSetter});
+                await mockKyberDao.setStakerPercentageInPrecision(claim);
+
+                await mockKyberDao.advanceEpoch();
                 await expectRevert.unspecified(
-                    feeHandler.claimStakerReward(user, claim, currentEpoch, {from: user})
+                    feeHandler.claimStakerReward(user, currentEpoch, {from: user})
+                );
+            });
+
+            it("reverts if get staker percentage from dao reverts", async() => {
+                feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+                let sendVal = oneEth;
+                let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
+
+                const BRRData = await feeHandler.readBRRData();
+                let currentRewardBps = BRRData.rewardBps;
+                let currentRebateBps = BRRData.rebateBps;
+                let currentEpoch = BRRData.epoch;
+
+                await callHandleFeeAndVerifyValues(
+                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                        rebateWallets, rebateBpsPerWallet
+                    );
+
+                await feeHandler.setDaoContract(accounts[5], {from: daoSetter});
+
+                await mockKyberDao.advanceEpoch();
+                await expectRevert.unspecified(
+                    feeHandler.claimStakerReward(user, currentEpoch, {from: user})
                 );
             });
         });
@@ -978,13 +1215,14 @@ contract('KyberFeeHandler', function(accounts) {
             });
 
             it("reverts if totalPayoutBalance < platformFeeWei", async() => {
-                let sendVal = oneEth;
                 const platformWallet = accounts[1];
                 const platformFeeWei = new BN(50000);
+                const feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
                 feeHandler = await BadFeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                 {from: kyberNetwork, value: sendVal});
 
                 await feeHandler.setTotalPayoutBalance(zeroBN);
@@ -1114,12 +1352,13 @@ contract('KyberFeeHandler', function(accounts) {
 
             it("reverts if contract has insufficient ETH for burning", async() => {
                 feeHandler = await BadFeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
-                let sendVal = oneEth.mul(new BN(30));
                 let burnPerCall = await feeHandler.weiToBurn();
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth.mul(new BN(30));
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal});
 
                 feeHandlerBalance = await Helper.getBalancePromise(feeHandler.address);
@@ -1131,11 +1370,12 @@ contract('KyberFeeHandler', function(accounts) {
             });
 
             it("reverts if ETH-KNC > MAX_RATE", async() => {
-                let sendVal = oneEth;
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 //ETH-KNC RATE > MAX_RATE
@@ -1147,11 +1387,12 @@ contract('KyberFeeHandler', function(accounts) {
             });
 
             it("reverts if ETH-KNC = 0", async() => {
-                let sendVal = oneEth;
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 //ETH-KNC RATE = 0
@@ -1166,13 +1407,14 @@ contract('KyberFeeHandler', function(accounts) {
                 feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
                 await feeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter});
 
-                let sendVal = oneEth;
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
@@ -1188,13 +1430,14 @@ contract('KyberFeeHandler', function(accounts) {
                 await sanityRate.setLatestKncToEthRate(0);
                 await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: daoOperator});
 
-                let sendVal = oneEth;
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
@@ -1210,13 +1453,14 @@ contract('KyberFeeHandler', function(accounts) {
                 await sanityRate.setLatestKncToEthRate(MAX_RATE.add(new BN(1)));
                 await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: daoOperator});
 
-                let sendVal = oneEth;
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
@@ -1232,11 +1476,12 @@ contract('KyberFeeHandler', function(accounts) {
                 await sanityRate.setLatestKncToEthRate(MAX_RATE.add(new BN(1)));
                 await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: daoOperator});
 
-                let sendVal = oneEth;
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
@@ -1260,11 +1505,12 @@ contract('KyberFeeHandler', function(accounts) {
                 await sanityRate.setLatestKncToEthRate(MAX_RATE.add(new BN(1)));
                 await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: daoOperator});
 
-                let sendVal = oneEth;
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
@@ -1281,11 +1527,12 @@ contract('KyberFeeHandler', function(accounts) {
                 await feeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter});
                 await feeHandler.setBurnConfigParams(zeroAddress, weiToBurn, {from: daoOperator});
 
-                let sendVal = oneEth;
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
@@ -1309,11 +1556,12 @@ contract('KyberFeeHandler', function(accounts) {
                 await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
                 await feeHandler.setBurnConfigParams(sanityRate.address, weiToBurn, {from: daoOperator});
 
-                let sendVal = oneEth;
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                     {from: kyberNetwork, value: sendVal})
 
                 await expectRevert(
@@ -1343,9 +1591,10 @@ contract('KyberFeeHandler', function(accounts) {
                 let platformWallet = accounts[1];
                 let platformFeeWei = oneEth;
                 let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
-                let sendVal = oneEth.add(oneEth);
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, {from: kyberNetwork, value: sendVal});
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei, {from: kyberNetwork, value: sendVal});
 
                 let currentEpoch = new BN(1);
 
@@ -1366,12 +1615,14 @@ contract('KyberFeeHandler', function(accounts) {
                 await mockKyberDao.setFeeHandler(feeHandler.address);
                 await feeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter});
 
-                let sendVal = oneEth.mul(new BN(30));
                 let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(5000)];
                 let platformWallet = accounts[9];
                 let platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth.mul(new BN(30));
+                let sendVal = platformFeeWei.add(feeBRRWei);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, {from: kyberNetwork, value: sendVal});
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, feeBRRWei,
+                    {from: kyberNetwork, value: sendVal});
 
                 await expectRevert(
                     feeHandler.makeEpochRewardBurnable(currentEpoch),
@@ -1388,12 +1639,13 @@ contract('KyberFeeHandler', function(accounts) {
             });
 
             it("reverts if totalPayoutBalance < rewardAmount", async() => {
-                let sendVal = oneEth;
                 const platformWallet = accounts[1];
-                const platformFeeWei = 0;
+                const platformFeeWei = zeroBN;
+                let feeBRRWei = oneEth;
+                let sendVal = platformFeeWei.add(feeBRRWei);
                 feeHandler = await BadFeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
 
-                await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei,
+                await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet , platformWallet, platformFeeWei, feeBRRWei,
                 {from: kyberNetwork, value: sendVal});
 
                 await feeHandler.setTotalPayoutBalance(zeroBN);
@@ -1728,7 +1980,7 @@ contract('KyberFeeHandler', function(accounts) {
             await tempFeeHandler.getBRR();
             await tempFeeHandler.setKyberProxy(tempProxy.address, {from: daoOperator});
 
-            await tempFeeHandler.handleFees([], [], zeroAddress, 0, {from: tempNetwork, value: oneEth});
+            await tempFeeHandler.handleFees(ethAddress, [], [], zeroAddress, 0, oneEth, {from: tempNetwork, value: oneEth});
             await tempFeeHandler.burnKnc();
 
             await Helper.increaseBlockNumber(BURN_BLOCK_INTERVAL);
@@ -1740,7 +1992,7 @@ contract('KyberFeeHandler', function(accounts) {
             await tempProxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
             await tempProxy.setPairRate(knc.address, ethAddress, kncToEthPrecision);
 
-            await tempFeeHandler.handleFees([], [], zeroAddress, 0, {from: tempNetwork, value: oneEth});
+            await tempFeeHandler.handleFees(ethAddress, [], [], zeroAddress, 0, oneEth, {from: tempNetwork, value: oneEth});
 
             // set new proxy for fee handler
             await tempFeeHandler.setKyberProxy(tempProxy.address, {from: daoOperator});
@@ -1763,7 +2015,7 @@ async function callHandleFeeAndVerifyValues(sendValWei, platformWallet, platFeeW
     let expectedPlatWalletFee = (await feeHandler.feePerPlatformWallet(platformWallet)).add(new BN(platFeeWei));
 
     // handle fees
-    await feeHandler.handleFees(rebateWalletArr, rebateBpsArr, platformWallet, platFeeWei, {from: kyberNetwork, value: sendValWei});
+    await feeHandler.handleFees(ethAddress, rebateWalletArr, rebateBpsArr, platformWallet, platFeeWei, feeAmountBRR, {from: kyberNetwork, value: sendValWei});
 
     //validate values
     let expectedRebates = [];
