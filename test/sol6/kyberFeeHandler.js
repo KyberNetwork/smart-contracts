@@ -102,6 +102,7 @@ contract('KyberFeeHandler', function(accounts) {
             let platformWallet = accounts[1];
             let txResult = await feeHandler.handleFees(ethAddress, [], [], platformWallet, oneEth, zeroBN, {from: kyberNetwork, value: oneEth});
             expectEvent(txResult, 'FeeDistributed', {
+                token: ethAddress,
                 platformWallet: platformWallet,
                 platformFeeWei: oneEth,
                 rewardWei: zeroBN,
@@ -129,6 +130,7 @@ contract('KyberFeeHandler', function(accounts) {
             let expectedRebateWei = oneEth.mul(currentRebateBps).div(BPS);
 
             expectEvent(txResult, 'FeeDistributed', {
+                token: ethAddress,
                 platformWallet: platformWallet,
                 platformFeeWei: oneEth,
                 rewardWei: expectedRewardWei,
