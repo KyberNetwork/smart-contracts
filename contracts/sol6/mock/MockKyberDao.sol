@@ -14,6 +14,7 @@ contract MockKyberDao is IKyberDao, Utils5 {
     uint256 public feeBps;
     uint256 public epochPeriod = 160;
     uint256 public startTimestamp;
+    uint256 public rewardPercentageInPrecision;
     uint256 data;
     mapping(uint256 => bool) public shouldBurnRewardEpoch;
 
@@ -50,14 +51,34 @@ contract MockKyberDao is IKyberDao, Utils5 {
         return (BPS - rewardInBPS - rebateInBPS, rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
     }
 
-    function claimReward(address, uint256) external override {}
+    function setStakerPercentageInPrecision(uint256 percentage)
+        external
+    {
+        rewardPercentageInPrecision = percentage;
+    }
 
-    function claimStakerReward(
-        address staker,
-        uint256 percentageInPrecision,
-        uint256 forEpoch
-    ) external returns (uint256 amountWei) {
-        return feeHandler.claimStakerReward(staker, percentageInPrecision, forEpoch);
+    function getPastEpochRewardPercentageInPrecision(address staker, uint256 forEpoch)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        staker;
+        // return 0 for current or future epochs
+        if (forEpoch >= epoch) {
+            return 0;
+        }
+        return rewardPercentageInPrecision;
+    }
+
+    function getCurrentEpochRewardPercentageInPrecision(address staker)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        staker;
+        return rewardPercentageInPrecision;
     }
 
     function handleWithdrawal(address staker, uint256 reduceAmount) external override {
@@ -77,6 +98,18 @@ contract MockKyberDao is IKyberDao, Utils5 {
 
     function firstEpochStartTimestamp() external view override returns (uint256) {
         return startTimestamp;
+    }
+
+    function getCurrentEpochNumber() external view override returns (uint256) {
+        return getEpochNumber(now);
+    }
+
+    function getEpochNumber(uint256 timestamp) public view override returns (uint256) {
+        if (timestamp < startTimestamp || epochPeriod == 0) {
+            return 0;
+        }
+        // ((timestamp - startTimestamp) / epochPeriod) + 1;
+        return ((timestamp - startTimestamp) / epochPeriod) + 1;
     }
 
     function getLatestNetworkFeeData() external view override returns (uint256, uint256) {

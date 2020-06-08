@@ -59,6 +59,12 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         uint16 rebateBps;
     }
 
+    struct BRRWei {
+        uint256 rewardWei;
+        uint256 rebateWei;
+        uint256 burnWei;
+    }
+
     IKyberDao public kyberDao;
     IKyberProxy public kyberProxy;
     address public kyberNetwork;
@@ -77,6 +83,8 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     mapping(address => uint256) public rebatePerWallet;
     mapping(uint256 => uint256) public rewardsPerEpoch;
     mapping(uint256 => uint256) public rewardsPaidPerEpoch;
+    // hasClaimedReward[staker][epoch]: true/false if the staker has/hasn't claimed the reward for an epoch
+    mapping(address => mapping (uint256 => bool)) public hasClaimedReward;
     uint256 public totalPayoutBalance; // total balance in the contract that is for rebate, reward, platform fee
 
     /// @dev use to get rate of KNC/ETH to check if rate to burn knc is normal
@@ -84,6 +92,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     ISanityRate[] internal sanityRateContract;
 
     event FeeDistributed(
+        IERC20 indexed token,
         address indexed platformWallet,
         uint256 platformFeeWei,
         uint256 rewardWei,
@@ -152,31 +161,35 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     }
 
     /// @dev handleFees function is called per trade on kyberNetwork. unless the trade is not involving any fees.
+    /// @param token Token currency of fees
     /// @param rebateWallets a list of rebate wallets that will get rebate for this trade.
     /// @param rebateBpsPerWallet percentage of rebate for each wallet, out of total rebate.
     /// @param platformWallet Wallet address that will receive the platfrom fee.
-    /// @param platformFeeWei Fee amount in wei the platfrom wallet is entitled to.
+    /// @param platformFee Fee amount (in wei) the platfrom wallet is entitled to.
+    /// @param networkFee Fee amount (in wei) to be allocated for BRR
     function handleFees(
+        IERC20 token,
         address[] calldata rebateWallets,
         uint256[] calldata rebateBpsPerWallet,
         address platformWallet,
-        uint256 platformFeeWei
+        uint256 platformFee,
+        uint256 networkFee
     ) external payable override onlyKyberNetwork nonReentrant {
-        require(msg.value >= platformFeeWei, "msg.value low");
+        require(token == ETH_TOKEN_ADDRESS, "token not eth");
+        require(msg.value == platformFee.add(networkFee), "msg.value not equal to total fees");
 
         // handle platform fee
         feePerPlatformWallet[platformWallet] = feePerPlatformWallet[platformWallet].add(
-            platformFeeWei
+            platformFee
         );
 
-        uint256 feeBRRWei = msg.value.sub(platformFeeWei);
-
-        if (feeBRRWei == 0) {
+        if (networkFee == 0) {
             // only platform fee paid
-            totalPayoutBalance = totalPayoutBalance.add(platformFeeWei);
+            totalPayoutBalance = totalPayoutBalance.add(platformFee);
             emit FeeDistributed(
+                ETH_TOKEN_ADDRESS,
                 platformWallet,
-                platformFeeWei,
+                platformFee,
                 0,
                 0,
                 rebateWallets,
@@ -186,45 +199,57 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
             return;
         }
 
-        uint256 rebateWei;
-        uint256 rewardWei;
+        BRRWei memory brrAmounts;
         uint256 epoch;
 
         // Decoding BRR data
-        (rewardWei, rebateWei, epoch) = getRRWeiValues(feeBRRWei);
+        (brrAmounts.rewardWei, brrAmounts.rebateWei, epoch) = getRRWeiValues(networkFee);
 
-        rebateWei = updateRebateValues(rebateWei, rebateWallets, rebateBpsPerWallet);
+        brrAmounts.rebateWei = updateRebateValues(brrAmounts.rebateWei, rebateWallets, rebateBpsPerWallet);
 
-        rewardsPerEpoch[epoch] = rewardsPerEpoch[epoch].add(rewardWei);
+        rewardsPerEpoch[epoch] = rewardsPerEpoch[epoch].add(brrAmounts.rewardWei);
 
         // update total balance of rewards, rebates, fee
-        totalPayoutBalance = totalPayoutBalance.add(platformFeeWei).add(rewardWei).add(rebateWei);
+        totalPayoutBalance = totalPayoutBalance.add(platformFee).add(brrAmounts.rewardWei).add(brrAmounts.rebateWei);
 
-        uint burnAmountWei = feeBRRWei.sub(rewardWei).sub(rebateWei);
+        brrAmounts.burnWei = networkFee.sub(brrAmounts.rewardWei).sub(brrAmounts.rebateWei);
         emit FeeDistributed(
+            ETH_TOKEN_ADDRESS,
             platformWallet,
-            platformFeeWei,
-            rewardWei,
-            rebateWei,
+            platformFee,
+            brrAmounts.rewardWei,
+            brrAmounts.rebateWei,
             rebateWallets,
             rebateBpsPerWallet,
-            burnAmountWei
+            brrAmounts.burnWei
         );
     }
 
-    /// @dev only kyberDao can claim staker rewards.
+    /// @notice  WARNING When staker address is a contract,
+    ///          it should be able to receive claimed reward in ETH whenever anyone calls this function.
+    /// @dev not revert if already claimed or reward percentage is 0
+    ///      allow writing a wrapper to claim for multiple epochs
     /// @param staker address.
-    /// @param percentageInPrecision the relative part of the reward the staker is entitled 
-    ///             to for this epoch.
-    ///             units Precision: 10 ** 18 = 100%
     /// @param epoch for which epoch the staker is claiming the reward
     function claimStakerReward(
         address staker,
-        uint256 percentageInPrecision,
         uint256 epoch
-    ) external override onlyKyberDao returns(uint256 amountWei) {
-        // Amount of reward to be sent to staker
+    ) external override nonReentrant returns(uint256 amountWei) {
+        if (hasClaimedReward[staker][epoch]) {
+            // staker has already claimed reward for the epoch
+            return 0;
+        }
+
+        // the relative part of the reward the staker is entitled to for the epoch.
+        // units Precision: 10 ** 18 = 100%
+        // if the epoch is current or in the future, kyberDao will return 0 as result
+        uint256 percentageInPrecision = kyberDao.getPastEpochRewardPercentageInPrecision(staker, epoch);
+        if (percentageInPrecision == 0) {
+            return 0; // not revert, in case a wrapper wants to claim reward for multiple epochs
+        }
         require(percentageInPrecision <= PRECISION, "percentage too high");
+
+        // Amount of reward to be sent to staker
         amountWei = rewardsPerEpoch[epoch].mul(percentageInPrecision).div(PRECISION);
 
         // redundant check, can't happen
@@ -234,14 +259,16 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         rewardsPaidPerEpoch[epoch] = rewardsPaidPerEpoch[epoch].add(amountWei);
         totalPayoutBalance = totalPayoutBalance.sub(amountWei);
 
+        hasClaimedReward[staker][epoch] = true;
+
         // send reward to staker
         (bool success, ) = staker.call{value: amountWei}("");
         require(success, "staker rewards transfer failed");
 
-        emit RewardPaid(staker, epoch, amountWei);
+        emit RewardPaid(staker, epoch, ETH_TOKEN_ADDRESS, amountWei);
     }
 
-    /// @dev claim reabate per reserve wallet. called by any address
+    /// @dev claim rebate per reserve wallet. called by any address
     /// @param rebateWallet the wallet to claim rebates for. Total accumulated rebate sent to this wallet.
     /// @return amountWei amount of rebate claimed
     function claimReserveRebate(address rebateWallet) 
@@ -264,7 +291,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         (bool success, ) = rebateWallet.call{value: amountWei}("");
         require(success, "rebate transfer failed");
 
-        emit RebatePaid(rebateWallet, amountWei);
+        emit RebatePaid(rebateWallet, ETH_TOKEN_ADDRESS, amountWei);
 
         return amountWei;
     }
@@ -291,7 +318,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         (bool success, ) = platformWallet.call{value: amountWei}("");
         require(success, "platform fee transfer failed");
 
-        emit PlatformFeePaid(platformWallet, amountWei);
+        emit PlatformFeePaid(platformWallet, ETH_TOKEN_ADDRESS, amountWei);
         return amountWei;
     }
 
@@ -387,7 +414,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
 
         require(IBurnableToken(address(knc)).burn(kncBurnAmount), "knc burn failed");
 
-        emit KncBurned(kncBurnAmount, srcAmount);
+        emit KncBurned(kncBurnAmount, ETH_TOKEN_ADDRESS, srcAmount);
         return kncBurnAmount;
     }
 
