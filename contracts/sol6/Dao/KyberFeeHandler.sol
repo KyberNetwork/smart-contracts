@@ -92,6 +92,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
     ISanityRate[] internal sanityRateContract;
 
     event FeeDistributed(
+        IERC20 indexed token,
         address indexed platformWallet,
         uint256 platformFeeWei,
         uint256 rewardWei,
@@ -186,6 +187,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
             // only platform fee paid
             totalPayoutBalance = totalPayoutBalance.add(platformFee);
             emit FeeDistributed(
+                ETH_TOKEN_ADDRESS,
                 platformWallet,
                 platformFee,
                 0,
@@ -212,6 +214,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
 
         brrAmounts.burnWei = networkFee.sub(brrAmounts.rewardWei).sub(brrAmounts.rebateWei);
         emit FeeDistributed(
+            ETH_TOKEN_ADDRESS,
             platformWallet,
             platformFee,
             brrAmounts.rewardWei,
@@ -265,7 +268,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         emit RewardPaid(staker, epoch, ETH_TOKEN_ADDRESS, amountWei);
     }
 
-    /// @dev claim reabate per reserve wallet. called by any address
+    /// @dev claim rebate per reserve wallet. called by any address
     /// @param rebateWallet the wallet to claim rebates for. Total accumulated rebate sent to this wallet.
     /// @return amountWei amount of rebate claimed
     function claimReserveRebate(address rebateWallet) 
