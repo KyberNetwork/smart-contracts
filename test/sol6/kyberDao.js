@@ -387,9 +387,10 @@ contract('KyberDao', function(accounts) {
 
       let link = web3.utils.fromAscii("https://kyberswap.com");
       await updateCurrentBlockAndTimestamp();
+      let options = [1,2,3,4]
       let txResult = await submitNewCampaign(kyberDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
-        minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
+        minPercentageInPrecision, cInPrecision, tInPrecision, options, link, {from: daoOperator}
       );
       expectEvent(txResult, 'NewCampaignCreated', {
         campaignType: new BN(0),
@@ -401,6 +402,14 @@ contract('KyberDao', function(accounts) {
         tInPrecision: new BN(tInPrecision),
         link: link
       });
+      let eventLogs;
+      for (let i = 0; i < txResult.logs.length; i++) {
+          if (txResult.logs[i].event == 'NewCampaignCreated') {
+              eventLogs = txResult.logs[i];
+              break;
+          }
+      }
+      Helper.assertEqualArray(eventLogs.args.options, options);
 
       await Helper.setNextBlockTimestamp(blockToTimestamp(currentBlock + 2));
       // vote for first campaign

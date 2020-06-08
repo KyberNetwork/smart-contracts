@@ -470,7 +470,13 @@ contract('KyberFeeHandler', function(accounts) {
         it("should have updated BRR if expiryTimestamp == 2 ** 64 - 1", async() => {
             let maxExpiryTimestamp = new BN(2).pow(new BN(64)).sub(new BN(1));
             await mockKyberDao.setMockEpochAndExpiryTimestamp(defaultEpoch, maxExpiryTimestamp);
-            await feeHandler.getBRR();
+            let txResult = await feeHandler.getBRR();
+            expectEvent(txResult, "BRRUpdated", {
+                rewardBps: rewardInBPS,
+                rebateBps: rebateInBPS,
+                epoch: epoch,
+                expiryTimestamp: maxExpiryTimestamp,
+            })
             let result = await feeHandler.readBRRData();
             Helper.assertEqual(result.expiryTimestamp, maxExpiryTimestamp, "expiry timestamp was not updated");
         });
