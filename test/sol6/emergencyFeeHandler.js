@@ -8,17 +8,7 @@ const TestToken = artifacts.require('Token.sol')
 const Helper = require('../helper.js')
 const nwHelper = require('./networkHelper.js')
 const BN = web3.utils.BN
-const {
-  BPS,
-  precisionUnits,
-  ethDecimals,
-  ethAddress,
-  zeroAddress,
-  emptyHint,
-  zeroBN,
-  MAX_QTY,
-  MAX_RATE
-} = require('../helper.js')
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY, MAX_RATE} = require('../helper.js')
 const {expectEvent, expectRevert} = require('@openzeppelin/test-helpers')
 
 let admin
@@ -45,10 +35,7 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
 
   describe('valid constructor params', async () => {
     it('test total BRR value should be BPS', async () => {
-      await expectRevert(
-        EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps.add(new BN(1))),
-        'Bad BRR values'
-      )
+      await expectRevert(EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps.add(new BN(1))), 'Bad BRR values')
     })
 
     it('test total BRR value should not be overflow', async () => {
@@ -84,21 +71,29 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
     })
 
     it('should handle Fee', async () => {
-      let platformFeeWei = new BN(10).pow(new BN(17))
+      let platformFee = new BN(10).pow(new BN(17))
       let fee = new BN(10).pow(new BN(18))
 
       let initalState = await getFeeHanlerState(feeHandler, rebateWallets, platformWallet)
-      let txResult = await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, {
-        from: network,
-        value: fee
-      })
+      let txResult = await feeHandler.handleFees(
+        ethAddress,
+        rebateWallets,
+        rebateBpsPerWallet,
+        platformWallet,
+        platformFee,
+        fee.sub(platformFee),
+        {
+          from: network,
+          value: fee
+        }
+      )
 
-      let feeBrrWei = fee.sub(platformFeeWei)
+      let feeBrrWei = fee.sub(platformFee)
       let rewardWei = feeBrrWei.mul(rewardBps).div(BPS)
 
       await expectEvent(txResult, 'HandleFee', {
         platformWallet,
-        platformFeeWei,
+        platformFeeWei: platformFee,
         feeBRRWei: feeBrrWei
       })
 
@@ -106,29 +101,21 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
         rewardWei: rewardWei
       })
 
-      await assertStateAfterHandlerFees(
-        feeHandler,
-        initalState,
-        rebateWallets,
-        rebateBpsPerWallet,
-        platformWallet,
-        platformFeeWei,
-        fee
-      )
+      await assertStateAfterHandlerFees(feeHandler, initalState, rebateWallets, rebateBpsPerWallet, platformWallet, platformFee, fee)
     })
 
     it('should handle Fee with only platform Fee', async () => {
-      let platformFeeWei = new BN(10).pow(new BN(17))
+      let platformFee = new BN(10).pow(new BN(17))
       let initalState = await getFeeHanlerState(feeHandler, rebateWallets, platformWallet)
-      let txResult = await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, {
+      let txResult = await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet, platformWallet, platformFee, zeroBN, {
         from: network,
-        value: platformFeeWei
+        value: platformFee
       })
 
       await expectEvent(txResult, 'HandleFee', {
         platformWallet,
-        platformFeeWei,
-        feeBRRWei: new BN(0),
+        platformFeeWei: platformFee,
+        feeBRRWei: new BN(0)
       })
       await assertStateAfterHandlerFees(
         feeHandler,
@@ -136,48 +123,60 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
         rebateWallets,
         rebateBpsPerWallet,
         platformWallet,
-        platformFeeWei,
-        platformFeeWei
+        platformFee,
+        platformFee
       )
     })
 
     it('test failtolerance when calculateAndRecordFeeData failed', async () => {
       feeHandler = await MockEmergencyFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps)
-      let platformFeeWei = new BN(10).pow(new BN(17))
+      let platformFee = new BN(10).pow(new BN(17))
       let fee = new BN(10).pow(new BN(18))
 
       let initalFeePerPlatformWallet = await feeHandler.feePerPlatformWallet(platformWallet)
-      let txResult = await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, {
-        from: network,
-        value: fee
-      })
+      let txResult = await feeHandler.handleFees(
+        ethAddress,
+        rebateWallets,
+        rebateBpsPerWallet,
+        platformWallet,
+        platformFee,
+        fee.sub(platformFee),
+        {
+          from: network,
+          value: fee
+        }
+      )
 
       await expectEvent(txResult, 'HandleFeeFailed', {
-        feeBRRWei: fee.sub(platformFeeWei)
+        feeBRRWei: fee.sub(platformFee)
       })
       //platform fee should update as normal
       let afterFeePerPlatformWallet = await feeHandler.feePerPlatformWallet(platformWallet)
-      Helper.assertEqual(
-        initalFeePerPlatformWallet.add(platformFeeWei),
-        afterFeePerPlatformWallet,
-        'unexpected feePerPlatformWallet'
-      )
+      Helper.assertEqual(initalFeePerPlatformWallet.add(platformFee), afterFeePerPlatformWallet, 'unexpected feePerPlatformWallet')
     })
   })
 
   describe('test withdraw and claimPlatformFee function', async () => {
     let availableFee
     let totalBalance
-    let platformFeeWei
+    let platformFee
     before('create new feehandler', async () => {
       feeHandler = await EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps)
-      platformFeeWei = new BN(10).pow(new BN(17))
+      platformFee = new BN(10).pow(new BN(17))
       totalBalance = new BN(10).pow(new BN(18))
-      await feeHandler.handleFees(rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, {
-        from: network,
-        value: totalBalance
-      })
-      availableFee = totalBalance.sub(platformFeeWei)
+      await feeHandler.handleFees(
+        ethAddress,
+        rebateWallets,
+        rebateBpsPerWallet,
+        platformWallet,
+        platformFee,
+        totalBalance.sub(platformFee),
+        {
+          from: network,
+          value: totalBalance
+        }
+      )
+      availableFee = totalBalance.sub(platformFee)
     })
 
     it('test withdraw revert if not admin', async () => {
@@ -204,13 +203,14 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
       let txResult = await feeHandler.claimPlatformFee(platformWallet)
       expectEvent(txResult, 'PlatformFeePaid', {
         platformWallet: platformWallet,
-        amountWei: platformFeeWei.sub(new BN(1))
+        amount: platformFee.sub(new BN(1)),
+        token: ethAddress
       })
       let afterBalance = await Helper.getBalancePromise(platformWallet)
-      Helper.assertEqual(initialBalance.add(platformFeeWei).sub(new BN(1)), afterBalance, 'unexpected balance')
+      Helper.assertEqual(initialBalance.add(platformFee).sub(new BN(1)), afterBalance, 'unexpected balance')
       let afterTotalPlatformFee = await feeHandler.totalPlatformFeeWei()
       Helper.assertEqual(
-        initialTotalPlatformFee.sub(platformFeeWei.sub(new BN(1))),
+        initialTotalPlatformFee.sub(platformFee.sub(new BN(1))),
         afterTotalPlatformFee,
         'total balance platform fee wei is not update as expected'
       )
@@ -220,7 +220,7 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
   it('should revert with not implemented method from IKyberFeeHandler', async () => {
     feeHandler = await EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps)
     await expectRevert(feeHandler.claimReserveRebate(rebateWallets[0]), 'not implemented')
-    await expectRevert(feeHandler.claimStakerReward(rebateWallets[0], new BN(0), new BN(0)), 'not implemented')
+    await expectRevert(feeHandler.claimStakerReward(rebateWallets[0], new BN(0)), 'not implemented')
   })
 
   describe('test integration with real network', async () => {
@@ -311,15 +311,7 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
         .mul(networkFeeBps)
         .div(BPS)
         .add(platformFeeWei)
-      await assertStateAfterHandlerFees(
-        feeHandler,
-        initalState,
-        [rebateWallet],
-        [BPS],
-        platformWallet,
-        platformFeeWei,
-        fee
-      )
+      await assertStateAfterHandlerFees(feeHandler, initalState, [rebateWallet], [BPS], platformWallet, platformFeeWei, fee)
     })
   })
 })
@@ -361,10 +353,6 @@ async function assertStateAfterHandlerFees (
 
   for (let i = 0; i < rebateWallets.length; i++) {
     let rebatePerWallet = rebateWei.mul(rebateBpsPerWallet[i]).div(BPS)
-    Helper.assertEqual(
-      rebatePerWallet.add(initalState.rebatePerWallet[i]),
-      afterState.rebatePerWallet[i],
-      'unpected rebatePerWallet'
-    )
+    Helper.assertEqual(rebatePerWallet.add(initalState.rebatePerWallet[i]), afterState.rebatePerWallet[i], 'unpected rebatePerWallet')
   }
 }

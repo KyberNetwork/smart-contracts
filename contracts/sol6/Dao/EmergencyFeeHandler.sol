@@ -21,6 +21,7 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
     event HandleFeeFailed(address[] rebateWallets, uint256[] rebateBpsPerWallet, uint256 feeBRRWei);
 
     event HandleFee(
+        IERC20 indexed token,
         address indexed platformWallet,
         uint256 platformFeeWei,
         address[] rebateWallets,
@@ -57,26 +58,31 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
     }
 
     /// @dev handleFees function is called per trade on KyberNetwork. unless the trade is not involving any fees.
+    /// @param token Token currency of fees
     /// @param rebateWallets a list of rebate wallets that will get rebate for this trade.
     /// @param rebateBpsPerWallet percentage of rebate for each wallet, out of total rebate.
     /// @param platformWallet Wallet address that will receive the platfrom fee.
-    /// @param platformFeeWei Fee amount in wei the platfrom wallet is entitled to.
+    /// @param platformFee Fee amount in wei the platfrom wallet is entitled to.
+    /// @param networkFee Fee amount (in wei) to be allocated for BRR
     function handleFees(
+        IERC20 token,
         address[] calldata rebateWallets,
         uint256[] calldata rebateBpsPerWallet,
         address platformWallet,
-        uint256 platformFeeWei
+        uint256 platformFee,
+        uint256 networkFee
     ) external payable override onlyKyberNetwork {
-        uint256 feeBRRWei = msg.value.sub(platformFeeWei);
+        require(token == ETH_TOKEN_ADDRESS, "token not eth");
+        require(msg.value == platformFee.add(networkFee), "msg.value not equal to total fees");
 
         // handle platform fee
         feePerPlatformWallet[platformWallet] = feePerPlatformWallet[platformWallet].add(
-            platformFeeWei
+            platformFee
         );
-        totalPlatformFeeWei = totalPlatformFeeWei.add(platformFeeWei);
-        emit HandleFee(platformWallet, platformFeeWei, rebateWallets, rebateBpsPerWallet, feeBRRWei);
+        totalPlatformFeeWei = totalPlatformFeeWei.add(platformFee);
+        emit HandleFee(ETH_TOKEN_ADDRESS, platformWallet, platformFee, rebateWallets, rebateBpsPerWallet, networkFee);
 
-        if (feeBRRWei == 0) {
+        if (networkFee == 0) {
             return;
         }
 
@@ -85,11 +91,11 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
                 "calculateAndRecordFeeData(address[],uint256[],uint256)",
                 rebateWallets,
                 rebateBpsPerWallet,
-                feeBRRWei
+                networkFee
             )
         );
         if (!success) {
-            emit HandleFeeFailed(rebateWallets, rebateBpsPerWallet, feeBRRWei);
+            emit HandleFeeFailed(rebateWallets, rebateBpsPerWallet, networkFee);
         }
     }
 
@@ -137,7 +143,7 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
         (bool success, ) = platformWallet.call{value: amountWei}("");
         require(success, "platform fee transfer failed");
 
-        emit PlatformFeePaid(platformWallet, amountWei);
+        emit PlatformFeePaid(platformWallet, ETH_TOKEN_ADDRESS, amountWei);
         return amountWei;
     }
 
@@ -159,7 +165,7 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
     }
 
     /// @dev claimStakerReward is implemented for IKyberFeeHandler
-    function claimStakerReward(address, uint256, uint256) external override returns (uint256) {
+    function claimStakerReward(address, uint256) external override returns (uint256) {
         revert("not implemented");
     }
 
