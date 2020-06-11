@@ -176,10 +176,6 @@ class Reserve {
 let reserveDataArray = [];
 let walletDataArray = [];
 
-
-const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-const zeroAddress = "0x0000000000000000000000000000000000000000";
-
 function parseInput(jsonInput) {
     const reserveTypes = jsonInput["reserveTypes"];
     const reserveData = jsonInput["reserves"];
@@ -291,6 +287,8 @@ async function main() {
   //////////////////
   // REDEPLOYMENT //
   //////////////////
+  // await redeployNetwork();
+  // await setDaoInFeeHandler();
 
   /////////////////////
   // ADDING RESERVES //
@@ -537,11 +535,32 @@ async function deployDaoContract(output) {
         );
     }
     // Note: Staking contract need not be instantiated, since it doesn't require any setup
+    console.log("\x1b[41m%s\x1b[0m" ,"Wait for tx to be mined before continuing (will call daoContract for staking address)");
 };
 
 async function getStakingAddress() {
   stakingAddress = await daoContract.methods.staking().call();
   console.log(`Staking: ${stakingAddress}`);
+}
+
+async function waitForMatchingEngineAndStorageUpdate() {
+  while(true) {
+    let matchingEngineNetwork = await matchingEngineContract.methods.kyberNetwork().call();
+    let storageNetwork = await storageContract.methods.kyberNetwork().call();
+    if (matchingEngineNetwork == networkAddress && storageNetwork == networkAddress) {
+      return;
+    } else if (matchingEngineNetwork != networkAddress) {
+      console.log(`matching engine not pointing to network`);
+      console.log(`Current matchingEngine network address: ${matchingEngineNetwork}`);
+      console.log(`Waiting...`);
+      await sleep(25000);
+    } else {
+      console.log(`storage not pointing to network`);
+      console.log(`Current storage network address: ${storageNetwork}`);
+      console.log(`Waiting...`);
+      await sleep(25000);
+    }
+  }
 }
 
 async function setNetworkAddressInMatchingEngine(tempAddress) {
@@ -631,7 +650,7 @@ async function setFeeAccountedDataInStorage() {
 async function setRebateEntitledDataInStorage() {
   console.log("set rebate entitled data: storage");
   await sendTx(storageContract.methods.setEntitledRebatePerReserveType(
-    isFeeAccounted["FPR"], isFeeAccounted["APR"], isFeeAccounted["BRIDGE"], isFeeAccounted["UTILITY"], isFeeAccounted["CUSTOM"], isFeeAccounted["ORDERBOOK"]
+    isEntitledRebate["FPR"], isEntitledRebate["APR"], isEntitledRebate["BRIDGE"], isEntitledRebate["UTILITY"], isEntitledRebate["CUSTOM"], isEntitledRebate["ORDERBOOK"]
   ));
 }
 
@@ -706,6 +725,18 @@ async function setPermissionsInHistories() {
   await setPermissions(feeHandlerHistoryContract, storagePermissions);
   await setPermissions(daoHistoryContract, storagePermissions);
   await setPermissions(matchingEngineHistoryContract, storagePermissions);
+}
+
+async function redeployNetwork() {
+  await waitForMatchingEngineAndStorageUpdate();
+  await pressToContinue();
+  await set_Fee_MatchEngine_Gas_ContractsInNetwork();
+  await pressToContinue();
+  await setDaoInNetwork();
+  await setProxyInNetwork();
+  await configureAndEnableNetwork();
+  await pressToContinue();
+  await setPermissionsInNetwork();
 }
 
 function lastFewThings() {
