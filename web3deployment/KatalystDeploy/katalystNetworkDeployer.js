@@ -689,7 +689,7 @@ async function configureAndEnableNetwork() {
   // set params
   console.log("network set params");
   await sendTx(networkContract.methods.setParams(maxGasPrice, negDiffInBps));
-                                                
+                    
   console.log("network enable");
   await sendTx(networkContract.methods.setEnable(true));
 }
