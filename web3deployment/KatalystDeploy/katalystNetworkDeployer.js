@@ -122,6 +122,7 @@ async function deployContract(artifacts, contractName, ctorArgs) {
 }
 
 //token addresses
+let allTokens;
 let kncTokenAddress;
 
 //contracts
@@ -180,6 +181,7 @@ function parseInput(jsonInput) {
     const reserveTypes = jsonInput["reserveTypes"];
     const reserveData = jsonInput["reserves"];
     const walletData = jsonInput["wallets"];
+    allTokens = jsonInput["tokens"];
 
     // reserve array
     Object.values(reserveData).forEach(function(reserve) {
@@ -279,15 +281,15 @@ async function main() {
   //IF DEPLOYMENT BREAKS:
   // 1) Replace relevant contract addresses (if any) variables on top
   // 2) Use ONLY ONE of the following functions below:
-  // NOTE: Redeploying network == fullDeployment
   exportContractAddresses();
   await pressToContinue();
-  await fullDeployment();
+  // await fullDeployment();
 
   //////////////////
   // REDEPLOYMENT //
   //////////////////
   // await redeployNetwork();
+  // await redeployProxy();
   // await setDaoInFeeHandler();
 
   /////////////////////
@@ -730,13 +732,38 @@ async function setPermissionsInHistories() {
 async function redeployNetwork() {
   await waitForMatchingEngineAndStorageUpdate();
   await pressToContinue();
+  await setTempOperatorToNetwork();
   await set_Fee_MatchEngine_Gas_ContractsInNetwork();
   await pressToContinue();
   await setDaoInNetwork();
   await setProxyInNetwork();
+  await pressToContinue();
+  await listReservesForTokens();
   await configureAndEnableNetwork();
   await pressToContinue();
+  await removeTempOperator([networkContract]);
   await setPermissionsInNetwork();
+}
+
+async function setTempOperatorToNetwork() {
+  // add operator to network
+  console.log("set temp operator: network");
+  await sendTx(networkContract.methods.addOperator(sender));
+}
+
+async function listReservesForTokens() {
+  for (let j = tokenIndex ; j < allTokens.length ; j++) {
+    token = allTokens[j];
+    console.log(`Giving allowance to reserves for token ${token}`);
+    await sendTx(networkContract.methods.listReservesForToken(token, 0, 8, true));
+  }
+}
+
+async function redeployProxy() {
+  await setNetworkInProxy();
+  await setHintHandlerInProxy();
+  await pressToContinue();
+  await setPermissionsInProxy();
 }
 
 function lastFewThings() {
