@@ -565,6 +565,15 @@ async function waitForMatchingEngineAndStorageUpdate() {
   }
 }
 
+async function checkZeroProxies() {
+    let networkProxies = await storageContract.methods.getKyberProxies().call();
+    if (networkProxies.length > 0) {
+      console.log("\x1b[41m%s\x1b[0m" ,"Existing kyberProxies in storage, remove before proceeding");
+      process.exit(1);
+    }
+    return;
+}
+
 async function setNetworkAddressInMatchingEngine(tempAddress) {
   console.log("set network in matching engine");
   if (tempAddress == undefined) {
@@ -760,6 +769,7 @@ async function listReservesForTokens() {
 }
 
 async function redeployProxy() {
+  await checkZeroProxies();
   await setNetworkInProxy();
   await setHintHandlerInProxy();
   await pressToContinue();
