@@ -3,17 +3,18 @@ const util = require('util');
 const readdir = util.promisify(fs.readdir);
 const path = require("path");
 const artifactsPath = path.join(__dirname, "../artifacts/");
+const buidlerConfigSol5 = path.join(__dirname, "../buidlerConfigSol5.js");
+const buidlerConfigSol4 = path.join(__dirname, "../buidlerConfigSol4.js");
 const execSync = require('child_process').execSync;
 
 module.exports.retrieveArtifacts = main;
-async function main() {
-  if (fs.existsSync(artifactsPath)) {
-    let output = await packageArtifacts();
-    return output;
-  } else {
-    compileArtifacts();
-    main();
+async function main(skipCompilation) {
+  if (!skipCompilation) {
+    compileContracts();
   }
+  let output = await packageArtifacts();
+  console.log(output)
+  return output;
 }
 
 async function packageArtifacts() {
@@ -27,11 +28,11 @@ async function packageArtifacts() {
 }
 
 
-function compileArtifacts() {
-  console.log("Artifacts not found. Compiling contracts...");
-  execSync('npx buidler compile', { encoding: 'utf-8' });
-  execSync('npx buidler compile --config ../buidlerConfigSol5.js', { encoding: 'utf-8'});
-  execSync('npx buidler compile --config ../buidlerConfigSol4.js', { encoding: 'utf-8'});
+function compileContracts() {
+  console.log("Compiling contracts...");
+  execSync(`npx buidler compile`, { encoding: 'utf-8' });
+  execSync(`npx buidler compile --config ${buidlerConfigSol5}`, { encoding: 'utf-8'});
+  execSync(`npx buidler compile --config ${buidlerConfigSol4}`, { encoding: 'utf-8'});
 }
 
 main();
