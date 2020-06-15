@@ -249,7 +249,7 @@ async function main() {
 
   chainId = chainId || await web3.eth.net.getId()
   console.log('chainId', chainId);
-  console.log('retrieving artifacts...');
+  console.log('compiling contracts and retrieving artifacts...');
   output = await require("../retrieveArtifacts.js").retrieveArtifacts();
 
   //reinstantiate web3 (solc overwrites something)
