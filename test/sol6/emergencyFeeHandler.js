@@ -8,8 +8,19 @@ const TestToken = artifacts.require('Token.sol')
 const Helper = require('../helper.js')
 const nwHelper = require('./networkHelper.js')
 const BN = web3.utils.BN
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY, MAX_RATE} = require('../helper.js')
+const {
+  BPS,
+  precisionUnits,
+  ethDecimals,
+  ethAddress,
+  zeroAddress,
+  emptyHint,
+  zeroBN,
+  MAX_QTY,
+  MAX_RATE
+} = require('../helper.js')
 const {expectEvent, expectRevert} = require('@openzeppelin/test-helpers')
+const {assert} = require('chai')
 
 let admin
 let feeHandler
@@ -35,7 +46,10 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
 
   describe('valid constructor params', async () => {
     it('test total BRR value should be BPS', async () => {
-      await expectRevert(EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps.add(new BN(1))), 'Bad BRR values')
+      await expectRevert(
+        EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps.add(new BN(1))),
+        'Bad BRR values'
+      )
     })
 
     it('test total BRR value should not be overflow', async () => {
@@ -73,6 +87,7 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
     it('should handle Fee', async () => {
       let platformFee = new BN(10).pow(new BN(17))
       let fee = new BN(10).pow(new BN(18))
+      let networkFee = fee.sub(platformFee)
 
       let initalState = await getFeeHanlerState(feeHandler, rebateWallets, platformWallet)
       let txResult = await feeHandler.handleFees(
@@ -81,51 +96,68 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
         rebateBpsPerWallet,
         platformWallet,
         platformFee,
-        fee.sub(platformFee),
+        networkFee,
         {
           from: network,
           value: fee
         }
       )
 
-      let feeBrrWei = fee.sub(platformFee)
-      let rewardWei = feeBrrWei.mul(rewardBps).div(BPS)
+      let brrFeeResult = calculateBrrFee(networkFee, rewardBps, rebateBps, rebateWallets, rebateBpsPerWallet)
 
       await expectEvent(txResult, 'HandleFee', {
         platformWallet,
         platformFeeWei: platformFee,
-        feeBRRWei: feeBrrWei
+        rebateWallets,
+        feeBRRWei: networkFee
       })
 
-      await expectEvent(txResult, 'BRRFeeDistribution', {
-        rewardWei: rewardWei
+      await expectEvent(txResult, 'FeeDistribution', {
+        platformWallet,
+        platformFeeWei: platformFee,
+        rewardWei: brrFeeResult.rewardWei,
+        rebateWei: brrFeeResult.rebateWei,
+        rebateWallets,
+        burnAmountWei: brrFeeResult.burnWei
       })
 
-      await assertStateAfterHandlerFees(feeHandler, initalState, rebateWallets, rebateBpsPerWallet, platformWallet, platformFee, fee)
+      await assertStateAfterHandlerFees(feeHandler, initalState, platformWallet, platformFee, brrFeeResult)
     })
 
     it('should handle Fee with only platform Fee', async () => {
       let platformFee = new BN(10).pow(new BN(17))
       let initalState = await getFeeHanlerState(feeHandler, rebateWallets, platformWallet)
-      let txResult = await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet, platformWallet, platformFee, zeroBN, {
-        from: network,
-        value: platformFee
-      })
+      let txResult = await feeHandler.handleFees(
+        ethAddress,
+        rebateWallets,
+        rebateBpsPerWallet,
+        platformWallet,
+        platformFee,
+        zeroBN,
+        {
+          from: network,
+          value: platformFee
+        }
+      )
 
       await expectEvent(txResult, 'HandleFee', {
         platformWallet,
         platformFeeWei: platformFee,
         feeBRRWei: new BN(0)
       })
-      await assertStateAfterHandlerFees(
-        feeHandler,
-        initalState,
-        rebateWallets,
-        rebateBpsPerWallet,
+
+      await expectEvent(txResult, 'FeeDistribution', {
         platformWallet,
-        platformFee,
-        platformFee
-      )
+        platformFeeWei: platformFee,
+        rewardWei: zeroBN,
+        rebateWei: zeroBN,
+        rebateWallets,
+        burnAmountWei: zeroBN
+      })
+
+      let brrFeeResult = calculateBrrFee(zeroBN, rewardBps, rebateBps, rebateWallets, rebateBpsPerWallet)
+
+      await assertStateAfterHandlerFees(feeHandler, initalState, platformWallet, platformFee, brrFeeResult)
     })
 
     it('test failtolerance when calculateAndRecordFeeData failed', async () => {
@@ -152,7 +184,77 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
       })
       //platform fee should update as normal
       let afterFeePerPlatformWallet = await feeHandler.feePerPlatformWallet(platformWallet)
-      Helper.assertEqual(initalFeePerPlatformWallet.add(platformFee), afterFeePerPlatformWallet, 'unexpected feePerPlatformWallet')
+      Helper.assertEqual(
+        initalFeePerPlatformWallet.add(platformFee),
+        afterFeePerPlatformWallet,
+        'unexpected feePerPlatformWallet'
+      )
+    })
+
+    describe('test validate condition', async () => {
+      it('test only network call handleFee', async () => {
+        let platformFee = new BN(10).pow(new BN(17))
+        let fee = new BN(10).pow(new BN(18))
+        let networkFee = fee.sub(platformFee)
+
+        await expectRevert(
+          feeHandler.handleFees(
+            ethAddress,
+            rebateWallets,
+            rebateBpsPerWallet,
+            platformWallet,
+            platformFee,
+            networkFee,
+            {
+              from: admin,
+              value: fee
+            }
+          ),
+          'only kyberNetwork'
+        )
+      })
+
+      it('test calculateAndRecordFeeData only call by feehandler', async () => {
+        let platformFee = new BN(10).pow(new BN(17))
+        let networkFee = new BN(10).pow(new BN(18))
+
+        try {
+          await feeHandler.calculateAndRecordFeeData(
+            platformWallet,
+            platformFee,
+            rebateWallets,
+            rebateBpsPerWallet,
+            networkFee,
+            {from: admin}
+          )
+          assert(false, 'transaction should be revert')
+        } catch (e) {
+          assert(Helper.isRevertErrorMessage(e), 'expected throw but got: ' + e)
+        }
+      })
+
+      it('test revert if token is not eth', async () => {
+        testToken = await TestToken.new('test', 'KNC', 18)
+        let platformFee = new BN(10).pow(new BN(17))
+        let fee = new BN(10).pow(new BN(18))
+        let networkFee = fee.sub(platformFee)
+
+        await expectRevert(
+          feeHandler.handleFees(
+            testToken.address,
+            rebateWallets,
+            rebateBpsPerWallet,
+            platformWallet,
+            platformFee,
+            networkFee,
+            {
+              from: admin,
+              value: fee
+            }
+          ),
+          'only kyberNetwork'
+        )
+      })
     })
   })
 
@@ -214,6 +316,7 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
         afterTotalPlatformFee,
         'total balance platform fee wei is not update as expected'
       )
+      await expectRevert(feeHandler.claimPlatformFee(platformWallet), 'no fee to claim')
     })
   })
 
@@ -311,7 +414,17 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
         .mul(networkFeeBps)
         .div(BPS)
         .add(platformFeeWei)
-      await assertStateAfterHandlerFees(feeHandler, initalState, [rebateWallet], [BPS], platformWallet, platformFeeWei, fee)
+      let brrFeeResult = calculateBrrFee(fee.sub(platformFeeWei), rewardBps, rebateBps, [rebateWallet], [BPS])
+      await expectEvent.inTransaction(txResult.tx, feeHandler, 'HandleFee')
+      await expectEvent.inTransaction(txResult.tx, feeHandler, 'FeeDistribution', {
+        platformWallet,
+        platformFeeWei,
+        rewardWei: brrFeeResult.rewardWei,
+        rebateWei: brrFeeResult.rebateWei,
+        rebateWallets: [rebateWallet],
+        burnAmountWei: brrFeeResult.burnWei
+      })
+      await assertStateAfterHandlerFees(feeHandler, initalState, platformWallet, platformFeeWei, brrFeeResult)
     })
   })
 })
@@ -329,30 +442,44 @@ async function getFeeHanlerState (feeHandler, rebateWallets, platformWallet) {
   }
 }
 
-async function assertStateAfterHandlerFees (
-  feeHandler,
-  initalState,
-  rebateWallets,
-  rebateBpsPerWallet,
-  platformWallet,
-  platformFeeWei,
-  fee
-) {
-  let afterState = await getFeeHanlerState(feeHandler, rebateWallets, platformWallet)
+function calculateBrrFee (networkFee, rewardBps, rebateBps, rebateWallets, rebateBpsPerWallet) {
+  let rewardWei = networkFee.mul(rewardBps).div(BPS)
+  let rebateWei = networkFee.mul(rebateBps).div(BPS)
+  let totalRebatePaidWei = new BN(0)
+  rebatePerWallets = []
+  for (let i = 0; i < rebateWallets.length; i++) {
+    let rebatePerWallet = rebateWei.mul(rebateBpsPerWallet[i]).div(BPS)
+    totalRebatePaidWei = totalRebatePaidWei.add(rebatePerWallet)
+    rebatePerWallets.push(rebatePerWallet)
+  }
+  rebateWei = totalRebatePaidWei
+  let burnWei = networkFee.sub(rewardWei).sub(rebateWei)
+  return {
+    rewardWei,
+    burnWei,
+    rebateWei,
+    rebateWallets,
+    rebatePerWallets
+  }
+}
+
+async function assertStateAfterHandlerFees (feeHandler, initalState, platformWallet, platformFeeWei, feeBrrResult) {
+  let afterState = await getFeeHanlerState(feeHandler, feeBrrResult.rebateWallets, platformWallet)
   let expectedPlatformFeeWei = initalState.platformFeeWei.add(platformFeeWei)
   Helper.assertEqual(expectedPlatformFeeWei, afterState.platformFeeWei, 'unexpected platform Fee')
 
-  let feeBrrWei = fee.sub(platformFeeWei)
-  let rewardWei = feeBrrWei.mul(rewardBps).div(BPS)
-  Helper.assertEqual(afterState.rewardWei, initalState.rewardWei.add(rewardWei), 'unexpected rewardWei')
+  Helper.assertEqual(afterState.rewardWei, initalState.rewardWei.add(feeBrrResult.rewardWei), 'unexpected rewardWei')
 
   if (rebateWallets.length == 0) {
     return
   }
-  let rebateWei = feeBrrWei.mul(rebateBps).div(BPS)
 
-  for (let i = 0; i < rebateWallets.length; i++) {
-    let rebatePerWallet = rebateWei.mul(rebateBpsPerWallet[i]).div(BPS)
-    Helper.assertEqual(rebatePerWallet.add(initalState.rebatePerWallet[i]), afterState.rebatePerWallet[i], 'unpected rebatePerWallet')
+  for (let i = 0; i < feeBrrResult.rebateWallets.length; i++) {
+    let rebatePerWallet = feeBrrResult.rebatePerWallets[i]
+    Helper.assertEqual(
+      rebatePerWallet.add(initalState.rebatePerWallet[i]),
+      afterState.rebatePerWallet[i],
+      'unpected rebatePerWallet'
+    )
   }
 }

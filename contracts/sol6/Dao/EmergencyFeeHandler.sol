@@ -5,6 +5,7 @@ import "../utils/PermissionGroupsNoModifiers.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../utils/zeppelin/SafeMath.sol";
 import "../utils/Utils5.sol";
+import "@nomiclabs/buidler/console.sol";
 
 contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifiers, ReentrancyGuard, Utils5 {
     using SafeMath for uint256;
@@ -29,9 +30,14 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
         uint256 feeBRRWei
     );
 
-    event BRRFeeDistribution (
+    event FeeDistribution(
+        IERC20 indexed token,
+        address indexed platformWallet,
+        uint256 platformFeeWei,
         uint256 rewardWei,
         uint256 rebateWei,
+        address[] rebateWallets,
+        uint256[] rebatePercentBpsPerWallet,
         uint256 burnAmountWei
     );
 
@@ -83,12 +89,24 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
         emit HandleFee(ETH_TOKEN_ADDRESS, platformWallet, platformFee, rebateWallets, rebateBpsPerWallet, networkFee);
 
         if (networkFee == 0) {
+            emit FeeDistribution(
+                ETH_TOKEN_ADDRESS,
+                platformWallet,
+                platformFee,
+                0,
+                0,
+                rebateWallets,
+                rebateBpsPerWallet,
+                0
+            );
             return;
         }
 
         (bool success, ) = address(this).call(
             abi.encodeWithSignature(
-                "calculateAndRecordFeeData(address[],uint256[],uint256)",
+                "calculateAndRecordFeeData(address,uint256,address[],uint256[],uint256)",
+                platformWallet,
+                platformFee,
                 rebateWallets,
                 rebateBpsPerWallet,
                 networkFee
@@ -100,6 +118,8 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
     }
 
     function calculateAndRecordFeeData(
+        address platformWallet,
+        uint256 platformFee,
         address[] calldata rebateWallets,
         uint256[] calldata rebateBpsPerWallet,
         uint256 feeBRRWei
@@ -114,9 +134,14 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
 
         uint burnAmountWei = feeBRRWei.sub(rewardWei).sub(rebateWei);
 
-        emit BRRFeeDistribution(
+        emit FeeDistribution(
+            ETH_TOKEN_ADDRESS,
+            platformWallet,
+            platformFee,
             rewardWei,
             rebateWei,
+            rebateWallets,
+            rebateBpsPerWallet,
             burnAmountWei
         );
     }

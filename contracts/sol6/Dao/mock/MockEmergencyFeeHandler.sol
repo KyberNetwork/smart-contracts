@@ -13,6 +13,8 @@ contract MockEmergencyFeeHandler is EmergencyKyberFeeHandler {
     ) public EmergencyKyberFeeHandler(admin, _kyberNetwork, _rewardBps, _rebateBps, _burnBps) {}
 
     function calculateAndRecordFeeData(
+        address,
+        uint256,
         address[] calldata,
         uint256[] calldata,
         uint256
