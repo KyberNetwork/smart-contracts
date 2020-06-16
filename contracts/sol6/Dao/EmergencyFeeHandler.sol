@@ -77,7 +77,7 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
         address platformWallet,
         uint256 platformFee,
         uint256 networkFee
-    ) external payable override onlyKyberNetwork {
+    ) external payable override onlyKyberNetwork nonReentrant {
         require(token == ETH_TOKEN_ADDRESS, "token not eth");
         require(msg.value == platformFee.add(networkFee), "msg.value not equal to total fees");
 
@@ -180,7 +180,7 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
         require(amount <= balance.sub(totalPlatformFeeWei), "amount > available funds");
 
         (bool success, ) = sendTo.call{value: amount}("");
-        require(success);
+        require(success, "withdraw transfer failed");
         emit EtherWithdraw(amount, sendTo);
     }
 

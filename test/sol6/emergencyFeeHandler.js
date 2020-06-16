@@ -4,6 +4,7 @@ const KyberNetwork = artifacts.require('KyberNetwork.sol')
 const KyberStorage = artifacts.require('KyberStorage.sol')
 const MatchingEngine = artifacts.require('KyberMatchingEngine.sol')
 const TestToken = artifacts.require('Token.sol')
+const NoPayableFallback = artifacts.require('NoPayableFallback.sol')
 
 const Helper = require('../helper.js')
 const nwHelper = require('./networkHelper.js')
@@ -61,7 +62,7 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
 
   describe('test set network', async () => {
     let newNetwork = accounts[3]
-    before('init emergencyFeeHandler', async () => {
+    beforeEach('init emergencyFeeHandler', async () => {
       feeHandler = await EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps)
     })
 
@@ -76,6 +77,9 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
     it('should success and emit events', async () => {
       let txResult = await feeHandler.setNetworkContract(newNetwork, {from: admin})
       await expectEvent(txResult, 'KyberNetworkUpdated', {kyberNetwork: newNetwork})
+      // not update event if network contract is unchanged
+      txResult = await feeHandler.setNetworkContract(newNetwork, {from: admin})
+      await expectEvent.notEmitted(txResult, 'KyberNetworkUpdated')
     })
   })
 
@@ -192,11 +196,10 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
     })
 
     describe('test validate condition', async () => {
+      let platformFee = new BN(10).pow(new BN(17))
+      let networkFee = new BN(10).pow(new BN(18))
+      let fee = platformFee.add(networkFee)
       it('test only network call handleFee', async () => {
-        let platformFee = new BN(10).pow(new BN(17))
-        let fee = new BN(10).pow(new BN(18))
-        let networkFee = fee.sub(platformFee)
-
         await expectRevert(
           feeHandler.handleFees(
             ethAddress,
@@ -215,9 +218,6 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
       })
 
       it('test calculateAndRecordFeeData only call by feehandler', async () => {
-        let platformFee = new BN(10).pow(new BN(17))
-        let networkFee = new BN(10).pow(new BN(18))
-
         try {
           await feeHandler.calculateAndRecordFeeData(
             platformWallet,
@@ -235,10 +235,6 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
 
       it('test revert if token is not eth', async () => {
         testToken = await TestToken.new('test', 'KNC', 18)
-        let platformFee = new BN(10).pow(new BN(17))
-        let fee = new BN(10).pow(new BN(18))
-        let networkFee = fee.sub(platformFee)
-
         await expectRevert(
           feeHandler.handleFees(
             testToken.address,
@@ -248,22 +244,72 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
             platformFee,
             networkFee,
             {
-              from: admin,
+              from: network,
               value: fee
             }
           ),
-          'only kyberNetwork'
+          'token not eth'
         )
+      })
+
+      it('test revert if msg.value is different from total platformFee and networkFee', async() => {
+        await expectRevert(
+          feeHandler.handleFees(
+            ethAddress,
+            rebateWallets,
+            rebateBpsPerWallet,
+            platformWallet,
+            platformFee,
+            networkFee,
+            {
+              from: network,
+              value: zeroBN
+            }
+          ),
+          'msg.value not equal to total fees'
+        )
+      })
+
+      it('test should record handle fee failed if rebatewallet is zero', async () => {
+        let txResult = await feeHandler.handleFees(
+          ethAddress,
+          [zeroAddress, zeroAddress],
+          rebateBpsPerWallet,
+          platformWallet,
+          platformFee,
+          networkFee,
+          {
+            from: network,
+            value: fee
+          }
+        )
+        await expectEvent(txResult, 'HandleFeeFailed')
+      })
+
+      it('test should record handle fee failed if total rebate bps > BPS', async () => {
+        let txResult = await feeHandler.handleFees(
+          ethAddress,
+          rebateWallets,
+          [new BN(5000), new BN(5001)],
+          platformWallet,
+          platformFee,
+          networkFee,
+          {
+            from: network,
+            value: fee
+          }
+        )
+        await expectEvent(txResult, 'HandleFeeFailed')
       })
     })
   })
 
   describe('test withdraw and claimPlatformFee function', async () => {
-    let availableFee
-    let totalBalance
-    let platformFee
     before('create new feehandler', async () => {
       feeHandler = await EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps)
+    })
+
+    async function createHandleFee (platformWallet) {
       platformFee = new BN(10).pow(new BN(17))
       totalBalance = new BN(10).pow(new BN(18))
       await feeHandler.handleFees(
@@ -278,18 +324,29 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
           value: totalBalance
         }
       )
-      availableFee = totalBalance.sub(platformFee)
-    })
+    }
 
     it('test withdraw revert if not admin', async () => {
-      await expectRevert(feeHandler.withdraw(user, availableFee, {from: network}), 'only admin')
+      await createHandleFee(platformWallet)
+      await expectRevert(feeHandler.withdraw(user, new BN(1), {from: network}), 'only admin')
     })
 
-    it('test withdraw revert if not admin', async () => {
-      await expectRevert(feeHandler.withdraw(user, totalBalance, {from: admin}), 'amount > available funds')
+    it('test withdraw revert if withdraw more than availableBalance', async () => {
+      await createHandleFee(platformWallet)
+      totalPlatformFee = await feeHandler.totalPlatformFeeWei()
+      totalBalance = await Helper.getBalancePromise(feeHandler.address)
+      availableFee = totalBalance.sub(totalPlatformFee)
+      await expectRevert(
+        feeHandler.withdraw(user, availableFee.add(new BN(1)), {from: admin}),
+        'amount > available funds'
+      )
     })
 
     it('test withdraw success', async () => {
+      await createHandleFee(platformWallet)
+      totalPlatformFee = await feeHandler.totalPlatformFeeWei()
+      totalBalance = await Helper.getBalancePromise(feeHandler.address)
+      availableFee = totalBalance.sub(totalPlatformFee)
       let initialBalance = await Helper.getBalancePromise(user)
       let txResult = await feeHandler.withdraw(user, availableFee, {from: admin})
       expectEvent(txResult, 'EtherWithdraw', {
@@ -300,8 +357,10 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
     })
 
     it('test claimPlatformFee success', async () => {
+      await createHandleFee(platformWallet)
       let initialBalance = await Helper.getBalancePromise(platformWallet)
       let initialTotalPlatformFee = await feeHandler.totalPlatformFeeWei()
+      let platformFee = await feeHandler.feePerPlatformWallet(platformWallet)
       let txResult = await feeHandler.claimPlatformFee(platformWallet)
       expectEvent(txResult, 'PlatformFeePaid', {
         platformWallet: platformWallet,
@@ -317,6 +376,18 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
         'total balance platform fee wei is not update as expected'
       )
       await expectRevert(feeHandler.claimPlatformFee(platformWallet), 'no fee to claim')
+    })
+
+    it('reverts if platform wallet is non-payable contract', async () => {
+      let platformWallet = await NoPayableFallback.new()
+      await createHandleFee(platformWallet.address)
+      await expectRevert(feeHandler.claimPlatformFee(platformWallet.address), 'platform fee transfer failed')
+    })
+
+    it('reverts if withdraw to non-payable contract', async () => {
+      let sendTo = await NoPayableFallback.new()
+      await createHandleFee(platformWallet)
+      await expectRevert(feeHandler.withdraw(sendTo.address, new BN(1), {from: admin}), 'withdraw transfer failed')
     })
   })
 
