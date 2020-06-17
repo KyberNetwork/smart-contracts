@@ -1,7 +1,6 @@
 pragma solidity 0.6.6;
 
-import "../EmergencyFeeHandler.sol";
-
+import "../emergency/EmergencyFeeHandler.sol";
 
 contract MockEmergencyFeeHandler is EmergencyKyberFeeHandler {
     constructor(
