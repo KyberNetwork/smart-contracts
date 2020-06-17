@@ -4,9 +4,10 @@ import "./IKyberReserve.sol";
 
 
 interface IKyberHint {
-    enum TradeType {MaskIn, MaskOut, Split}
+    enum TradeType {EmptyHint, MaskIn, MaskOut, Split}
     enum HintErrors {
         NoError, // Hint is valid
+        EmptyHintError, // reserveIDs and splits must be empty for empty hint
         ReserveIdDupError, // duplicate reserveID found
         ReserveIdEmptyError, // reserveIDs array is empty for MaskIn and Split trade type
         ReserveIdSplitsError, // reserveIDs and splitBpsValues arrays do not have the same length

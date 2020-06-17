@@ -3,9 +3,10 @@ const Helper = require("../helper.js");
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
 const INVALID_HINT_TYPE = '0x09';
-const MASK_IN = 0;
-const MASK_OUT = 1;
-const SPLIT = 2;
+const EMPTY_HINT = 0;
+const MASK_IN = 1;
+const MASK_OUT = 2;
+const SPLIT = 3;
 const BPS_SPLIT = ['2000', '1500', '1000', '5000', '500'];
 
 const T2E_ORDERED = ['0xaa12345616709a5d', '0xaa12aa56bbfff000', '0xcc12345675fff057', '0xff12345663820d8f', '0xff1234567a334f7d'];
@@ -140,6 +141,34 @@ contract('KyberHintHandler', function(accounts) {
                 }
             });
 
+            it('should build the T2E EMPTY HINT', async() => {
+                t2eOpcode = EMPTY_HINT;
+                
+                hint = await hintHandler.buildTokenToEthHint(
+                    t2eToken,
+                    t2eOpcode,
+                    [],
+                    [],
+                );
+                expected = Helper.buildHint('EMPTY_HINT')(t2eOpcode, [], []);
+        
+                Helper.assertEqual(hint, expected);
+            });
+
+            it('should build the T2E EMPTY HINT even if reserveIds or splits is NOT EMPTY', async() => {
+                t2eOpcode = EMPTY_HINT;
+                
+                hint = await hintHandler.buildTokenToEthHint(
+                    t2eToken,
+                    t2eOpcode,
+                    t2eReserves,
+                    t2eSplits,
+                );
+                expected = Helper.buildHint('EMPTY_HINT')(t2eOpcode, [], []);
+        
+                Helper.assertEqual(hint, expected);
+            });
+
             Object.keys(TRADE_TYPES).forEach(tradeType => {
                 if (tradeType !== 'MASK_OUT') {
                     it(`should revert the T2E hint for ${tradeType} due to EMPTY reserveIds`, async() => {
@@ -270,6 +299,34 @@ contract('KyberHintHandler', function(accounts) {
                         Helper.assertEqual(hint, expected);
                     });
                 }
+            });
+
+            it('should build the E2T EMPTY HINT', async() => {
+                e2tOpcode = EMPTY_HINT;
+                
+                hint = await hintHandler.buildEthToTokenHint(
+                    e2tToken,
+                    e2tOpcode,
+                    [],
+                    [],
+                );
+                expected = Helper.buildHint('EMPTY_HINT')(e2tOpcode, [], []);
+        
+                Helper.assertEqual(hint, expected);
+            });
+
+            it('should build the E2T EMPTY HINT even if reserveIds or splits is NOT EMPTY', async() => {
+                e2tOpcode = EMPTY_HINT;
+                
+                hint = await hintHandler.buildEthToTokenHint(
+                    e2tToken,
+                    e2tOpcode,
+                    [],
+                    [],
+                );
+                expected = Helper.buildHint('EMPTY_HINT')(e2tOpcode, [], []);
+        
+                Helper.assertEqual(hint, expected);
             });
 
             Object.keys(TRADE_TYPES).forEach(tradeType => {
@@ -692,6 +749,126 @@ contract('KyberHintHandler', function(accounts) {
                 });
             });
 
+            Object.keys(TRADE_TYPES).forEach(e2tTradeType => {
+                it(`should build the T2T hint for T2E EMPTY HINT, E2T ${e2tTradeType}`, async() => {
+                    t2eOpcode = EMPTY_HINT;
+                    e2tOpcode = TRADE_TYPES[e2tTradeType];
+                    e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                    
+                    hint = await hintHandler.buildTokenToTokenHint(
+                        t2eToken,
+                        t2eOpcode,
+                        [],
+                        [],
+                        e2tToken,
+                        e2tOpcode,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+                    expected = Helper.buildHintT2T(
+                        'EMPTY_HINT',
+                        t2eOpcode,
+                        [],
+                        [],
+                        e2tTradeType,
+                        e2tOpcode,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+            
+                    Helper.assertEqual(hint, expected);
+                });
+    
+                it(`should build the T2T hint for T2E EMPTY HINT, E2T ${e2tTradeType} even if reserveIds or splits is NOT EMPTY`, async() => {
+                    t2eOpcode = EMPTY_HINT;
+                    e2tOpcode = TRADE_TYPES[e2tTradeType];
+                    e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                    
+                    hint = await hintHandler.buildTokenToTokenHint(
+                        t2eToken,
+                        t2eOpcode,
+                        t2eReserves,
+                        t2eSplits,
+                        e2tToken,
+                        e2tOpcode,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+                    expected = Helper.buildHintT2T(
+                        'EMPTY_HINT',
+                        t2eOpcode,
+                        [],
+                        [],
+                        e2tTradeType,
+                        e2tOpcode,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+            
+                    Helper.assertEqual(hint, expected);
+                });
+            });
+
+            Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
+                it(`should build the T2T hint for T2E ${t2eTradeType}, E2T EMPTY HINT`, async() => {
+                    t2eOpcode = TRADE_TYPES[t2eTradeType];
+                    t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                    e2tOpcode = EMPTY_HINT;
+                    
+                    hint = await hintHandler.buildTokenToTokenHint(
+                        t2eToken,
+                        t2eOpcode,
+                        t2eReserves,
+                        t2eSplits,
+                        e2tToken,
+                        e2tOpcode,
+                        [],
+                        [],
+                    );
+                    expected = Helper.buildHintT2T(
+                        t2eTradeType,
+                        t2eOpcode,
+                        t2eReserves,
+                        t2eSplits,
+                        'EMPTY_HINT',
+                        e2tOpcode,
+                        [],
+                        [],
+                    );
+            
+                    Helper.assertEqual(hint, expected);
+                });
+    
+                it(`should build the T2T hint for T2E ${t2eTradeType}, E2T EMPTY HINT even if reserveIds or splits is NOT EMPTY`, async() => {
+                    t2eOpcode = TRADE_TYPES[t2eTradeType];
+                    t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                    e2tOpcode = EMPTY_HINT;
+                    
+                    hint = await hintHandler.buildTokenToTokenHint(
+                        t2eToken,
+                        t2eOpcode,
+                        t2eReserves,
+                        t2eSplits,
+                        e2tToken,
+                        e2tOpcode,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+                    expected = Helper.buildHintT2T(
+                        t2eTradeType,
+                        t2eOpcode,
+                        t2eReserves,
+                        t2eSplits,
+                        'EMPTY_HINT',
+                        e2tOpcode,
+                        [],
+                        [],
+                    );
+            
+                    Helper.assertEqual(hint, expected);
+                });
+            });
+
             Object.keys(TRADE_TYPES).forEach(tradeType => {
                 Object.keys(INVALID_SPLIT_BPS).forEach(invalidSplit => {
                     it(`should revert the T2T hint for T2E SPLIT, E2T ${tradeType} due to T2E ${invalidSplit}`, async() => {
@@ -831,6 +1008,20 @@ contract('KyberHintHandler', function(accounts) {
                     });
                 }
             });
+
+            it('should parse the T2E EMPTY HINT', async() => {
+                t2eHintType = EMPTY_HINT;
+
+                hint = Helper.buildHint('EMPTY_HINT')(t2eHintType, [], []);
+                
+                actual = await hintHandler.parseTokenToEthHint(t2eToken, hint);
+                expected = parseHint(hint);
+        
+                Helper.assertEqual(actual.tokenToEthType, expected.tradeType);
+                assert.deepEqual(actual.tokenToEthReserveIds, expected.reserveIds);
+                assert.deepEqual(actual.tokenToEthAddresses, expected.addresses);
+                Helper.assertEqual(actual.tokenToEthSplits, expected.splits);
+            });
         });
 
         describe("ETH to Token (E2T)", function() {
@@ -871,6 +1062,20 @@ contract('KyberHintHandler', function(accounts) {
                         Helper.assertEqual(actual.ethToTokenSplits, expected.splits);
                     });
                 }
+            });
+
+            it('should parse the E2T EMPTY HINT', async() => {
+                e2tHintType = EMPTY_HINT;
+
+                hint = Helper.buildHint('EMPTY_HINT')(e2tHintType, [], []);
+                
+                actual = await hintHandler.parseEthToTokenHint(e2tToken, hint);
+                expected = parseHint(hint);
+        
+                Helper.assertEqual(actual.ethToTokenType, expected.tradeType);
+                assert.deepEqual(actual.ethToTokenReserveIds, expected.reserveIds);
+                assert.deepEqual(actual.ethToTokenAddresses, expected.addresses);
+                Helper.assertEqual(actual.ethToTokenSplits, expected.splits);
             });
         });
 
@@ -1019,6 +1224,72 @@ contract('KyberHintHandler', function(accounts) {
                     }
                 });
             });
+            
+            Object.keys(TRADE_TYPES).forEach(e2tTradeType => {
+                it(`should parse the T2T hint for T2E EMPTY HINT, E2T ${e2tTradeType}`, async() => {
+                    t2eHintType = EMPTY_HINT;
+                    e2tHintType = TRADE_TYPES[e2tTradeType];
+                    e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
+
+                    hint = Helper.buildHintT2T(
+                        'EMPTY_HINT',
+                        t2eHintType,
+                        [],
+                        [],
+                        e2tTradeType,
+                        e2tHintType,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+            
+                    actual = await hintHandler.parseTokenToTokenHint(t2eToken, e2tToken, hint);
+                    hints = unpackT2T(hint);
+                    expectedT2E = parseHint(hints.t2eHint);
+                    expectedE2T = parseHint(hints.e2tHint);
+    
+                    Helper.assertEqual(actual.tokenToEthType, expectedT2E.tradeType);
+                    assert.deepEqual(actual.tokenToEthReserveIds, expectedT2E.reserveIds);
+                    assert.deepEqual(actual.tokenToEthAddresses, expectedT2E.addresses);
+                    Helper.assertEqual(actual.tokenToEthSplits, expectedT2E.splits);
+                    Helper.assertEqual(actual.ethToTokenType, expectedE2T.tradeType);
+                    assert.deepEqual(actual.ethToTokenReserveIds, expectedE2T.reserveIds);
+                    assert.deepEqual(actual.ethToTokenAddresses, expectedE2T.addresses);
+                    Helper.assertEqual(actual.ethToTokenSplits, expectedE2T.splits);
+                });
+            });
+
+            Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
+                it(`should parse the T2T hint for T2E ${t2eTradeType}, E2T EMPTY HINT`, async() => {
+                    t2eHintType = TRADE_TYPES[t2eTradeType];
+                    t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                    e2tHintType = EMPTY_HINT;
+
+                    hint = Helper.buildHintT2T(
+                        t2eTradeType,
+                        t2eHintType,
+                        t2eReserves,
+                        t2eSplits,
+                        'EMPTY_HINT',
+                        e2tHintType,
+                        [],
+                        [],
+                    );
+            
+                    actual = await hintHandler.parseTokenToTokenHint(t2eToken, e2tToken, hint);
+                    hints = unpackT2T(hint);
+                    expectedT2E = parseHint(hints.t2eHint);
+                    expectedE2T = parseHint(hints.e2tHint);
+    
+                    Helper.assertEqual(actual.tokenToEthType, expectedT2E.tradeType);
+                    assert.deepEqual(actual.tokenToEthReserveIds, expectedT2E.reserveIds);
+                    assert.deepEqual(actual.tokenToEthAddresses, expectedT2E.addresses);
+                    Helper.assertEqual(actual.tokenToEthSplits, expectedT2E.splits);
+                    Helper.assertEqual(actual.ethToTokenType, expectedE2T.tradeType);
+                    assert.deepEqual(actual.ethToTokenReserveIds, expectedE2T.reserveIds);
+                    assert.deepEqual(actual.ethToTokenAddresses, expectedE2T.addresses);
+                    Helper.assertEqual(actual.ethToTokenSplits, expectedE2T.splits);
+                });
+            });
         });
     });
 
@@ -1030,6 +1301,18 @@ contract('KyberHintHandler', function(accounts) {
                 t2eReserves = T2E_UNORDERED;
                 t2eDupReserves = T2E_DUPLICATES;
                 t2eMissingReserves = T2E_MISSING;
+            });
+
+            it('should revert the T2E EMPTY HINT due to reserveIds or splits not empty', async() => {
+                t2eHintType = EMPTY_HINT;
+                t2eSplits = BPS_SPLIT;
+
+                hint = Helper.buildHint('EMPTY_HINT')(t2eHintType, t2eReserves, t2eSplits);
+                
+                await expectRevert(
+                    hintHandler.parseTokenToEthHint(t2eToken, hint),
+                    'reserveIds and splits must be empty'
+                );
             });
             
             Object.keys(TRADE_TYPES).forEach(tradeType => {
@@ -1189,6 +1472,18 @@ contract('KyberHintHandler', function(accounts) {
                 e2tReserves = E2T_UNORDERED;
                 e2tDupReserves = E2T_DUPLICATES;
                 e2tMissingReserves = E2T_MISSING;
+            });
+
+            it('should revert the E2T EMPTY HINT due to reserveIds or splits not empty', async() => {
+                e2tHintType = EMPTY_HINT;
+                e2tSplits = BPS_SPLIT;
+
+                hint = Helper.buildHint('EMPTY_HINT')(e2tHintType, e2tReserves, e2tSplits);
+                
+                await expectRevert(
+                    hintHandler.parseEthToTokenHint(e2tToken, hint),
+                    'reserveIds and splits must be empty'
+                );
             });
             
             Object.keys(TRADE_TYPES).forEach(tradeType => {
@@ -1355,6 +1650,56 @@ contract('KyberHintHandler', function(accounts) {
                 e2tMissingReserves = E2T_MISSING;
                 t2eAscendingReserves = T2E_ORDERED;
                 e2tAscendingReserves = E2T_ORDERED;
+            });
+
+            Object.keys(TRADE_TYPES).forEach(e2tTradeType => {
+                it(`should revert the T2T hint for T2E EMPTY HINT, E2T ${e2tTradeType} due to reserveIds or splits not empty`, async() => {
+                    t2eHintType = EMPTY_HINT;
+                    t2eSplits = BPS_SPLIT;
+                    e2tHintType = TRADE_TYPES[e2tTradeType];
+                    e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
+
+                    hint = Helper.buildHintT2T(
+                        'EMPTY_HINT',
+                        t2eHintType,
+                        t2eReserves,
+                        t2eSplits,
+                        e2tTradeType,
+                        e2tHintType,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+
+                    await expectRevert(
+                        hintHandler.parseTokenToTokenHint(t2eToken, e2tToken, hint),
+                        'reserveIds and splits must be empty'
+                    );
+                });
+            });
+
+            Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
+                it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T EMPTY HINT due to reserveIds or splits not empty`, async() => {
+                    t2eHintType = TRADE_TYPES[t2eTradeType];
+                    t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                    e2tHintType = EMPTY_HINT;
+                    e2tSplits = BPS_SPLIT;
+
+                    hint = Helper.buildHintT2T(
+                        t2eTradeType,
+                        t2eHintType,
+                        t2eReserves,
+                        t2eSplits,
+                        'EMPTY_HINT',
+                        e2tHintType,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+
+                    await expectRevert(
+                        hintHandler.parseTokenToTokenHint(t2eToken, e2tToken, hint),
+                        'reserveIds and splits must be empty'
+                    );
+                });
             });
 
             Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
