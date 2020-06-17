@@ -1,12 +1,18 @@
 pragma solidity 0.6.6;
 
-import "../IKyberFeeHandler.sol";
-import "../utils/PermissionGroupsNoModifiers.sol";
-import "../utils/zeppelin/ReentrancyGuard.sol";
-import "../utils/zeppelin/SafeMath.sol";
-import "../utils/Utils5.sol";
-import "@nomiclabs/buidler/console.sol";
+import "../../IKyberFeeHandler.sol";
+import "../../utils/PermissionGroupsNoModifiers.sol";
+import "../../utils/zeppelin/ReentrancyGuard.sol";
+import "../../utils/zeppelin/SafeMath.sol";
+import "../../utils/Utils5.sol";
 
+/**
+ * @title kyberFeeHandler
+ *
+ * @dev EmergencyFeeHandler works when dao has problem
+ *      rebateBps and rewardBps is only set when initialization
+ *      user can claim platformfee, rebate and reward will be distributed by admin
+ */
 contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifiers, ReentrancyGuard, Utils5 {
     using SafeMath for uint256;
 
