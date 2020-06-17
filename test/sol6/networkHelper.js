@@ -33,10 +33,10 @@ const type_apr = "TYPE_APR";
 const type_MOCK = "TYPE_MOCK";
 const type_fpr = "TYPE_FPR";
 
-const MASK_IN_HINTTYPE = 0;
-const MASK_OUT_HINTTYPE = 1;
-const SPLIT_HINTTYPE = 2;
-const EMPTY_HINTTYPE = 3;
+const BEST_OF_ALL_HINTTYPE = 0;
+const MASK_IN_HINTTYPE = 1;
+const MASK_OUT_HINTTYPE = 2;
+const SPLIT_HINTTYPE = 3;
 
 const ReserveType = {NONE: 0, FPR: 1, APR: 2, BRIDGE: 3, UTILITY: 4, CUSTOM: 5, ORDERBOOK: 6};
 
@@ -47,7 +47,7 @@ const negligibleRateDiffBps = new BN(10); //0.01%;
 const burnBlockInterval = new BN(30);
 
 module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, ZERO_RESERVE_ID, type_apr, type_fpr, type_MOCK,
-    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType};
+    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE, ReserveType};
 
 module.exports.setupStorage = setupStorage;
 async function setupStorage(admin) {
@@ -555,7 +555,7 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
         'splits': []
     }
 
-    if (tradeType == EMPTY_HINTTYPE) {
+    if (tradeType == BEST_OF_ALL_HINTTYPE) {
         numReserves = reserves.length;
         for (let i=0; i < numReserves; i++) {
             reserve = reserves[i];
@@ -613,7 +613,7 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
 
 module.exports.getHint = getHint;
 async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
-    if (hintType == EMPTY_HINTTYPE) return emptyHint;
+    if (hintType == BEST_OF_ALL_HINTTYPE) return emptyHint;
 
     let reserveCandidates;
     let hintedReservese2t;
@@ -682,7 +682,7 @@ async function getWrongHint(rateHelper, matchingEngine, reserveInstances, hintTy
     let t2eHint;
     let e2tHint;
 
-    if (hintType == EMPTY_HINTTYPE) hintType = MASK_IN_HINTTYPE;
+    if (hintType == BEST_OF_ALL_HINTTYPE) hintType = BEST_OF_ALL_HINTTYPE;
 
     if(srcAdd != ethAddress) {
         reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, srcAdd, qty, true);
