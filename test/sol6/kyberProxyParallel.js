@@ -13,7 +13,7 @@ const nwHelper = require("./networkHelper.js");
 const BN = web3.utils.BN;
 
 const { precisionUnits, ethAddress, zeroAddress, emptyHint } = require("../helper.js");
-const { MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE }  = require('./networkHelper.js');
+const { MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE }  = require('./networkHelper.js');
 
 const PERM_HINTTYPE = 5;
 
@@ -59,7 +59,7 @@ let numTokens = 5;
 let tokens = [];
 let tokenDecimals = [];
 
-const tradeType = [EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, PERM_HINTTYPE];
+const tradeType = [BEST_OF_ALL_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, PERM_HINTTYPE];
 
 
 contract('Parallel Proxy V1 + V2', function(accounts) {
