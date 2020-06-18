@@ -71,8 +71,8 @@ let reserve;
 let numReserves;
 let info;
 let hint;
-const tradeTypesArray = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE];
-const tradeStr = ["MASK IN", "MASK OUT", "SPLIT", "NO HINT"];
+const tradeTypesArray = [EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE];
+const tradeStr = ["NO HINT", "MASK IN", "MASK OUT", "SPLIT"];
 
 //tokens data
 ////////////
@@ -2130,8 +2130,8 @@ contract('KyberNetwork', function(accounts) {
 
                 // both are split
                 hint = await mockMatchingEngine.buildTokenToTokenHint(
-                    srcToken.address, 2, t2eReserveIDs, [3333, 3333, 3334],
-                    destToken.address, 2, e2tReserveIDs, [3333, 3333, 3334]
+                    srcToken.address, SPLIT_HINTTYPE, t2eReserveIDs, [3333, 3333, 3334],
+                    destToken.address, SPLIT_HINTTYPE, e2tReserveIDs, [3333, 3333, 3334]
                 );
 
                 let expectedResult = await nwHelper.getAndCalcRates(
