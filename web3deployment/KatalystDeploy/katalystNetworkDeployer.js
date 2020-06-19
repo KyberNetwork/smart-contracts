@@ -30,9 +30,13 @@ if (printPrivateKey) {
 // privateKey = "";
 
 //contract addresses: REPLACE IF SOMETHING BREAKS DURING DEPLOYMENT
-let matchingEngineAddress = "";
+let networkHistoryAddress = "";
+let feeHandlerHistoryAddress = "";
+let daoHistoryAddress = "";
+let matchingEngineHistoryAddress = "";
 let storageAddress = "";
 let networkAddress = "";
+let matchingEngineAddress = "";
 let proxyAddress = "";
 let feeHandlerAddress = "";
 let gasHelperAddress = "";
@@ -47,6 +51,19 @@ let nonce;
 let chainId = chainIdInput;
 
 console.log("from",sender);
+
+const keypress = async () => {
+  process.stdin.setRawMode(true)
+  return new Promise(resolve => process.stdin.once('data', data => {
+    const byteArray = [...data]
+    if (byteArray.length > 0 && byteArray[0] === 3) {
+      console.log('^C')
+      process.exit(1)
+    }
+    process.stdin.setRawMode(false)
+    resolve()
+  }))
+}
 
 async function sendTx(txObject, gasLimit) {
   const txTo = txObject._parent.options.address;
@@ -86,15 +103,14 @@ async function sendTx(txObject, gasLimit) {
   }
 }
 
-async function deployContract(solcOutput, contractName, name, ctorArgs) {
+async function deployContract(artifacts, contractName, ctorArgs) {
 
-  const actualName = contractName;
-  const contract = solcOutput.contracts[actualName][name];
-  const bytecode = contract["evm"]["bytecode"]["object"];
-  const abi = contract['abi'];
+  const contract = artifacts[contractName];
+  const bytecode = contract.bytecode;
+  const abi = contract.abi;
   const myContract = new web3.eth.Contract(abi);
 
-  const deploy = myContract.deploy({data:"0x" + bytecode, arguments: ctorArgs});
+  const deploy = myContract.deploy({data: bytecode, arguments: ctorArgs});
   let address = "0x" + web3.utils.sha3(RLP.encode([sender,nonce])).slice(12).substring(14);
   address = web3.utils.toChecksumAddress(address);
 
@@ -106,16 +122,20 @@ async function deployContract(solcOutput, contractName, name, ctorArgs) {
 }
 
 //token addresses
+let allTokens;
 let kncTokenAddress;
 
 //contracts
 let feeHandlerContract;
+let networkHistoryContract;
+let feeHandlerHistoryContract;
+let daoHistoryContract;
+let matchingEngineHistoryContract;
+let storageContract;
 let matchingEngineContract;
 let networkContract;
 let proxyContract;
-let stakingContract;
-let storageContract;
-let kyberDaoContract;
+let daoContract;
 
 //permissions
 let matchingEnginePermissions;
@@ -126,6 +146,7 @@ let daoOperator;
 
 //misc variables needed for contracts deployment, should be obtained from input json
 let isFeeAccounted;
+let isEntitledRebate;
 let maxGasPrice = (new BN(50).mul(new BN(10).pow(new BN(9)))).toString();
 let negDiffInBps;
 let burnBlockInterval;
@@ -134,6 +155,7 @@ let startTimestamp;
 let networkFeeBps;
 let rewardFeeBps;
 let rebateFeeBps;
+let contractsOutputFilename;
 
 class Reserve {
   constructor(jsonInput, reserveTypes) {
@@ -155,14 +177,11 @@ class Reserve {
 let reserveDataArray = [];
 let walletDataArray = [];
 
-
-const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-const zeroAddress = "0x0000000000000000000000000000000000000000";
-
-function parseInput( jsonInput ) {
+function parseInput(jsonInput) {
     const reserveTypes = jsonInput["reserveTypes"];
     const reserveData = jsonInput["reserves"];
     const walletData = jsonInput["wallets"];
+    allTokens = jsonInput["tokens"];
 
     // reserve array
     Object.values(reserveData).forEach(function(reserve) {
@@ -183,6 +202,7 @@ function parseInput( jsonInput ) {
 
     //constants
     isFeeAccounted = jsonInput["isFeeAccounted"];
+    isEntitledRebate = jsonInput["isEntitledRebate"];
     maxGasPrice = jsonInput["max gas price"].toString();
     negDiffInBps = jsonInput["neg diff in bps"].toString();
     burnBlockInterval = jsonInput["burn block interval"].toString();
@@ -196,6 +216,7 @@ function parseInput( jsonInput ) {
     gasHelperAddress = jsonInput["addresses"].gasHelper;
 
     // output file name
+    contractsOutputFilename = jsonInput["contracts filename"];
     outputFileName = jsonInput["output filename"];
 };
 
@@ -217,14 +238,6 @@ async function setPermissions(contract, contractPermissions) {
     await sendTx(contract.methods.transferAdminQuickly(admin));
   }
 
-const keypress = async () => {
-  process.stdin.setRawMode(true)
-  return new Promise(resolve => process.stdin.once('data', () => {
-    process.stdin.setRawMode(false)
-    resolve()
-  }))
-}
-
 async function pressToContinue() {
   console.log("Checkpoint... Press any key to continue!");
   await keypress();
@@ -236,9 +249,8 @@ async function main() {
 
   chainId = chainId || await web3.eth.net.getId()
   console.log('chainId', chainId);
-  console.log('starting compilation');
-  output = await require("../compileContracts.js").compileContracts("sol5");
-  console.log("finished compilation");
+  console.log('compiling contracts and retrieving artifacts...');
+  output = await require("../retrieveArtifacts.js").retrieveArtifacts();
 
   //reinstantiate web3 (solc overwrites something)
   web3 = new Web3(new Web3.providers.HttpProvider(rpcUrl));
@@ -252,26 +264,33 @@ async function main() {
   // CONTRACT INSTANTIATION / DEPLOYMENT //
   /////////// DO NOT TOUCH ////////////////
   await deployMatchingEngineContract(output);
-  await deployStorageContract(output);
+  await pressToContinue();
+  await deployStorageContracts(output);
+  await pressToContinue();
   await deployNetworkContract(output);
+  await pressToContinue();
   await deployProxyContract(output);
+  await pressToContinue();
   await deployFeeHandlerContract(output);
-  await deployStakingContract(output);
-  await deployKyberDaoContract(output);
+  await pressToContinue();
+  await deployDaoContract(output);
+  await pressToContinue();
+  await getStakingAddress();
   /////////////////////////////////////////
 
   //IF DEPLOYMENT BREAKS:
   // 1) Replace relevant contract addresses (if any) variables on top
   // 2) Use ONLY ONE of the following functions below:
-  // NOTE: Redeploying network == fullDeployment
+  exportContractAddresses();
   await pressToContinue();
-  await fullDeployment();
+  // await fullDeployment();
 
   //////////////////
   // REDEPLOYMENT //
   //////////////////
-  await setupMatchingEngine();
-  await setupKyberDaoStuff();
+  // await redeployNetwork();
+  // await redeployProxy();
+  // await setDaoInFeeHandler();
 
   /////////////////////
   // ADDING RESERVES //
@@ -295,22 +314,26 @@ async function main() {
 }
 
 async function fullDeployment() {
+  await setStorageAddressInAllHistoricalContracts();
   await setNetworkAddressInMatchingEngine();
   await setNetworkAddressInStorage();
   await setStorageAddressInMatchingEngine();
+  await pressToContinue();
   await set_Fee_MatchEngine_Gas_ContractsInNetwork();
-  await setKyberDaoInNetwork();
-  await setKyberDaoInFeeHandler();
-  await setKyberDaoInStaking();
+  await pressToContinue();
+  await setDaoInNetwork();
+  await setDaoInFeeHandler();
   await setProxyInNetwork();
   await setNetworkInProxy();
-  await setTempOperatorToNetwork();
+  await setHintHandlerInProxy();
+  await setTempOperatorToStorage();
 
   ///////////
   // BREAK //
   ///////////
   await pressToContinue();
   await setFeeAccountedDataInStorage();
+  await setRebateEntitledDataInStorage();
   await addReserves();
   await listTokensForReserves();
   await configureAndEnableNetwork();
@@ -319,7 +342,7 @@ async function fullDeployment() {
   // BREAK //
   ///////////
   await pressToContinue();
-  await removeTempOperator([networkContract]);
+  await removeTempOperator([storageContract]);
   await pressToContinue();
   await setPermissionsInProxy();
   await pressToContinue();
@@ -328,30 +351,28 @@ async function fullDeployment() {
   await setPermissionsInMatchingEngine();
   await pressToContinue();
   await setPermissionsInStorage();
+  await setPermissionsInHistories();
 }
 
-function printParams(jsonInput) {
-    dictOutput = {};
-    dictOutput["tokens"] = jsonInput.tokens;
-    dictOutput["tokens"]["ETH"] = {"name" : "Ethereum", "decimals" : 18, "address" : ethAddress };
-    dictOutput["addresses"] = jsonInput.addresses;
-    dictOutput["reserves"] = jsonInput.reserves;
-    dictOutput["wallets"] = jsonInput.wallets;
-    dictOutput["permission"] = jsonInput.permission;
-    dictOutput["max gas price"] = jsonInput["max gas price"];
-    dictOutput["neg diff in bps"] = jsonInput["neg diff in bps"];
-    dictOutput["burn block interval"] = jsonInput["burn block interval"];
-    dictOutput["trade logic"] = matchingEngineAddress;
-    dictOutput["network"] = networkAddress;
-    dictOutput["proxy"] = proxyAddress;
-    dictOutput["fee handler"] = feeHandlerAddress;
-    const json = JSON.stringify(dictOutput, null, 2);
-    console.log(json);
-    const outputFileName = jsonInput["output filename"];
-    console.log(outputFileName, 'write');
-    fs.writeFileSync(outputFileName, json);
+function exportContractAddresses() {
+  console.log("Exporting contract addresses...");
+  dictOutput = {};
+  dictOutput["networkHistory"] = networkHistoryAddress;
+  dictOutput["feeHandlerHistory"] = feeHandlerHistoryAddress;
+  dictOutput["daoHistory"] = daoHistoryAddress;
+  dictOutput["matchingEngineHistory"] = matchingEngineHistoryAddress;
+  dictOutput["storage"] = storageAddress;
+  dictOutput["network"] = networkAddress;
+  dictOutput["matchingEngine"] = matchingEngineAddress;
+  dictOutput["proxy"] = proxyAddress;
+  dictOutput["feeHandler"] = feeHandlerAddress;
+  dictOutput["gasHelper"] = gasHelperAddress;
+  dictOutput["staking"] = stakingAddress;
+  dictOutput["dao"] = daoAddress;
+  const json = JSON.stringify(dictOutput, null, 2);
+  console.log(contractsOutputFilename, 'write');
+  fs.writeFileSync(contractsOutputFilename, json);
 }
-
 
 function sleep(ms){
     return new Promise(resolve=>{
@@ -381,25 +402,77 @@ function verifyInput() {
 async function deployMatchingEngineContract(output) {
   if (matchingEngineAddress == "") {
     console.log("deploying matching engine");
-    [matchingEngineAddress, matchingEngineContract] = await deployContract(output, "KyberMatchingEngine.sol", "KyberMatchingEngine", [sender]);
+    [matchingEngineAddress, matchingEngineContract] = await deployContract(output, "KyberMatchingEngine", [sender]);
     console.log(`matchingEngine: ${matchingEngineAddress}`);
   } else {
     console.log("Instantiating matching engine...");
     matchingEngineContract = new web3.eth.Contract(
-      output.contracts["KyberMatchingEngine.sol"]["KyberMatchingEngine"].abi, matchingEngineAddress
+      output["KyberMatchingEngine"].abi, matchingEngineAddress
     );
   }
 }
 
-async function deployStorageContract(output) {
+async function deployStorageContracts(output) {
+  // network history
+  if (networkHistoryAddress == "") {
+    console.log("deploy networkHistory");
+    [networkHistoryAddress, networkHistoryContract] = await deployContract(output, "KyberHistory", [sender]);
+    console.log(`networkHistory: ${networkHistoryAddress}`);
+  } else {
+    console.log("instantiating networkHistory...");
+    networkHistoryContract = new web3.eth.Contract(
+      output["KyberHistory"].abi, networkHistoryAddress
+    );
+  }
+
+  // feeHandlerhistory
+  if (feeHandlerHistoryAddress == "") {
+    console.log("deploy feeHandlerHistory");
+    [feeHandlerHistoryAddress, feeHandlerHistoryContract] = await deployContract(output, "KyberHistory", [sender]);
+    console.log(`feeHandlerHistory: ${feeHandlerHistoryAddress}`);
+  } else {
+    console.log("instantiating feeHandlerHistory...");
+    feeHandlerHistoryContract = new web3.eth.Contract(
+      output["KyberHistory"].abi, feeHandlerHistoryAddress
+    );
+  }
+
+  // kyberDao history
+  if (daoHistoryAddress == "") {
+    console.log("deploy daoHistory");
+    [daoHistoryAddress, daoHistoryContract] = await deployContract(output, "KyberHistory", [sender]);
+    console.log(`daoHistory: ${daoHistoryAddress}`);
+  } else {
+    console.log("instantiating daoHistory...");
+    daoHistoryContract = new web3.eth.Contract(
+      output["KyberHistory"].abi, daoHistoryAddress
+    );
+  }
+
+  // matchingEngine history
+  if (matchingEngineHistoryAddress == "") {
+    console.log("deploy matchingEngineHistory");
+    [matchingEngineHistoryAddress, matchingEngineHistoryContract] = await deployContract(output, "KyberHistory", [sender]);
+    console.log(`matchingEngineHistory: ${matchingEngineHistoryAddress}`);
+  } else {
+    console.log("instantiating matchingEngineHistory...");
+    matchingEngineHistoryContract = new web3.eth.Contract(
+      output["KyberHistory"].abi, matchingEngineHistoryAddress
+    );
+  }
+
   if (storageAddress == "") {
     console.log("deploying storage");
-    [storageAddress, storageContract] = await deployContract(output, "KyberStorage.sol", "KyberStorage", [sender]);
+    [storageAddress, storageContract] = await deployContract(
+      output,
+      "KyberStorage",
+      [sender, networkHistoryAddress, feeHandlerHistoryAddress, daoHistoryAddress, matchingEngineHistoryAddress]
+      );
     console.log(`storage: ${storageAddress}`);
   } else {
     console.log("Instantiating storage...");
     storageContract = new web3.eth.Contract(
-      output.contracts["KyberStorage.sol"]["KyberStorage"].abi, storageAddress
+      output["KyberStorage"].abi, storageAddress
     );
   }
 }
@@ -407,12 +480,12 @@ async function deployStorageContract(output) {
 async function deployNetworkContract(output) {
   if (networkAddress == "") {
     console.log("deploying kyber network");
-    [networkAddress, networkContract] = await deployContract(output, "KyberNetwork.sol", "KyberNetwork", [sender, storageAddress]);
+    [networkAddress, networkContract] = await deployContract(output, "KyberNetwork", [sender, storageAddress]);
     console.log(`network: ${networkAddress}`);
   } else {
     console.log("Instantiating network...");
     networkContract = new web3.eth.Contract(
-    output.contracts["KyberNetwork.sol"]["KyberNetwork"].abi, networkAddress
+    output["KyberNetwork"].abi, networkAddress
     );
   }
 }
@@ -420,12 +493,12 @@ async function deployNetworkContract(output) {
 async function deployProxyContract(output) {
   if (proxyAddress == "") {
     console.log("deploying KNProxy");
-    [proxyAddress, proxyContract] = await deployContract(output, "KyberNetworkProxy.sol", "KyberNetworkProxy", [sender]);
+    [proxyAddress, proxyContract] = await deployContract(output, "KyberNetworkProxy", [sender]);
     console.log(`KNProxy: ${proxyAddress}`);
   } else {
     console.log("Instantiating proxy...");
     proxyContract = new web3.eth.Contract(
-      output.contracts["KyberNetworkProxy.sol"]["KyberNetworkProxy"].abi, proxyAddress
+      output["KyberNetworkProxy"].abi, proxyAddress
     );
   }
 }
@@ -434,52 +507,72 @@ async function deployFeeHandlerContract(output) {
   if (feeHandlerAddress == "") {
     console.log("deploying feeHandler");
     [feeHandlerAddress, feeHandlerContract] = await deployContract(
-      output, "KyberFeeHandler.sol", "KyberFeeHandler", 
+      output, "KyberFeeHandler", 
       [sender, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval, daoOperator]
     );
     console.log(`Fee Handler: ${feeHandlerAddress}`);
   } else {
     console.log("Instantiating feeHandler...");
     feeHandlerContract = new web3.eth.Contract(
-      output.contracts["KyberFeeHandler.sol"]["KyberFeeHandler"].abi, feeHandlerAddress
+      output["KyberFeeHandler"].abi, feeHandlerAddress
     );
   }
 }
 
-async function deployStakingContract(output) {
-    if (stakingAddress == "") {
-        console.log("deploying staking contract");
-        [stakingAddress, stakingContract] = await deployContract(
-            output, "KyberStaking.sol", "KyberStaking", 
-            [kncTokenAddress, epochPeriod, startTimestamp, sender]
-        );
-        console.log(`Staking: ${stakingAddress}`);
-    } else {
-        console.log("Instantiating staking...");
-        stakingContract = new web3.eth.Contract(
-        output.contracts["KyberStaking.sol"]["KyberStaking"].abi, stakingAddress
-        );
-    }
-};
-
-async function deployKyberDaoContract(output) {
+async function deployDaoContract(output) {
     if (daoAddress == "") {
-        console.log("deploying KyberDao contract");
-        [daoAddress, kyberDaoContract] = await deployContract(
-            output, "KyberDao.sol", "KyberDao",
+        console.log("deploying Dao and staking contracts");
+        [daoAddress, daoContract] = await deployContract(
+            output, "KyberDao",
             [
-              epochPeriod, startTimestamp, stakingAddress, feeHandlerAddress, kncTokenAddress,
+              epochPeriod, startTimestamp, kncTokenAddress,
               networkFeeBps, rewardFeeBps, rebateFeeBps, daoOperator
             ]
         );
-        console.log(`KyberDao: ${daoAddress}`);
+        console.log(`Dao: ${daoAddress}`);
     } else {
-        console.log("Instantiating KyberDao...");
-        kyberDaoContract = new web3.eth.Contract(
-        output.contracts["KyberDao.sol"]["KyberDao"].abi, daoAddress
+        console.log("Instantiating Dao...");
+        daoContract = new web3.eth.Contract(
+          output["KyberDao"].abi, daoAddress
         );
     }
+    // Note: Staking contract need not be instantiated, since it doesn't require any setup
+    console.log("\x1b[41m%s\x1b[0m" ,"Wait for tx to be mined before continuing (will call daoContract for staking address)");
 };
+
+async function getStakingAddress() {
+  stakingAddress = await daoContract.methods.staking().call();
+  console.log(`Staking: ${stakingAddress}`);
+}
+
+async function waitForMatchingEngineAndStorageUpdate() {
+  while(true) {
+    let matchingEngineNetwork = await matchingEngineContract.methods.kyberNetwork().call();
+    let storageNetwork = await storageContract.methods.kyberNetwork().call();
+    if (matchingEngineNetwork == networkAddress && storageNetwork == networkAddress) {
+      return;
+    } else if (matchingEngineNetwork != networkAddress) {
+      console.log(`matching engine not pointing to network`);
+      console.log(`Current matchingEngine network address: ${matchingEngineNetwork}`);
+      console.log(`Waiting...`);
+      await sleep(25000);
+    } else {
+      console.log(`storage not pointing to network`);
+      console.log(`Current storage network address: ${storageNetwork}`);
+      console.log(`Waiting...`);
+      await sleep(25000);
+    }
+  }
+}
+
+async function checkZeroProxies() {
+    let networkProxies = await storageContract.methods.getKyberProxies().call();
+    if (networkProxies.length > 0) {
+      console.log("\x1b[41m%s\x1b[0m" ,"Existing kyberProxies in storage, remove before proceeding");
+      process.exit(1);
+    }
+    return;
+}
 
 async function setNetworkAddressInMatchingEngine(tempAddress) {
   console.log("set network in matching engine");
@@ -508,6 +601,18 @@ async function setStorageAddressInMatchingEngine(tempAddress) {
   }
 }
 
+async function setStorageAddressInAllHistoricalContracts() {
+  console.log("set storage in historical contracts");
+  await setStorageAddressInHistoricalContract(networkHistoryContract);
+  await setStorageAddressInHistoricalContract(feeHandlerHistoryContract);
+  await setStorageAddressInHistoricalContract(daoHistoryContract);
+  await setStorageAddressInHistoricalContract(matchingEngineHistoryContract);
+}
+
+async function setStorageAddressInHistoricalContract(contractInstance) {
+  await sendTx(contractInstance.methods.setStorageContract(storageAddress));
+}
+
 async function set_Fee_MatchEngine_Gas_ContractsInNetwork() {
   console.log("set feeHandler, matchingEngine and gas helper in network");
   await sendTx(networkContract.methods.setContracts(
@@ -515,19 +620,14 @@ async function set_Fee_MatchEngine_Gas_ContractsInNetwork() {
   ));
 }
 
-async function setKyberDaoInNetwork() {
-  console.log("Setting KyberDao address in network");
+async function setDaoInNetwork() {
+  console.log("Setting dao address in network");
   await sendTx(networkContract.methods.setKyberDaoContract(daoAddress));
 }
 
-async function setKyberDaoInFeeHandler() {
-  console.log("Setting KyberDao address in fee handler");
+async function setDaoInFeeHandler() {
+  console.log("Setting dao address in fee handler");
   await sendTx(feeHandlerContract.methods.setDaoContract(daoAddress));
-}
-
-async function setKyberDaoInStaking() {
-  console.log("Setting KyberDao address in staking");
-  await sendTx(stakingContract.methods.updateKyberDaoAddressAndRemoveSetter(daoAddress));
 }
 
 async function setProxyInNetwork() {
@@ -540,28 +640,40 @@ async function setNetworkInProxy() {
   await sendTx(proxyContract.methods.setKyberNetwork(networkAddress));
 }
 
-async function setTempOperatorToNetwork() {
+async function setHintHandlerInProxy() {
+  console.log("setting hint handler in proxy");
+  await sendTx(proxyContract.methods.setHintHandler(matchingEngineAddress));
+}
+
+async function setTempOperatorToStorage() {
   // add operator to network
-  console.log("set temp operator: network");
-  await sendTx(networkContract.methods.addOperator(sender));
+  console.log("set temp operator: storage");
+  await sendTx(storageContract.methods.addOperator(sender));
 }
 
 async function setFeeAccountedDataInStorage() {
-  console.log("set fee paying data: matching engine");
+  console.log("set fee paying data: storage");
   await sendTx(storageContract.methods.setFeeAccountedPerReserveType(
     isFeeAccounted["FPR"], isFeeAccounted["APR"], isFeeAccounted["BRIDGE"], isFeeAccounted["UTILITY"], isFeeAccounted["CUSTOM"], isFeeAccounted["ORDERBOOK"]
   ));
 }
 
+async function setRebateEntitledDataInStorage() {
+  console.log("set rebate entitled data: storage");
+  await sendTx(storageContract.methods.setEntitledRebatePerReserveType(
+    isEntitledRebate["FPR"], isEntitledRebate["APR"], isEntitledRebate["BRIDGE"], isEntitledRebate["UTILITY"], isEntitledRebate["CUSTOM"], isEntitledRebate["ORDERBOOK"]
+  ));
+}
+
 async function addReserves(reserveIndex) {
   // add reserve to network
-  console.log("Add reserves to network");
+  console.log("Add reserves to storage");
   reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
   for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
     const reserve = reserveDataArray[i];
     console.log(`Reserve array index ${i}`);
     console.log(`Adding reserve ${reserve.address}`);
-    await sendTx(networkContract.methods.addReserve(reserve.address, reserve.id, reserve.type, reserve.wallet));
+    await sendTx(storageContract.methods.addReserve(reserve.address, reserve.id, reserve.type, reserve.wallet));
     await pressToContinue();
   }
 }
@@ -575,58 +687,94 @@ async function listTokensForReserves(reserveIndex, tokenIndex) {
     for (let j = tokenIndex ; j < tokens.length ; j++) {
       token = tokens[j];
       console.log(`Reserve array index ${i}, token array index ${j}`);
-      console.log(`listing token ${token.address} for reserve ${reserve.address}`);
-      await sendTx(networkContract.methods.listPairForReserve(reserve.address,token.address,token.ethToToken,token.tokenToEth,true));
+      console.log(`listing token ${token.address} for reserve ${reserve.id}`);
+      await sendTx(storageContract.methods.listPairForReserve(reserve.id,token.address,token.ethToToken,token.tokenToEth,true));
     }
     await pressToContinue();
   }
 }
 
 async function configureAndEnableNetwork() {
-    // set params
-    console.log("network set params");
-    await sendTx(networkContract.methods.setParams(maxGasPrice,
-                                                 negDiffInBps));
-                                                 
-    console.log("network enable");
-    await sendTx(networkContract.methods.setEnable(true));
+  // set params
+  console.log("network set params");
+  await sendTx(networkContract.methods.setParams(maxGasPrice, negDiffInBps));
+                    
+  console.log("network enable");
+  await sendTx(networkContract.methods.setEnable(true));
 }
 
 async function removeTempOperator(contractInstances) {
-    for (let contractInstance of contractInstances) {
-      console.log(`remove temp operator`);
-      await sendTx(contractInstance.methods.removeOperator(sender));
-    }
+  for (let contractInstance of contractInstances) {
+    console.log(`remove temp operator`);
+    await sendTx(contractInstance.methods.removeOperator(sender));
+  }
 }
 
 async function setPermissionsInNetwork() {
-    await setPermissions(networkContract, networkPermissions);
+  console.log('setting permissions in network');
+  await setPermissions(networkContract, networkPermissions);
 }
 
 async function setPermissionsInProxy() {
-    await setPermissions(proxyContract, proxyPermissions);
+  console.log('setting permissions in proxy');
+  await setPermissions(proxyContract, proxyPermissions);
 }
 
 async function setPermissionsInMatchingEngine() {
-    await setPermissions(matchingEngineContract, matchingEnginePermissions);
+  console.log('setting permissions in matchingEngine');
+  await setPermissions(matchingEngineContract, matchingEnginePermissions);
 }
 
 async function setPermissionsInStorage() {
+  console.log('setting permissions in storage');
   await setPermissions(storageContract, storagePermissions);
 }
 
-async function setupMatchingEngine() {
-  await setNetworkAddressInMatchingEngine();
-  await setStorageAddressInMatchingEngine();
-  await setPermissionsInMatchingEngine();
-  console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Set matching engine in network contract!!");
-};
+async function setPermissionsInHistories() {
+  console.log('setting permissions in histories');
+  await setPermissions(networkHistoryContract, storagePermissions);
+  await setPermissions(feeHandlerHistoryContract, storagePermissions);
+  await setPermissions(daoHistoryContract, storagePermissions);
+  await setPermissions(matchingEngineHistoryContract, storagePermissions);
+}
 
-async function setupKyberDaoStuff() {
-  await setKyberDaoInFeeHandler();
-  await setKyberDaoInStaking();
-  console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Set KyberDao in network contract!!");
-};
+async function redeployNetwork() {
+  await waitForMatchingEngineAndStorageUpdate();
+  await pressToContinue();
+  await setTempOperatorToNetwork();
+  await set_Fee_MatchEngine_Gas_ContractsInNetwork();
+  await pressToContinue();
+  await setDaoInNetwork();
+  await setProxyInNetwork();
+  await pressToContinue();
+  await listReservesForTokens();
+  await configureAndEnableNetwork();
+  await pressToContinue();
+  await removeTempOperator([networkContract]);
+  await setPermissionsInNetwork();
+}
+
+async function setTempOperatorToNetwork() {
+  // add operator to network
+  console.log("set temp operator: network");
+  await sendTx(networkContract.methods.addOperator(sender));
+}
+
+async function listReservesForTokens() {
+  for (let j = tokenIndex ; j < allTokens.length ; j++) {
+    token = allTokens[j];
+    console.log(`Giving allowance to reserves for token ${token}`);
+    await sendTx(networkContract.methods.listReservesForToken(token, 0, 8, true));
+  }
+}
+
+async function redeployProxy() {
+  await checkZeroProxies();
+  await setNetworkInProxy();
+  await setHintHandlerInProxy();
+  await pressToContinue();
+  await setPermissionsInProxy();
+}
 
 function lastFewThings() {
   console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Don't forget to send DGX to network contract!!");
@@ -647,4 +795,3 @@ catch(err) {
 }
 
 main();
-
