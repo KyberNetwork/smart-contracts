@@ -13,7 +13,6 @@ async function main(skipCompilation) {
     compileContracts();
   }
   let output = await packageArtifacts();
-  console.log(output)
   return output;
 }
 
