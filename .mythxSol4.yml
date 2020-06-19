@@ -1,0 +1,10 @@
+analyze:
+    mode: deep
+    async: true
+    create-group: true
+    solc: 0.4.18
+    targets:
+        - contracts/sol4/reserves/KyberReserve.sol
+        - contracts/sol4/reserves/aprConversionRate/LiquidityConversionRates.sol
+        - contracts/sol4/reserves/fprConversionRate/ConversionRates.sol
+        - contracts/sol4/reserves/fprConversionRate/ConversionRateEnhancedSteps.sol
