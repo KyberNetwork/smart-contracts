@@ -7,8 +7,6 @@ import "../IERC20.sol";
 import "../IKyberDao.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../utils/Utils5.sol";
-import "../IKyberFeeHandler.sol";
-
 
 /**
  * @notice  This contract is using SafeMath for uint, which is inherited from EpochUtils
@@ -719,7 +717,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
                     getRebateAndRewardFromData(options[i]);
                 require(
                     rewardInBps.add(rebateInBps) <= BPS,
-                    "validateParams: rebate + reward must be smaller then BPS"
+                    "validateParams: rebate + reward can't be bigger than BPS"
                 );
             }
         }

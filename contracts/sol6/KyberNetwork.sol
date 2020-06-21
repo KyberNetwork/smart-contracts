@@ -75,7 +75,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 numEntitledRebateReserves;
         uint256 feeAccountedBps; // what part of this trade is fee paying. for token -> token - up to 200%
         uint256 entitledRebateBps;
-        uint256 rateWithNetworkFee;
     }
 
     struct TradeInput {
@@ -227,10 +226,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         if (add) {
             token.safeApprove(reserve, 2**255);
+            setDecimals(token);
         } else {
             token.safeApprove(reserve, 0);
         }
-        setDecimals(token);
     }
 
     /// @notice Can be called only by operator
