@@ -275,8 +275,7 @@ contract('KyberStorage', function(accounts) {
                 reserve: mockReserve.address,
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
                 reserveType: new BN(ReserveType.FPR),
-                rebateWallet: anyWallet,
-                add: true
+                rebateWallet: anyWallet
             });
             expectEvent(txResult, 'ReserveRebateWalletSet', {
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
