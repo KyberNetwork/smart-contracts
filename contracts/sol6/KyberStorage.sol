@@ -69,8 +69,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         address indexed reserve,
         bytes32 indexed reserveId,
         IKyberStorage.ReserveType reserveType,
-        address indexed rebateWallet,
-        bool add
+        address indexed rebateWallet
     );
 
     event ReserveRebateWalletSet(
@@ -126,7 +125,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     /// @notice Can be called only by operator
     /// @dev Adds a reserve to the storage
     /// @param reserve The reserve address
-    /// @param reserveId The reserve ID in 32 bytes. 1st byte is reserve type
+    /// @param reserveId The reserve ID in 32 bytes.
     /// @param resType Type of the reserve out of enum ReserveType
     /// @param rebateWallet Rebate wallet address for this reserve
     function addReserve(
@@ -137,7 +136,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     ) external {
         onlyOperator();
         require(reserveAddressToId[reserve] == bytes32(0), "reserve has id");
-        require(reserveId != 0, "reserveId = 0");
+        require(reserveId != bytes32(0), "reserveId = 0");
         require(
             (resType != ReserveType.NONE) && (uint256(resType) < uint256(ReserveType.LAST)),
             "bad reserve type"
@@ -160,7 +159,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         reserveAddressToId[reserve] = reserveId;
         reserveType[reserveId] = uint256(resType);
 
-        emit AddReserveToStorage(reserve, reserveId, resType, rebateWallet, true);
+        emit AddReserveToStorage(reserve, reserveId, resType, rebateWallet);
         emit ReserveRebateWalletSet(reserveId, rebateWallet);
     }
 
@@ -500,7 +499,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     }
 
     /// @notice Returns information about a reserve given its reserve ID
-    /// @return reserveId The reserve ID in 32 bytes. 1st byte is reserve type
+    /// @return reserveId The reserve ID in 32 bytes.
     /// @return rebateWallet address of rebate wallet of this reserve
     /// @return resType Reserve type from enum ReserveType
     /// @return isFeeAccountedFlag Whether fees are to be charged for the trade for this reserve
