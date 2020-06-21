@@ -1,4 +1,8 @@
 # zeppelin contracts
-contracts/sol6/utils/zeppelin
-contracts/sol5/bridges
-
+contracts/sol4
+contracts/sol5
+contracts/sol6/Dao
+contracts/sol6/mock
+contracts/sol6/utils
+contracts/sol6/wrappers
+contracts/sol6/*.sol
