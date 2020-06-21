@@ -7,7 +7,6 @@ import "../IERC20.sol";
 import "../IKyberDao.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../utils/Utils5.sol";
-import "../IKyberFeeHandler.sol";
 
 
 /**
@@ -65,6 +64,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     // epochCampaigns[epoch]: list campaign IDs for an epoch (epoch => campaign IDs)
     mapping(uint256 => uint256[]) internal epochCampaigns;
     // totalEpochPoints[epoch]: total points for an epoch (epoch => total points)
+    // it equals the total of (number_votes * voting_power) of all stakers for an epoch
     mapping(uint256 => uint256) internal totalEpochPoints;
     // numberVotes[staker][epoch]: number of campaigns that the staker has voted in an epoch
     mapping(address => mapping(uint256 => uint256)) public numberVotes;
@@ -719,7 +719,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
                     getRebateAndRewardFromData(options[i]);
                 require(
                     rewardInBps.add(rebateInBps) <= BPS,
-                    "validateParams: rebate + reward must be smaller then BPS"
+                    "validateParams: reward plus rebate high"
                 );
             }
         }

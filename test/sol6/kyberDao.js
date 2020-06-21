@@ -1390,14 +1390,14 @@ contract('KyberDao', function(accounts) {
           2, currentBlock + 15, currentBlock + 15 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, getDataFromRebateAndReward(100, 10001 - 100), 2, 3], '0x', {from: daoOperator}
         ),
-        "validateParams: rebate + reward must be smaller then BPS"
+        "validateParams: reward plus rebate high"
       )
       await expectRevert(
         submitNewCampaign(kyberDao,
           2, currentBlock + 17, currentBlock + 17 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, getDataFromRebateAndReward(20, 10000)], '0x', {from: daoOperator}
         ),
-        "validateParams: rebate + reward must be smaller then BPS"
+        "validateParams: reward plus rebate high"
       )
       await submitNewCampaign(kyberDao,
         2, currentBlock + 19, currentBlock + 19 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
