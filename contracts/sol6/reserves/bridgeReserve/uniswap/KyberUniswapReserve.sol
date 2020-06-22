@@ -2,39 +2,11 @@ pragma solidity 0.6.6;
 
 import "../../../IKyberReserve.sol";
 import "../../../IERC20.sol";
+import "../../../IWETH.sol";
 import "../../../utils/WithdrawableNoModifiers.sol";
 import "../../../utils/Utils5.sol";
-import "../../../utils/zeppelin/SafeMath.sol";
 import "../../../utils/zeppelin/SafeERC20.sol";
-
-library UniswapV2Library {
-    using SafeMath for uint256;
-
-    // returns sorted token addresses, used to handle return values from pairs sorted in this order
-    function sortTokens(address tokenA, address tokenB)
-        internal
-        pure
-        returns (address token0, address token1)
-    {
-        require(tokenA != tokenB, "UniswapV2Library: IDENTICAL_ADDRESSES");
-        (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), "UniswapV2Library: ZERO_ADDRESS");
-    }
-
-    // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
-    function getAmountOut(
-        uint256 amountIn,
-        uint256 reserveIn,
-        uint256 reserveOut
-    ) internal pure returns (uint256 amountOut) {
-        require(amountIn > 0, "UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT");
-        require(reserveIn > 0 && reserveOut > 0, "UniswapV2Library: INSUFFICIENT_LIQUIDITY");
-        uint256 amountInWithFee = amountIn.mul(997);
-        uint256 numerator = amountInWithFee.mul(reserveOut);
-        uint256 denominator = reserveIn.mul(1000).add(amountInWithFee);
-        amountOut = numerator / denominator;
-    }
-}
+import "./UniswapV2Library.sol";
 
 interface UniswapFactory {
     function getPair(address tokenA, address tokenB) external view returns (address pair);
@@ -56,14 +28,6 @@ interface IUniswapV2Pair {
         address to,
         bytes calldata data
     ) external;
-}
-
-interface IWETH {
-    function deposit() external payable;
-
-    function transfer(address to, uint256 value) external returns (bool);
-
-    function withdraw(uint256) external;
 }
 
 /*
@@ -95,7 +59,7 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         address destAddress
     );
 
-    event TokenListed(IERC20 token, address uniswapPair, bool add);
+    event TokenListed(IERC20 indexed token, address uniswapPair, bool add);
 
     event TradeEnabled(bool enable);
 
@@ -152,8 +116,8 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         uint256 conversionRate,
         bool validate
     ) external override payable returns (bool) {
-        require(tradeEnabled);
-        require(msg.sender == kyberNetwork);
+        require(tradeEnabled, "trade is disabled");
+        require(msg.sender == kyberNetwork, "only kyberNetwork");
         require(isValidTokens(srcToken, destToken), "token is not listed");
 
         if (validate) {
@@ -211,7 +175,7 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
 
     function setFee(uint256 _feeBps) external {
         onlyAdmin();
-        require(_feeBps <= 10000);
+        require(_feeBps < BPS, "fee >= BPS");
         if (_feeBps != feeBps) {
             feeBps = _feeBps;
             emit FeeUpdated(_feeBps);
@@ -288,6 +252,8 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
             if (amountLessFee == 0) return 0;
 
             (reserveSrcToken, reserveDestToken) = getReserves(uniswapPair, weth, address(dest));
+            if(reserveSrcToken == 0 || reserveDestToken == 0)
+                return 0;
             destQty = UniswapV2Library.getAmountOut(
                 amountLessFee,
                 reserveSrcToken,
@@ -296,6 +262,8 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         } else {
             uniswapPair = IUniswapV2Pair(tokenPairs[address(src)]);
             (reserveSrcToken, reserveDestToken) = getReserves(uniswapPair, address(src), weth);
+            if(reserveSrcToken == 0 || reserveDestToken == 0)
+                return 0;
             destQty = deductFee(
                 UniswapV2Library.getAmountOut(srcQty, reserveSrcToken, reserveDestToken)
             );

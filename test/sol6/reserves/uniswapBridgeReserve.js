@@ -21,11 +21,13 @@ const {
   MAX_RATE
 } = require('../../helper.js')
 const Helper = require('../../helper.js')
+const {assert} = require('chai')
 
 let UniswapV2Factory
 let UniswapV2Router02
 
 let admin
+let alerter
 let network
 let uniswapFactory
 let uniswapRouter
@@ -34,6 +36,7 @@ let testToken
 let reserve
 let destAddress
 
+let defaultBps = new BN(25)
 let deadline = new BN(2).pow(new BN(255))
 
 contract('KyberUniswapv2Reserve', function (accounts) {
@@ -45,6 +48,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
     admin = accounts[1]
     network = accounts[2]
     destAddress = accounts[3]
+    alerter = accounts[4]
 
     weth = await WETH9.new()
     testToken = await TestToken.new('test token', 'TST', new BN(15))
@@ -55,7 +59,272 @@ contract('KyberUniswapv2Reserve', function (accounts) {
     })
   })
 
+  describe('constructor params', () => {
+    it('test revert if uniswapFactory 0', async () => {
+      await expectRevert(
+        KyberUniswapv2Reserve.new(zeroAddress, weth.address, admin, network),
+        'uniswapFactory 0'
+      )
+    })
+
+    it('test revert if weth 0', async () => {
+      await expectRevert(
+        KyberUniswapv2Reserve.new(uniswapFactory.address, zeroAddress, admin, network),
+        'weth 0'
+      )
+    })
+
+    it('test revert if kyberNetwork 0', async () => {
+      await expectRevert(
+        KyberUniswapv2Reserve.new(uniswapFactory.address, weth.address, admin, zeroAddress),
+        'kyberNetwork 0'
+      )
+    })
+
+    it('test revert if admin 0', async () => {
+      await expectRevert(
+        KyberUniswapv2Reserve.new(uniswapFactory.address, weth.address, zeroAddress, network),
+        'admin 0'
+      )
+    })
+
+    it('test constructor success', async () => {
+      reserve = await KyberUniswapv2Reserve.new(
+        uniswapFactory.address,
+        weth.address,
+        admin,
+        network
+      )
+
+      assert(
+        uniswapFactory.address == (await reserve.uniswapFactory()),
+        'unexpected uniswapFactory'
+      )
+      assert(weth.address == (await reserve.weth()), 'unexpected weth')
+      assert(network == (await reserve.kyberNetwork()), 'unexpected kyberNetwork')
+    })
+  })
+
+  describe('send and withdraw token', async () => {
+    let sendAmount = new BN(10).pow(new BN(18))
+    before('set up reserve', async () => {
+      reserve = await KyberUniswapv2Reserve.new(
+        uniswapFactory.address,
+        weth.address,
+        admin,
+        network
+      )
+    })
+
+    it('test reserve able to receive ether', async () => {
+      await Helper.sendEtherWithPromise(accounts[0], reserve.address, sendAmount)
+    })
+
+    it('test revert if withdraw from non-admin', async () => {
+      await expectRevert(reserve.withdrawEther(sendAmount, network, {from: network}), 'only admin')
+    })
+
+    it('test withdraw from admin', async () => {
+      await reserve.withdrawEther(sendAmount, admin, {from: admin})
+    })
+  })
+
+  describe('test permission operation', () => {
+    let testToken
+    before('set up reserve', async () => {
+      reserve = await KyberUniswapv2Reserve.new(
+        uniswapFactory.address,
+        weth.address,
+        admin,
+        network
+      )
+      await reserve.addAlerter(alerter, {from: admin})
+      testToken = await TestToken.new('test token', 'TST', new BN(15))
+    })
+
+    it('test setFee only admin', async () => {
+      let txResult = await reserve.setFee(new BN(100), {from: admin})
+      expectEvent(txResult, 'FeeUpdated', {
+        feeBps: new BN(100)
+      })
+    })
+
+    it('test revert setFee if not admin', async () => {
+      await expectRevert(reserve.setFee(new BN(100), {from: destAddress}), 'only admin')
+    })
+
+    it('test revert setFee if fee is too high', async () => {
+      await expectRevert(reserve.setFee(BPS, {from: admin}), 'fee >= BPS')
+    })
+
+    it('test disable trade revert if not alerter', async () => {
+      await expectRevert(reserve.disableTrade({from: admin}), 'only alerter')
+    })
+
+    it('test disable trade success', async () => {
+      let txResult = await reserve.disableTrade({from: alerter})
+      expectEvent(txResult, 'TradeEnabled', {
+        enable: false
+      })
+    })
+
+    it('test enable trade revert if not admin', async () => {
+      await expectRevert(reserve.enableTrade({from: alerter}), 'only admin')
+    })
+
+    it('test enable trade success', async () => {
+      let txResult = await reserve.enableTrade({from: admin})
+      expectEvent(txResult, 'TradeEnabled', {
+        enable: true
+      })
+    })
+
+    describe('test list - delist token', async () => {
+      it('test list token revert from non-admin', async () => {
+        await expectRevert(reserve.listToken(testToken.address, {from: alerter}), 'only admin')
+      })
+
+      it('test list token revert if token 0', async () => {
+        await expectRevert(reserve.listToken(zeroAddress, {from: admin}), 'token 0')
+      })
+
+      it('test list token revert if token pair does not exist', async () => {
+        await expectRevert(
+          reserve.listToken(testToken.address, {from: admin}),
+          'uniswapPair not found'
+        )
+      })
+
+      it('test list token success', async () => {
+        await uniswapFactory.createPair(testToken.address, weth.address, {from: accounts[0]})
+        let uniswapPair = await uniswapFactory.getPair(testToken.address, weth.address)
+
+        let txResult = await reserve.listToken(testToken.address, {from: admin})
+        expectEvent(txResult, 'TokenListed', {
+          token: testToken.address,
+          uniswapPair: uniswapPair,
+          add: true
+        })
+
+        assert(
+          uniswapPair == (await reserve.tokenPairs(testToken.address)),
+          'missmatch token pair'
+        )
+      })
+
+      it('test delist token revert if not admin', async () => {
+        await expectRevert(reserve.delistToken(testToken.address, {from: alerter}), 'only admin')
+      })
+
+      it('test delist token revert if not listed token', async () => {
+        await expectRevert(reserve.delistToken(network, {from: admin}), 'token is not listed')
+      })
+
+      it('test delist token success', async () => {
+        let uniswapPair = await uniswapFactory.getPair(testToken.address, weth.address)
+        let txResult = await reserve.delistToken(testToken.address, {from: admin})
+        expectEvent(txResult, 'TokenListed', {
+          token: testToken.address,
+          uniswapPair: uniswapPair,
+          add: false
+        })
+
+        assert(
+          zeroAddress == (await reserve.tokenPairs(testToken.address)),
+          'missmatch token pair'
+        )
+      })
+    })
+  })
+
+  describe('test getConventionRate function', () => {
+    let srcAmount = new BN(10).pow(new BN(14))
+    let testToken
+    let testTokenDecimal = new BN(15)
+    let feeBps = new BN(89)
+    before('set up reserve', async () => {
+      reserve = await KyberUniswapv2Reserve.new(
+        uniswapFactory.address,
+        weth.address,
+        admin,
+        network
+      )
+      await reserve.setFee(feeBps, {from: admin})
+
+      testToken = await TestToken.new('test token', 'TST', testTokenDecimal)
+      await uniswapFactory.createPair(testToken.address, weth.address, {from: accounts[0]})
+      await reserve.listToken(testToken.address, {from: admin})
+    })
+
+    it('test getConventionRate return 0 for no liquidity', async () => {
+      let rate = await reserve.getConversionRate(
+        testToken.address,
+        ethAddress,
+        srcAmount,
+        new BN(0)
+      )
+      Helper.assertEqual(rate, zeroBN, 'rate is not 0')
+    })
+
+    it('test getConventionRate for e2t', async () => {
+      let numTestToken = new BN(10).pow(new BN(18))
+      await testToken.approve(uniswapRouter.address, numTestToken)
+
+      await uniswapRouter.addLiquidityETH(
+        testToken.address,
+        numTestToken,
+        new BN(0),
+        new BN(0),
+        accounts[0],
+        deadline,
+        {value: new BN(10).pow(new BN(19)).mul(new BN(5)), from: accounts[0]}
+      )
+
+      let rate = await reserve.getConversionRate(
+        ethAddress,
+        testToken.address,
+        srcAmount,
+        new BN(0)
+      )
+      let uniswapDstQty = await uniswapRouter.getAmountsOut(
+        srcAmount.mul(BPS.sub(feeBps)).div(BPS),
+        [weth.address, testToken.address]
+      )
+
+      let expectedRate = Helper.calcRateFromQty(
+        srcAmount,
+        uniswapDstQty[1],
+        ethDecimals,
+        testTokenDecimal
+      )
+      Helper.assertEqual(rate, expectedRate, 'unexpected rate')
+    })
+
+    it('test getConventionRate for t2e', async () => {
+      let rate = await reserve.getConversionRate(
+        testToken.address,
+        ethAddress,
+        srcAmount,
+        new BN(0)
+      )
+
+      let uniswapDstQty = await uniswapRouter.getAmountsOut(srcAmount, [
+        testToken.address,
+        weth.address
+      ])
+
+      let expectedRate = Helper.calcRateFromQty(
+        srcAmount,
+        uniswapDstQty[1].mul(BPS.sub(feeBps)).div(BPS),
+        testTokenDecimal,
+        ethDecimals
+      )
+      Helper.assertEqual(rate, expectedRate, 'unexpected rate')
+    })
+  })
+
   describe('test trade function', async () => {
+    let testToken2 = accounts[5]
     before('set up ', async () => {
       let numTestToken = new BN(10).pow(new BN(18))
       await testToken.approve(uniswapRouter.address, numTestToken)
@@ -77,6 +346,46 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         network
       )
       await reserve.listToken(testToken.address, {from: admin})
+      await reserve.addAlerter(alerter, {from: admin})
+    })
+
+    it('test trade revert if token is not listed', async () => {
+      let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
+      await expectRevert(
+        reserve.trade(ethAddress, srcAmount, testToken2, destAddress, new BN(1), true, {
+          value: srcAmount,
+          from: network
+        }),
+        'token is not listed'
+      )
+    })
+
+    it('test trade revert if not from network', async () => {
+      let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
+      let rate = await reserve.getConversionRate(ethAddress, testToken.address, srcAmount, zeroBN)
+      Helper.assertGreater(rate, zeroBN, 'rate 0')
+
+      await expectRevert(
+        reserve.trade(ethAddress, srcAmount, testToken.address, destAddress, rate, true, {
+          value: srcAmount,
+          from: admin
+        }),
+        'only kyberNetwork'
+      )
+    })
+
+    it('test trade revert if trade is disabled', async () => {
+      await reserve.disableTrade({from: alerter})
+      let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
+
+      await expectRevert(
+        reserve.trade(ethAddress, srcAmount, testToken.address, destAddress, new BN(1), true, {
+          value: srcAmount,
+          from: admin
+        }),
+        'trade is disabled'
+      )
+      await reserve.enableTrade({from: admin})
     })
 
     it('test e2t', async () => {
