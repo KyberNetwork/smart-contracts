@@ -1849,8 +1849,8 @@ contract('KyberNetwork', function(accounts) {
             for (tradeType of tradeTypesArray) {
                 it(`should revert with 0 rate due to wrong ${tradeStr[tradeType]}`, async() => {
                     let hintType = tradeType;
-                    hint = await nwHelper.getWrongHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
-    
+                    hint = await nwHelper.getWrongHint(rateHelper, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+
                     await srcToken.transfer(network.address, srcQty);
                     await expectRevert(
                         network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,

@@ -664,18 +664,17 @@ async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, n
 }
 
 module.exports.getWrongHint = getWrongHint;
-async function getWrongHint(rateHelper, matchingEngine, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
+async function getWrongHint(rateHelper, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
     function buildHint(tradeType, reserveIds, splits) {
         return web3.eth.abi.encodeParameters(
-            ['uint8', 'bytes32[]', 'uint[]'],
-            [tradeType, reserveIds, splits],
+            ['uint8', 'bytes32[]', 'uint256[]'],
+            [tradeType, reserveIds, splits]
         );
     }
 
     let reserveCandidates;
     let hintedReservese2t;
     let hintedReservest2e;
-    let hint;
     let t2eHint;
     let e2tHint;
 
@@ -683,12 +682,12 @@ async function getWrongHint(rateHelper, matchingEngine, reserveInstances, hintTy
         reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, srcAdd, qty, true);
         hintedReservest2e = applyHintToReserves(hintType, reserveCandidates, numReserves);
 
-        // Adds splits if MASK_IN or MASK_OUT
         // Remove all splits of SPLIT
-        if (hintType === MASK_IN_HINTTYPE || hintType === MASK_OUT_HINTTYPE) {
-            hintedReservest2e.splits.push(5000);
-        } else {
+        // Adds splits for other cases
+        if (hintType == SPLIT_HINTTYPE) {
             hintedReservest2e.splits = [];
+        } else {
+            hintedReservest2e.splits.push(5000);
         }
 
         t2eHint = buildHint(hintedReservest2e.tradeType, hintedReservest2e.reservesForHint, hintedReservest2e.splits);
@@ -701,12 +700,12 @@ async function getWrongHint(rateHelper, matchingEngine, reserveInstances, hintTy
         reserveCandidates = await fetchReservesRatesFromNetwork(rateHelper, reserveInstances, destAdd, qty, false);
         hintedReservese2t = applyHintToReserves(hintType, reserveCandidates, numReserves);
 
-        // Adds splits if MASK_IN or MASK_OUT
         // Remove all splits of SPLIT
-        if (hintType === MASK_IN_HINTTYPE || hintType === MASK_OUT_HINTTYPE) {
-            hintedReservese2t.splits.push(5000);
-        } else {
+        // Adds splits for other cases
+        if (hintType == SPLIT_HINTTYPE) {
             hintedReservese2t.splits = [];
+        } else {
+            hintedReservese2t.splits.push(5000);
         }
 
         e2tHint = buildHint(hintedReservese2t.tradeType, hintedReservese2t.reservesForHint, hintedReservese2t.splits);
@@ -717,7 +716,7 @@ async function getWrongHint(rateHelper, matchingEngine, reserveInstances, hintTy
 
     return web3.eth.abi.encodeParameters(
         ['bytes', 'bytes'],
-        [t2eHint, e2tHint],
+        [t2eHint, e2tHint]
     );
 }
 
