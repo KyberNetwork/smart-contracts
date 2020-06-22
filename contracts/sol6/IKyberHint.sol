@@ -7,13 +7,13 @@ interface IKyberHint {
     enum TradeType {BestOfAll, MaskIn, MaskOut, Split}
     enum HintErrors {
         NoError, // Hint is valid
-        NonEmptyDataError, // reserveIDs and splits must be empty for BestOfAll hint
+        ReserveIdNotEmptyError, // reserveIDs must be empty for BestOfAll hint
         ReserveIdDupError, // duplicate reserveID found
-        ReserveIdEmptyError, // reserveIDs array is empty for MaskIn and Split trade type
+        ReserveIdEmptyError, // reserveIDs cannot be empty for MaskIn and Split trade type
         ReserveIdSplitsError, // reserveIDs and splitBpsValues arrays do not have the same length
         ReserveIdSequenceError, // reserveID sequence in array is not in increasing order
         ReserveIdNotFound, // reserveID isn't registered or doesn't exist
-        SplitsNotEmptyError, // splitBpsValues is not empty for MaskIn or MaskOut trade type
+        SplitsNotEmptyError, // splitBpsValues must be empty for BestOfAll, MaskIn, MaskOut
         TokenListedError, // reserveID not listed for the token
         TotalBPSError // total BPS for Split trade type is not 10000 (100%)
     }

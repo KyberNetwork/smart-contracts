@@ -407,7 +407,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         uint256[] memory splits
     ) internal pure returns (HintErrors) {
         if (tradeType == TradeType.BestOfAll) {
-            if (reserveIds.length != 0 || splits.length != 0) return HintErrors.NonEmptyDataError;
+            if (reserveIds.length != 0) return HintErrors.ReserveIdNotEmptyError;
         }
 
         if (
@@ -434,7 +434,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
     /// @notice Throws error message to user to indicate error on hint
     /// @param error Error type from HintErrors enum
     function throwHintError(HintErrors error) internal pure {
-        if (error == HintErrors.NonEmptyDataError) revert("reserveIds and splits must be empty");
+        if (error == HintErrors.ReserveIdNotEmptyError) revert("reserveIds must be empty");
         if (error == HintErrors.ReserveIdDupError) revert("duplicate reserveId");
         if (error == HintErrors.ReserveIdEmptyError) revert("reserveIds cannot be empty");
         if (error == HintErrors.ReserveIdSplitsError) revert("reserveIds.length != splits.length");
