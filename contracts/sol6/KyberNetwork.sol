@@ -265,6 +265,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         for(uint i = 0; i < reserves.length; i++) {
             if (add) {
                 token.safeApprove(reserves[i], 2**255);
+                setDecimals(token);
             } else {
                 token.safeApprove(reserves[i], 0);
             }
