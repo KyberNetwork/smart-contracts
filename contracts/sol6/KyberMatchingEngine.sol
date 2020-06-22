@@ -109,13 +109,16 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
         if (tradeType == TradeType.MaskIn) {
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
-        } else if (tradeType == TradeType.MaskOut) {
-            // if mask out, apply masking out logic
+        } else if (tradeType == TradeType.BestOfAll || tradeType == TradeType.MaskOut) {
             bytes32[] memory allReserves = (dest == ETH_TOKEN_ADDRESS)
                 ? kyberStorage.getReserveIdsPerTokenSrc(src)
                 : kyberStorage.getReserveIdsPerTokenDest(dest);
 
-            reserveIds = maskOutReserves(allReserves, reserveIds);
+            // if bestOfAll, reserveIds = allReserves
+            // if mask out, apply masking out logic
+            reserveIds = (tradeType == TradeType.BestOfAll) ?
+                allReserves :
+                maskOutReserves(allReserves, reserveIds);
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         }
 

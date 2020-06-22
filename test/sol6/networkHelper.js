@@ -559,7 +559,6 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
         numReserves = reserves.length;
         for (let i=0; i < numReserves; i++) {
             reserve = reserves[i];
-            result.reservesForHint.push(reserve.reserveId);
             result.reservesForFetchRate.push(reserve);
         }
     } else if (tradeType == MASK_IN_HINTTYPE) {
@@ -613,7 +612,6 @@ function applyHintToReserves(tradeType, reserves, numReserves, splitValues) {
 
 module.exports.getHint = getHint;
 async function getHint(rateHelper, matchingEngine, reserveInstances, hintType, numReserves, srcAdd, destAdd, qty) {
-    if (hintType == BEST_OF_ALL_HINTTYPE) return emptyHint;
 
     let reserveCandidates;
     let hintedReservese2t;
