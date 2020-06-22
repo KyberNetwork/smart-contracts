@@ -27,7 +27,7 @@ const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY, MAX_RATE} = require("../helper.js");
 const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK,
-    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType}  = require('./networkHelper.js');
+    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 
 //global variables
 //////////////////
@@ -71,8 +71,8 @@ let reserve;
 let numReserves;
 let info;
 let hint;
-const tradeTypesArray = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE];
-const tradeStr = ["MASK IN", "MASK OUT", "SPLIT", "NO HINT"];
+const tradeTypesArray = [BEST_OF_ALL_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE];
+const tradeStr = ["BEST OF ALL", "MASK IN", "MASK OUT", "SPLIT"];
 
 //tokens data
 ////////////
@@ -1849,8 +1849,8 @@ contract('KyberNetwork', function(accounts) {
             for (tradeType of tradeTypesArray) {
                 it(`should revert with 0 rate due to wrong ${tradeStr[tradeType]}`, async() => {
                     let hintType = tradeType;
-                    hint = await nwHelper.getWrongHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
-    
+                    hint = await nwHelper.getWrongHint(rateHelper, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+
                     await srcToken.transfer(network.address, srcQty);
                     await expectRevert(
                         network.tradeWithHintAndFee(network.address, srcToken.address, srcQty, ethAddress, taker,
@@ -2130,8 +2130,8 @@ contract('KyberNetwork', function(accounts) {
 
                 // both are split
                 hint = await mockMatchingEngine.buildTokenToTokenHint(
-                    srcToken.address, 2, t2eReserveIDs, [3333, 3333, 3334],
-                    destToken.address, 2, e2tReserveIDs, [3333, 3333, 3334]
+                    srcToken.address, SPLIT_HINTTYPE, t2eReserveIDs, [3333, 3333, 3334],
+                    destToken.address, SPLIT_HINTTYPE, e2tReserveIDs, [3333, 3333, 3334]
                 );
 
                 let expectedResult = await nwHelper.getAndCalcRates(
@@ -2180,7 +2180,7 @@ contract('KyberNetwork', function(accounts) {
 
             it("test that gas helper can't revert trade even if it reverts", async() => {
                 platformFeeBps = new BN(50);
-                let hintType = EMPTY_HINTTYPE;
+                let hintType = BEST_OF_ALL_HINTTYPE;
                 hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, destToken.address, ethSrcQty);
 
                 // If any other wallet is used other than platformWallet, gasHelper will revert;
@@ -2310,7 +2310,7 @@ contract('KyberNetwork', function(accounts) {
 
             it("should success when e2t with dgx, network not pays fee", async() => {
                 let ethSrcQty = new BN(10).pow(new BN(18));
-                let hintType = EMPTY_HINTTYPE;
+                let hintType = BEST_OF_ALL_HINTTYPE;
                 hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, ethAddress, dgxToken.address, ethSrcQty);
 
                 info = [ethSrcQty, networkFeeBps, platformFeeBps];
@@ -2337,7 +2337,7 @@ contract('KyberNetwork', function(accounts) {
 
             it("should success when t2e with dgx, network pays fee", async() => {
                 let srcQty = new BN(10).pow(new BN(9));
-                let hintType = EMPTY_HINTTYPE;
+                let hintType = BEST_OF_ALL_HINTTYPE;
                 hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, dgxToken.address, ethAddress, srcQty);
 
                 info = [srcQty, networkFeeBps, platformFeeBps];
@@ -2367,7 +2367,7 @@ contract('KyberNetwork', function(accounts) {
 
             it("should success when t2e with dgx, network pays fee with maxDestAmount", async() => {
                 let srcQty = new BN(10).pow(new BN(9));
-                let hintType = EMPTY_HINTTYPE;
+                let hintType = BEST_OF_ALL_HINTTYPE;
                 hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, dgxToken.address, ethAddress, srcQty);
 
                 info = [srcQty, networkFeeBps, platformFeeBps];

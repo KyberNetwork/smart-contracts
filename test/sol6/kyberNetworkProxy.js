@@ -21,7 +21,7 @@ const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../helper.js");
 const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK, MASK_IN_HINTTYPE,
-    MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE}  = require('./networkHelper.js');
+    MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE}  = require('./networkHelper.js');
 
 //global variables
 //////////////////
@@ -61,8 +61,8 @@ let burnBlockInterval = new BN(30);
 let reserveInstances = [];
 let numReserves;
 let hint;
-const tradeTypesArray = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE];
-const tradeStr = ["MASK IN", "MASK OUT", "SPLIT", "NO HINT"];
+const tradeTypesArray = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE];
+const tradeStr = ["MASK IN", "MASK OUT", "SPLIT", "BEST OF ALL"];
 
 //tokens data
 ////////////
@@ -263,7 +263,7 @@ contract('KyberNetworkProxy', function(accounts) {
     });
 
     describe("test trades - report gas", async() => {
-        let tradeType = [SPLIT_HINTTYPE, EMPTY_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE];
+        let tradeType = [SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE, MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE];
         let typeStr = ['SPLIT', 'NO HINT', 'MASK_IN', 'MASK_OUT'];
 
         for(let i = 0; i < tradeType.length; i++) {
@@ -329,7 +329,7 @@ contract('KyberNetworkProxy', function(accounts) {
     });
 
     describe("test trades with maxDestAmount - report gas", async() => {
-        let tradeType = [SPLIT_HINTTYPE, EMPTY_HINTTYPE];
+        let tradeType = [SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE];
         let typeStr = ['SPLIT', 'NO HINT'];
 
         for(let i = 0; i < tradeType.length; i++) {
@@ -481,7 +481,7 @@ contract('KyberNetworkProxy', function(accounts) {
         let mockReserveInstances;
 
         // loop trades
-        let tradeType = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE];
+        let tradeType = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE];
         let typeStr = ['MASK_IN', 'MASK_OUT', 'SPLIT', 'NO HINT'];
 
         let srcToken;
