@@ -7,7 +7,6 @@ import "../../../utils/Utils5.sol";
 import "../../../utils/zeppelin/SafeERC20.sol";
 
 interface IUniswapV2Router01 {
-    function factory() external pure returns (address);
 
     function swapExactETHForTokens(
         uint256 amountOutMin,
@@ -33,6 +32,8 @@ interface IUniswapV2Router01 {
         external
         view
         returns (uint256[] memory amounts);
+
+    function factory() external pure returns (address);
 }
 
 interface IUniswapFactory {
@@ -100,6 +101,7 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         require(_kyberNetwork != address(0), "kyberNetwork 0");
 
         uniswapRouter = _uniswapRouter;
+        // solhint-disable-mark-callable-contracts
         uniswapFactory = IUniswapFactory(_uniswapRouter.factory());
         admin = _admin;
         weth = _weth;
@@ -108,23 +110,6 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
 
     receive() external payable {
         emit EtherReceival(msg.sender, msg.value);
-    }
-
-    /**
-     *   @dev called by kybernetwork to get settlement rate
-     */
-    function getConversionRate(
-        IERC20 src,
-        IERC20 dest,
-        uint256 srcQty,
-        uint256 /* blockNumber */
-    ) external override view returns (uint256) {
-        if (!isValidTokens(src, dest)) return 0;
-        if (!tradeEnabled) return 0;
-        if (srcQty == 0) return 0;
-
-        (uint256 rate, ) = calcUniswapConversion(src, dest, srcQty);
-        return rate;
     }
 
     /**
@@ -248,37 +233,6 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         emit TokenListed(token, false);
     }
 
-    function addPath(
-        IERC20 token,
-        address[] memory paths,
-        bool isEthToToken
-    ) public {
-        onlyAdmin();
-        address[][] storage allPaths;
-
-        require(paths.length >= 2, "paths is too short");
-        if (isEthToToken) {
-            require(paths[0] == weth, "start address of paths is not weth");
-            require(
-                paths[paths.length - 1] == address(token),
-                "end address of paths is not token"
-            );
-            allPaths = e2tSwapPaths[token];
-        } else {
-            require(paths[0] == address(token), "start address of paths is not token");
-            require(paths[paths.length - 1] == weth, "end address of paths is not weth");
-            allPaths = t2eSwapPaths[token];
-        }
-        // verify the pair is existed and the pair has liquidity
-        for (uint256 i = 0; i < paths.length - 1; i++) {
-            address uniswapPair = uniswapFactory.getPair(paths[i], paths[i + 1]);
-            require(uniswapPair != address(0), "uniswapPair not found");
-            (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(uniswapPair).getReserves();
-            require(reserve0 > 0 && reserve1 > 0, "insufficient liquidity");
-        }
-        allPaths.push(paths);
-    }
-
     function removePath(
         IERC20 token,
         bool isEthTotoken,
@@ -317,6 +271,55 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
             kyberNetwork = _kyberNetwork;
             emit KyberNetworkSet(kyberNetwork);
         }
+    }
+
+    /**
+     *   @dev called by kybernetwork to get settlement rate
+     */
+    function getConversionRate(
+        IERC20 src,
+        IERC20 dest,
+        uint256 srcQty,
+        uint256 /* blockNumber */
+    ) external override view returns (uint256) {
+        if (!isValidTokens(src, dest)) return 0;
+        if (!tradeEnabled) return 0;
+        if (srcQty == 0) return 0;
+
+        (uint256 rate, ) = calcUniswapConversion(src, dest, srcQty);
+        return rate;
+    }
+
+
+    function addPath(
+        IERC20 token,
+        address[] memory paths,
+        bool isEthToToken
+    ) public {
+        onlyAdmin();
+        address[][] storage allPaths;
+
+        require(paths.length >= 2, "paths is too short");
+        if (isEthToToken) {
+            require(paths[0] == weth, "start address of paths is not weth");
+            require(
+                paths[paths.length - 1] == address(token),
+                "end address of paths is not token"
+            );
+            allPaths = e2tSwapPaths[token];
+        } else {
+            require(paths[0] == address(token), "start address of paths is not token");
+            require(paths[paths.length - 1] == weth, "end address of paths is not weth");
+            allPaths = t2eSwapPaths[token];
+        }
+        // verify the pair is existed and the pair has liquidity
+        for (uint256 i = 0; i < paths.length - 1; i++) {
+            address uniswapPair = uniswapFactory.getPair(paths[i], paths[i + 1]);
+            require(uniswapPair != address(0), "uniswapPair not found");
+            (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(uniswapPair).getReserves();
+            require(reserve0 > 0 && reserve1 > 0, "insufficient liquidity");
+        }
+        allPaths.push(paths);
     }
 
     function deductFee(uint256 amount) internal view returns (uint256) {
