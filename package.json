@@ -46,7 +46,7 @@
     "mv": "2.1.1",
     "got": "^11.1.0",
     "prettier": "2.0.4",
-    "prettier-plugin-solidity": "1.0.0-alpha.48",
+    "prettier-plugin-solidity": "1.0.0-alpha.54",
     "solidity-coverage": "0.7.5"
   }
 }
