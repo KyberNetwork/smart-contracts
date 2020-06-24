@@ -27,6 +27,7 @@ let UniswapV2Factory
 let UniswapV2Router02
 
 let admin
+let operator
 let alerter
 let network
 let uniswapFactory
@@ -47,9 +48,10 @@ contract('KyberUniswapv2Reserve', function (accounts) {
     UniswapV2Router02 = truffleContract(UniswapV2Router02Output)
     UniswapV2Router02.setProvider(provider)
     admin = accounts[1]
-    network = accounts[2]
-    destAddress = accounts[3]
-    alerter = accounts[4]
+    operator = accounts[2]
+    alerter = accounts[3]
+    network = accounts[4]
+    destAddress = accounts[5]
 
     weth = await WETH9.new()
     testToken = await TestToken.new('test token', 'TST', new BN(15))
@@ -138,6 +140,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         network
       )
       await reserve.addAlerter(alerter, {from: admin})
+      await reserve.addOperator(operator, {from: admin})
       testToken = await TestToken.new('test token', 'TST', new BN(15))
     })
 
@@ -146,6 +149,9 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       expectEvent(txResult, 'FeeUpdated', {
         feeBps: new BN(100)
       })
+
+      txResult = await reserve.setFee(new BN(100), {from: admin})
+      expectEvent.notEmitted(txResult, 'FeeUpdated')
     })
 
     it('test revert setFee if not admin', async () => {
@@ -179,17 +185,26 @@ contract('KyberUniswapv2Reserve', function (accounts) {
     })
 
     describe('test list - delist token', async () => {
-      it('test list token revert from non-admin', async () => {
-        await expectRevert(reserve.listToken(testToken.address, {from: alerter}), 'only admin')
+      it('test list token revert from non-operator', async () => {
+        await expectRevert(
+          reserve.listToken(testToken.address, true, true, {from: alerter}),
+          'only operator'
+        )
       })
 
       it('test list token revert if token 0', async () => {
-        await expectRevert(reserve.listToken(zeroAddress, {from: admin}), 'token 0')
+        await expectRevert(reserve.listToken(zeroAddress, true, true, {from: operator}), 'token 0')
+      })
+
+      it('test list token succes without default path', async () => {
+        await reserve.listToken(testToken.address, false, false, {from: operator})
+        //revert change
+        await reserve.delistToken(testToken.address, {from: operator})
       })
 
       it('test list token revert if token pair does not exist', async () => {
         await expectRevert(
-          reserve.listToken(testToken.address, {from: admin}),
+          reserve.listToken(testToken.address, true, true, {from: operator}),
           'uniswapPair not found'
         )
       })
@@ -198,11 +213,11 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         // create the pair but no liquidity
         await uniswapFactory.createPair(testToken.address, weth.address, {from: accounts[0]})
         await expectRevert(
-          reserve.listToken(testToken.address, {from: admin}),
+          reserve.listToken(testToken.address, true, true, {from: operator}),
           'insufficient liquidity'
         )
       })
-      it('test list token success', async () => {
+      it('test list token success with default path added', async () => {
         //add liquidity to the pair
         let numTestToken = new BN(10).pow(new BN(18))
         await testToken.approve(uniswapRouter.address, numTestToken)
@@ -215,32 +230,179 @@ contract('KyberUniswapv2Reserve', function (accounts) {
           maxUint256,
           {value: new BN(10).pow(new BN(19)).mul(new BN(5)), from: accounts[0]}
         )
-        let txResult = await reserve.listToken(testToken.address, {from: admin})
+        let txResult = await reserve.listToken(testToken.address, true, true, {from: operator})
         expectEvent(txResult, 'TokenListed', {
           token: testToken.address,
           add: true
         })
 
         assert(await reserve.tokenListed(testToken.address), 'tokenListed is false')
+
+        await expectRevert(
+          reserve.listToken(testToken.address, true, true, {from: operator}),
+          'token is listed'
+        )
       })
 
-      it('test delist token revert if not admin', async () => {
-        await expectRevert(reserve.delistToken(testToken.address, {from: alerter}), 'only admin')
+      it('test list token with verifying paths is existed', async () => {
+        let testToken = await TestToken.new('test token', 'TST', new BN(15))
+        let numTestToken = new BN(10).pow(new BN(18))
+        await testToken.approve(uniswapRouter.address, numTestToken)
+        await uniswapRouter.addLiquidityETH(
+          testToken.address,
+          numTestToken,
+          new BN(0),
+          new BN(0),
+          accounts[0],
+          maxUint256,
+          {value: new BN(10).pow(new BN(19)).mul(new BN(5)), from: accounts[0]}
+        )
+        await expectRevert(
+          reserve.listToken(testToken.address, false, true, {from: operator}),
+          'no path is exists for e2t'
+        )
+
+        await reserve.addPath(testToken.address, [weth.address, testToken.address], true, {
+          from: operator
+        })
+        await expectRevert(
+          reserve.listToken(testToken.address, false, true, {from: operator}),
+          'no path is exists for t2e'
+        )
+
+        await reserve.addPath(testToken.address, [testToken.address, weth.address], false, {
+          from: operator
+        })
+        await reserve.listToken(testToken.address, false, true, {from: operator})
+      })
+
+      it('test delist token revert if not operator', async () => {
+        await expectRevert(
+          reserve.delistToken(testToken.address, {from: alerter}),
+          'only operator'
+        )
       })
 
       it('test delist token revert if not listed token', async () => {
-        await expectRevert(reserve.delistToken(network, {from: admin}), 'token is not listed')
+        await expectRevert(reserve.delistToken(network, {from: operator}), 'token is not listed')
       })
 
       it('test delist token success', async () => {
         let uniswapPair = await uniswapFactory.getPair(testToken.address, weth.address)
-        let txResult = await reserve.delistToken(testToken.address, {from: admin})
+        let txResult = await reserve.delistToken(testToken.address, {from: operator})
         expectEvent(txResult, 'TokenListed', {
           token: testToken.address,
           add: false
         })
 
         assert(!(await reserve.tokenListed(testToken.address)), 'tokenListed should be removed')
+      })
+    })
+
+    describe('test add - remove path', async () => {
+      before('set up', async () => {
+        reserve = await KyberUniswapv2Reserve.new(
+          uniswapRouter.address,
+          weth.address,
+          admin,
+          network
+        )
+        await reserve.addAlerter(alerter, {from: admin})
+        await reserve.addOperator(operator, {from: admin})
+        testToken = await TestToken.new('test token', 'TST', new BN(15))
+        testToken2 = await TestToken.new('test token2', 'TST2', new BN(19))
+      })
+
+      it('test add path revert if invalid path', async () => {
+        await expectRevert(
+          reserve.addPath(testToken.address, [weth.address], true, {from: operator}),
+          'path is too short'
+        )
+        await expectRevert(
+          reserve.addPath(testToken.address, [weth.address, testToken2.address], true, {
+            from: operator
+          }),
+          'end address of path is not token'
+        )
+        await expectRevert(
+          reserve.addPath(testToken.address, [testToken2.address, testToken.address], true, {
+            from: operator
+          }),
+          'start address of path is not weth'
+        )
+
+        await expectRevert(
+          reserve.addPath(testToken.address, [testToken2.address, weth.address], false, {
+            from: operator
+          }),
+          'start address of path is not token'
+        )
+        await expectRevert(
+          reserve.addPath(testToken.address, [testToken.address, testToken2.address], false, {
+            from: operator
+          }),
+          'end address of path is not weth'
+        )
+      })
+
+      it('test add path revert from non-operator', async () => {
+        await expectRevert(
+          reserve.addPath(testToken.address, [weth.address, testToken.address], true, {from: admin}),
+          'only operator'
+        )
+      })
+
+      it('test add path success', async () => {
+        //add liquidity to the pair
+        let numTestToken = new BN(10).pow(new BN(18))
+        await testToken.approve(uniswapRouter.address, numTestToken)
+        await uniswapRouter.addLiquidityETH(
+          testToken.address,
+          numTestToken,
+          new BN(0),
+          new BN(0),
+          accounts[0],
+          maxUint256,
+          {value: new BN(10).pow(new BN(19)).mul(new BN(5)), from: accounts[0]}
+        )
+        let txResult = await reserve.addPath(
+          testToken.address,
+          [testToken.address, weth.address],
+          false,
+          {
+            from: operator
+          }
+        )
+        expectEvent(txResult, 'TokenPathAdded', {
+          token: testToken.address,
+          path: [testToken.address, weth.address],
+          isEthToToken: false,
+          add: true
+        })
+      })
+
+      it('test remove path revert from non-operator', async () => {
+        await expectRevert(
+          reserve.removePath(testToken.address, false, new BN(1), {from: admin}),
+          'only operator'
+        )
+      })
+
+      it('test remove path revert with invalid index', async () => {
+        await expectRevert(
+          reserve.removePath(testToken.address, false, new BN(1), {from: operator}),
+          'invalid index'
+        )
+      })
+
+      it('test remove path success', async () => {
+        let txResult = await reserve.removePath(testToken.address, false, new BN(0), {from: operator})
+        expectEvent(txResult, 'TokenPathAdded', {
+          token: testToken.address,
+          path: [testToken.address, weth.address],
+          isEthToToken: false,
+          add: false
+        })
       })
     })
   })
@@ -272,7 +434,32 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         maxUint256,
         {value: new BN(10).pow(new BN(19)).mul(new BN(5)), from: accounts[0]}
       )
-      await reserve.listToken(testToken.address, {from: admin})
+
+      await reserve.addOperator(operator, {from: admin})
+      await reserve.addAlerter(alerter, {from: admin})
+      await reserve.listToken(testToken.address, true, true, {from: operator})
+    })
+
+    it('test getConventionRate if token is not listed', async () => {
+      let rate = await reserve.getConversionRate(ethAddress, accounts[7], zeroBN, new BN(0))
+      Helper.assertEqual(zeroBN, rate, 'rate should be 0')
+    })
+
+    it('test getConventionRate if trade is not enable', async () => {
+      await reserve.disableTrade({from: alerter})
+      let rate = await reserve.getConversionRate(
+        ethAddress,
+        testToken.address,
+        srcAmount,
+        new BN(0)
+      )
+      Helper.assertEqual(zeroBN, rate, 'rate should be 0')
+      await reserve.enableTrade({from: admin})
+    })
+
+    it('test getConventionRate if srcQty = 0', async () => {
+      let rate = await reserve.getConversionRate(ethAddress, testToken.address, zeroBN, new BN(0))
+      Helper.assertEqual(zeroBN, rate, 'rate should be 0')
     })
 
     it('test getConventionRate for e2t', async () => {
@@ -365,8 +552,9 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         admin,
         network
       )
-      await reserve.listToken(testToken.address, {from: admin})
+      await reserve.addOperator(operator, {from: admin})
       await reserve.addAlerter(alerter, {from: admin})
+      await reserve.listToken(testToken.address, true, true, {from: operator})
     })
 
     it('test trade revert if token is not listed', async () => {
@@ -408,6 +596,59 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       await reserve.enableTrade({from: admin})
     })
 
+    it('test trade revert if conversionRate is 0', async () => {
+      let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
+      await expectRevert(
+        reserve.trade(ethAddress, srcAmount, testToken.address, destAddress, new BN(0), true, {
+          value: srcAmount,
+          from: network
+        }),
+        'conversionRate 0'
+      )
+    })
+
+    it('test revert revert if trade t2e but msg.value is not zero', async () => {
+      let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
+      await expectRevert(
+        reserve.trade(testToken.address, srcAmount, ethAddress, destAddress, new BN(1), true, {
+          value: srcAmount,
+          from: network
+        }),
+        'msg.value is not 0'
+      )
+    })
+
+    it('test revert revert if trade e2t but msg.value is srcAmount', async () => {
+      let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
+      await expectRevert(
+        reserve.trade(ethAddress, srcAmount, testToken.address, destAddress, new BN(1), true, {
+          value: srcAmount.add(new BN(1)),
+          from: network
+        }),
+        'msg.value != srcAmount'
+      )
+    })
+
+    it('test revert revert if conversionRate is too high', async () => {
+      let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
+      let rate = await reserve.getConversionRate(ethAddress, testToken.address, srcAmount, zeroBN)
+      await expectRevert(
+        reserve.trade(
+          ethAddress,
+          srcAmount,
+          testToken.address,
+          destAddress,
+          rate.add(new BN(1)),
+          true,
+          {
+            value: srcAmount,
+            from: network
+          }
+        ),
+        'expected conversionRate <= actualRate'
+      )
+    })
+
     it('test e2t', async () => {
       let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
       let rate = await reserve.getConversionRate(ethAddress, testToken.address, srcAmount, zeroBN)
@@ -434,19 +675,19 @@ contract('KyberUniswapv2Reserve', function (accounts) {
 
     describe('test trade with undirect path', async () => {
       before('remove direct path, add undirect path only', async () => {
-        await reserve.removePath(testToken.address, true, 0, {from: admin})
-        await reserve.removePath(testToken.address, false, 0, {from: admin})
+        await reserve.removePath(testToken.address, true, 0, {from: operator})
+        await reserve.removePath(testToken.address, false, 0, {from: operator})
         await reserve.addPath(
           testToken.address,
           [testToken.address, testToken2.address, weth.address],
           false,
-          {from: admin}
+          {from: operator}
         )
         await reserve.addPath(
           testToken.address,
           [weth.address, testToken2.address, testToken.address],
           true,
-          {from: admin}
+          {from: operator}
         )
       })
 

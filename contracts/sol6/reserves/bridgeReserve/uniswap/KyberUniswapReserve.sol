@@ -1,70 +1,29 @@
 pragma solidity 0.6.6;
 
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
+
 import "../../../IKyberReserve.sol";
 import "../../../IERC20.sol";
 import "../../../utils/WithdrawableNoModifiers.sol";
 import "../../../utils/Utils5.sol";
 import "../../../utils/zeppelin/SafeERC20.sol";
 
-interface IUniswapV2Router01 {
-
-    function swapExactETHForTokens(
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external payable returns (uint256[] memory amounts);
-
-    function swapExactTokensForETH(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external returns (uint256[] memory amounts);
-
-    function getAmountsOut(uint256 amountIn, address[] calldata path)
-        external
-        view
-        returns (uint256[] memory amounts);
-
-    function getAmountsIn(uint256 amountOut, address[] calldata path)
-        external
-        view
-        returns (uint256[] memory amounts);
-
-    function factory() external pure returns (address);
-}
-
-interface IUniswapFactory {
-    function getPair(address tokenA, address tokenB) external view returns (address pair);
-}
-
-interface IUniswapV2Pair {
-    function getReserves()
-        external
-        view
-        returns (
-            uint112 reserve0,
-            uint112 reserve1,
-            uint32 blockTimestampLast
-        );
-}
-
 contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5 {
     using SafeERC20 for IERC20;
 
-    uint256 public constant DEFAULT_FEE_BPS = 25;
+    uint256 public constant DEFAULT_FEE_BPS = 0;
     uint256 public constant DEADLINE = 2**255;
 
-    address public kyberNetwork;
+    address public immutable kyberNetwork;
     // fee deducted for each trade
     uint256 public feeBps = DEFAULT_FEE_BPS;
 
     bool public tradeEnabled = true;
 
     IUniswapV2Router01 public immutable uniswapRouter;
-    IUniswapFactory public immutable uniswapFactory;
+    IUniswapV2Factory public immutable uniswapFactory;
     address public immutable weth;
 
     mapping(IERC20 => bool) public tokenListed;
@@ -73,18 +32,18 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
 
     event TradeExecute(
         address indexed sender,
-        IERC20 srcToken,
+        IERC20 indexed srcToken,
         uint256 srcAmount,
-        IERC20 destToken,
+        IERC20 indexed destToken,
         uint256 destAmount,
         address destAddress
     );
 
     event TokenListed(IERC20 indexed token, bool add);
 
-    event TradeEnabled(bool enable);
+    event TokenPathAdded(IERC20 indexed token, address[] path, bool isEthToToken, bool add);
 
-    event KyberNetworkSet(address kyberNetwork);
+    event TradeEnabled(bool enable);
 
     event FeeUpdated(uint256 feeBps);
 
@@ -101,8 +60,7 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         require(_kyberNetwork != address(0), "kyberNetwork 0");
 
         uniswapRouter = _uniswapRouter;
-        // solhint-disable-mark-callable-contracts
-        uniswapFactory = IUniswapFactory(_uniswapRouter.factory());
+        uniswapFactory = IUniswapV2Factory(_uniswapRouter.factory());
         admin = _admin;
         weth = _weth;
         kyberNetwork = _kyberNetwork;
@@ -121,17 +79,17 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         IERC20 destToken,
         address payable destAddress,
         uint256 conversionRate,
-        bool validate
+        bool /* validate */
     ) external override payable returns (bool) {
         require(tradeEnabled, "trade is disabled");
         require(msg.sender == kyberNetwork, "only kyberNetwork");
         require(isValidTokens(srcToken, destToken), "token is not listed");
 
-        if (validate) {
-            require(conversionRate > 0, "conversionRate 0");
-            if (srcToken == ETH_TOKEN_ADDRESS)
-                require(msg.value == srcAmount, "msg.value != srcAmount");
-            else require(msg.value == 0, "msg.value is not 0");
+        require(conversionRate > 0, "conversionRate 0");
+        if (srcToken == ETH_TOKEN_ADDRESS) {
+            require(msg.value == srcAmount, "msg.value != srcAmount");
+        } else {
+            require(msg.value == 0, "msg.value is not 0");
         }
 
         uint256 expectedDestAmount = calcDestAmount(
@@ -147,7 +105,7 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
             destToken,
             srcAmount
         );
-        require(conversionRate <= actualRate, "conversionRate > actualRate");
+        require(conversionRate <= actualRate, "expected conversionRate <= actualRate");
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             // Deduct fees (in ETH) before converting
@@ -199,20 +157,31 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         }
     }
 
-    function listToken(IERC20 token) external {
-        onlyAdmin();
+    function listToken(
+        IERC20 token,
+        bool addDefaultPaths,
+        bool validate
+    ) external {
+        onlyOperator();
         require(address(token) != address(0), "token 0");
 
         require(!tokenListed[token], "token is listed");
         tokenListed[token] = true;
         // list the direct path
-        address[] memory paths = new address[](2);
-        paths[0] = weth;
-        paths[1] = address(token);
-        addPath(token, paths, true);
-        paths[0] = address(token);
-        paths[1] = weth;
-        addPath(token, paths, false);
+        if (addDefaultPaths) {
+            address[] memory paths = new address[](2);
+            paths[0] = weth;
+            paths[1] = address(token);
+            addPath(token, paths, true);
+            paths[0] = address(token);
+            paths[1] = weth;
+            addPath(token, paths, false);
+        }
+        // check if any path is exists for this token
+        if (validate && !addDefaultPaths) {
+            require(e2tSwapPaths[token].length != 0, "no path is exists for e2t");
+            require(t2eSwapPaths[token].length != 0, "no path is exists for t2e");
+        }
 
         token.safeApprove(address(uniswapRouter), 2**255);
 
@@ -222,7 +191,7 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
     }
 
     function delistToken(IERC20 token) external {
-        onlyAdmin();
+        onlyOperator();
         require(tokenListed[token], "token is not listed");
         delete tokenListed[token];
         // clear all paths data
@@ -238,7 +207,7 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         bool isEthTotoken,
         uint256 index
     ) external {
-        onlyAdmin();
+        onlyOperator();
         address[][] storage allPaths;
         if (isEthTotoken) {
             allPaths = e2tSwapPaths[token];
@@ -246,8 +215,11 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
             allPaths = t2eSwapPaths[token];
         }
         require(index < allPaths.length, "invalid index");
+        address[] memory path = allPaths[index];
         allPaths[index] = allPaths[allPaths.length - 1];
         allPaths.pop();
+
+        emit TokenPathAdded(token, path, isEthTotoken, false);
     }
 
     function enableTrade() external returns (bool) {
@@ -262,15 +234,6 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         tradeEnabled = false;
         emit TradeEnabled(false);
         return true;
-    }
-
-    function setKyberNetwork(address _kyberNetwork) external {
-        onlyAdmin();
-        require(_kyberNetwork != address(0));
-        if (kyberNetwork != _kyberNetwork) {
-            kyberNetwork = _kyberNetwork;
-            emit KyberNetworkSet(kyberNetwork);
-        }
     }
 
     /**
@@ -290,36 +253,37 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         return rate;
     }
 
-
     function addPath(
         IERC20 token,
-        address[] memory paths,
+        address[] memory path,
         bool isEthToToken
     ) public {
-        onlyAdmin();
+        onlyOperator();
         address[][] storage allPaths;
 
-        require(paths.length >= 2, "paths is too short");
+        require(path.length >= 2, "path is too short");
         if (isEthToToken) {
-            require(paths[0] == weth, "start address of paths is not weth");
+            require(path[0] == weth, "start address of path is not weth");
             require(
-                paths[paths.length - 1] == address(token),
-                "end address of paths is not token"
+                path[path.length - 1] == address(token),
+                "end address of path is not token"
             );
             allPaths = e2tSwapPaths[token];
         } else {
-            require(paths[0] == address(token), "start address of paths is not token");
-            require(paths[paths.length - 1] == weth, "end address of paths is not weth");
+            require(path[0] == address(token), "start address of path is not token");
+            require(path[path.length - 1] == weth, "end address of path is not weth");
             allPaths = t2eSwapPaths[token];
         }
         // verify the pair is existed and the pair has liquidity
-        for (uint256 i = 0; i < paths.length - 1; i++) {
-            address uniswapPair = uniswapFactory.getPair(paths[i], paths[i + 1]);
+        for (uint256 i = 0; i < path.length - 1; i++) {
+            address uniswapPair = uniswapFactory.getPair(path[i], path[i + 1]);
             require(uniswapPair != address(0), "uniswapPair not found");
             (uint256 reserve0, uint256 reserve1, ) = IUniswapV2Pair(uniswapPair).getReserves();
             require(reserve0 > 0 && reserve1 > 0, "insufficient liquidity");
         }
-        allPaths.push(paths);
+        allPaths.push(path);
+
+        emit TokenPathAdded(token, path, isEthToToken, true);
     }
 
     function deductFee(uint256 amount) internal view returns (uint256) {
