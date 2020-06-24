@@ -731,6 +731,10 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             success;
         }
 
+        if (tradeData.input.platformFeeBps == 0) {
+            assert(destAmount >= calcDstQty(actualSrcAmount, tradeData.tokenToEth.decimals, tradeData.ethToToken.decimals, rateWithNetworkFee));
+        } 
+
         return (destAmount);
     }
 
