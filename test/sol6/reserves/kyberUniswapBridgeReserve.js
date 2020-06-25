@@ -1,6 +1,6 @@
 const UniswapV2FactoryOutput = require('@uniswap/v2-core/build/UniswapV2Factory.json')
 const UniswapV2Router02Output = require('@uniswap/v2-periphery/build/UniswapV2Router02.json')
-const KyberUniswapv2Reserve = artifacts.require('KyberUniswapv2Reserve.sol')
+const KyberUniswapV2Reserve = artifacts.require('KyberUniswapV2Reserve.sol')
 const WETH9 = artifacts.require('WETH9.sol')
 const TestToken = artifacts.require('Token.sol')
 
@@ -66,34 +66,34 @@ contract('KyberUniswapv2Reserve', function (accounts) {
   describe('constructor params', () => {
     it('test revert if uniswapFactory 0', async () => {
       await expectRevert(
-        KyberUniswapv2Reserve.new(zeroAddress, weth.address, admin, network),
+        KyberUniswapV2Reserve.new(zeroAddress, weth.address, admin, network),
         'uniswapRouter 0'
       )
     })
 
     it('test revert if weth 0', async () => {
       await expectRevert(
-        KyberUniswapv2Reserve.new(uniswapFactory.address, zeroAddress, admin, network),
+        KyberUniswapV2Reserve.new(uniswapFactory.address, zeroAddress, admin, network),
         'weth 0'
       )
     })
 
     it('test revert if kyberNetwork 0', async () => {
       await expectRevert(
-        KyberUniswapv2Reserve.new(uniswapFactory.address, weth.address, admin, zeroAddress),
+        KyberUniswapV2Reserve.new(uniswapFactory.address, weth.address, admin, zeroAddress),
         'kyberNetwork 0'
       )
     })
 
     it('test revert if admin 0', async () => {
       await expectRevert(
-        KyberUniswapv2Reserve.new(uniswapFactory.address, weth.address, zeroAddress, network),
+        KyberUniswapV2Reserve.new(uniswapFactory.address, weth.address, zeroAddress, network),
         'admin 0'
       )
     })
 
     it('test constructor success', async () => {
-      reserve = await KyberUniswapv2Reserve.new(
+      reserve = await KyberUniswapV2Reserve.new(
         uniswapRouter.address,
         weth.address,
         admin,
@@ -109,7 +109,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
   describe('send and withdraw token', async () => {
     let sendAmount = new BN(10).pow(new BN(18))
     before('set up reserve', async () => {
-      reserve = await KyberUniswapv2Reserve.new(
+      reserve = await KyberUniswapV2Reserve.new(
         uniswapRouter.address,
         weth.address,
         admin,
@@ -133,7 +133,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
   describe('test permission operation', () => {
     let testToken
     before('set up reserve', async () => {
-      reserve = await KyberUniswapv2Reserve.new(
+      reserve = await KyberUniswapV2Reserve.new(
         uniswapRouter.address,
         weth.address,
         admin,
@@ -301,7 +301,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
 
     describe('test add - remove path', async () => {
       before('set up', async () => {
-        reserve = await KyberUniswapv2Reserve.new(
+        reserve = await KyberUniswapV2Reserve.new(
           uniswapRouter.address,
           weth.address,
           admin,
@@ -413,7 +413,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
     let testTokenDecimal = new BN(15)
     let feeBps = new BN(89)
     before('set up reserve', async () => {
-      reserve = await KyberUniswapv2Reserve.new(
+      reserve = await KyberUniswapV2Reserve.new(
         uniswapRouter.address,
         weth.address,
         admin,
@@ -546,7 +546,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         {from: accounts[0]}
       )
 
-      reserve = await KyberUniswapv2Reserve.new(
+      reserve = await KyberUniswapV2Reserve.new(
         uniswapRouter.address,
         weth.address,
         admin,
@@ -607,7 +607,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       )
     })
 
-    it('test revert revert if trade t2e but msg.value is not zero', async () => {
+    it('test revert if trade t2e but msg.value is not zero', async () => {
       let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
       await expectRevert(
         reserve.trade(testToken.address, srcAmount, ethAddress, destAddress, new BN(1), true, {
@@ -629,7 +629,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       )
     })
 
-    it('test revert revert if conversionRate is too high', async () => {
+    it('test revert if conversionRate is too high', async () => {
       let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
       let rate = await reserve.getConversionRate(ethAddress, testToken.address, srcAmount, zeroBN)
       await expectRevert(
