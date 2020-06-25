@@ -15,7 +15,9 @@ const emptyHint = '0x';
 const zeroBN = new BN(0);
 const MAX_QTY = new BN(10).pow(new BN(28));
 const MAX_RATE = precisionUnits.mul(new BN(10).pow(new BN(7)));
-module.exports = {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY, MAX_RATE};
+const MAX_ALLOWANCE = ((new BN(2)).pow(new BN(256))).sub(new BN(1));
+module.exports = {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, 
+  emptyHint, zeroBN, MAX_QTY, MAX_RATE, MAX_ALLOWANCE};
 
 module.exports.isRevertErrorMessageContains = function(error, msg) {
     return (error.message.search(msg) >= 0);

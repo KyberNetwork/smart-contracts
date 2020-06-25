@@ -225,7 +225,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(msg.sender == address(kyberStorage), "only kyberStorage");
 
         if (add) {
-            token.safeApprove(reserve, 2**255);
+            token.safeApprove(reserve, MAX_ALLOWANCE);
             setDecimals(token);
         } else {
             token.safeApprove(reserve, 0);
@@ -264,7 +264,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         for(uint i = 0; i < reserves.length; i++) {
             if (add) {
-                token.safeApprove(reserves[i], 2**255);
+                token.safeApprove(reserves[i], MAX_ALLOWANCE);
                 setDecimals(token);
             } else {
                 token.safeApprove(reserves[i], 0);
