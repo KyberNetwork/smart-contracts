@@ -25,7 +25,8 @@ const nwHelper = require("./networkHelper.js");
 const BN = web3.utils.BN;
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN, MAX_QTY, MAX_RATE} = require("../helper.js");
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, 
+    zeroBN, MAX_QTY, MAX_RATE, MAX_ALLOWANCE} = require("../helper.js");
 const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK,
     MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE, ReserveType}  = require('./networkHelper.js');
 
@@ -551,7 +552,7 @@ contract('KyberNetwork', function(accounts) {
                 {from: tempStorage}
             );
             Helper.assertEqual(
-                new BN(2).pow(new BN(255)),
+                MAX_ALLOWANCE,
                 await token.allowance(tempNetwork.address, mockReserve.address)
             );
         });
@@ -662,7 +663,7 @@ contract('KyberNetwork', function(accounts) {
                 Helper.assertEqual(eventLogs.args.reserves.length, 1);
                 Helper.assertEqual(reserveAddresses[0], eventLogs.args.reserves[0]);
                 Helper.assertEqual(
-                    new BN(2).pow(new BN(255)),
+                    MAX_ALLOWANCE,
                     await token.allowance(tempNetwork.address, reserveAddresses[0])
                 );
                 // unlist reserves
@@ -711,7 +712,7 @@ contract('KyberNetwork', function(accounts) {
                 for(let i = 0; i < 1; i++) {
                     Helper.assertEqual(reserveAddresses[i], eventLogs.args.reserves[i]);
                     Helper.assertEqual(
-                        new BN(2).pow(new BN(255)),
+                        MAX_ALLOWANCE,
                         await token.allowance(tempNetwork.address, reserveAddresses[i])
                     );
                 }

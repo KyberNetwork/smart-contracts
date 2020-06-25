@@ -19,6 +19,7 @@ contract Utils5 {
     uint256 internal constant MAX_DECIMALS = 18;
     uint256 internal constant ETH_DECIMALS = 18;
     uint256 constant BPS = 10000; // Basic Price Steps. 1 step = 0.01%
+    uint256 internal constant MAX_ALLOWANCE = uint256(-1); // token.approve inifinite
 
     mapping(IERC20 => uint256) internal decimals;
 
