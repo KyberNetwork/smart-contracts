@@ -180,7 +180,7 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
             require(t2eSwapPaths[token].length != 0, "no path is exists for t2e");
         }
 
-        token.safeApprove(address(uniswapRouter), 2**255);
+        token.safeApprove(address(uniswapRouter), MAX_ALLOWANCE);
 
         setDecimals(token);
 

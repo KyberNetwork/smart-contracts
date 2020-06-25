@@ -11,14 +11,11 @@ const {expectEvent, expectRevert} = require('@openzeppelin/test-helpers')
 
 const {
   BPS,
-  precisionUnits,
   ethDecimals,
   ethAddress,
   zeroAddress,
-  emptyHint,
   zeroBN,
-  MAX_QTY,
-  MAX_RATE
+  MAX_ALLOWANCE
 } = require('../../helper.js')
 const Helper = require('../../helper.js')
 const {assert} = require('chai')
@@ -235,6 +232,9 @@ contract('KyberUniswapv2Reserve', function (accounts) {
           token: testToken.address,
           add: true
         })
+        // allowance should be max
+        let allowance = await testToken.allowance(reserve.address, uniswapRouter.address)
+        Helper.assertEqual(MAX_ALLOWANCE, allowance, "allowance should be max")
 
         assert(await reserve.tokenListed(testToken.address), 'tokenListed is false')
 
@@ -296,6 +296,9 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         })
 
         assert(!(await reserve.tokenListed(testToken.address)), 'tokenListed should be removed')
+        // allowance should be 0
+        let allowance = await testToken.allowance(reserve.address, uniswapRouter.address)
+        Helper.assertEqual(zeroBN, allowance, "allowance should be 0")
       })
     })
 
@@ -347,7 +350,9 @@ contract('KyberUniswapv2Reserve', function (accounts) {
 
       it('test add path revert from non-operator', async () => {
         await expectRevert(
-          reserve.addPath(testToken.address, [weth.address, testToken.address], true, {from: admin}),
+          reserve.addPath(testToken.address, [weth.address, testToken.address], true, {
+            from: admin
+          }),
           'only operator'
         )
       })
@@ -396,7 +401,9 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       })
 
       it('test remove path success', async () => {
-        let txResult = await reserve.removePath(testToken.address, false, new BN(0), {from: operator})
+        let txResult = await reserve.removePath(testToken.address, false, new BN(0), {
+          from: operator
+        })
         expectEvent(txResult, 'TokenPathAdded', {
           token: testToken.address,
           path: [testToken.address, weth.address],
