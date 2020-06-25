@@ -155,7 +155,35 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(hint, expected);
             });
 
-            it('should revert the T2E BEST-OF-ALL HINT if reserveIds or splits is NOT EMPTY', async() => {
+            it('should revert the T2E BEST-OF-ALL HINT if reserveIds is NOT EMPTY', async() => {
+                t2eOpcode = BEST_OF_ALL;
+                
+                await expectRevert(
+                    hintHandler.buildTokenToEthHint(
+                        t2eToken,
+                        t2eOpcode,
+                        t2eReserves,
+                        [],
+                    ),
+                    'reserveIds and splits must be empty'
+                );
+            });
+
+            it('should revert the T2E BEST-OF-ALL HINT if splits is NOT EMPTY', async() => {
+                t2eOpcode = BEST_OF_ALL;
+                
+                await expectRevert(
+                    hintHandler.buildTokenToEthHint(
+                        t2eToken,
+                        t2eOpcode,
+                        [],
+                        t2eSplits,
+                    ),
+                    'reserveIds and splits must be empty'
+                );
+            });
+
+            it('should revert the T2E BEST-OF-ALL HINT if reserveIds and splits are NOT EMPTY', async() => {
                 t2eOpcode = BEST_OF_ALL;
                 
                 await expectRevert(
@@ -315,7 +343,35 @@ contract('KyberHintHandler', function(accounts) {
                 Helper.assertEqual(hint, expected);
             });
 
-            it('should revert the E2T BEST-OF-ALL HINT if reserveIds or splits is NOT EMPTY', async() => {
+            it('should revert the E2T BEST-OF-ALL HINT if reserveIds is NOT EMPTY', async() => {
+                e2tOpcode = BEST_OF_ALL;
+
+                await expectRevert(
+                    hintHandler.buildEthToTokenHint(
+                        e2tToken,
+                        e2tOpcode,
+                        e2tReserves,
+                        [],
+                    ),
+                    'reserveIds and splits must be empty'
+                );
+            });
+
+            it('should revert the E2T BEST-OF-ALL HINT if splits is NOT EMPTY', async() => {
+                e2tOpcode = BEST_OF_ALL;
+
+                await expectRevert(
+                    hintHandler.buildEthToTokenHint(
+                        e2tToken,
+                        e2tOpcode,
+                        [],
+                        e2tSplits,
+                    ),
+                    'reserveIds and splits must be empty'
+                );
+            });
+
+            it('should revert the E2T BEST-OF-ALL HINT if reserveIds and splits are NOT EMPTY', async() => {
                 e2tOpcode = BEST_OF_ALL;
 
                 await expectRevert(
@@ -779,7 +835,47 @@ contract('KyberHintHandler', function(accounts) {
                     Helper.assertEqual(hint, expected);
                 });
     
-                it(`should revert the T2T hint for T2E BEST-OF-ALL HINT, E2T ${e2tTradeType} if reserveIds or splits is NOT EMPTY`, async() => {
+                it(`should revert the T2T hint for T2E BEST-OF-ALL HINT, E2T ${e2tTradeType} if T2E reserveIds is NOT EMPTY`, async() => {
+                    t2eOpcode = BEST_OF_ALL;
+                    e2tOpcode = TRADE_TYPES[e2tTradeType];
+                    e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
+
+                    await expectRevert(
+                        hintHandler.buildTokenToTokenHint(
+                            t2eToken,
+                            t2eOpcode,
+                            t2eReserves,
+                            [],
+                            e2tToken,
+                            e2tOpcode,
+                            e2tReserves,
+                            e2tSplits,
+                        ),
+                        'reserveIds and splits must be empty'
+                    );
+                });
+
+                it(`should revert the T2T hint for T2E BEST-OF-ALL HINT, E2T ${e2tTradeType} if T2E splits is NOT EMPTY`, async() => {
+                    t2eOpcode = BEST_OF_ALL;
+                    e2tOpcode = TRADE_TYPES[e2tTradeType];
+                    e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
+
+                    await expectRevert(
+                        hintHandler.buildTokenToTokenHint(
+                            t2eToken,
+                            t2eOpcode,
+                            [],
+                            t2eSplits,
+                            e2tToken,
+                            e2tOpcode,
+                            e2tReserves,
+                            e2tSplits,
+                        ),
+                        'reserveIds and splits must be empty'
+                    );
+                });
+
+                it(`should revert the T2T hint for T2E BEST-OF-ALL HINT, E2T ${e2tTradeType} if T2E reserveIds and splits are NOT EMPTY`, async() => {
                     t2eOpcode = BEST_OF_ALL;
                     e2tOpcode = TRADE_TYPES[e2tTradeType];
                     e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
@@ -830,7 +926,47 @@ contract('KyberHintHandler', function(accounts) {
                     Helper.assertEqual(hint, expected);
                 });
     
-                it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T BEST-OF-ALL HINT if reserveIds or splits is NOT EMPTY`, async() => {
+                it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T BEST-OF-ALL HINT if E2T reserveIds is NOT EMPTY`, async() => {
+                    t2eOpcode = TRADE_TYPES[t2eTradeType];
+                    t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                    e2tOpcode = BEST_OF_ALL;
+                    
+                    await expectRevert(
+                        hintHandler.buildTokenToTokenHint(
+                            t2eToken,
+                            t2eOpcode,
+                            t2eReserves,
+                            t2eSplits,
+                            e2tToken,
+                            e2tOpcode,
+                            e2tReserves,
+                            [],
+                        ),
+                        'reserveIds and splits must be empty'
+                    );
+                });
+
+                it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T BEST-OF-ALL HINT if E2T splits is NOT EMPTY`, async() => {
+                    t2eOpcode = TRADE_TYPES[t2eTradeType];
+                    t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                    e2tOpcode = BEST_OF_ALL;
+                    
+                    await expectRevert(
+                        hintHandler.buildTokenToTokenHint(
+                            t2eToken,
+                            t2eOpcode,
+                            t2eReserves,
+                            t2eSplits,
+                            e2tToken,
+                            e2tOpcode,
+                            [],
+                            e2tSplits,
+                        ),
+                        'reserveIds and splits must be empty'
+                    );
+                });
+
+                it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T BEST-OF-ALL HINT if E2T reserveIds and splits are NOT EMPTY`, async() => {
                     t2eOpcode = TRADE_TYPES[t2eTradeType];
                     t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
                     e2tOpcode = BEST_OF_ALL;
@@ -1285,7 +1421,31 @@ contract('KyberHintHandler', function(accounts) {
                 t2eMissingReserves = T2E_MISSING;
             });
 
-            it('should revert the T2E BEST-OF-ALL HINT due to reserveIds or splits not empty', async() => {
+            it('should revert the T2E BEST-OF-ALL HINT due to reserveIds not empty', async() => {
+                t2eHintType = BEST_OF_ALL;
+                t2eSplits = BPS_SPLIT;
+
+                hint = Helper.buildHint('BEST_OF_ALL')(t2eHintType, t2eReserves, []);
+                
+                await expectRevert(
+                    hintHandler.parseTokenToEthHint(t2eToken, hint),
+                    'reserveIds and splits must be empty'
+                );
+            });
+
+            it('should revert the T2E BEST-OF-ALL HINT due to splits not empty', async() => {
+                t2eHintType = BEST_OF_ALL;
+                t2eSplits = BPS_SPLIT;
+
+                hint = Helper.buildHint('BEST_OF_ALL')(t2eHintType, [], t2eSplits);
+                
+                await expectRevert(
+                    hintHandler.parseTokenToEthHint(t2eToken, hint),
+                    'reserveIds and splits must be empty'
+                );
+            });
+
+            it('should revert the T2E BEST-OF-ALL HINT due to reserveIds and splits not empty', async() => {
                 t2eHintType = BEST_OF_ALL;
                 t2eSplits = BPS_SPLIT;
 
@@ -1456,7 +1616,31 @@ contract('KyberHintHandler', function(accounts) {
                 e2tMissingReserves = E2T_MISSING;
             });
 
-            it('should revert the E2T BEST-OF-ALL HINT due to reserveIds or splits not empty', async() => {
+            it('should revert the E2T BEST-OF-ALL HINT due to reserveIds not empty', async() => {
+                e2tHintType = BEST_OF_ALL;
+                e2tSplits = BPS_SPLIT;
+
+                hint = Helper.buildHint('BEST_OF_ALL')(e2tHintType, e2tReserves, []);
+                
+                await expectRevert(
+                    hintHandler.parseEthToTokenHint(e2tToken, hint),
+                    'reserveIds and splits must be empty'
+                );
+            });
+
+            it('should revert the E2T BEST-OF-ALL HINT due to splits not empty', async() => {
+                e2tHintType = BEST_OF_ALL;
+                e2tSplits = BPS_SPLIT;
+
+                hint = Helper.buildHint('BEST_OF_ALL')(e2tHintType, [], e2tSplits);
+                
+                await expectRevert(
+                    hintHandler.parseEthToTokenHint(e2tToken, hint),
+                    'reserveIds and splits must be empty'
+                );
+            });
+
+            it('should revert the E2T BEST-OF-ALL HINT due to reserveIds and splits not empty', async() => {
                 e2tHintType = BEST_OF_ALL;
                 e2tSplits = BPS_SPLIT;
 
@@ -1635,7 +1819,53 @@ contract('KyberHintHandler', function(accounts) {
             });
 
             Object.keys(TRADE_TYPES).forEach(e2tTradeType => {
-                it(`should revert the T2T hint for T2E BEST-OF-ALL HINT, E2T ${e2tTradeType} due to reserveIds or splits not empty`, async() => {
+                it(`should revert the T2T hint for T2E BEST-OF-ALL HINT, E2T ${e2tTradeType} due to T2E reserveIds not empty`, async() => {
+                    t2eHintType = BEST_OF_ALL;
+                    t2eSplits = [];
+                    e2tHintType = TRADE_TYPES[e2tTradeType];
+                    e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
+
+                    hint = Helper.buildHintT2T(
+                        'BEST_OF_ALL',
+                        t2eHintType,
+                        t2eReserves,
+                        t2eSplits,
+                        e2tTradeType,
+                        e2tHintType,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+
+                    await expectRevert(
+                        hintHandler.parseTokenToTokenHint(t2eToken, e2tToken, hint),
+                        'reserveIds and splits must be empty'
+                    );
+                });
+
+                it(`should revert the T2T hint for T2E BEST-OF-ALL HINT, E2T ${e2tTradeType} due to T2E splits not empty`, async() => {
+                    t2eHintType = BEST_OF_ALL;
+                    t2eSplits = BPS_SPLIT;
+                    e2tHintType = TRADE_TYPES[e2tTradeType];
+                    e2tSplits = (e2tTradeType == 'SPLIT') ? BPS_SPLIT : [];
+
+                    hint = Helper.buildHintT2T(
+                        'BEST_OF_ALL',
+                        t2eHintType,
+                        [],
+                        t2eSplits,
+                        e2tTradeType,
+                        e2tHintType,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+
+                    await expectRevert(
+                        hintHandler.parseTokenToTokenHint(t2eToken, e2tToken, hint),
+                        'reserveIds and splits must be empty'
+                    );
+                });
+
+                it(`should revert the T2T hint for T2E BEST-OF-ALL HINT, E2T ${e2tTradeType} due to T2E reserveIds and splits not empty`, async() => {
                     t2eHintType = BEST_OF_ALL;
                     t2eSplits = BPS_SPLIT;
                     e2tHintType = TRADE_TYPES[e2tTradeType];
@@ -1660,7 +1890,53 @@ contract('KyberHintHandler', function(accounts) {
             });
 
             Object.keys(TRADE_TYPES).forEach(t2eTradeType => {
-                it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T BEST-OF-ALL HINT due to reserveIds or splits not empty`, async() => {
+                it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T BEST-OF-ALL HINT due to E2T reserveIds not empty`, async() => {
+                    t2eHintType = TRADE_TYPES[t2eTradeType];
+                    t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                    e2tHintType = BEST_OF_ALL;
+                    e2tSplits = [];
+
+                    hint = Helper.buildHintT2T(
+                        t2eTradeType,
+                        t2eHintType,
+                        t2eReserves,
+                        t2eSplits,
+                        'BEST_OF_ALL',
+                        e2tHintType,
+                        e2tReserves,
+                        e2tSplits,
+                    );
+
+                    await expectRevert(
+                        hintHandler.parseTokenToTokenHint(t2eToken, e2tToken, hint),
+                        'reserveIds and splits must be empty'
+                    );
+                });
+
+                it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T BEST-OF-ALL HINT due to E2T splits not empty`, async() => {
+                    t2eHintType = TRADE_TYPES[t2eTradeType];
+                    t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
+                    e2tHintType = BEST_OF_ALL;
+                    e2tSplits = BPS_SPLIT;
+
+                    hint = Helper.buildHintT2T(
+                        t2eTradeType,
+                        t2eHintType,
+                        t2eReserves,
+                        t2eSplits,
+                        'BEST_OF_ALL',
+                        e2tHintType,
+                        [],
+                        e2tSplits,
+                    );
+
+                    await expectRevert(
+                        hintHandler.parseTokenToTokenHint(t2eToken, e2tToken, hint),
+                        'reserveIds and splits must be empty'
+                    );
+                });
+
+                it(`should revert the T2T hint for T2E ${t2eTradeType}, E2T BEST-OF-ALL HINT due to E2T reserveIds splits not empty`, async() => {
                     t2eHintType = TRADE_TYPES[t2eTradeType];
                     t2eSplits = (t2eTradeType == 'SPLIT') ? BPS_SPLIT : [];
                     e2tHintType = BEST_OF_ALL;
