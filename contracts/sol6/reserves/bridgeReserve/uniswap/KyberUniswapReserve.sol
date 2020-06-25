@@ -6,11 +6,11 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 
 import "../../../IKyberReserve.sol";
 import "../../../IERC20.sol";
-import "../../../utils/WithdrawableNoModifiers.sol";
+import "../../../utils/Withdrawable3.sol";
 import "../../../utils/Utils5.sol";
 import "../../../utils/zeppelin/SafeERC20.sol";
 
-contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5 {
+contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
     using SafeERC20 for IERC20;
 
     uint256 public constant DEFAULT_FEE_BPS = 0;
@@ -54,14 +54,13 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         address _weth,
         address _admin,
         address _kyberNetwork
-    ) public WithdrawableNoModifiers(_admin) {
+    ) public Withdrawable3(_admin) {
         require(address(_uniswapRouter) != address(0), "uniswapRouter 0");
         require(_weth != address(0), "weth 0");
         require(_kyberNetwork != address(0), "kyberNetwork 0");
 
         uniswapRouter = _uniswapRouter;
         uniswapFactory = IUniswapV2Factory(_uniswapRouter.factory());
-        admin = _admin;
         weth = _weth;
         kyberNetwork = _kyberNetwork;
     }
@@ -148,8 +147,7 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         return true;
     }
 
-    function setFee(uint256 _feeBps) external {
-        onlyAdmin();
+    function setFee(uint256 _feeBps) external onlyAdmin {
         require(_feeBps < BPS, "fee >= BPS");
         if (_feeBps != feeBps) {
             feeBps = _feeBps;
@@ -161,9 +159,8 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         IERC20 token,
         bool addDefaultPaths,
         bool validate
-    ) external {
-        onlyOperator();
-        require(address(token) != address(0), "token 0");
+    ) external onlyOperator {
+        require(token != IERC20(0), "token 0");
 
         require(!tokenListed[token], "token is listed");
         tokenListed[token] = true;
@@ -190,8 +187,7 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         emit TokenListed(token, true);
     }
 
-    function delistToken(IERC20 token) external {
-        onlyOperator();
+    function delistToken(IERC20 token) external onlyOperator {
         require(tokenListed[token], "token is not listed");
         delete tokenListed[token];
         // clear all paths data
@@ -206,8 +202,7 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         IERC20 token,
         bool isEthTotoken,
         uint256 index
-    ) external {
-        onlyOperator();
+    ) external onlyOperator {
         address[][] storage allPaths;
         if (isEthTotoken) {
             allPaths = e2tSwapPaths[token];
@@ -222,15 +217,13 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         emit TokenPathAdded(token, path, isEthTotoken, false);
     }
 
-    function enableTrade() external returns (bool) {
-        onlyAdmin();
+    function enableTrade() external onlyAdmin returns (bool) {
         tradeEnabled = true;
         emit TradeEnabled(true);
         return true;
     }
 
-    function disableTrade() external returns (bool) {
-        onlyAlerter();
+    function disableTrade() external onlyAlerter returns (bool) {
         tradeEnabled = false;
         emit TradeEnabled(false);
         return true;
@@ -257,17 +250,13 @@ contract KyberUniswapv2Reserve is IKyberReserve, WithdrawableNoModifiers, Utils5
         IERC20 token,
         address[] memory path,
         bool isEthToToken
-    ) public {
-        onlyOperator();
+    ) public onlyOperator {
         address[][] storage allPaths;
 
         require(path.length >= 2, "path is too short");
         if (isEthToToken) {
             require(path[0] == weth, "start address of path is not weth");
-            require(
-                path[path.length - 1] == address(token),
-                "end address of path is not token"
-            );
+            require(path[path.length - 1] == address(token), "end address of path is not token");
             allPaths = e2tSwapPaths[token];
         } else {
             require(path[0] == address(token), "start address of path is not token");
