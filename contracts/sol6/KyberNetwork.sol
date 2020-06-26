@@ -41,7 +41,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     ///     If there is only 1 reserve, then it should have a value of 10000 bps
     /// @param srcAmounts Source amount per reserve.
     /// @param decimals Token decimals. Src decimals when for src -> eth, dest decimals when eth -> dest
-    struct ReservesData {
+        struct ReservesData {
         IKyberReserve[] addresses;
         bytes32[] ids;
         uint256[] rates;
@@ -535,6 +535,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
     function updateNetworkFee(uint256 expiryTimestamp, uint256 feeBps) internal {
         require(expiryTimestamp < 2**64, "expiry overflow");
+        //+ networkFeeBps < BPS / 2
         require(feeBps < BPS / 2, "fees exceed BPS");
 
         networkFeeData.expiryTimestamp = uint64(expiryTimestamp);
@@ -621,23 +622,25 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 // verify src balance only if it is not eth
                 balanceAfter = getBalance(src, address(this));
                 // verify correct src amount is taken
+                //* srcBalanceBefore >= balanceAfter --> srcBalanceBefore - balanceAfter >= 0 
                 if (srcBalanceBefore >= balanceAfter && srcBalanceBefore - balanceAfter > reservesData.srcAmounts[i]) {
                     revert("reserve takes high amount");
                 }
                 srcBalanceBefore = balanceAfter;
             }
 
-            // verify correct dest amount is received
+        // verify correct dest amount is received
             uint256 expectedDestAmount = calcDstQty(
                 reservesData.srcAmounts[i],
                 srcDecimals,
                 destDecimals,
                 reservesData.rates[i]
             );
-            balanceAfter = getBalance(dest, address(this));
-            if (balanceAfter < destBalanceBefore || balanceAfter - destBalanceBefore < expectedDestAmount) {
-                revert("reserve returns low amount");
-            }
+        balanceAfter = getBalance(dest, address(this));
+        //* !(balanceAfter < destBalanceBefore) => balanceAfter >= destBalanceBefore 
+        if (balanceAfter < destBalanceBefore || balanceAfter - destBalanceBefore < expectedDestAmount) {
+            revert("reserve returns low amount");
+        }
             destBalanceBefore = balanceAfter;
         }
     }
@@ -672,7 +675,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             actualSrcAmount = tradeData.input.srcAmount;
         }
 
-        // token -> eth
+       // token -> eth
         doReserveTrades(
             tradeData.input.src,
             ETH_TOKEN_ADDRESS,
@@ -747,6 +750,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         if (requiredSrcAmount < srcAmount) {
             // if there is "change" send back to trader
             if (src == ETH_TOKEN_ADDRESS) {
+                //* srcAmount > requiredSrcAmount. validated in: calcTradeSrcAmountFromDest
                 (bool success, ) = trader.call{value: (srcAmount - requiredSrcAmount)}("");
                 require(success, "Send change failed");
             } else {
@@ -806,12 +810,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             hint
         );
 
+        //* circulating eth 1e26 = 110 Million ETH. but we need this limit assumption for reverse calc.
         require(tradeData.tradeWei <= MAX_QTY, "Trade wei > MAX_QTY");
         if (tradeData.tradeWei == 0) {
             return (0, 0);
         }
 
         // calculate fees
+        //* networkFeeBps * 2 + platfromFeeBps < BPS && feeAccountedBps < BPS * 2
         tradeData.platformFeeWei = (tradeData.tradeWei * tradeData.input.platformFeeBps) / BPS;
         tradeData.networkFeeWei =
             (((tradeData.tradeWei * tradeData.networkFeeBps) / BPS) * tradeData.feeAccountedBps) /
@@ -820,6 +826,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         assert(tradeData.tradeWei >= (tradeData.networkFeeWei + tradeData.platformFeeWei));
 
         // eth -> token: find best reserves match and calculate trade dest amount
+        //* networkFeeBps * 2 + platfromFeeBps < BPS
         uint256 actualSrcWei = tradeData.tradeWei -
             tradeData.networkFeeWei -
             tradeData.platformFeeWei;
@@ -833,11 +840,13 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             hint
         );
 
+        //* networkFeeBps * 2 + platfromFeeBps < BPS
         tradeData.networkFeeWei =
             (((tradeData.tradeWei * tradeData.networkFeeBps) / BPS) * tradeData.feeAccountedBps) /
             BPS;
 
         rateWithNetworkFee = calcRateFromQty(
+        //* networkFeeBps * 2 + platfromFeeBps < BPS
             tradeData.input.srcAmount * (BPS - tradeData.input.platformFeeBps) / BPS,
             destAmount,
             tradeData.tokenToEth.decimals,
@@ -907,6 +916,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         // calculate dest amount and fee paying data of this part (t2e or e2t)
         destAmount = validateTradeCalcDestQtyAndFeeData(src, reservesData, tradeData);
+        // destAmount MAX = 1e53 (* numReserves). 100 reserves --> 1e55
     }
 
     /// @notice Calculates source amounts per reserve. Does get rate call
@@ -922,10 +932,16 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 destAmountFeeBps;
 
         if (src == ETH_TOKEN_ADDRESS) {
+            //* srcAmount = tradeWei * (BPS - networkFeeBps) / BPS (assuming all reserves for token to eth are fee Accounted)
+            //* srcAmountAfterFee = (tradeWei * (BPS - networkFeeBps) / BPS) -  (tradeWei * networkFeeBps / BPS)
+            //* (tradeWei * (BPS - networkFeeBps) / BPS) > (tradeWei * networkFeeBps / BPS) -->
+            //* BPS - networkFeeBps > networkFeeBps
             // @notice srcAmount is after deducting fees from tradeWei
             // @notice using tradeWei to calculate fee so eth -> token symmetric to token -> eth
             srcAmountAfterFee = srcAmount - 
                 (tradeData.tradeWei * tradeData.networkFeeBps / BPS);
+            //+ srcAmountAfterFee < MAX_QTY
+            // destAmountFeeBps = 0;
         } else { 
             srcAmountAfterFee = srcAmount;
             destAmountFeeBps = tradeData.networkFeeBps;
@@ -942,6 +958,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 "invalid split bps"
             );
 
+            //+ srcAmounts[i] <= srcAmount
+            //* reservesData.splitsBps[i] > BPS validated in calcSrcAmountsAndGetRates
             if (reservesData.isFeeAccountedFlags[i]) {
                 reservesData.srcAmounts[i] = srcAmountAfterFee * reservesData.splitsBps[i] / BPS;
                 feesAccountedDestBps[i] = destAmountFeeBps;
@@ -956,6 +974,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 reservesData.srcAmounts[i],
                 block.number
             );
+            //* reservesData.rates[i] <= MAX_RATE. validated in validateTradeCalcDestQtyAndFeeData when calcDstQty is called
         }
     }
 
@@ -1006,6 +1025,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         for (uint256 i = 0; i < reservesData.isEntitledRebateFlags.length; i++) {
             if (reservesData.isEntitledRebateFlags[i]) {
                 rebateReserveIds[_index] = reservesData.ids[i];
+                //* entitledRebateBps > splitsBps[i]. see validateTradeCalcDestQtyAndFeeData
                 rebatePercentBps[_index] = (reservesData.splitsBps[i] * BPS) / entitledRebateBps;
                 _index++;
             }
@@ -1108,28 +1128,32 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 totalBps;
         uint256 srcDecimals = (src == ETH_TOKEN_ADDRESS) ? ETH_DECIMALS : reservesData.decimals;
         uint256 destDecimals = (src == ETH_TOKEN_ADDRESS) ? reservesData.decimals : ETH_DECIMALS;
-        
+
         for (uint256 i = 0; i < reservesData.addresses.length; i++) {
             if (i > 0 && (uint256(reservesData.ids[i]) <= uint256(reservesData.ids[i - 1]))) {
                 return 0; // ids are not in increasing order
             }
+            //+ totalBps <= BPS (end of this function)
             totalBps += reservesData.splitsBps[i];
 
+            //+ destAmount <= MAX_QTY * MAX_RATE == 1e53
             uint256 destAmount = calcDstQty(
                 reservesData.srcAmounts[i],
                 srcDecimals,
                 destDecimals,
                 reservesData.rates[i]
             );
-            if (destAmount == 0) {
+           if (destAmount == 0) {
                 return 0;
             }
             totalDestAmount += destAmount;
 
+            //+ feeAccountedBps <= BPS for each trade part (t2e, e2t)
             if (reservesData.isFeeAccountedFlags[i]) {
                 tradeData.feeAccountedBps += reservesData.splitsBps[i];
 
                 if (reservesData.isEntitledRebateFlags[i]) {
+            //+ entitledRebateBps <= BPS
                     tradeData.entitledRebateBps += reservesData.splitsBps[i];
                     tradeData.numEntitledRebateReserves++;
                 }
@@ -1151,6 +1175,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     {
         uint256 weiAfterDeductingFees;
         if (tradeData.input.dest != ETH_TOKEN_ADDRESS) {
+            //* networkFeeBps * 2 + platfromFeeBps < BPS 
+            //* tradeData.tradeWei >= tradeData.platformFeeWei - tradeData.networkFeeWei
             weiAfterDeductingFees = calcTradeSrcAmount(
                 tradeData.tradeWei - tradeData.platformFeeWei - tradeData.networkFeeWei,
                 ETH_DECIMALS,
@@ -1162,6 +1188,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             weiAfterDeductingFees = tradeData.input.maxDestAmount;
         }
 
+        //* weiAfterDeductingFees < MAX_QTY
         // reverse calculation, because we are working backwards
         uint256 newTradeWei =
             (weiAfterDeductingFees * BPS * BPS) /
@@ -1170,6 +1197,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 tradeData.feeAccountedBps +
                 tradeData.input.platformFeeBps *
                 BPS));
+
+               // networkFeeBps * 2 + platformFeeBps < BPS
+               // feeAccountedBps < BPS * 2
+               // ==>
+               // networkFeeBps * feeAccountedBps + platformFeeBps * BPS < BPS * BPS
         tradeData.tradeWei = minOf(newTradeWei, tradeData.tradeWei);
         // recalculate network and platform fees based on tradeWei
         tradeData.networkFeeWei =
@@ -1204,7 +1236,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         ReservesData memory reservesData
     ) internal pure returns (uint256 newSrcAmount) {
         uint256 totalWeightedDestAmount;
+        //* notice: tradeWei && user srcAmount <= MAX_QTY <= 1e28, rate E2T: MAX_RATE = 1e25 
+        //* SUM(srcAmounts[0..i-1]) <= MAX_QTY
+        //* SUM(dstAmounts[0..i-1]) <= 1e53 
         for (uint256 i = 0; i < reservesData.srcAmounts.length; i++) {
+            //* totalWeightedDestAmount <= 1e28 * 1e25 <= 1e53
             totalWeightedDestAmount += reservesData.srcAmounts[i] * reservesData.rates[i];
         }
 
@@ -1220,10 +1256,16 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 "multiplication overflow");
             destAmountSplit = i == (reservesData.srcAmounts.length - 1)
                 ? (destAmount - destAmountSoFar)
+                //* (destAmount * currentSrcAmount * reservesData.rates[i]) = MAX_QTY * MAX_QTY * MAX_RATE => overflow check
+                //* SUM[reservesData.srcAmounts[ ..  i - 2] * reservesData.rates[0 .. i - 2])] < totalWeightedDestAmount => destAmountSoFar < destAmount
+                //* currentSrcAmount * reservesData.rates[i] <= totalWeightedDestAmount
                 : (destAmount * currentSrcAmount * reservesData.rates[i]) /
                     totalWeightedDestAmount;
             destAmountSoFar += destAmountSplit;
+            //+ destAmountSplit <= destAmount <= MAX_QTY * MAX_RATE <= 1e53
+            //+ destAmountSoFar <= totalDestAmount <= MAX_QTY * MAX_RATE
 
+            //* newSrcAmounts[i] <= MAX_QTY
             newSrcAmounts[i] = calcSrcQty(
                 destAmountSplit,
                 srcDecimals,
@@ -1235,6 +1277,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 return srcAmount;
             }
 
+            //* newSrcAmounts[i] <= srcAmounts[i] --> newSrcAmount <= srcAmount
             newSrcAmount += newSrcAmounts[i];
         }
         // new src amounts are used only when all of them aren't greater then current srcAmounts
