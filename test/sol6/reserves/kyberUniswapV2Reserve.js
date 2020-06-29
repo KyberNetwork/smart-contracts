@@ -254,7 +254,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         );
       });
 
-      it('test list token with verifying paths is existed', async () => {
+      it('test list token with verifying paths exists', async () => {
         let testToken = await TestToken.new('test token', 'TST', new BN(15));
         let numTestToken = new BN(10).pow(new BN(18));
         await testToken.approve(uniswapRouter.address, numTestToken);
@@ -269,7 +269,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         );
         await expectRevert(
           reserve.listToken(testToken.address, false, true, {from: operator}),
-          'no path is exists for e2t'
+          'no path exists for e2t'
         );
 
         await reserve.addPath(testToken.address, [weth.address, testToken.address], true, {
@@ -277,7 +277,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         });
         await expectRevert(
           reserve.listToken(testToken.address, false, true, {from: operator}),
-          'no path is exists for t2e'
+          'no path exists for t2e'
         );
 
         await reserve.addPath(testToken.address, [testToken.address, weth.address], false, {
