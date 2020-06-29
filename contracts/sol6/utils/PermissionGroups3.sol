@@ -1,13 +1,22 @@
 pragma solidity 0.6.6;
 
 contract PermissionGroups3 {
+    uint256 internal constant MAX_GROUP_SIZE = 50;
+
     address public admin;
     address public pendingAdmin;
     mapping(address => bool) internal operators;
     mapping(address => bool) internal alerters;
     address[] internal operatorsGroup;
     address[] internal alertersGroup;
-    uint256 internal constant MAX_GROUP_SIZE = 50;
+
+    event AdminClaimed(address newAdmin, address previousAdmin);
+
+    event TransferAdminPending(address pendingAdmin);
+
+    event OperatorAdded(address newOperator, bool isAdd);
+
+    event AlerterAdded(address newAlerter, bool isAdd);
 
     constructor(address _admin) public {
         require(_admin != address(0), "admin 0");
@@ -37,8 +46,6 @@ contract PermissionGroups3 {
         return alertersGroup;
     }
 
-    event TransferAdminPending(address pendingAdmin);
-
     /**
      * @dev Allows the current admin to set the pendingAdmin address.
      * @param newAdmin The address to transfer ownership to.
@@ -60,8 +67,6 @@ contract PermissionGroups3 {
         admin = newAdmin;
     }
 
-    event AdminClaimed(address newAdmin, address previousAdmin);
-
     /**
      * @dev Allows the pendingAdmin address to finalize the change admin process.
      */
@@ -71,8 +76,6 @@ contract PermissionGroups3 {
         admin = pendingAdmin;
         pendingAdmin = address(0);
     }
-
-    event AlerterAdded(address newAlerter, bool isAdd);
 
     function addAlerter(address newAlerter) public onlyAdmin {
         require(!alerters[newAlerter], "alerter exists"); // prevent duplicates.
@@ -96,8 +99,6 @@ contract PermissionGroups3 {
             }
         }
     }
-
-    event OperatorAdded(address newOperator, bool isAdd);
 
     function addOperator(address newOperator) public onlyAdmin {
         require(!operators[newOperator], "operator exists"); // prevent duplicates.

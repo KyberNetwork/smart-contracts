@@ -6,7 +6,7 @@ import "@uniswap/v2-periphery/contracts/libraries/UniswapV2Library.sol";
 contract MockUniswapRouter is UniswapV2Router02 {
     constructor(address _factory, address _weth) public UniswapV2Router02(_factory, _weth) {}
 
-    uint256 dstQty;
+    uint256 public dstQty;
 
     function setDstQty(uint256 _dstQty) external {
         dstQty = _dstQty;
