@@ -8,6 +8,8 @@ contract Withdrawable3 is PermissionGroups3 {
 
     event TokenWithdraw(IERC20 token, uint256 amount, address sendTo);
 
+    event EtherWithdraw(uint256 amount, address sendTo);
+
     /**
      * @dev Withdraw all IERC20 compatible tokens
      * @param token IERC20 The address of the token contract
@@ -20,8 +22,6 @@ contract Withdrawable3 is PermissionGroups3 {
         token.transfer(sendTo, amount);
         emit TokenWithdraw(token, amount, sendTo);
     }
-
-    event EtherWithdraw(uint256 amount, address sendTo);
 
     /**
      * @dev Withdraw Ethers
