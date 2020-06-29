@@ -174,10 +174,10 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
             paths[1] = weth;
             addPath(token, paths, false);
         }
-        // check if any path is exists for this token
+        // check if any path exists for this token
         if (validate && !addDefaultPaths) {
-            require(e2tSwapPaths[token].length != 0, "no path is exists for e2t");
-            require(t2eSwapPaths[token].length != 0, "no path is exists for t2e");
+            require(e2tSwapPaths[token].length != 0, "no path exists for e2t");
+            require(t2eSwapPaths[token].length != 0, "no path exists for t2e");
         }
 
         token.safeApprove(address(uniswapRouter), MAX_ALLOWANCE);
@@ -263,7 +263,7 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
             require(path[path.length - 1] == weth, "end address of path is not weth");
             allPaths = t2eSwapPaths[token];
         }
-        // verify the pair is existed and the pair has liquidity
+        // verify the pair existed and the pair has liquidity
         for (uint256 i = 0; i < path.length - 1; i++) {
             address uniswapPair = uniswapFactory.getPair(path[i], path[i + 1]);
             require(uniswapPair != address(0), "uniswapPair not found");
