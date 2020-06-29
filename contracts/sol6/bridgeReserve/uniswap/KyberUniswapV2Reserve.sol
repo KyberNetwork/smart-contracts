@@ -4,11 +4,11 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 
-import "../../../IKyberReserve.sol";
-import "../../../IERC20.sol";
-import "../../../utils/Withdrawable3.sol";
-import "../../../utils/Utils5.sol";
-import "../../../utils/zeppelin/SafeERC20.sol";
+import "../../IKyberReserve.sol";
+import "../../IERC20.sol";
+import "../../utils/Withdrawable3.sol";
+import "../../utils/Utils5.sol";
+import "../../utils/zeppelin/SafeERC20.sol";
 
 contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
     using SafeERC20 for IERC20;
@@ -82,7 +82,7 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
     ) external override payable returns (bool) {
         require(tradeEnabled, "trade is disabled");
         require(msg.sender == kyberNetwork, "only kyberNetwork");
-        require(isValidTokens(srcToken, destToken), "token is not listed");
+        require(isValidTokens(srcToken, destToken), "only use eth and listed token");
 
         require(conversionRate > 0, "conversionRate 0");
         if (srcToken == ETH_TOKEN_ADDRESS) {

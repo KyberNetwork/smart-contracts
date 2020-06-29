@@ -1,5 +1,6 @@
 const UniswapV2FactoryOutput = require('@uniswap/v2-core/build/UniswapV2Factory.json')
 const UniswapV2Router02Output = require('@uniswap/v2-periphery/build/UniswapV2Router02.json')
+const MockUniswapRounter = artifacts.require('MockUniswapRouter.sol')
 const KyberUniswapV2Reserve = artifacts.require('KyberUniswapV2Reserve.sol')
 const WETH9 = artifacts.require('WETH9.sol')
 const TestToken = artifacts.require('Token.sol')
@@ -234,7 +235,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         })
         // allowance should be max
         let allowance = await testToken.allowance(reserve.address, uniswapRouter.address)
-        Helper.assertEqual(MAX_ALLOWANCE, allowance, "allowance should be max")
+        Helper.assertEqual(MAX_ALLOWANCE, allowance, 'allowance should be max')
 
         assert(await reserve.tokenListed(testToken.address), 'tokenListed is false')
 
@@ -298,7 +299,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         assert(!(await reserve.tokenListed(testToken.address)), 'tokenListed should be removed')
         // allowance should be 0
         let allowance = await testToken.allowance(reserve.address, uniswapRouter.address)
-        Helper.assertEqual(zeroBN, allowance, "allowance should be 0")
+        Helper.assertEqual(zeroBN, allowance, 'allowance should be 0')
       })
     })
 
@@ -414,7 +415,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
     })
   })
 
-  describe('test getConventionRate function', () => {
+  describe('test getConversionRate function', () => {
     let srcAmount = new BN(10).pow(new BN(14))
     let testToken
     let testTokenDecimal = new BN(15)
@@ -447,12 +448,12 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       await reserve.listToken(testToken.address, true, true, {from: operator})
     })
 
-    it('test getConventionRate if token is not listed', async () => {
+    it('test getConversionRate if token is not listed', async () => {
       let rate = await reserve.getConversionRate(ethAddress, accounts[7], zeroBN, new BN(0))
       Helper.assertEqual(zeroBN, rate, 'rate should be 0')
     })
 
-    it('test getConventionRate if trade is not enable', async () => {
+    it('test getConversionRate if trade is not enable', async () => {
       await reserve.disableTrade({from: alerter})
       let rate = await reserve.getConversionRate(
         ethAddress,
@@ -464,12 +465,12 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       await reserve.enableTrade({from: admin})
     })
 
-    it('test getConventionRate if srcQty = 0', async () => {
+    it('test getConversionRate if srcQty = 0', async () => {
       let rate = await reserve.getConversionRate(ethAddress, testToken.address, zeroBN, new BN(0))
       Helper.assertEqual(zeroBN, rate, 'rate should be 0')
     })
 
-    it('test getConventionRate for e2t', async () => {
+    it('test getConversionRate for e2t', async () => {
       let rate = await reserve.getConversionRate(
         ethAddress,
         testToken.address,
@@ -490,7 +491,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       Helper.assertEqual(rate, expectedRate, 'unexpected rate')
     })
 
-    it('test getConventionRate for t2e', async () => {
+    it('test getConversionRate for t2e', async () => {
       let rate = await reserve.getConversionRate(
         testToken.address,
         ethAddress,
@@ -571,7 +572,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
           value: srcAmount,
           from: network
         }),
-        'token is not listed'
+        'only use eth and listed token'
       )
     })
 
@@ -661,10 +662,24 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       let rate = await reserve.getConversionRate(ethAddress, testToken.address, srcAmount, zeroBN)
       Helper.assertGreater(rate, zeroBN, 'rate 0')
 
+      let srcBalanceBefore = await Helper.getBalancePromise(network)
+      let dstBalanceBefore = await testToken.balanceOf(destAddress)
+
       await reserve.trade(ethAddress, srcAmount, testToken.address, destAddress, rate, true, {
         value: srcAmount,
-        from: network
+        from: network,
+        gasPrice: zeroBN
       })
+
+      let destQty = Helper.calcDstQty(srcAmount, ethDecimals, await testToken.decimals(), rate)
+      await Helper.assertSameEtherBalance(network, srcBalanceBefore.sub(srcAmount))
+      let dstBalanceAfter = await testToken.balanceOf(destAddress)
+      // only approximate due to rounding down
+      Helper.assertApproximate(
+        dstBalanceAfter.sub(dstBalanceBefore),
+        destQty,
+        'unexpected destQty'
+      )
     })
 
     it('test t2e', async () => {
@@ -675,8 +690,74 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       await testToken.transfer(network, srcAmount)
       await testToken.approve(reserve.address, srcAmount, {from: network})
 
+      let dstBalanceBefore = await Helper.getBalancePromise(destAddress)
+      let srcBalanceBefore = await testToken.balanceOf(network)
+
       await reserve.trade(testToken.address, srcAmount, ethAddress, destAddress, rate, true, {
         from: network
+      })
+
+      let destQty = Helper.calcDstQty(srcAmount, await testToken.decimals(), ethDecimals, rate)
+      await Helper.assertSameTokenBalance(network, testToken, srcBalanceBefore.sub(srcAmount))
+      await Helper.assertSameEtherBalance(destAddress, dstBalanceBefore.add(destQty))
+    })
+
+    describe('test valid uniswap amout out', async () => {
+      let mockRounter
+      let reserve
+      before('set up malicious rounter', async () => {
+        mockRounter = await MockUniswapRounter.new(uniswapFactory.address, weth.address)
+        reserve = await KyberUniswapV2Reserve.new(
+          mockRounter.address,
+          weth.address,
+          admin,
+          network
+        )
+        await reserve.addOperator(operator, {from: admin})
+        await reserve.listToken(testToken.address, true, true, {from: operator})
+      })
+
+      it('test e2t revert if swap amount out < expectedDestAmount', async () => {
+        let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
+        let rate = await reserve.getConversionRate(
+          ethAddress,
+          testToken.address,
+          srcAmount,
+          zeroBN
+        )
+
+        dstQty = Helper.calcDstQty(srcAmount, ethDecimals, await testToken.decimals(), rate)
+        await mockRounter.setDstQty(dstQty.sub(new BN(1)))
+        Helper.assertGreater(rate, zeroBN, 'rate 0')
+        await expectRevert(
+          reserve.trade(ethAddress, srcAmount, testToken.address, destAddress, rate, true, {
+            value: srcAmount,
+            from: network
+          }),
+          'Returned trade amount too low'
+        )
+      })
+
+      it('test t2e revert if swap amount out < expectedDestAmount', async () => {
+        let srcAmount = new BN(10).pow(new BN(16)).mul(new BN(3))
+        let rate = await reserve.getConversionRate(
+          testToken.address,
+          ethAddress,
+          srcAmount,
+          zeroBN
+        )
+
+        dstQty = Helper.calcDstQty(srcAmount, await testToken.decimals(), ethDecimals, rate)
+        await mockRounter.setDstQty(dstQty.sub(new BN(1)))
+        Helper.assertGreater(rate, zeroBN, 'rate 0')
+        await testToken.transfer(network, srcAmount)
+        await testToken.approve(reserve.address, srcAmount, {from: network})
+        await expectRevert(
+          reserve.trade(testToken.address, srcAmount, ethAddress, destAddress, rate, true, {
+            from: network
+          }),
+          'Returned trade amount too low'
+        )
       })
     })
 
@@ -708,10 +789,24 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         )
         Helper.assertGreater(rate, zeroBN, 'rate 0')
 
+        let srcBalanceBefore = await Helper.getBalancePromise(network)
+        let dstBalanceBefore = await testToken.balanceOf(destAddress)
+
         await reserve.trade(ethAddress, srcAmount, testToken.address, destAddress, rate, true, {
           value: srcAmount,
-          from: network
+          from: network,
+          gasPrice: zeroBN
         })
+
+        let destQty = Helper.calcDstQty(srcAmount, ethDecimals, await testToken.decimals(), rate)
+        await Helper.assertSameEtherBalance(network, srcBalanceBefore.sub(srcAmount))
+        let dstBalanceAfter = await testToken.balanceOf(destAddress)
+        // only approximate due to rounding down
+        Helper.assertApproximate(
+          dstBalanceAfter.sub(dstBalanceBefore),
+          destQty,
+          'unexpected destQty'
+        )
       })
 
       it('test t2e', async () => {
@@ -727,9 +822,16 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         await testToken.transfer(network, srcAmount)
         await testToken.approve(reserve.address, srcAmount, {from: network})
 
+        let dstBalanceBefore = await Helper.getBalancePromise(destAddress)
+        let srcBalanceBefore = await testToken.balanceOf(network)
+
         await reserve.trade(testToken.address, srcAmount, ethAddress, destAddress, rate, true, {
           from: network
         })
+
+        let destQty = Helper.calcDstQty(srcAmount, await testToken.decimals(), ethDecimals, rate)
+        await Helper.assertSameTokenBalance(network, testToken, srcBalanceBefore.sub(srcAmount))
+        await Helper.assertSameEtherBalance(destAddress, dstBalanceBefore.add(destQty))
       })
     })
   })
