@@ -2399,7 +2399,7 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
-    describe("test fee handler integrations with 1 mock and 1 apr", async() => {
+    describe("test fee handler integrations with 1 mock and 1 fpr", async() => {
         let platformFee = new BN(200);
         let reserveIdToWallet = [];
         let rebateWallets;
@@ -2461,22 +2461,17 @@ contract('KyberNetwork', function(accounts) {
             platformFeeWei = tradeWei.mul(platfromFeeBps).div(BPS);
             Helper.assertEqual(await feeHandler.feePerPlatformWallet(platformWallet), beforePlatformFee.add(platformFeeWei), "unexpected rebate value");
             networkFeeWei = tradeWei.mul(networkFeeBps).div(BPS).mul(feeAccountedBps).div(BPS);
-            let hasRebate = false;
+            rebateWei = zeroBN;
             for (const [rebateWallet, beforeBalance] of Object.entries(beforeRebate)) {
                 if (rebateWallet in rebatePerWallet) {
+                    rebateWei = rebateWei.add(rebatePerWallet[rebateWallet]);
                     Helper.assertApproximate(await feeHandler.rebatePerWallet(rebateWallet), beforeBalance.add(rebatePerWallet[rebateWallet]), "unexpected rebate value");
-                    hasRebate = true;
                 }else {
                     Helper.assertApproximate(await feeHandler.rebatePerWallet(rebateWallet), beforeBalance, "unexpected rebate value");
                 }
             }
-            if (hasRebate) {
-                totalPayout = platformFeeWei.add(networkFeeWei.mul(rewardInBPS).div(BPS)).add(networkFeeWei.mul(rebateInBPS).div(BPS));
-            } else {
-                totalPayout = platformFeeWei.add(networkFeeWei.mul(rewardInBPS).div(BPS));
-            }
+            totalPayout = platformFeeWei.add(networkFeeWei.mul(rewardInBPS).div(BPS)).add(rebateWei);
             Helper.assertApproximate(await feeHandler.totalPayoutBalance(), beforeTotalBalancePayout.add(totalPayout), "unexpected payout balance");
-            
         }
 
         it("e2t trade. see fee updated in fee handler.", async() => {
@@ -2516,7 +2511,7 @@ contract('KyberNetwork', function(accounts) {
             await assertFeeHandlerUpdate(tradeEventArgs.ethWeiValue, platformFee, BPS, rebatePerWallet);
         });
 
-        it("should have rebate given only to rebate entitled reserve.", async() => {
+        it("check that reserve rebate amount is correct", async() => {
             await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {from: admin});
             // set rebate entitled true for FPR
             await storage.setEntitledRebatePerReserveType(true, false, false, false, false, false, {from: admin});
@@ -2532,11 +2527,15 @@ contract('KyberNetwork', function(accounts) {
                 srcToken.address, destToken.address, srcQty);
             txResult = await network.tradeWithHintAndFee(networkProxy, srcToken.address, srcQty, destToken.address, taker,
                 maxDestAmt, minConversionRate, platformWallet, platformFee, hint, {from: networkProxy});
+            
             // assert first rebateWallet is received enitled rebate value
             let tradeEventArgs = nwHelper.getTradeEventArgs(txResult);
-            let rebatePerWallet = {}
-            let expectedRebate = new BN(tradeEventArgs.ethWeiValue).mul(networkFeeBps).div(BPS).mul(new BN(2)).mul(rebateInBPS).div(BPS);
-            rebatePerWallet[rebateWallets[0]] = expectedRebate
+            let rebatePerWallet = {};
+            let feeAccountedBps = new BN(2).mul(BPS);
+            let entitledRebateBps = BPS;
+            let networkFeeWei = new BN(tradeEventArgs.ethWeiValue).mul(networkFeeBps).div(BPS).mul(new BN(2));
+            let expectedRebateWei = networkFeeWei.mul(entitledRebateBps).div(feeAccountedBps).mul(rebateInBPS).div(BPS);;
+            rebatePerWallet[rebateWallets[0]] = expectedRebateWei;
             await assertFeeHandlerUpdate(tradeEventArgs.ethWeiValue, platformFee, BPS.mul(new BN(2)), rebatePerWallet);
             // revert changes
             await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
