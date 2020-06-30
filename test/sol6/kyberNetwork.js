@@ -2399,7 +2399,11 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
+<<<<<<< Updated upstream
     describe("test fee handler integrations with 1 mock and 1 fpr", async() => {
+=======
+    describe.only("test fee handler integrations with 1 mock and 1 apr", async() => {
+>>>>>>> Stashed changes
         let platformFee = new BN(200);
         let reserveIdToWallet = [];
         let rebateWallets;
@@ -2470,7 +2474,18 @@ contract('KyberNetwork', function(accounts) {
                     Helper.assertApproximate(await feeHandler.rebatePerWallet(rebateWallet), beforeBalance, "unexpected rebate value");
                 }
             }
+<<<<<<< Updated upstream
             totalPayout = platformFeeWei.add(networkFeeWei.mul(rewardInBPS).div(BPS)).add(rebateWei);
+=======
+            if (hasRebate) {
+                totalPayout = platformFeeWei.add(networkFeeWei.mul(rewardInBPS).div(BPS)).add(networkFeeWei.mul(rebateInBPS).div(BPS));
+            } else {
+                totalPayout = platformFeeWei.add(networkFeeWei.mul(rewardInBPS).div(BPS));
+            }
+
+            log("has rebte: " + hasRebate + " expected total payout: " + beforeTotalBalancePayout.add(totalPayout) + " total paout: " + await feeHandler.totalPayoutBalance());
+
+>>>>>>> Stashed changes
             Helper.assertApproximate(await feeHandler.totalPayoutBalance(), beforeTotalBalancePayout.add(totalPayout), "unexpected payout balance");
         }
 
@@ -2541,7 +2556,7 @@ contract('KyberNetwork', function(accounts) {
             await storage.setEntitledRebatePerReserveType(true, true, true, true, true, true, {from: admin});
         });
 
-        it("should not have any fees if fee accounted data set to false", async() => {
+        it("should not have any network fee if fee accounted data set to false", async() => {
             // set fee accounted data to false
             await storage.setFeeAccountedPerReserveType(false, false, false, false, false, false, {from: admin});
             await storage.setEntitledRebatePerReserveType(false, false, false, false, false, false, {from: admin});
@@ -2570,6 +2585,7 @@ contract('KyberNetwork', function(accounts) {
             // let payoutBalance1 = await feeHandler.totalPayoutBalance();
             // Helper.assertEqual(payoutBalance0, payoutBalance1);
             let tradeEventArgs = nwHelper.getTradeEventArgs(txResult);
+            log("tradeEventArgs.ethWeiValue: " + tradeEventArgs.ethWeiValue )
             await assertFeeHandlerUpdate(tradeEventArgs.ethWeiValue, zeroBN, BPS, {});
 
             // reset fees
