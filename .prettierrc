@@ -19,7 +19,8 @@
         "useTabs": false,
         "singleQuote": true,
         "bracketSpacing": false,
-        "explicitTypes": "always"
+        "explicitTypes": "always",
+        "semi": true
       }
     }
   ]
