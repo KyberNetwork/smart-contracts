@@ -2399,11 +2399,7 @@ contract('KyberNetwork', function(accounts) {
         });
     });
 
-<<<<<<< Updated upstream
-    describe("test fee handler integrations with 1 mock and 1 fpr", async() => {
-=======
-    describe.only("test fee handler integrations with 1 mock and 1 apr", async() => {
->>>>>>> Stashed changes
+    describe.only("test fee handler integrations with 1 mock and 1 fpr", async() => {
         let platformFee = new BN(200);
         let reserveIdToWallet = [];
         let rebateWallets;
@@ -2465,18 +2461,18 @@ contract('KyberNetwork', function(accounts) {
             platformFeeWei = tradeWei.mul(platfromFeeBps).div(BPS);
             Helper.assertEqual(await feeHandler.feePerPlatformWallet(platformWallet), beforePlatformFee.add(platformFeeWei), "unexpected rebate value");
             networkFeeWei = tradeWei.mul(networkFeeBps).div(BPS).mul(feeAccountedBps).div(BPS);
+            log("network fee wei: " + networkFeeWei)
             rebateWei = zeroBN;
+            let hasRebate = false;
             for (const [rebateWallet, beforeBalance] of Object.entries(beforeRebate)) {
                 if (rebateWallet in rebatePerWallet) {
+                    hasRebate = true;
                     rebateWei = rebateWei.add(rebatePerWallet[rebateWallet]);
                     Helper.assertApproximate(await feeHandler.rebatePerWallet(rebateWallet), beforeBalance.add(rebatePerWallet[rebateWallet]), "unexpected rebate value");
-                }else {
+                } else {
                     Helper.assertApproximate(await feeHandler.rebatePerWallet(rebateWallet), beforeBalance, "unexpected rebate value");
                 }
             }
-<<<<<<< Updated upstream
-            totalPayout = platformFeeWei.add(networkFeeWei.mul(rewardInBPS).div(BPS)).add(rebateWei);
-=======
             if (hasRebate) {
                 totalPayout = platformFeeWei.add(networkFeeWei.mul(rewardInBPS).div(BPS)).add(networkFeeWei.mul(rebateInBPS).div(BPS));
             } else {
@@ -2485,7 +2481,6 @@ contract('KyberNetwork', function(accounts) {
 
             log("has rebte: " + hasRebate + " expected total payout: " + beforeTotalBalancePayout.add(totalPayout) + " total paout: " + await feeHandler.totalPayoutBalance());
 
->>>>>>> Stashed changes
             Helper.assertApproximate(await feeHandler.totalPayoutBalance(), beforeTotalBalancePayout.add(totalPayout), "unexpected payout balance");
         }
 
