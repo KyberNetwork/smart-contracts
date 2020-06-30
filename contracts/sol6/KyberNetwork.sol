@@ -62,8 +62,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param networkFeeBps Network fee bps determined by kyberDao, or default value
     /// @param numEntitledRebateReserves No. of reserves that are eligible for rebates
     /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * BPS
-    /// @param entitledRebateBps Proportion of reserves entitled for rebate, in BPS. Up to 2 * BPS
-    /// @param rateWithNetworkFee src -> dest token rate, after accounting for only network fee
     struct TradeData {
         TradeInput input;
         ReservesData tokenToEth;
@@ -74,7 +72,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256 networkFeeBps;
         uint256 numEntitledRebateReserves;
         uint256 feeAccountedBps; // what part of this trade is fee paying. for token -> token - up to 200%
-        uint256 entitledRebateBps;
     }
 
     struct TradeInput {
@@ -979,7 +976,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             rebatePercentBps,
             tradeData.tokenToEth,
             index,
-            tradeData.entitledRebateBps
+            tradeData.feeAccountedBps
         );
 
         // eth -> token
@@ -988,7 +985,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             rebatePercentBps,
             tradeData.ethToToken,
             index,
-            tradeData.entitledRebateBps
+            tradeData.feeAccountedBps
         );
 
         rebateWallets = kyberStorage.getRebateWalletsFromIds(rebateReserveIds);
@@ -999,14 +996,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         uint256[] memory rebatePercentBps,
         ReservesData memory reservesData,
         uint256 index,
-        uint256 entitledRebateBps
+        uint256 feeAccountedBps
     ) internal pure returns (uint256) {
         uint256 _index = index;
 
         for (uint256 i = 0; i < reservesData.isEntitledRebateFlags.length; i++) {
             if (reservesData.isEntitledRebateFlags[i]) {
                 rebateReserveIds[_index] = reservesData.ids[i];
-                rebatePercentBps[_index] = (reservesData.splitsBps[i] * BPS) / entitledRebateBps;
+                rebatePercentBps[_index] = (reservesData.splitsBps[i] * BPS) / feeAccountedBps;
                 _index++;
             }
         }
@@ -1130,7 +1127,6 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
                 tradeData.feeAccountedBps += reservesData.splitsBps[i];
 
                 if (reservesData.isEntitledRebateFlags[i]) {
-                    tradeData.entitledRebateBps += reservesData.splitsBps[i];
                     tradeData.numEntitledRebateReserves++;
                 }
             }
