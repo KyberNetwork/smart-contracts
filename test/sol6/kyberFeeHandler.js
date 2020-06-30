@@ -749,8 +749,8 @@ contract('KyberFeeHandler', function(accounts) {
                         rebateWallets, rebateBpsPerWallet
                     );
 
-                    //above function also validates reward per eopch.
-                });
+                //above function also validates reward per eopch.
+            });
 
             it("test reward per eopch updated when epoch advances", async() => {
                 let sendVal = oneEth;
