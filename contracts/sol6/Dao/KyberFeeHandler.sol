@@ -61,8 +61,7 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
 
     struct BRRWei {
         uint256 rewardWei;
-        uint256 fullRebateWei;
-        uint256 paidRebateWei;
+        uint256 rebateWei;
         uint256 burnWei;
     }
 
@@ -204,29 +203,22 @@ contract KyberFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, ReentrancyGua
         uint256 epoch;
 
         // Decoding BRR data
-        (brrAmounts.rewardWei, brrAmounts.fullRebateWei, epoch) = getRRWeiValues(networkFee);
+        (brrAmounts.rewardWei, brrAmounts.rebateWei, epoch) = getRRWeiValues(networkFee);
 
-        brrAmounts.paidRebateWei = updateRebateValues(
-            brrAmounts.fullRebateWei, rebateWallets, rebateBpsPerWallet
-        );
-        brrAmounts.rewardWei = brrAmounts.rewardWei.add(
-            brrAmounts.fullRebateWei.sub(brrAmounts.paidRebateWei)
-        );
+        brrAmounts.rebateWei = updateRebateValues(brrAmounts.rebateWei, rebateWallets, rebateBpsPerWallet);
 
         rewardsPerEpoch[epoch] = rewardsPerEpoch[epoch].add(brrAmounts.rewardWei);
 
         // update total balance of rewards, rebates, fee
-        totalPayoutBalance = totalPayoutBalance.add(
-            platformFee).add(brrAmounts.rewardWei).add(brrAmounts.paidRebateWei
-        );
+        totalPayoutBalance = totalPayoutBalance.add(platformFee).add(brrAmounts.rewardWei).add(brrAmounts.rebateWei);
 
-        brrAmounts.burnWei = networkFee.sub(brrAmounts.rewardWei).sub(brrAmounts.paidRebateWei);
+        brrAmounts.burnWei = networkFee.sub(brrAmounts.rewardWei).sub(brrAmounts.rebateWei);
         emit FeeDistributed(
             ETH_TOKEN_ADDRESS,
             platformWallet,
             platformFee,
             brrAmounts.rewardWei,
-            brrAmounts.paidRebateWei,
+            brrAmounts.rebateWei,
             rebateWallets,
             rebateBpsPerWallet,
             brrAmounts.burnWei

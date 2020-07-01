@@ -540,16 +540,11 @@ contract('KyberFeeHandler', function(accounts) {
 
             expectedTotalReward = expectedTotalReward.add(sendVal.mul(currentRewardBps).div(BPS));
             expectedRebate = sendVal.mul(currentRebateBps).div(BPS);
-            let totalPaidRebate = new BN(0);
 
             for(let i = 0; i < rebateBpsPerWallet.length; i++) {
-                let paidRebate = (new BN(rebateBpsPerWallet[i])).mul(expectedRebate).div(BPS);
-                expectedTotalRebate.iadd(paidRebate);
-                totalPaidRebate = totalPaidRebate.add(paidRebate);
+                expectedTotalRebate.iadd((new BN(rebateBpsPerWallet[i])).mul(expectedRebate).div(BPS));
             }
 
-            //whatever wasn't paid for rebates to wallets due to rounding errors, will be added to reward amount
-            expectedTotalReward = expectedTotalReward.add(expectedRebate.sub(totalPaidRebate));
             expectedTotalPayOut = expectedTotalReward.add(expectedTotalRebate);
             totalPayOutBalance = await feeHandler.totalPayoutBalance();
             Helper.assertEqual(expectedTotalPayOut, totalPayOutBalance);
@@ -749,7 +744,9 @@ contract('KyberFeeHandler', function(accounts) {
                         rebateWallets, rebateBpsPerWallet
                     );
 
-                //above function also validates reward per eopch.
+                expectedRewardPerEpoch = expectedRewardPerEpoch.add(sendVal.mul(currentRewardBps).div(BPS));
+                rewardPerEpoch = await feeHandler.rewardsPerEpoch(currentEpoch);
+                Helper.assertEqual(expectedRewardPerEpoch, rewardPerEpoch);
             });
 
             it("test reward per eopch updated when epoch advances", async() => {
@@ -773,9 +770,14 @@ contract('KyberFeeHandler', function(accounts) {
                 Helper.assertEqual(0, rewardPerEpoch);
 
                 sendVal = oneEth.div(new BN(333));
-                expectedRebates = await callHandleFeeAndVerifyValues(sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,rebateWallets, rebateBpsPerWallet);
+                expectedRebates = await callHandleFeeAndVerifyValues(
+                    sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                        rebateWallets, rebateBpsPerWallet
+                    );
 
-                //above function also validates reward per eopch.
+                expectedRewardPerEpoch = sendVal.mul(currentRewardBps).div(BPS);
+                rewardPerEpoch = await feeHandler.rewardsPerEpoch(currentEpoch);
+                Helper.assertEqual(expectedRewardPerEpoch, rewardPerEpoch);
             });
 
             it("claim reward and see total payout balance updated.", async() => {
@@ -2025,18 +2027,12 @@ async function callHandleFeeAndVerifyValues(sendValWei, platformWallet, platFeeW
 
     //validate values
     let expectedRebates = [];
-    let totalRebateWei = feeAmountBRR.mul(rebateBps).div(BPS);
-    let paidRebatesWei = new BN(0);
     for (let i = 0; i < rebateWalletArr.length; i++) {
-        let walletRebateWei = totalRebateWei.mul(rebateBpsArr[i]).div(BPS)
-        expectedRebates[i] = currentRebatesArr[i].add(walletRebateWei);
-        paidRebatesWei = paidRebatesWei.add(walletRebateWei);
+        expectedRebates[i] = currentRebatesArr[i].add(feeAmountBRR.mul(rebateBps).div(BPS).mul(rebateBpsArr[i]).div(BPS));
         let actualRebate = await feeHandler.rebatePerWallet(rebateWalletArr[i]);
         Helper.assertEqual(actualRebate, expectedRebates[i]);
     }
 
-    const extraRewardFromUnpaidRebate = totalRebateWei.sub(paidRebatesWei);
-    expectedRewardForEpoch = expectedRewardForEpoch.add(extraRewardFromUnpaidRebate);
     const actualFeeWallet = await feeHandler.feePerPlatformWallet(platformWallet);
     Helper.assertEqual(actualFeeWallet, expectedPlatWalletFee);
 
