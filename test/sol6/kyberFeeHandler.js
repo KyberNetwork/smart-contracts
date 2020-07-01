@@ -610,6 +610,23 @@ contract('KyberFeeHandler', function(accounts) {
                 );
         });
 
+        it("test rebate per wallet and rewards per epoch updated correctly when total rebateBpsPerWallet is not BPS", async() => {
+            let rebateBpsPerWallet = [new BN(2000), new BN(3000), new BN(4000)];
+            let sendVal = oneEth;
+
+            await callHandleFeeAndVerifyValues(
+                sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                    rebateWallets, rebateBpsPerWallet
+                );
+
+            sendVal = oneEth.div(new BN(333));
+
+            await callHandleFeeAndVerifyValues(
+                sendVal, zeroAddress, 0, currentRebateBps, currentRewardBps, currentEpoch,
+                    rebateWallets, rebateBpsPerWallet
+                );
+        });
+
         describe("reserve rebate", async() => {
             it("claim rebate see sent to wallet", async() => {
                 let sendVal = new BN(0);
