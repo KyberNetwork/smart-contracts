@@ -473,7 +473,7 @@
         "address": "0x63825c174ab367968EC60f061753D3bbD36A0D8F",
         "id": "0xff4b7962657220467072",
         "type": "FPR",
-        "rebateWallet": "kyber_rebateß",
+        "rebateWallet": "kyber_rebate",
         "tokens": [
           {
             "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
@@ -704,8 +704,8 @@
       },
       {
         "address": "0x45eb33D008801d547990cAF3b63B4F8aE596EA57",
-        "id": "invalid reserve id",
-        "type": "xxx",
+        "id": "0xaa72656e",
+        "type": "APR",
         "rebateWallet": "0x5565d64f29Ea17355106DF3bA5903Eb793B3e139",
         "tokens": [
           {
@@ -756,9 +756,9 @@
       },
       {
         "address": "0x7a3370075a54B187d7bD5DceBf0ff2B5552d4F7D",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9",
+        "id": "0xffabcd",
+        "type": "FPR",
+        "rebateWallet": "0xf214dDE57f32F3F34492Ba3148641693058D4A9e",
         "tokens": [
           {
             "address": "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
@@ -1076,9 +1076,9 @@
       },
       {
         "address": "0x31E085Afd48a1d6e51Cc193153d625e8f0514C7F",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43",
+        "id": "0xbb756e69737761705631",
+        "type": "BRIDGE",
+        "rebateWallet": "kyber_rebate",
         "tokens": [
           {
             "address": "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
@@ -1157,9 +1157,9 @@
       },
       {
         "address": "0x4f32BbE8dFc9efD54345Fc936f9fEF1048746fCF",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x592751fA56DCd4684FdDDdFcC3950680D0D5A597",
+        "id": "0xff4f6e65426974205175616e74",
+        "type": "FPR",
+        "rebateWallet": "0xbc63aC3c8489E903f98478a7d816940cdd4c08f9",
         "tokens": [
           {
             "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
@@ -1244,9 +1244,9 @@
       },
       {
         "address": "0x1E158c0e93c30d24e918Ef83d1e0bE23595C3c0f",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x0000000000000000000000000000000000000000",
+        "id": "0xbb4f61736973",
+        "type": "BRIDGE",
+        "rebateWallet": "kyber_rebate",
         "tokens": [
           {
             "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
