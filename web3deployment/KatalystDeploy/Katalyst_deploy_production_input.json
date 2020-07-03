@@ -20,33 +20,36 @@
       "APR": false,
       "BRIDGE": false,
       "UTILITY": false,
-      "CUSTOM": true,
-      "ORDERBOOK": true
+      "CUSTOM": false,
+      "ORDERBOOK": false
     },
     "permission": {
       "KyberDao": {
-        "DaoOperator": "update this"
+        "DaoOperator": "community_msig"
       },
       "FeeHandler": {
-        "DaoOperator": "update this"
+        "DaoOperator": "kyber_team"
       },
       "MatchingEngine": {
-        "admin": "update this",
+        "admin": "kyber_team",
         "operators": [],
         "alerters": []
       },
       "Network": {
-        "admin": "update this",
-        "operators": [],
+        "admin": "kyber_team",
+        "operators": [
+          "0x4f21789c2f657b8b0a7777ef5b62b8b21ae50021",
+          "0x8180a5ca4e3b94045e05a9313777955f7518d757"
+        ],
         "alerters": []
       },
       "Proxy": {
-        "admin": "update this",
+        "admin": "kyber_team",
         "operators": [],
         "alerters": []
       },
       "Storage": {
-        "admin": "update this",
+        "admin": "kyber_team",
         "operators": [
           "0x4f21789c2f657b8b0a7777ef5b62b8b21ae50021",
           "0x8180a5ca4e3b94045e05a9313777955f7518d757"
@@ -1433,19 +1436,6 @@
             "address": "0xd4c435F5B09F855C3317c8524Cb1F586E42795fa",
             "ethToToken": true,
             "tokenToEth": true
-          }
-        ]
-      },
-      {
-        "address": "0x80827ce0D1B23ac2f30b4244d27b0Aa904BDa83c",
-        "id": "invalid reserve id",
-        "type": "BRIDGE",
-        "rebateWallet": "kyber_rebate",
-        "tokens": [
-          {
-            "address": "0xc00e94Cb662C3520282E6f5717214004A7f26888",
-            "ethToToken": true,
-            "tokenToEth": false
           }
         ]
       }
