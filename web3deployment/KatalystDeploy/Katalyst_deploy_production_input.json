@@ -49,7 +49,9 @@
         "admin": "update this",
         "operators": [
           "0x4f21789c2f657b8b0a7777ef5b62b8b21ae50021",
-          "0x8180a5ca4e3b94045e05a9313777955f7518d757"
+          "0x8180a5ca4e3b94045e05a9313777955f7518d757",
+          "0xdC70a72AbF352A0E3f75d737430EB896BA9Bf9Ea",
+          "0xbDd33F411DA0B40018922a3BC69001B458227f5c"
         ],
         "alerters": []
       }
