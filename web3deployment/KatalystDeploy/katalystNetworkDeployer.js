@@ -30,18 +30,19 @@ if (printPrivateKey) {
 // privateKey = "";
 
 //contract addresses: REPLACE IF SOMETHING BREAKS DURING DEPLOYMENT
+let matchingEngineAddress = "";
 let networkHistoryAddress = "";
 let feeHandlerHistoryAddress = "";
 let daoHistoryAddress = "";
 let matchingEngineHistoryAddress = "";
 let storageAddress = "";
 let networkAddress = "";
-let matchingEngineAddress = "";
 let proxyAddress = "";
 let feeHandlerAddress = "";
 let gasHelperAddress = "";
 let stakingAddress = "";
 let daoAddress = "";
+let oldProxyAddress;
 
 const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 const sender = account.address;
@@ -66,6 +67,7 @@ const keypress = async () => {
 }
 
 async function sendTx(txObject, gasLimit) {
+  console.log(`sendTx nonce: ${nonce}`);
   const txTo = txObject._parent.options.address;
 
   try {
@@ -180,7 +182,6 @@ let walletDataArray = [];
 function parseInput(jsonInput) {
     const reserveTypes = jsonInput["reserveTypes"];
     const reserveData = jsonInput["reserves"];
-    const walletData = jsonInput["wallets"];
     allTokens = jsonInput["tokens"];
 
     // reserve array
@@ -212,8 +213,9 @@ function parseInput(jsonInput) {
     rewardFeeBps = jsonInput["reward fee bps"].toString();;
     rebateFeeBps = jsonInput["rebate bps"].toString();;
 
-    kncTokenAddress = jsonInput["addresses"].knc;
+    kncTokenAddress = jsonInput["tokens"].KNC.address;
     gasHelperAddress = jsonInput["addresses"].gasHelper;
+    oldProxyAddress = jsonInput["addresses"].oldProxy;
 
     // output file name
     contractsOutputFilename = jsonInput["contracts filename"];
@@ -244,7 +246,7 @@ async function pressToContinue() {
 }
 
 async function main() {
-  nonce = await web3.eth.getTransactionCount(sender);
+  nonce = (nonce == undefined) ? await web3.eth.getTransactionCount(sender) : nonce;
   console.log("nonce",nonce);
 
   chainId = chainId || await web3.eth.net.getId()
@@ -283,7 +285,7 @@ async function main() {
   // 2) Use ONLY ONE of the following functions below:
   exportContractAddresses();
   await pressToContinue();
-  // await fullDeployment();
+  await fullDeployment();
 
   //////////////////
   // REDEPLOYMENT //
@@ -315,6 +317,7 @@ async function main() {
 
 async function fullDeployment() {
   await setStorageAddressInAllHistoricalContracts();
+  await pressToContinue();
   await setNetworkAddressInMatchingEngine();
   await setNetworkAddressInStorage();
   await setStorageAddressInMatchingEngine();
@@ -323,27 +326,28 @@ async function fullDeployment() {
   await pressToContinue();
   await setDaoInNetwork();
   await setDaoInFeeHandler();
-  await setProxyInNetwork();
+  await setProxiesInNetwork();
+  await pressToContinue();
   await setNetworkInProxy();
   await setHintHandlerInProxy();
   await setTempOperatorToStorage();
+  await pressToContinue();
 
   ///////////
   // BREAK //
   ///////////
-  await pressToContinue();
   await setFeeAccountedDataInStorage();
   await setRebateEntitledDataInStorage();
+  await pressToContinue();
   await addReserves();
-  await listTokensForReserves();
   await configureAndEnableNetwork();
+  await pressToContinue();
 
   ///////////
   // BREAK //
   ///////////
   await pressToContinue();
   await removeTempOperator([storageContract]);
-  await pressToContinue();
   await setPermissionsInProxy();
   await pressToContinue();
   await setPermissionsInNetwork();
@@ -351,6 +355,7 @@ async function fullDeployment() {
   await setPermissionsInMatchingEngine();
   await pressToContinue();
   await setPermissionsInStorage();
+  await pressToContinue();
   await setPermissionsInHistories();
 }
 
@@ -461,6 +466,7 @@ async function deployStorageContracts(output) {
     );
   }
 
+  await pressToContinue();
   if (storageAddress == "") {
     console.log("deploying storage");
     [storageAddress, storageContract] = await deployContract(
@@ -630,9 +636,11 @@ async function setDaoInFeeHandler() {
   await sendTx(feeHandlerContract.methods.setDaoContract(daoAddress));
 }
 
-async function setProxyInNetwork() {
-  console.log("set proxy in network");
+async function setProxiesInNetwork() {
+  console.log("set new proxy in network");
   await sendTx(networkContract.methods.addKyberProxy(proxyAddress));
+  console.log("set old proxy in network");
+  await sendTx(networkContract.methods.addKyberProxy(oldProxyAddress));
 }
 
 async function setNetworkInProxy() {
@@ -694,13 +702,10 @@ async function listTokensForReserves(reserveIndex, tokenIndex) {
   }
 }
 
-async function configureAndEnableNetwork() {
+async function configureNetwork() {
   // set params
   console.log("network set params");
   await sendTx(networkContract.methods.setParams(maxGasPrice, negDiffInBps));
-                    
-  console.log("network enable");
-  await sendTx(networkContract.methods.setEnable(true));
 }
 
 async function removeTempOperator(contractInstances) {
@@ -732,10 +737,10 @@ async function setPermissionsInStorage() {
 
 async function setPermissionsInHistories() {
   console.log('setting permissions in histories');
-  await setPermissions(networkHistoryContract, storagePermissions);
-  await setPermissions(feeHandlerHistoryContract, storagePermissions);
-  await setPermissions(daoHistoryContract, storagePermissions);
-  await setPermissions(matchingEngineHistoryContract, storagePermissions);
+  await sendTx(networkHistoryContract.methods.transferAdminQuickly(storagePermissions.admin));
+  await sendTx(feeHandlerHistoryContract.methods.transferAdminQuickly(storagePermissions.admin));
+  await sendTx(daoHistoryContract.methods.transferAdminQuickly(storagePermissions.admin));
+  await sendTx(matchingEngineHistoryContract.methods.transferAdminQuickly(storagePermissions.admin));
 }
 
 async function redeployNetwork() {
@@ -748,7 +753,7 @@ async function redeployNetwork() {
   await setProxyInNetwork();
   await pressToContinue();
   await listReservesForTokens();
-  await configureAndEnableNetwork();
+  await configureNetwork();
   await pressToContinue();
   await removeTempOperator([networkContract]);
   await setPermissionsInNetwork();
