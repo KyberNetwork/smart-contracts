@@ -23,8 +23,8 @@ const jsonFileName = 'reserves.json';
 const STORAGE_ADDRESS = "";
 const NEW_NETWORK_ADDRESS = "";
 const STORAGE_OPERATOR_PK = "";
-const NONCE; // = BN.from(123);
-const GAS_PRICE; // = ethers.utils.parseUnits('48', 'gwei');
+let NONCE; // = BN.from(123);
+let GAS_PRICE; // = ethers.utils.parseUnits('48', 'gwei');
 
 const STORAGE_SIGNER = new ethers.Wallet(STORAGE_OPERATOR_PK, provider);
 
@@ -53,7 +53,7 @@ async function main() {
         let tempResArray = storageReserves.join(`~`).toLowerCase();
         storageReserves = tempResArray.split(`~`);
 
-        for (let i = 0; i < reservesInfo; i++) {
+        for (let i = 0; i < reservesInfo.length; i++) {
             let reserveInfo = reservesInfo[i];
             while (reserveInfo.id.length != 66) {
                 reserveInfo.id = reserveInfo.id + '0';
@@ -100,7 +100,7 @@ async function main() {
                     await pressToContinue();
                     console.log(`\n`);
 
-                    if (reserveInfo.token.length == 0) {
+                    if (reserveInfo.tokens.length == 0) {
                         // remove reserveInfo from reservesInfo array
                         reservesInfo.shift();
                     }
@@ -108,9 +108,11 @@ async function main() {
                     // export reservesInfo after each delisting
                     const exportReservesInfoJSON = JSON.stringify(reservesInfo, null, 2);
                     fs.writeFileSync(`unmigratedReserves.json`, exportReservesInfoJSON);
-                    console.log(`Exported. If stopping script, don't forget to remove ${STORAGE_SIGNER.address} as operator!`);
+                    console.log(`Exported new state. If stopping script, don't forget to remove ${STORAGE_SIGNER.address} as operator!`);
                 }
             }
+            console.log("Looped through reserves. Waiting for more reserves to point to new network...");
+            await sleep(10000);
         }
     }
 }
@@ -131,6 +133,12 @@ const keypress = async () => {
       process.stdin.setRawMode(false)
       resolve()
     }))
+}
+
+function sleep(ms){
+    return new Promise(resolve=>{
+        setTimeout(resolve,ms)
+    })
 }
 
 main();
