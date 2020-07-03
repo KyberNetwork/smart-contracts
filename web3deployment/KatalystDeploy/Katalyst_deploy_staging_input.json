@@ -28,41 +28,46 @@
       "DaoOperator": "0xfdb39391184481df0f8e7d57c029f9bf8dbdaca8"
     },
     "FeeHandler": {
-      "DaoOperator": "0x2fd6181541bebe30d17cf3a5d9f40ebcecbdba43"
+      "DaoOperator": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43"
     },
     "MatchingEngine": {
-      "admin": "0x2fd6181541bebe30d17cf3a5d9f40ebcecbdba43",
+      "admin": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43",
       "operators": [],
       "alerters": []
     },
     "Network": {
-      "admin": "0x2fd6181541bebe30d17cf3a5d9f40ebcecbdba43",
-      "operators": [],
+      "admin": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43",
+      "operators": ["0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43"],
       "alerters": []
     },
     "Proxy": {
-      "admin": "0x2fd6181541bebe30d17cf3a5d9f40ebcecbdba43",
+      "admin": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43",
       "operators": [],
       "alerters": []
     },
     "Storage": {
-      "admin": "0x2fd6181541bebe30d17cf3a5d9f40ebcecbdba43",
-      "operators": ["0xfdb39391184481df0f8e7d57c029f9bf8dbdaca8", 
-                    "0xdca90e93fdb131544d6ba8f1f842c2dd1120ea3c",
-                    "0xec610f53d0a191b17d7984c6d31598b2181ace15",
-                    "0xbe2f0354d970265bfc36d383af77f72736b81b54",
-                    "0x833164041AaFF3CD6c7D80Affbd923C1d1cEB4b3"],
+      "admin": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43",
+      "operators": [
+        "0xbDd33F411DA0B40018922a3BC69001B458227f5c",
+        "0x833164041AaFF3CD6c7D80Affbd923C1d1cEB4b3",
+        "0xec610F53d0A191b17D7984c6D31598b2181Ace15",
+        "0xbe2f0354d970265bfc36d383af77f72736b81b54",
+        "0xd3cc03c1d1e9d46f28aebc4ba26c5990c7ffbc3e",
+        "0xfdb39391184481df0f8e7d57c029f9bf8dbdaca8"
+      ],
       "alerters": []
     }
   },
   "max gas price": 100000000000,
   "neg diff in bps": 5,
   "epoch period": 2700,
-  "start timestamp": 1591848000,
+  "start timestamp": 1593662400,
   "network fee bps": 500,
   "reward fee bps": 10,
   "rebate bps": 9990,
   "burn block interval": 10,
+  "contracts filename" : "katalystStagingContracts.json",
+  "output filename" : "katalystStaging.json",
   "tokens": {
     "OMG": {
       "name": "OMGToken",
@@ -560,6 +565,7 @@
       "address": "0xc00e94Cb662C3520282E6f5717214004A7f26888"
     }
   },
+  "reserves": [
     {
       "address": "0x2C5a182d280EeB5824377B98CD74871f78d6b8BC",
       "id": "0xff4b796265722073746167696e6720667072",

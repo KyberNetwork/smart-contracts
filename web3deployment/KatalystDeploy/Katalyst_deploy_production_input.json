@@ -20,8 +20,8 @@
       "APR": false,
       "BRIDGE": false,
       "UTILITY": false,
-      "CUSTOM": true,
-      "ORDERBOOK": true
+      "CUSTOM": false,
+      "ORDERBOOK": false
     },
     "permission": {
       "KyberDao": {
@@ -47,9 +47,10 @@
       },
       "Storage": {
         "admin": "update this",
-        "operators": ["0x4f21789c2f657b8b0a7777ef5b62b8b21ae50021",
-                      "0x8180a5ca4e3b94045e05a9313777955f7518d757",
-                    ],
+        "operators": [
+          "0x4f21789c2f657b8b0a7777ef5b62b8b21ae50021",
+          "0x8180a5ca4e3b94045e05a9313777955f7518d757"
+        ],
         "alerters": []
       }
     },
@@ -60,7 +61,13 @@
     "network fee bps": 20,
     "reward fee bps": 6500,
     "rebate bps": 3000,
-    "burn block interval": 10,
+    "burn block interval": 30,
+    "contracts filename" : "katalystMainnetContracts.json",
+    "output filename" : "katalystMainnet.json",
+    "addresses": {
+      "gasHelper": "0x0000000000000000000000000000000000000000",
+      "oldProxy": "0x818e6fecd516ecc3849daf6845e3ec868087b755"
+    },
     "tokens": {
       "OMG": {
         "name": "OMGToken",
@@ -716,23 +723,10 @@
         ]
       },
       {
-        "address": "0x5D154c145Db2ca90B8aB5e8Fe3E716AfA4AB7Ff0",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0xBC33a1F908612640F2849b56b67a4De4d179C151",
-        "tokens": [
-          {
-            "address": "0x2C5dcd12141c56FBEa08e95f54f12c8B22d492Eb",
-            "ethToToken": true,
-            "tokenToEth": true
-          }
-        ]
-      },
-      {
         "address": "0x1670DFb52806DE7789D5cF7D5c005cf7083f9A5D",
         "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x75f20Be0258F96C9de53E78bc406eC4a7750aE8b",
+        "type": "APR",
+        "rebateWallet": "kyber_rebate",
         "tokens": [
           {
             "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -744,7 +738,7 @@
       {
         "address": "0xAA14DCAA0AdbE79cBF00edC6cC4ED17ed39240AC",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xB399C994a03D4Ea83990927Fe6B091236E4C887d",
         "tokens": [
           {
@@ -758,7 +752,7 @@
         "address": "0x7a3370075a54B187d7bD5DceBf0ff2B5552d4F7D",
         "id": "0xffabcd",
         "type": "FPR",
-        "rebateWallet": "0xf214dDE57f32F3F34492Ba3148641693058D4A9e",
+        "rebateWallet": "0x56178a0d5F301bAf6CF3e1Cd53d9863437345Bf9",
         "tokens": [
           {
             "address": "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
@@ -830,7 +824,7 @@
       {
         "address": "0x05461124C86C0AD7C5d8E012e1499fd9109fFb7d",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xD2b3D480Db9Fb08Ea55c349C0299b81892F31544",
         "tokens": [
           {
@@ -843,7 +837,7 @@
       {
         "address": "0x1833AD67362249823515B59A8aA8b4f6B4358d1B",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xC295EE3648116D85E806820897927441934497Fc",
         "tokens": [
           {
@@ -856,7 +850,7 @@
       {
         "address": "0x302B35bd0B01312ec2652783c04955D7200C3D9b",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0x3333Ee56a2D9dC70de0f59A1D9Da7fB815516E43",
         "tokens": [
           {
@@ -868,8 +862,8 @@
       },
       {
         "address": "0x6b84DBd29643294703dBabf8Ed97cDef74EDD227",
-        "id": "invalid reserve id",
-        "type": "xxx",
+        "id": "0xaa0x48756d616e73204669727374",
+        "type": "APR",
         "rebateWallet": "0x89bc568e74D16775a95e56Cf6032Bc323dCfA616",
         "tokens": [
           {
@@ -882,7 +876,7 @@
       {
         "address": "0x7e2fd015616263Add31a2AcC2A437557cEe80Fc4",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0x17EbaA440fae1d97465D7588987b08301Fe903C4",
         "tokens": [
           {
@@ -895,7 +889,7 @@
       {
         "address": "0xa107dfa919c3f084a7893A260b99586981beb528",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xA97Bc5dD7B32003398645EDEb2178c91087f86D8",
         "tokens": [
           {
@@ -908,7 +902,7 @@
       {
         "address": "0x3480E12B6C2438e02319e34b4c23770679169190",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0x1464797981B1C9fDb67d20939fbeB82917d110a7",
         "tokens": [
           {
@@ -919,35 +913,9 @@
         ]
       },
       {
-        "address": "0x08030715560a146E306b87CA93Fd618bb2A80363",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x5390B4DDf69505393D6338cAF37667fad8FC7156",
-        "tokens": [
-          {
-            "address": "0xb683D83a532e2Cb7DFa5275eED3698436371cc9f",
-            "ethToToken": true,
-            "tokenToEth": true
-          }
-        ]
-      },
-      {
-        "address": "0xb45C8956a080d336934cEE52A35D4dbABF025b6F",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0xbEE7f7795d90DCf976cD2990cb5F79FAE9207419",
-        "tokens": [
-          {
-            "address": "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2",
-            "ethToToken": true,
-            "tokenToEth": true
-          }
-        ]
-      },
-      {
         "address": "0x751Eea622edd1E3D768C18afbCaeC7DcE7750C65",
-        "id": "invalid reserve id",
-        "type": "xxx",
+        "id": "0xaa0x52414520415052",
+        "type": "APR",
         "rebateWallet": "0x67119627409ab17bfEb6b8c6c308d614F2AA6264",
         "tokens": [
           {
@@ -960,7 +928,7 @@
       {
         "address": "0x4Cb01bd05E4652CbB9F312aE604f4549D2bf2C99",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xA97Bc5dD7B32003398645EDEb2178c91087f86D8",
         "tokens": [
           {
@@ -971,23 +939,10 @@
         ]
       },
       {
-        "address": "0x28aD54A7208608D17B8d4A4A4034f254A28df85e",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x28aD54A7208608D17B8d4A4A4034f254A28df85e",
-        "tokens": [
-          {
-            "address": "0x0E8d6b471e332F140e7d9dbB99E5E3822F728DA6",
-            "ethToToken": true,
-            "tokenToEth": true
-          }
-        ]
-      },
-      {
         "address": "0x8ea5CF9f61824E8A3cA8AA370AB37e0202B2CC7D",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x7368faDE3753cdb83C0Af5139e1655bdfa1F7AfF",
+        "id": "0xaa88888888888888888888888888888888888888888888888888888888888888",
+        "type": "APR",
+        "rebateWallet": "0x8ea5CF9f61824E8A3cA8AA370AB37e0202B2CC7D",
         "tokens": [
           {
             "address": "0xA7fC5D2453E3F68aF0cc1B78bcFEe94A1B293650",
@@ -998,8 +953,8 @@
       },
       {
         "address": "0xa9742Ee9a5407f4C2f8a49f65E3a440f3694960a",
-        "id": "invalid reserve id",
-        "type": "xxx",
+        "id": "0xaa53414e20415052",
+        "type": "APR",
         "rebateWallet": "0x1F3dF0b8390BB8e9e322972C5e75583E87608Ec2",
         "tokens": [
           {
@@ -1012,8 +967,8 @@
       {
         "address": "0x607d7751d9F4845C5a1dE9eeD39c56f4fC0F855d",
         "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0xeAd9Eb28dCacD6ff89c267dF46366765713C1cD3",
+        "type": "APR",
+        "rebateWallet": "kyber_rebate",
         "tokens": [
           {
             "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
@@ -1025,7 +980,7 @@
       {
         "address": "0xc6C8bcE5E9383DF025F982d6bBd84163957a6979",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xa359E934261DA76AF59686b68886B197Eaf4c05A",
         "tokens": [
           {
@@ -1038,8 +993,8 @@
       {
         "address": "0x1fE867bFE9cbE0045467605B959A355223E3885D",
         "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x0000000000000000000000000000000000000000",
+        "type": "BRIDGE",
+        "rebateWallet": "kyber_rebate",
         "tokens": [
           {
             "address": "0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C",
@@ -1051,7 +1006,7 @@
       {
         "address": "0x4e6d0F492fd139151DE4728caC47dAce56C56Af4",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xF3835CfA207b5b9b87F2E20aE8a6bcd179BF8404",
         "tokens": [
           {
@@ -1064,7 +1019,7 @@
       {
         "address": "0x0994c18Ed0C328F38d2C451B2a2e1cEb1Ae6A812",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xfb633F47A84a1450EE0413f2C32dC1772CcAea3e",
         "tokens": [
           {
@@ -1144,8 +1099,8 @@
       },
       {
         "address": "0x2485a4e3Dd95a3Ef445B786acf7bacc5C99986F7",
-        "id": "invalid reserve id",
-        "type": "xxx",
+        "id": "0xaa676463746f6b656e",
+        "type": "APR",
         "rebateWallet": "0xCA7144507DEcBA53B1D6417193F6E3cF69F9D2Cb",
         "tokens": [
           {
@@ -1204,22 +1159,9 @@
         ]
       },
       {
-        "address": "0x9E3db227CF04fBF8ac180bF8B6ACd64cd0420D32",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0xf8B4b43c45D1D277119A2b2D47A82f71b2940e94",
-        "tokens": [
-          {
-            "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-            "ethToToken": true,
-            "tokenToEth": true
-          }
-        ]
-      },
-      {
         "address": "0x977c9ABB01Ed3E99e9953fD1F472aE9f459E7E70",
-        "id": "invalid reserve id",
-        "type": "xxx",
+        "id": "0xaa0xd46ba6d942050d489dbd938a2c909a5d5039a161",
+        "type": "APR",
         "rebateWallet": "0x6723B7641c8Ac48a61F5f505aB1E9C03Bb44a301",
         "tokens": [
           {
@@ -1232,7 +1174,7 @@
       {
         "address": "0x1d57EF26709beB756e026308413f685339A73A9D",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "FPR",
         "rebateWallet": "0xB21579A8956Bde929B08c1bb8331Ba081348EcB7",
         "tokens": [
           {
@@ -1262,9 +1204,9 @@
       },
       {
         "address": "0x2Ed6F2bC006DA5897A0C3cD2686283C05e50C573",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x5715b29E164F2a4c87062111e7E84Eb61FFFe9BC",
+        "id": "0xaa4d4554",
+        "type": "APR",
+        "rebateWallet": "0xd46435bee13def9f1c4f914a060bb62cd1abc0bc",
         "tokens": [
           {
             "address": "0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e",
@@ -1276,7 +1218,7 @@
       {
         "address": "0x55A8Fda671a257b80258D2A03aBD6e0e1e3dbe79",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xB35833bFc62d0d4265836d1bcEAC631906F3d5E1",
         "tokens": [
           {
@@ -1287,22 +1229,9 @@
         ]
       },
       {
-        "address": "0x0d1267Ae18D7E23A3AB0243Cd4aB8a3bc4e1EEe2",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x534b9eacb406e7C0d417a767B15C47fd0176bF2e",
-        "tokens": [
-          {
-            "address": "0x4a57E687b9126435a9B19E4A802113e266AdeBde",
-            "ethToToken": true,
-            "tokenToEth": true
-          }
-        ]
-      },
-      {
         "address": "0xfe06bc8BC12595C1c871fF7c2ea9CadC42735d7D",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0x3c100e43cc0715B659d5e7F8C67a9aac7dD170C0",
         "tokens": [
           {
@@ -1315,7 +1244,7 @@
       {
         "address": "0x0Ce59E811024C4aA040389fb8917dD9EDAEf1693",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "FPR",
         "rebateWallet": "0x54FF3Ebb350E1261d304E46Bb97Ea399EE24B49B",
         "tokens": [
           {
@@ -1328,7 +1257,7 @@
       {
         "address": "0xb89f41CD2C8B6cba8b851289198b06Be8B4Dec65",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0x449E0B5564e0d141b3bc3829E74fFA0Ea8C08ad5",
         "tokens": [
           {
@@ -1341,7 +1270,7 @@
       {
         "address": "0xb06Cf173DA7E297aa6268139c7Cb67C53D8E4f90",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0x4777CB5C3849cFED5eD389C7c1f41e662f0d963c",
         "tokens": [
           {
@@ -1353,9 +1282,9 @@
       },
       {
         "address": "0x0b798B89155eA31f1312791b9fdFAae7c5F48460",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0xf0757758f974769dA7f5257ce8EceaC274256da0",
+        "id": "0xaa525352546f6b656e",
+        "type": "APR",
+        "rebateWallet": "0x2Fe1F4F616eE9b9F3F36B01B5d986B080B71443f",
         "tokens": [
           {
             "address": "0x8762db106B2c2A0bccB3A80d1Ed41273552616E8",
@@ -1366,9 +1295,9 @@
       },
       {
         "address": "0x141104687b51985D6210Eb4b398F1DC5b5b9e9F5",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0xf0757758f974769dA7f5257ce8EceaC274256da0",
+        "id": "0xaa525356546f6b656e",
+        "type": "APR",
+        "rebateWallet": "0x2Fe1F4F616eE9b9F3F36B01B5d986B080B71443f",
         "tokens": [
           {
             "address": "0x1C5857e110CD8411054660F60B5De6a6958CfAE2",
@@ -1380,7 +1309,7 @@
       {
         "address": "0x3e59c69952a4cFEaF653EedF8ff907D4b6b8762D",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xd6C0bb764f83e5B0dC27616de5E9281c38409c20",
         "tokens": [
           {
@@ -1393,7 +1322,7 @@
       {
         "address": "0x10db2A136ee3E0C963d82aF4C86Ca483199f2816",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0x2f2379f9AEB104ce66c81d96B98A59Cf11CBc9aC",
         "tokens": [
           {
@@ -1405,8 +1334,8 @@
       },
       {
         "address": "0xcd6D2221692CBef722D1703f3b93432d0EC9E22E",
-        "id": "invalid reserve id",
-        "type": "xxx",
+        "id": "0xaa47485420415052",
+        "type": "APR",
         "rebateWallet": "0x21F0079A6661Ab7a6457F70fB62Bc293ff88b150",
         "tokens": [
           {
@@ -1419,7 +1348,7 @@
       {
         "address": "0x23Fe3C603BE19d3a1155766358071CAcEFe14537",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0x4919F5DA960Edaf34b36473c05a543d4C18Bfc15",
         "tokens": [
           {
@@ -1432,7 +1361,7 @@
       {
         "address": "0xe96b41aF3DA574A991582dC54cC35535550a3f8d",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xF9571898bC616E6F0bBd93050fB3aCf406132fb4",
         "tokens": [
           {
@@ -1444,8 +1373,8 @@
       },
       {
         "address": "0x00Cd2388C86C960A646D640bE44FC8F83b78cEC9",
-        "id": "invalid reserve id",
-        "type": "xxx",
+        "id": "0xaacfefe57c1e0f781f9864fe27287980a2097e60c0ee0c5e71083e32cecd1c9c",
+        "type": "APR",
         "rebateWallet": "0xB99eb8E2a7bcB00668281DE259b0565F76efaEC5",
         "tokens": [
           {
@@ -1458,7 +1387,7 @@
       {
         "address": "0x71eb6edF770b25Fcd60Ad9790AA20C422F0f4a0d",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0x05A9aFD79a05C3e1AFEFa282Ef8d58F9366B160B",
         "tokens": [
           {
@@ -1470,9 +1399,9 @@
       },
       {
         "address": "0x773A58C0ae122f56d6747BC1264F00174B3144c3",
-        "id": "invalid reserve id",
-        "type": "xxx",
-        "rebateWallet": "0x2a262Bd5A18D5c78e8cB4E6ed2D496c24A299DB0",
+        "id": "0xaa514e5452657365727665",
+        "type": "APR",
+        "rebateWallet": "0x1eeA6eD3a5F2A30aC07f70141B5A084b2A2bFbD7",
         "tokens": [
           {
             "address": "0x4a220E6096B25EADb88358cb44068A3248254675",
@@ -1484,7 +1413,7 @@
       {
         "address": "0x89b3F60A17789Aa7c7061Af6f5e9efA407153C03",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0x54FF3Ebb350E1261d304E46Bb97Ea399EE24B49B",
         "tokens": [
           {
@@ -1497,7 +1426,7 @@
       {
         "address": "0xAD84a44a673Be4FdcD5e39Ebd15eBC404E87F314",
         "id": "invalid reserve id",
-        "type": "xxx",
+        "type": "APR",
         "rebateWallet": "0xb3a51D8b689C470AD1B5F084c15EaA487b1F2C95",
         "tokens": [
           {
