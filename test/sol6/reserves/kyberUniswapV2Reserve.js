@@ -188,6 +188,23 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       });
     });
 
+    it('test setKyberNetwork revert if not admin', async () => {
+      let newNetwork = accounts[6];
+      await expectRevert(reserve.setKyberNetwork(newNetwork, {from: operator}), 'only admin');
+    });
+
+    it('test setKyberNetwork success', async () => {
+      let newNetwork = accounts[6];
+      let txResult = await reserve.setKyberNetwork(newNetwork, {from: admin});
+      expectEvent(txResult, 'KyberNetworkSet', {
+        kyberNetwork: newNetwork
+      });
+      assert(newNetwork == await reserve.kyberNetwork(), "network contract missmatch")
+      //reset network value
+      reserve.setKyberNetwork(network, {from: admin})
+    });
+
+
     describe('test list - delist token', async () => {
       it('test list token revert from non-operator', async () => {
         await expectRevert(

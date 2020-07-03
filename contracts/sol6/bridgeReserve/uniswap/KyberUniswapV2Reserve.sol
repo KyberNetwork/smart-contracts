@@ -16,7 +16,7 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
     uint256 public constant DEFAULT_FEE_BPS = 0;
     uint256 public constant DEADLINE = 2**255;
 
-    address public immutable kyberNetwork;
+    address public kyberNetwork;
     // fee deducted for each trade
     uint256 public feeBps = DEFAULT_FEE_BPS;
 
@@ -48,6 +48,8 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
     event FeeUpdated(uint256 feeBps);
 
     event EtherReceival(address indexed sender, uint256 amount);
+
+    event KyberNetworkSet(address kyberNetwork);
 
     constructor(
         IUniswapV2Router01 _uniswapRouter,
@@ -152,6 +154,14 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
         if (_feeBps != feeBps) {
             feeBps = _feeBps;
             emit FeeUpdated(_feeBps);
+        }
+    }
+
+    function setKyberNetwork(address _kyberNetwork) external onlyAdmin {
+        require(_kyberNetwork != address(0));
+        if (kyberNetwork != _kyberNetwork) {
+            kyberNetwork = _kyberNetwork;
+            emit KyberNetworkSet(kyberNetwork);
         }
     }
 
