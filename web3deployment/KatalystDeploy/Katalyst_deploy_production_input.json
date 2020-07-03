@@ -20,8 +20,8 @@
       "APR": false,
       "BRIDGE": false,
       "UTILITY": false,
-      "CUSTOM": true,
-      "ORDERBOOK": true
+      "CUSTOM": false,
+      "ORDERBOOK": false
     },
     "permission": {
       "KyberDao": {
@@ -1433,19 +1433,6 @@
             "address": "0xd4c435F5B09F855C3317c8524Cb1F586E42795fa",
             "ethToToken": true,
             "tokenToEth": true
-          }
-        ]
-      },
-      {
-        "address": "0x80827ce0D1B23ac2f30b4244d27b0Aa904BDa83c",
-        "id": "invalid reserve id",
-        "type": "BRIDGE",
-        "rebateWallet": "kyber_rebate",
-        "tokens": [
-          {
-            "address": "0xc00e94Cb662C3520282E6f5717214004A7f26888",
-            "ethToToken": true,
-            "tokenToEth": false
           }
         ]
       }
