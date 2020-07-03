@@ -25,28 +25,31 @@
     },
     "permission": {
       "KyberDao": {
-        "DaoOperator": "update this"
+        "DaoOperator": "community_msig"
       },
       "FeeHandler": {
-        "DaoOperator": "update this"
+        "DaoOperator": "kyber_team"
       },
       "MatchingEngine": {
-        "admin": "update this",
+        "admin": "kyber_team",
         "operators": [],
         "alerters": []
       },
       "Network": {
-        "admin": "update this",
-        "operators": [],
+        "admin": "kyber_team",
+        "operators": [
+          "0x4f21789c2f657b8b0a7777ef5b62b8b21ae50021",
+          "0x8180a5ca4e3b94045e05a9313777955f7518d757"
+        ],
         "alerters": []
       },
       "Proxy": {
-        "admin": "update this",
+        "admin": "kyber_team",
         "operators": [],
         "alerters": []
       },
       "Storage": {
-        "admin": "update this",
+        "admin": "kyber_team",
         "operators": [
           "0x4f21789c2f657b8b0a7777ef5b62b8b21ae50021",
           "0x8180a5ca4e3b94045e05a9313777955f7518d757"
