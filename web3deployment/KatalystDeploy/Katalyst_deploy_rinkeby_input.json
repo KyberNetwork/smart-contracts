@@ -1,0 +1,190 @@
+{
+  "reserveTypes": {
+    "FPR": 1,
+    "APR": 2,
+    "BRIDGE": 3,
+    "UTILITY": 4,
+    "CUSTOM": 5,
+    "ORDERBOOK": 6
+  },
+  "isFeeAccounted": {
+    "FPR": true,
+    "APR": true,
+    "BRIDGE": false,
+    "UTILITY": false,
+    "CUSTOM": true,
+    "ORDERBOOK": true
+  },
+  "isEntitledRebate": {
+    "FPR": true,
+    "APR": true,
+    "BRIDGE": false,
+    "UTILITY": false,
+    "CUSTOM": true,
+    "ORDERBOOK": true
+  },
+  "permission": {
+    "KyberDao": {
+      "DaoOperator": "0x9EFe12db89D3b0c562c323edeFda01FFB6c2FF3a"
+    },
+    "FeeHandler": {
+      "DaoOperator": "0x9EFe12db89D3b0c562c323edeFda01FFB6c2FF3a"
+    },
+    "MatchingEngine": {
+      "admin": "0x9EFe12db89D3b0c562c323edeFda01FFB6c2FF3a",
+      "operators": [],
+      "alerters": []
+    },
+    "Network": {
+      "admin": "0x9EFe12db89D3b0c562c323edeFda01FFB6c2FF3a",
+      "operators": [],
+      "alerters": []
+    },
+    "Proxy": {
+      "admin": "0x9EFe12db89D3b0c562c323edeFda01FFB6c2FF3a",
+      "operators": [],
+      "alerters": []
+    },
+    "Storage": {
+      "admin": "0x9EFe12db89D3b0c562c323edeFda01FFB6c2FF3a",
+      "operators": [
+        "0x9EFe12db89D3b0c562c323edeFda01FFB6c2FF3a",
+        "0x833164041AaFF3CD6c7D80Affbd923C1d1cEB4b3",
+        "0x6E4843E90ecacd3a3BBcED74A5235363762D5100"
+      ],
+      "alerters": []
+    }
+  },
+  "max gas price": 100000000000,
+  "neg diff in bps": 5,
+  "epoch period": 2700,
+  "start timestamp": 1593782558,
+  "network fee bps": 20,
+  "reward fee bps": 5000,
+  "rebate bps": 3000,
+  "burn block interval": 10,
+  "contracts filename" : "katalystRinkebyContracts.json",
+  "output filename" : "katalystRinkeby.json",
+  "addresses": {
+    "gasHelper": "0x0000000000000000000000000000000000000000",
+    "oldProxy": "0xF77eC7Ed5f5B9a5aee4cfa6FFCaC6A4C315BaC76"
+  },
+  "tokens": {
+    "OMG": {
+      "name": "OMGToken",
+      "decimals": "18",
+      "address": "0x732fBA98dca813C3A630b53a8bFc1d6e87B1db65"
+    },
+    "KNC": {
+      "name": "Kyber Network Crystal",
+      "decimals": "18",
+      "address": "0x6FA355a7b6bD2D6bD8b927C489221BFBb6f1D7B2"
+    },
+    "MANA": {
+      "name": "Decentraland MANA",
+      "decimals": "18",
+      "address": "0x725d648E6ff2B8C44c96eFAEa29b305e5bb1526a"
+    },
+    "SALT": {
+      "name": "Salt",
+      "decimals": "8",
+      "address": "0x058832CA736AB027c12367e53915e34e87a6081B"
+    },
+    "ZIL": {
+      "name": "Zilliqa",
+      "decimals": "12",
+      "address": "0x405A656Dc1b672800D21a15eF5539D4776F6654c"
+    },
+    "POLY": {
+      "name": "Polymath",
+      "decimals": "18",
+      "address": "0xBcb83bAFD042618d5c9b1a91D0Fcd4B935e08CEA"
+    },
+    "REP": {
+      "name": "Reputation",
+      "decimals": "18",
+      "address": "0x6e894660985207feb7cf89faf048998c71e8ee89"
+    },
+    "DAI": {
+      "name": "Dai Stablecoin",
+      "decimals": "18",
+      "address": "0x5592ec0cfb4dbc12d3ab100b257153436a1f0fea"
+    },
+    "SNT": {
+      "name": "Status",
+      "decimals": "18",
+      "address": "0x01DAd357f21BD4fB1D3d8f3B05d1cc151807AA23"
+    },
+    "WETH": {
+      "name": "Wrapped Ether",
+      "decimals": 18,
+      "address": "0xc778417e063141139fce010982780140aa0cd5ab"
+    }
+  },
+  "reserves": [
+    {
+      "address": "0xa452875276104b97bd5eacfd22c929d8fc7cc1f6",
+      "id": "0xff52494e4b4542595f4d41494e",
+      "type": "FPR",
+      "rebateWallet": "0xe6F573F2F890B8890459bdda8e17140F79d9B825",
+      "tokens": [
+        {
+          "address": "0x6e894660985207feb7cf89faf048998c71e8ee89",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x6FA355a7b6bD2D6bD8b927C489221BFBb6f1D7B2",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x5592ec0cfb4dbc12d3ab100b257153436a1f0fea",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x732fba98dca813c3a630b53a8bfc1d6e87b1db65",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x058832CA736AB027c12367e53915e34e87a6081B",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x405a656dc1b672800d21a15ef5539d4776f6654c",
+          "ethToToken": true,
+          "tokenToEth": true
+        }
+      ]
+    },
+    {
+      "address": "0x5507962a62A86D26c7380C74Cf8f5C92f4680ED3",
+      "id": "0xaa52494e4b4542595f4d414e41",
+      "type": "APR",
+      "rebateWallet": "0xe6F573F2F890B8890459bdda8e17140F79d9B825",
+      "tokens": [
+        {
+          "address": "0x725d648e6ff2b8c44c96efaea29b305e5bb1526a",
+          "ethToToken": true,
+          "tokenToEth": true
+        }
+      ]
+    },
+    {
+      "address": "0x29382a4c3b22a39b83c76f261439bbcc78c72dd0",
+      "id": "0x0052494e4b4542595f57455448",
+      "type": "UTILITY",
+      "rebateWallet": "0xe6F573F2F890B8890459bdda8e17140F79d9B825",
+      "tokens": [
+        {
+          "address": "0xc778417e063141139fce010982780140aa0cd5ab",
+          "ethToToken": true,
+          "tokenToEth": true
+        }
+      ]
+    }
+  ]
+}
