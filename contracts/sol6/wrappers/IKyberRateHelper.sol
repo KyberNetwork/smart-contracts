@@ -46,4 +46,14 @@ interface IKyberRateHelper {
             bytes32[] memory sellReserves,
             uint256[] memory sellRates
         );
+
+    function getReservesRates(IERC20 token, uint256 optionalAmountWei)
+        external
+        view
+        returns (
+            bytes32[] memory buyReserves,
+            uint256[] memory buyRates,
+            bytes32[] memory sellReserves,
+            uint256[] memory sellRates
+        );
 }

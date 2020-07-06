@@ -7,7 +7,6 @@ import "../IKyberStorage.sol";
 import "../utils/Utils5.sol";
 import "../utils/WithdrawableNoModifiers.sol";
 
-
 contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
     struct Amounts {
         uint256 srcAmount;
@@ -69,6 +68,45 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         )
     {
         return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, 0);
+    }
+
+    /// @dev function to cover backward compatible with old network interface
+    /// @dev get rate from token to eth, use the best eth amount to get rate from eth to token
+    /// @param token Token to get rate
+    /// @param optionalAmountWei Amount to get rate (default: 0)
+    function getReservesRates(IERC20 token, uint256 optionalAmountWei)
+        public
+        override
+        view
+        returns (
+            bytes32[] memory buyReserves,
+            uint256[] memory buyRates,
+            bytes32[] memory sellReserves,
+            uint256[] memory sellRates
+        )
+    {
+        (uint256 networkFeeBps, ) = kyberDao.getLatestNetworkFeeData();
+        uint256 buyAmount = optionalAmountWei > 0 ? optionalAmountWei : 1 ether;
+
+        (buyReserves, buyRates) = getBuyInfo(token, buyAmount, networkFeeBps);
+
+        uint256 bestRate = 0;
+        for (uint256 i = 0; i < buyRates.length; i++) {
+            if (buyRates[i] > bestRate) {
+                bestRate = buyRates[i];
+            }
+        }
+
+        if (bestRate == 0) {
+            return (buyReserves, buyRates, sellReserves, sellRates);
+        }
+        uint256 sellAmount = calcDstQty(
+            buyAmount,
+            ETH_DECIMALS,
+            getDecimals(token),
+            bestRate
+        );
+        (sellReserves, sellRates) = getSellInfo(token, sellAmount, networkFeeBps);
     }
 
     function getRatesForToken(
