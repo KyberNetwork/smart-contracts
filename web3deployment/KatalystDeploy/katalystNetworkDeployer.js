@@ -177,7 +177,6 @@ class Reserve {
 // }
 
 let reserveDataArray = [];
-let walletDataArray = [];
 
 function parseInput(jsonInput) {
     const reserveTypes = jsonInput["reserveTypes"];
@@ -187,11 +186,6 @@ function parseInput(jsonInput) {
     // reserve array
     Object.values(reserveData).forEach(function(reserve) {
       reserveDataArray.push(new Reserve(reserve, reserveTypes));
-    });
-
-    // wallet array
-    Object.values(walletData).forEach(function(wallet) {
-      walletDataArray.push(new Wallet(wallet));
     });
 
     //permissions
@@ -340,7 +334,7 @@ async function fullDeployment() {
   await setRebateEntitledDataInStorage();
   await pressToContinue();
   await addReserves();
-  await configureAndEnableNetwork();
+  await configureNetwork();
   await pressToContinue();
 
   ///////////
@@ -783,6 +777,7 @@ async function redeployProxy() {
 
 function lastFewThings() {
   console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Don't forget to send DGX to network contract!!");
+  process.exit(0);
 }
 
 let filename;
