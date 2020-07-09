@@ -156,6 +156,7 @@ let networkFeeBps;
 let rewardFeeBps;
 let rebateFeeBps;
 let contractsOutputFilename;
+let reserveTypes;
 
 class Reserve {
   constructor(jsonInput, reserveTypes) {
@@ -163,7 +164,8 @@ class Reserve {
     this.type = reserveTypes[jsonInput["type"]],
     this.tokens = jsonInput["tokens"],
     this.wallet = jsonInput["rebateWallet"],
-    this.id = jsonInput["id"]
+    this.id = jsonInput["id"],
+    this.name = jsonInput["name"]
   }
 }
 
@@ -175,10 +177,9 @@ class Reserve {
 // }
 
 let reserveDataArray = [];
-let walletDataArray = [];
 
 function parseInput(jsonInput) {
-    const reserveTypes = jsonInput["reserveTypes"];
+    reserveTypes = jsonInput["reserveTypes"];
     const reserveData = jsonInput["reserves"];
     const walletData = jsonInput["wallets"];
     allTokens = jsonInput["tokens"];
@@ -186,11 +187,6 @@ function parseInput(jsonInput) {
     // reserve array
     Object.values(reserveData).forEach(function(reserve) {
       reserveDataArray.push(new Reserve(reserve, reserveTypes));
-    });
-
-    // wallet array
-    Object.values(walletData).forEach(function(wallet) {
-      walletDataArray.push(new Wallet(wallet));
     });
 
     //permissions
@@ -264,17 +260,11 @@ async function main() {
   // CONTRACT INSTANTIATION / DEPLOYMENT //
   /////////// DO NOT TOUCH ////////////////
   await deployMatchingEngineContract(output);
-  await pressToContinue();
   await deployStorageContracts(output);
-  await pressToContinue();
   await deployNetworkContract(output);
-  await pressToContinue();
   await deployProxyContract(output);
-  await pressToContinue();
   await deployFeeHandlerContract(output);
-  await pressToContinue();
   await deployDaoContract(output);
-  await pressToContinue();
   await getStakingAddress();
   /////////////////////////////////////////
 
@@ -336,7 +326,8 @@ async function fullDeployment() {
   await setRebateEntitledDataInStorage();
   await addReserves();
   await listTokensForReserves();
-  await configureAndEnableNetwork();
+  await configureNetwork();
+  await pressToContinue();
 
   ///////////
   // BREAK //
@@ -404,6 +395,7 @@ async function deployMatchingEngineContract(output) {
     console.log("deploying matching engine");
     [matchingEngineAddress, matchingEngineContract] = await deployContract(output, "KyberMatchingEngine", [sender]);
     console.log(`matchingEngine: ${matchingEngineAddress}`);
+    await pressToContinue();
   } else {
     console.log("Instantiating matching engine...");
     matchingEngineContract = new web3.eth.Contract(
@@ -469,6 +461,7 @@ async function deployStorageContracts(output) {
       [sender, networkHistoryAddress, feeHandlerHistoryAddress, daoHistoryAddress, matchingEngineHistoryAddress]
       );
     console.log(`storage: ${storageAddress}`);
+    await pressToContinue();
   } else {
     console.log("Instantiating storage...");
     storageContract = new web3.eth.Contract(
@@ -482,6 +475,7 @@ async function deployNetworkContract(output) {
     console.log("deploying kyber network");
     [networkAddress, networkContract] = await deployContract(output, "KyberNetwork", [sender, storageAddress]);
     console.log(`network: ${networkAddress}`);
+    await pressToContinue();
   } else {
     console.log("Instantiating network...");
     networkContract = new web3.eth.Contract(
@@ -495,6 +489,7 @@ async function deployProxyContract(output) {
     console.log("deploying KNProxy");
     [proxyAddress, proxyContract] = await deployContract(output, "KyberNetworkProxy", [sender]);
     console.log(`KNProxy: ${proxyAddress}`);
+    await pressToContinue();
   } else {
     console.log("Instantiating proxy...");
     proxyContract = new web3.eth.Contract(
@@ -511,6 +506,7 @@ async function deployFeeHandlerContract(output) {
       [sender, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval, daoOperator]
     );
     console.log(`Fee Handler: ${feeHandlerAddress}`);
+    await pressToContinue();
   } else {
     console.log("Instantiating feeHandler...");
     feeHandlerContract = new web3.eth.Contract(
@@ -538,6 +534,7 @@ async function deployDaoContract(output) {
     }
     // Note: Staking contract need not be instantiated, since it doesn't require any setup
     console.log("\x1b[41m%s\x1b[0m" ,"Wait for tx to be mined before continuing (will call daoContract for staking address)");
+    await pressToContinue();
 };
 
 async function getStakingAddress() {
@@ -672,7 +669,11 @@ async function addReserves(reserveIndex) {
   for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
     const reserve = reserveDataArray[i];
     console.log(`Reserve array index ${i}`);
-    console.log(`Adding reserve ${reserve.address}`);
+    if (reserve.name != undefined) {
+      console.log(`Adding ${reserve.name}: ${reserve.address}`);
+    } else {
+      console.log(`Adding reserve ${reserve.address}`);
+    }
     await sendTx(storageContract.methods.addReserve(reserve.address, reserve.id, reserve.type, reserve.wallet));
     await pressToContinue();
   }
@@ -682,15 +683,21 @@ async function listTokensForReserves(reserveIndex, tokenIndex) {
   reserveIndex = (reserveIndex == undefined) ? 0 : reserveIndex;
   tokenIndex = (tokenIndex == undefined) ? 0 : tokenIndex;
   for (let i = reserveIndex ; i < reserveDataArray.length ; i++) {
-    const reserve = reserveDataArray[i];
-    const tokens = reserve.tokens;
+    let reserve = reserveDataArray[i];
+    // if not FPR, skip listing
+    if (reserve.type != reserveTypes["FPR"]) continue;
+    let tokens = reserve.tokens;
     for (let j = tokenIndex ; j < tokens.length ; j++) {
       token = tokens[j];
       console.log(`Reserve array index ${i}, token array index ${j}`);
-      console.log(`listing token ${token.address} for reserve ${reserve.id}`);
+      if (reserve.name != undefined) {
+        console.log(`listing token ${token.address} for reserve ${reserve.name}`);
+      } else {
+        console.log(`listing token ${token.address} for reserve ${reserve.id}`);
+      }
       await sendTx(storageContract.methods.listPairForReserve(reserve.id,token.address,token.ethToToken,token.tokenToEth,true));
+      await pressToContinue();
     }
-    await pressToContinue();
   }
 }
 
@@ -700,6 +707,11 @@ async function configureAndEnableNetwork() {
   await sendTx(networkContract.methods.setParams(maxGasPrice, negDiffInBps));
                     
   console.log("network enable");
+  await sendTx(networkContract.methods.setEnable(true));
+}
+
+async function enableNetwork() {
+  console.log("enabling network");
   await sendTx(networkContract.methods.setEnable(true));
 }
 
@@ -778,6 +790,7 @@ async function redeployProxy() {
 
 function lastFewThings() {
   console.log("\x1b[41m%s\x1b[0m" ,"REMINDER: Don't forget to send DGX to network contract!!");
+  process.exit(0);
 }
 
 let filename;
