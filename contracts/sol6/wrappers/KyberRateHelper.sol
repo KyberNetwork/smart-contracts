@@ -100,12 +100,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         if (bestRate == 0) {
             return (buyReserves, buyRates, sellReserves, sellRates);
         }
-        uint256 sellAmount = calcDstQty(
-            buyAmount,
-            ETH_DECIMALS,
-            getDecimals(token),
-            bestRate
-        );
+        uint256 sellAmount = calcDstQty(buyAmount, ETH_DECIMALS, getDecimals(token), bestRate);
         (sellReserves, sellRates) = getSellInfo(token, sellAmount, networkFeeBps);
     }
 
@@ -144,16 +139,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             uint256[] memory sellRates
         )
     {
-        (buyReserves, buyRates) = getBuyInfo(
-            token,
-            optionalBuyAmount,
-            networkFeeBps
-        );
-        (sellReserves, sellRates) = getSellInfo(
-            token,
-            optionalSellAmount,
-            networkFeeBps
-        );
+        (buyReserves, buyRates) = getBuyInfo(token, optionalBuyAmount, networkFeeBps);
+        (sellReserves, sellRates) = getSellInfo(token, optionalSellAmount, networkFeeBps);
     }
 
     function getBuyInfo(
@@ -225,7 +212,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         sellRates = new uint256[](sellReserves.length);
 
         for (uint256 i = 0; i < sellReserves.length; i++) {
-            (reserve, , , ,) = kyberStorage.getReserveDetailsById(sellReserves[i]);
+            (reserve, , , , ) = kyberStorage.getReserveDetailsById(sellReserves[i]);
             sellRates[i] = IKyberReserve(reserve).getConversionRate(
                 token,
                 ETH_TOKEN_ADDRESS,
@@ -244,5 +231,113 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
                 ETH_DECIMALS
             );
         }
+    }
+
+    function getSpreadInfo(IERC20 token, uint256 optionalAmountWei)
+        public
+        view
+        returns (bytes32[] memory reserves, uint256[] memory spreads)
+    {
+        (
+            bytes32[] memory buyReserves,
+            uint256[] memory buyRates,
+            bytes32[] memory sellReserves,
+            uint256[] memory sellRates
+        ) = getReservesRates(token, optionalAmountWei);
+
+        uint256[] memory revertReserveIndex = new uint256[](buyReserves.length);
+        uint256 validReserve = 0;
+        for (uint256 i = 0; i < buyRates.length; i++) {
+            if (buyRates[i] == 0) {
+                continue;
+            }
+
+            for (uint256 j = 0; j < sellRates.length; j++) {
+                if (sellReserves[j] == buyReserves[i]) {
+                    if (sellRates[j] == 0) break;
+                    revertReserveIndex[i] = j;
+                    validReserve++;
+                    break;
+                }
+            }
+        }
+        reserves = new bytes32[](validReserve);
+        spreads = new uint256[](validReserve);
+        uint256 reserveIndex;
+        for (uint256 i = 0; i < buyRates.length; i++) {
+            if (buyRates[i] == 0) {
+                continue;
+            }
+            reserves[reserveIndex] = buyReserves[i];
+            spreads[reserveIndex] = calcSpreadInBps(buyRates[i], sellRates[revertReserveIndex[i]]);
+            reserveIndex++;
+        }
+    }
+
+    function getSlippageRateInfo(
+        IERC20 token,
+        uint256 optinalBaseAmount,
+        uint256 optinalSlippageAmount
+    )
+        public
+        view
+        returns (
+            bytes32[] memory buyReserves,
+            int256[] memory buySlippageRateBps,
+            bytes32[] memory sellReserves,
+            int256[] memory sellSlippageRateBps
+        )
+    {
+        uint256 baseAmount = optinalBaseAmount > 0 ? optinalBaseAmount : 0.01 ether;
+        uint256[] memory baseBuyRates;
+        uint256[] memory baseSellRates;
+        (buyReserves, baseBuyRates, sellReserves, baseSellRates) = getReservesRates(
+            token,
+            baseAmount
+        );
+        uint256 slippageAmount = optinalSlippageAmount > 0 ? optinalSlippageAmount : 10 ether;
+        uint256[] memory slippageBuyRates;
+        uint256[] memory slippageSellRates;
+        (, slippageBuyRates, , slippageSellRates) = getReservesRates(token, slippageAmount);
+
+        assert(slippageSellRates.length == baseSellRates.length);
+        assert(slippageSellRates.length == baseSellRates.length);
+
+        buySlippageRateBps = new int256[](buyReserves.length);
+        for (uint256 i = 0; i < buyReserves.length; i++) {
+            buySlippageRateBps[i] = calcSlippageRateInBps(
+                baseBuyRates[i],
+                slippageBuyRates[i]
+            );
+        }
+
+        sellSlippageRateBps = new int256[](sellReserves.length);
+        for (uint256 i = 0; i < sellReserves.length; i++) {
+            sellSlippageRateBps[i] = calcSlippageRateInBps(
+                baseSellRates[i],
+                slippageSellRates[i]
+            );
+        }
+    }
+
+    function calcSpreadInBps(uint256 buyRate, uint256 sellRate) internal pure returns (uint256) {
+        require(buyRate != 0, "buyRate 0");
+        require(sellRate != 0, "sellRate 0");
+        return
+            (2 * BPS * (PRECISION**2 / sellRate - buyRate)) / (PRECISION**2 / sellRate + buyRate);
+    }
+
+    function calcSlippageRateInBps(uint256 baseRate, uint256 slippageRate)
+        internal
+        pure
+        returns (int256)
+    {
+        if (baseRate == 0) {
+            return -1;
+        }
+        if (slippageRate > baseRate) {
+            return 0;
+        }
+        return int256((BPS * (baseRate - slippageRate)) / baseRate);
     }
 }
