@@ -23,7 +23,6 @@ const Storage_ABI = [{"inputs":[{"internalType":"address","name":"_admin","type"
 const jsonFileName = 'kyberReserves.json';
 const STORAGE_ADDRESS = "0xC8fb12402cB16970F3C5F4b48Ff68Eb9D1289301"; // production
 // const STORAGE_ADDRESS = "0x688bf5eec43e0799c5b9c1612f625f7b93fe5434"; // ropsten
-// const STORAGE_OPERATOR_PK = "";
 const STORAGE_OPERATOR_PK = "";
 let NONCE; // = BN.from(123);
 let GAS_PRICE; // = ethers.utils.parseUnits('48', 'gwei');
