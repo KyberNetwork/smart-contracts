@@ -8,6 +8,10 @@ import "../utils/Utils5.sol";
 import "../utils/WithdrawableNoModifiers.sol";
 
 contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
+    uint256 internal constant DEFAULT_SPREAD_VALUE = 10 ether;
+    uint256 internal constant DEFAULT_SLIPPAGE_BASE_VALUE = 0.01 ether;
+    uint256 internal constant DEFAULT_SLIPPAGE_VALUE = 10 ether;
+
     struct Amounts {
         uint256 srcAmount;
         uint256 ethSrcAmount;
@@ -73,8 +77,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
     /// @dev function to cover backward compatible with old network interface
     /// @dev get rate from token to eth, use the best eth amount to get rate from eth to token
     /// @param token Token to get rate
-    /// @param optionalAmountWei Amount to get rate (default: 0)
-    function getReservesRates(IERC20 token, uint256 optionalAmountWei)
+    /// @param optionalEthAmount Amount to get rate (default: 0)
+    function getReservesRates(IERC20 token, uint256 optionalEthAmount)
         public
         override
         view
@@ -86,7 +90,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         )
     {
         (uint256 networkFeeBps, ) = kyberDao.getLatestNetworkFeeData();
-        uint256 buyAmount = optionalAmountWei > 0 ? optionalAmountWei : 1 ether;
+        uint256 buyAmount = optionalEthAmount > 0 ? optionalEthAmount : 1 ether;
 
         (buyReserves, buyRates) = getBuyInfo(token, buyAmount, networkFeeBps);
 
@@ -233,17 +237,19 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         }
     }
 
-    function getSpreadInfo(IERC20 token, uint256 optionalAmountWei)
+    function getSpreadInfo(IERC20 token, uint256 optionalEthAmount)
         public
         view
+        override
         returns (bytes32[] memory reserves, uint256[] memory spreads)
     {
+        uint256 ethAmount = optionalEthAmount > 0 ? optionalEthAmount : DEFAULT_SPREAD_VALUE;
         (
             bytes32[] memory buyReserves,
             uint256[] memory buyRates,
             bytes32[] memory sellReserves,
             uint256[] memory sellRates
-        ) = getReservesRates(token, optionalAmountWei);
+        ) = getReservesRates(token, ethAmount);
 
         uint256[] memory revertReserveIndex = new uint256[](buyReserves.length);
         uint256 validReserve = 0;
@@ -276,11 +282,12 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
     function getSlippageRateInfo(
         IERC20 token,
-        uint256 optinalBaseAmount,
+        uint256 optinalEthAmount,
         uint256 optinalSlippageAmount
     )
         public
         view
+        override
         returns (
             bytes32[] memory buyReserves,
             int256[] memory buySlippageRateBps,
@@ -288,14 +295,14 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             int256[] memory sellSlippageRateBps
         )
     {
-        uint256 baseAmount = optinalBaseAmount > 0 ? optinalBaseAmount : 0.01 ether;
+        uint256 baseAmount = optinalEthAmount > 0 ? optinalEthAmount : DEFAULT_SLIPPAGE_BASE_VALUE;
         uint256[] memory baseBuyRates;
         uint256[] memory baseSellRates;
         (buyReserves, baseBuyRates, sellReserves, baseSellRates) = getReservesRates(
             token,
             baseAmount
         );
-        uint256 slippageAmount = optinalSlippageAmount > 0 ? optinalSlippageAmount : 10 ether;
+        uint256 slippageAmount = optinalSlippageAmount > 0 ? optinalSlippageAmount : DEFAULT_SLIPPAGE_VALUE;
         uint256[] memory slippageBuyRates;
         uint256[] memory slippageSellRates;
         (, slippageBuyRates, , slippageSellRates) = getReservesRates(token, slippageAmount);
@@ -305,24 +312,18 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
         buySlippageRateBps = new int256[](buyReserves.length);
         for (uint256 i = 0; i < buyReserves.length; i++) {
-            buySlippageRateBps[i] = calcSlippageRateInBps(
-                baseBuyRates[i],
-                slippageBuyRates[i]
-            );
+            buySlippageRateBps[i] = calcSlippageRateInBps(baseBuyRates[i], slippageBuyRates[i]);
         }
 
         sellSlippageRateBps = new int256[](sellReserves.length);
         for (uint256 i = 0; i < sellReserves.length; i++) {
-            sellSlippageRateBps[i] = calcSlippageRateInBps(
-                baseSellRates[i],
-                slippageSellRates[i]
-            );
+            sellSlippageRateBps[i] = calcSlippageRateInBps(baseSellRates[i], slippageSellRates[i]);
         }
     }
 
     function calcSpreadInBps(uint256 buyRate, uint256 sellRate) internal pure returns (uint256) {
-        require(buyRate != 0, "buyRate 0");
-        require(sellRate != 0, "sellRate 0");
+        assert(buyRate != 0);
+        assert(sellRate != 0);
         return
             (2 * BPS * (PRECISION**2 / sellRate - buyRate)) / (PRECISION**2 / sellRate + buyRate);
     }

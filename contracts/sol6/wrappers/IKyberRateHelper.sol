@@ -56,4 +56,23 @@ interface IKyberRateHelper {
             bytes32[] memory sellReserves,
             uint256[] memory sellRates
         );
+
+    function getSpreadInfo(IERC20 token, uint256 optionalEthAmount)
+        external
+        view
+        returns (bytes32[] memory reserves, uint256[] memory spreads);
+
+    function getSlippageRateInfo(
+        IERC20 token,
+        uint256 optinalEthAmount,
+        uint256 optinalSlippageAmount
+    )
+        external
+        view
+        returns (
+            bytes32[] memory buyReserves,
+            int256[] memory buySlippageRateBps,
+            bytes32[] memory sellReserves,
+            int256[] memory sellSlippageRateBps
+        );
 }
