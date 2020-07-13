@@ -60,7 +60,7 @@ interface IKyberRateHelper {
     function getSpreadInfo(IERC20 token, uint256 optionalEthAmount)
         external
         view
-        returns (bytes32[] memory reserves, uint256[] memory spreads);
+        returns (bytes32[] memory reserves, int256[] memory spreads);
 
     function getSlippageRateInfo(
         IERC20 token,
