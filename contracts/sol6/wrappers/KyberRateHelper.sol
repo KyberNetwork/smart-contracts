@@ -14,12 +14,6 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
     uint256 internal constant DEFAULT_SLIPPAGE_BASE_VALUE = 0.01 ether;
     uint256 internal constant DEFAULT_SLIPPAGE_VALUE = 10 ether;
 
-    struct Amounts {
-        uint256 sellAmount;
-        uint256 ethSrcAmount;
-        uint256 destAmount;
-    }
-
     IKyberDao public kyberDao;
     IKyberStorage public kyberStorage;
     //reserves are queried directly
@@ -430,18 +424,16 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         }
     }
 
-    /// @dev if buyRate or sellRate == 0 return -1
+    /// @dev if sellRate == 0 return 2 * BPS (max value of spread)
     /// @dev if buyRate ** sellRate >= 10 ** 36 (negative spread) return 0
-    /// @dev can return negative spread
+    /// @dev spread can be from -2 * BPS to 2 * BPS
     function calcSpreadInBps(uint256 buyRate, uint256 sellRate) internal pure returns (int256) {
-        if (buyRate == 0 || sellRate == 0) {
-            return -1;
+        if (sellRate == 0) {
+            return 2 * int256(BPS);
         }
-        uint256 reversedSellRate = PRECISION**2 / sellRate;
-        if(reversedSellRate < buyRate) {
-            return 0;
-        }
-        return int256((2 * BPS * (reversedSellRate - buyRate)) / (reversedSellRate + buyRate));
+        int256 reversedSellRate = int256(PRECISION**2 / sellRate);
+        int256 buyRateInt256 = int256(buyRate);
+        return (2 * int256(BPS) * (reversedSellRate - buyRateInt256)) / (reversedSellRate + buyRateInt256);
     }
 
     /// @dev if baseRate == 0 return -1
