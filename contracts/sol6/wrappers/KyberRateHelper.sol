@@ -20,7 +20,6 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 destAmount;
     }
 
-    IKyberMatchingEngine public matchingEngine;
     IKyberDao public kyberDao;
     IKyberStorage public kyberStorage;
     //reserves are queried directly
@@ -32,23 +31,15 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
     event KyberDaoContractSet(IKyberDao kyberDao);
     event KyberStorageSet(IKyberStorage kyberStorage);
-    event MatchingEngineContractSet(IKyberMatchingEngine matchingEngine);
     event AddKyberReserve(bytes32 reserveId, bool add);
 
     function setContracts(
-        IKyberMatchingEngine _matchingEngine,
         IKyberDao _kyberDao,
         IKyberStorage _kyberStorage
     ) public {
         onlyAdmin();
-        require(_matchingEngine != IKyberMatchingEngine(0), "matching engine 0");
         require(_kyberDao != IKyberDao(0), "kyberDao 0");
         require(_kyberStorage != IKyberStorage(0), "kyberStorage 0");
-
-        if (matchingEngine != _matchingEngine) {
-            matchingEngine = _matchingEngine;
-            emit MatchingEngineContractSet(_matchingEngine);
-        }
 
         if (kyberDao != _kyberDao) {
             kyberDao = _kyberDao;
@@ -207,7 +198,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory buyReserves, uint256[] memory buyRates) {
         uint256 buyAmount = optionalBuyAmount > 0 ? optionalBuyAmount : 1000;
-        (buyReserves, , ) = matchingEngine.getTradingReserves(ETH_TOKEN_ADDRESS, token, false, "");
+        buyReserves = kyberStorage.getReserveIdsPerTokenDest(token);
         buyRates = getBuyRate(token, buyAmount, networkFeeBps, buyReserves);
     }
 
@@ -256,12 +247,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory sellReserves, uint256[] memory sellRates) {
         uint256 sellAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
-        (sellReserves, , ) = matchingEngine.getTradingReserves(
-            token,
-            ETH_TOKEN_ADDRESS,
-            false,
-            ""
-        );
+        sellReserves = kyberStorage.getReserveIdsPerTokenSrc(token);
         sellRates = getSellRate(token, sellAmount, networkFeeBps, sellReserves);
     }
 
@@ -446,6 +432,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
     /// @dev if buyRate or sellRate == 0 return -1
     /// @dev if buyRate ** sellRate >= 10 ** 36 (negative spread) return 0
+    /// @dev can return negative spread
     function calcSpreadInBps(uint256 buyRate, uint256 sellRate) internal pure returns (int256) {
         if (buyRate == 0 || sellRate == 0) {
             return -1;

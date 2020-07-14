@@ -117,7 +117,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + KyberDao int
         await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, networkStorage.address, {from: admin});
+        await rateHelper.setContracts(kyberDao.address, networkStorage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -241,7 +241,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + KyberDao int
         await network.setKyberDaoContract(kyberDao.address, {from: admin});
 
         // setup rateHelper
-        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, networkStorage.address, {from: admin});
+        await rateHelper.setContracts(kyberDao.address, networkStorage.address, {from: admin});
 
         // move time to expiryTimestamp
         let networkData = await network.getNetworkData();
@@ -265,7 +265,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + KyberDao int
 
         // setup rateHelper
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin})
-        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, networkStorage.address, {from: admin});
+        await rateHelper.setContracts(kyberDao.address, networkStorage.address, {from: admin});
 
         // move time to expiryTimestamp
         let networkData = await network.getNetworkData();
@@ -311,7 +311,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + KyberDao int
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
 
-        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, networkStorage.address, {from: admin});
+        await rateHelper.setContracts(kyberDao.address, networkStorage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -342,7 +342,7 @@ contract('Proxy + Network + MatchingEngine + FeeHandler + Staking + KyberDao int
         await matchingEngine.setNetworkContract(network.address, {from: admin});
         await matchingEngine.setKyberStorage(networkStorage.address, {from: admin});
 
-        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, networkStorage.address, {from: admin});
+        await rateHelper.setContracts(kyberDao.address, networkStorage.address, {from: admin});
 
         await networkProxy.setHintHandler(matchingEngine.address, {from: admin});
 
