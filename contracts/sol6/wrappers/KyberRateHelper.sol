@@ -315,25 +315,29 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             bytes32[] memory sellReserves,
             uint256[] memory sellRates
         ) = getReservesRates(token, ethAmount);
-
+        // map pair of buyRate and sell Rate from the same Reserve
+        uint256[] memory validReserves = new uint256[](buyReserves.length);
         uint256[] memory revertReserveIndex = new uint256[](buyReserves.length);
-        uint256 validReserve = 0;
+        uint256 validReserveSize = 0;
         for (uint256 i = 0; i < buyRates.length; i++) {
             for (uint256 j = 0; j < sellRates.length; j++) {
                 if (sellReserves[j] == buyReserves[i]) {
                     revertReserveIndex[i] = j;
-                    validReserve++;
+                    validReserves[validReserveSize] = i;
+                    validReserveSize++;
                     break;
                 }
             }
         }
-        reserves = new bytes32[](validReserve);
-        spreads = new int256[](validReserve);
-        uint256 reserveIndex;
-        for (uint256 i = 0; i < buyRates.length; i++) {
-            reserves[reserveIndex] = buyReserves[i];
-            spreads[reserveIndex] = calcSpreadInBps(buyRates[i], sellRates[revertReserveIndex[i]]);
-            reserveIndex++;
+        reserves = new bytes32[](validReserveSize);
+        spreads = new int256[](validReserveSize);
+        for (uint256 i = 0; i < validReserveSize; i++) {
+            uint256 reserveIndex = validReserves[i];
+            reserves[i] = buyReserves[reserveIndex];
+            spreads[i] = calcSpreadInBps(
+                buyRates[reserveIndex],
+                sellRates[revertReserveIndex[reserveIndex]]
+            );
         }
     }
 
