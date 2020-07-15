@@ -67,7 +67,7 @@ contract KyberTokenFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, Reentran
         uint256 burnTwei;
     }
 
-    IKyberDao public kyberDao;
+    IKyberDao public immutable kyberDao;
     IKyberProxy public kyberProxy;
     address public kyberNetwork;
     IERC20 public immutable quoteToken;
@@ -77,7 +77,6 @@ contract KyberTokenFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, Reentran
     uint256 public lastBurnBlock;
 
     BRRData public brrAndEpochData;
-    address public daoSetter;
 
     /// @dev amount of Twei to burn for each burn knc call
     uint256 public tweiToBurn;
@@ -121,7 +120,7 @@ contract KyberTokenFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, Reentran
     event KyberProxyUpdated(IKyberProxy kyberProxy);
 
     constructor(
-        address _daoSetter,
+        IKyberDao _kyberDao,
         IKyberProxy _kyberProxy,
         address _kyberNetwork,
         IERC20 _quoteToken,
@@ -129,14 +128,14 @@ contract KyberTokenFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, Reentran
         uint256 _burnBlockInterval,
         address _daoOperator
     ) public DaoOperator(_daoOperator) {
-        require(_daoSetter != address(0), "daoSetter 0");
+        require(_kyberDao != IKyberDao(0), "kyberDao 0");
         require(_kyberProxy != IKyberProxy(0), "kyberNetworkProxy 0");
         require(_kyberNetwork != address(0), "kyberNetwork 0");
         require(_quoteToken != IERC20(0), "quoteToken 0");
         require(_knc != IERC20(0), "knc 0");
         require(_burnBlockInterval != 0, "_burnBlockInterval 0");
 
-        daoSetter = _daoSetter;
+        kyberDao = _kyberDao;
         kyberProxy = _kyberProxy;
         kyberNetwork = _kyberNetwork;
         quoteToken = _quoteToken;
@@ -325,17 +324,6 @@ contract KyberTokenFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, Reentran
         return amountTwei;
     }
 
-    /// @dev set kyberDao contract address once and set setter address to zero.
-    /// @param _kyberDao kyberDao address.
-    function setDaoContract(IKyberDao _kyberDao) external {
-        require(msg.sender == daoSetter, "only daoSetter");
-        require(_kyberDao != IKyberDao(0));
-        kyberDao = _kyberDao;
-        emit KyberDaoAddressSet(kyberDao);
-
-        daoSetter = address(0);
-    }
-
     /// @dev set new kyberNetwork address by daoOperator
     /// @param _kyberNetwork new kyberNetwork contract
     function setNetworkContract(address _kyberNetwork) external onlyDaoOperator {
@@ -397,7 +385,7 @@ contract KyberTokenFeeHandler is IKyberFeeHandler, Utils5, DaoOperator, Reentran
         // redundant check, can't happen
         assert(balance >= totalPayoutBalance);
         uint256 srcAmount = balance.sub(totalPayoutBalance);
-        srcAmount = srcAmount > tweiToBurn ? tweiToBurn : srcAmount;
+        srcAmount = minOf(srcAmount,tweiToBurn);
 
         // Get rate
         uint256 kyberTokenKncRate = kyberProxy.getExpectedRateAfterFee(

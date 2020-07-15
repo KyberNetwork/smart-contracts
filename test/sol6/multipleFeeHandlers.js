@@ -109,9 +109,10 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
     beforeEach("setup feeHandlers and wrapper", async() => {
         // setup feeHandlers
         ethFeeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
-        daiFeeHandler = await FeeTokenHandler.new(daoSetter, proxy.address, kyberNetwork, dai.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
-        eursFeeHandler = await FeeTokenHandler.new(daoSetter, proxy.address, kyberNetwork, eurs.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
-        usdcFeeHandler = await FeeTokenHandler.new(daoSetter, proxy.address, kyberNetwork, usdc.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+        await ethFeeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter});
+        daiFeeHandler = await FeeTokenHandler.new(mockKyberDao.address, proxy.address, kyberNetwork, dai.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+        eursFeeHandler = await FeeTokenHandler.new(mockKyberDao.address, proxy.address, kyberNetwork, eurs.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+        usdcFeeHandler = await FeeTokenHandler.new(mockKyberDao.address, proxy.address, kyberNetwork, usdc.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
         bindTokenToFeeHandler(ethFeeHandler, {'address': ethAddress}, ethWeiToBurn, oneEth);
         bindTokenToFeeHandler(daiFeeHandler, dai, daiWeiToBurn, oneDai);
         bindTokenToFeeHandler(eursFeeHandler, eurs, eursWeiToBurn, oneEurs);
@@ -136,7 +137,6 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
             await feeWrapper.addFeeHandler(token.address, feeHandler.address, {from: daoOperator});
             let actualFeeHandlerArray = (await feeWrapper.getKyberFeeHandlersPerToken(token.address)).kyberFeeHandlers;
             Helper.assertEqualArray(actualFeeHandlerArray, [feeHandler.address], "feeHandler not added");
-            await feeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter});
             await feeHandler.getBRR();
         }
 
@@ -405,9 +405,9 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
 
         before("setup tempFeeHandlers, get token index in feeWrapper", async() => {
             tokenIndex = (await feeWrapper.getSupportedTokens()).indexOf(usdc.address);
-            tempUsdcFeeHandler1 = await FeeTokenHandler.new(daoSetter, proxy.address, kyberNetwork, usdc.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+            tempUsdcFeeHandler1 = await FeeTokenHandler.new(mockKyberDao.address, proxy.address, kyberNetwork, usdc.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
             bindTokenToFeeHandler(tempUsdcFeeHandler1, usdc, usdcWeiToBurn, oneUsdc);
-            tempUsdcFeeHandler2 = await FeeTokenHandler.new(daoSetter, proxy.address, kyberNetwork, usdc.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+            tempUsdcFeeHandler2 = await FeeTokenHandler.new(mockKyberDao.address, proxy.address, kyberNetwork, usdc.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
             bindTokenToFeeHandler(tempUsdcFeeHandler2, usdc, usdcWeiToBurn, oneUsdc);
             for (const feeHandler of [tempUsdcFeeHandler1, tempUsdcFeeHandler2]) {
                 let token = feeHandler.token;
@@ -418,7 +418,6 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
                     await token.transfer(kyberNetwork, feeHandler.oneToken.mul(new BN(100000)));
                     await feeHandler.setBurnConfigParams(zeroAddress, feeHandler.weiToBurn, {from: daoOperator});
                 }
-                await feeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter});
                 await feeHandler.getBRR();
             }
         });

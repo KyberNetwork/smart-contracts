@@ -8,7 +8,7 @@ import "../../IKyberDao.sol";
 import "../../IKyberFeeHandler.sol";
 import "../DaoOperator.sol";
 
-interface ExtendedIKyberFeeHandler is IKyberFeeHandler {
+interface IFeeHandler is IKyberFeeHandler {
     function feePerPlatformWallet(address) external view returns (uint256);
     function rebatePerWallet(address) external view returns (uint256);
 }
@@ -19,7 +19,7 @@ contract KyberFeeHandlerWrapper is DaoOperator {
     using SafeERC20 for IERC20;
 
     struct KyberFeeHandlerData {
-        ExtendedIKyberFeeHandler kyberFeeHandler;
+        IFeeHandler kyberFeeHandler;
         uint256 startEpoch;
     }
 
@@ -28,7 +28,7 @@ contract KyberFeeHandlerWrapper is DaoOperator {
     mapping(IERC20 => KyberFeeHandlerData[]) internal kyberFeeHandlersPerToken;
     address public daoSetter;
 
-    event FeeHandlerAdded(IERC20 token, ExtendedIKyberFeeHandler kyberFeeHandler);
+    event FeeHandlerAdded(IERC20 token, IFeeHandler kyberFeeHandler);
 
     constructor(
         IKyberDao _kyberDao,
@@ -38,7 +38,7 @@ contract KyberFeeHandlerWrapper is DaoOperator {
         kyberDao = _kyberDao;
     }
 
-    function addFeeHandler(IERC20 _token, ExtendedIKyberFeeHandler _kyberFeeHandler) external onlyDaoOperator {
+    function addFeeHandler(IERC20 _token, IFeeHandler _kyberFeeHandler) external onlyDaoOperator {
         addTokenToSupportedTokensArray(_token);
         addFeeHandlerToKyberFeeHandlerArray(kyberFeeHandlersPerToken[_token], _kyberFeeHandler);
         emit FeeHandlerAdded(_token, _kyberFeeHandler);
@@ -48,9 +48,9 @@ contract KyberFeeHandlerWrapper is DaoOperator {
     /// @param staker staker address
     /// @param epoch epoch for which the staker is claiming the reward
     /// @param startTokenIndex index of supportedTokens to start iterating from (inclusive)
-    /// @param endTokenIndex index of supportedTokens to start iterating from (exclusive)
+    /// @param endTokenIndex index of supportedTokens to end iterating to (exclusive)
     /// @param startKyberFeeHandlerIndex index of feeHandlerArray to start iterating from (inclusive)
-    /// @param endKyberFeeHandlerIndex index of feeHandlerArray to start iterating from (exclusive)
+    /// @param endKyberFeeHandlerIndex index of feeHandlerArray to end iterating to (exclusive)
     /// @return amounts staker reward wei / twei amount claimed from each feeHandler
     function claimStakerReward(
         address staker,
@@ -86,10 +86,10 @@ contract KyberFeeHandlerWrapper is DaoOperator {
                     break;
                 } else if (kyberFeeHandlerData.startEpoch == epoch) {
                     amounts[j] = kyberFeeHandlerData.kyberFeeHandler.claimStakerReward(staker, epoch);
-                } else if (j == 0) {
+                }
+
+                if (j == 0) {
                     break;
-                } else {
-                    continue;
                 }
             }
         }
@@ -98,9 +98,9 @@ contract KyberFeeHandlerWrapper is DaoOperator {
     /// @dev claim reabate per reserve wallet. called by any address
     /// @param rebateWallet the wallet to claim rebates for. Total accumulated rebate sent to this wallet
     /// @param startTokenIndex index of supportedTokens to start iterating from (inclusive)
-    /// @param endTokenIndex index of supportedTokens to start iterating from (exclusive)
+    /// @param endTokenIndex index of supportedTokens to end iterating to (exclusive)
     /// @param startKyberFeeHandlerIndex index of feeHandlerArray to start iterating from (inclusive)
-    /// @param endKyberFeeHandlerIndex index of feeHandlerArray to start iterating from (exclusive)
+    /// @param endKyberFeeHandlerIndex index of feeHandlerArray to end iterating to (exclusive)
     /// @return amounts reserve rebate wei / twei amount claimed from each feeHandler
     function claimReserveRebate(
         address rebateWallet,
@@ -129,7 +129,7 @@ contract KyberFeeHandlerWrapper is DaoOperator {
             amounts = new uint256[](endKyberFeeHandlerId - startKyberFeeHandlerIndex + 1);
             
             for (uint256 j = startKyberFeeHandlerIndex; j < endKyberFeeHandlerId; j++) {
-                ExtendedIKyberFeeHandler feeHandler = kyberFeeHandlerArray[j].kyberFeeHandler;
+                IFeeHandler feeHandler = kyberFeeHandlerArray[j].kyberFeeHandler;
                 if (feeHandler.rebatePerWallet(rebateWallet) > 1) {
                     amounts[j] = feeHandler.claimReserveRebate(rebateWallet);
                 }
@@ -140,9 +140,9 @@ contract KyberFeeHandlerWrapper is DaoOperator {
     /// @dev claim accumulated fee per platform wallet. Called by any address
     /// @param platformWallet the wallet to claim fee for. Total accumulated fee sent to this wallet
     /// @param startTokenIndex index of supportedTokens to start iterating from (inclusive)
-    /// @param endTokenIndex index of supportedTokens to start iterating from (exclusive)
+    /// @param endTokenIndex index of supportedTokens to end iterating to (exclusive)
     /// @param startKyberFeeHandlerIndex index of feeHandlerArray to start iterating from (inclusive)
-    /// @param endKyberFeeHandlerIndex index of feeHandlerArray to start iterating from (exclusive)
+    /// @param endKyberFeeHandlerIndex index of feeHandlerArray to end iterating to (exclusive)
     /// @return amounts platform fee wei / twei amount claimed from each feeHandler
     function claimPlatformFee(
         address platformWallet,
@@ -171,7 +171,7 @@ contract KyberFeeHandlerWrapper is DaoOperator {
             amounts = new uint256[](endKyberFeeHandlerId - startKyberFeeHandlerIndex + 1);
 
             for (uint256 j = startKyberFeeHandlerIndex; j < endKyberFeeHandlerId; j++) {
-                ExtendedIKyberFeeHandler feeHandler = kyberFeeHandlerArray[j].kyberFeeHandler;
+                IFeeHandler feeHandler = kyberFeeHandlerArray[j].kyberFeeHandler;
                 if (feeHandler.feePerPlatformWallet(platformWallet) > 1) {
                     amounts[j] = feeHandler.claimPlatformFee(platformWallet);
                 }
@@ -180,12 +180,12 @@ contract KyberFeeHandlerWrapper is DaoOperator {
     }
 
     function getKyberFeeHandlersPerToken(IERC20 token) external view returns (
-        ExtendedIKyberFeeHandler[] memory kyberFeeHandlers,
+        IFeeHandler[] memory kyberFeeHandlers,
         uint256[] memory epochs
         )
     {
         KyberFeeHandlerData[] storage kyberFeeHandlerData = kyberFeeHandlersPerToken[token];
-        kyberFeeHandlers = new ExtendedIKyberFeeHandler[](kyberFeeHandlerData.length);
+        kyberFeeHandlers = new IFeeHandler[](kyberFeeHandlerData.length);
         epochs = new uint256[](kyberFeeHandlerData.length);
         for (uint i = 0; i < kyberFeeHandlerData.length; i++) {
             kyberFeeHandlers[i] = kyberFeeHandlerData[i].kyberFeeHandler;
@@ -210,7 +210,7 @@ contract KyberFeeHandlerWrapper is DaoOperator {
 
     function addFeeHandlerToKyberFeeHandlerArray(
         KyberFeeHandlerData[] storage kyberFeeHandlerArray,
-        ExtendedIKyberFeeHandler _kyberFeeHandler
+        IFeeHandler _kyberFeeHandler
     ) internal {
         uint256 i;
         for (i = 0; i < kyberFeeHandlerArray.length; i++) {
