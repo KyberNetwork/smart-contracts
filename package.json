@@ -22,6 +22,7 @@
   "dependencies": {
     "chai-as-promised": "7.1.1",
     "compare-versions": "3.5.1",
+    "ethers": "5.0.4",
     "ganache-cli": "6.8.2",
     "mathjs": "4.4.2",
     "rlp": "2.2.4",
