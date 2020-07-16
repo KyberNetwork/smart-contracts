@@ -41,8 +41,8 @@ let operator;
 let rateHelper;
 let token;
 
-let defaultBaseAmount = new BN(10).pow(new BN(16)); // 0.01 ether
-let defaultSlippageAmount = new BN(10).pow(new BN(19)); // 10 ether
+const defaultBaseAmount = new BN(10).pow(new BN(16)); // 0.01 ether
+const defaultSlippageAmount = new BN(10).pow(new BN(19)); // 10 ether
 
 contract('KyberRateHelper', accounts => {
   before('global init ', async () => {
@@ -50,6 +50,12 @@ contract('KyberRateHelper', accounts => {
     operator = accounts[2];
 
     token = await TestToken.new('test', 'tst', 16);
+  });
+
+  it('test const', async () => {
+    rateHelper = await KyberRateHelper.new(admin);
+    Helper.assertEqual(defaultBaseAmount, await rateHelper.DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI());
+    Helper.assertEqual(defaultSlippageAmount, await rateHelper.DEFAULT_SLIPPAGE_QUERY_AMOUNT_WEI());
   });
 
   describe('test get spread function', async () => {
@@ -114,7 +120,7 @@ contract('KyberRateHelper', accounts => {
     });
 
     describe('test spread', async () => {
-      it('if 0 rate return 2000 BPS', async () => {
+      it('if 0 rate return 20000', async () => {
         await reserves[0].setRate(token.address, precisionUnits, precisionUnits);
         await reserves[1].setRate(token.address, zeroBN, zeroBN);
         await reserves[2].setRate(token.address, precisionUnits, precisionUnits); // 0 spread
@@ -199,11 +205,11 @@ contract('KyberRateHelper', accounts => {
       let baseRates = await rateHelper.getReservesRates(token.address, defaultBaseAmount);
       let slippageRates = await rateHelper.getReservesRates(token.address, defaultSlippageAmount);
       let result = await rateHelper.getSlippageRateInfo(token.address, zeroBN, zeroBN);
-      let expectedSlippageBps = getSlippageBps(baseRates.sellRates[0], slippageRates.sellRates[0]);
+      let expectedSlippageBps = getSlippageBps(baseRates.sellRates[0], slippageRates.sellRates[0], false);
       Helper.assertEqualArray(result.sellReserves, [reserveId], 'unexpected reserveId');
       Helper.assertEqual(result.sellSlippageRateBps[0], expectedSlippageBps, 'unexpected slippage BPS');
 
-      expectedSlippageBps = getSlippageBps(baseRates.buyRates[0], slippageRates.buyRates[0]);
+      expectedSlippageBps = getSlippageBps(baseRates.buyRates[0], slippageRates.buyRates[0], true);
       Helper.assertEqualArray(result.buyReserves, [reserveId], 'unexpected reserveId');
       Helper.assertEqual(result.buySlippageRateBps[0], expectedSlippageBps, 'unexpected slippage BPS');
     });
@@ -218,18 +224,19 @@ contract('KyberRateHelper', accounts => {
 
       let baseRates = await rateHelper.getReservesRates(token.address, defaultBaseAmount);
       let slippageRates = await rateHelper.getReservesRates(token.address, defaultSlippageAmount);
-      let expectedSlippageBps = getSlippageBps(baseRates.sellRates[0], slippageRates.sellRates[0]);
+      let expectedSlippageBps = getSlippageBps(baseRates.sellRates[0], slippageRates.sellRates[0], false);
 
       result = await rateHelper.getSlippageRateInfoWithConfigReserves(token.address, zeroBN, zeroBN);
       Helper.assertEqualArray(result.reserves, [reserveId], 'unexpected reserveId');
       Helper.assertEqual(result.sellSlippageRateBps[0], expectedSlippageBps, 'unexpected slippage BPS');
 
-      expectedSlippageBps = getSlippageBps(baseRates.buyRates[0], slippageRates.buyRates[0]);
+      expectedSlippageBps = getSlippageBps(baseRates.buyRates[0], slippageRates.buyRates[0], true);
       Helper.assertEqual(result.buySlippageRateBps[0], expectedSlippageBps, 'unexpected slippage BPS');
     });
   });
 });
 
+// assume buyRate and sellRate is not zero
 function getSpread (buyRate, sellRate) {
   let reversedSellRate = precisionUnits.pow(new BN(2)).div(sellRate);
   return new BN(2)
@@ -238,6 +245,13 @@ function getSpread (buyRate, sellRate) {
     .div(reversedSellRate.add(buyRate));
 }
 
-function getSlippageBps (baseRate, slippageRate) {
-  return BPS.mul(baseRate.sub(slippageRate)).div(baseRate);
+// assume baseRate and slippageRate !=0
+function getSlippageBps (baseRate, slippageRate, isBuy) {
+  if (slippageRate > baseRate) return zeroBN;
+  if (!isBuy) {
+    return BPS.mul(baseRate.sub(slippageRate)).div(baseRate);
+  }
+  let reversedBaseRate = precisionUnits.pow(new BN(2)).div(baseRate);
+  let reversedSlippageRate = precisionUnits.pow(new BN(2)).div(slippageRate);
+  return BPS.mul(reversedSlippageRate.sub(reversedBaseRate)).div(reversedBaseRate);
 }
