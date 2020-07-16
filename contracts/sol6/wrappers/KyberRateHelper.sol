@@ -441,12 +441,12 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
     /// @dev if buyRate ** sellRate >= 10 ** 36 (negative spread) return 0
     /// @dev spread can be from -2 * BPS to 2 * BPS
     function calcSpreadInBps(uint256 buyRate, uint256 sellRate) internal pure returns (int256) {
-        if (sellRate == 0) {
+        if (buyRate == 0) {
             return 2 * int256(BPS);
         }
-        int256 reversedSellRate = int256(PRECISION**2 / sellRate);
-        int256 buyRateInt256 = int256(buyRate);
-        return (2 * int256(BPS) * (reversedSellRate - buyRateInt256)) / (reversedSellRate + buyRateInt256);
+        int256 reversedBuyRate = int256(PRECISION**2 / buyRate);
+        int256 sellRateInt256 = int256(sellRate);
+        return (2 * int256(BPS) * (reversedBuyRate - sellRateInt256)) / (reversedBuyRate + sellRateInt256);
     }
 
     /// @dev if baseRate == 0 return -1

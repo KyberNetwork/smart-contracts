@@ -238,11 +238,11 @@ contract('KyberRateHelper', accounts => {
 
 // assume buyRate and sellRate is not zero
 function getSpread (buyRate, sellRate) {
-  let reversedSellRate = precisionUnits.pow(new BN(2)).div(sellRate);
+  let reversedBuyRate = precisionUnits.pow(new BN(2)).div(buyRate);
   return new BN(2)
     .mul(BPS)
-    .mul(reversedSellRate.sub(buyRate))
-    .div(reversedSellRate.add(buyRate));
+    .mul(reversedBuyRate.sub(sellRate))
+    .div(reversedBuyRate.add(sellRate));
 }
 
 // assume baseRate and slippageRate !=0
