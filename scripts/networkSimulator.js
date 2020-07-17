@@ -6,6 +6,8 @@ const BN = web3.utils.BN;
 const { precisionUnits, zeroBN } = require("../test/helper.js");
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
+const winston = require('winston');
+
 const TradeParamGenerator = require("./trades/tradeParamsGenerator.js");
 const { TRADE, UPDATE_RESERVE_RATE, RevertType, allRevertMessages } = require("./trades/tradeParamsGenerator.js");
 
@@ -14,6 +16,14 @@ let numberGettingsZeroRates = 0;
 let numberUpdateReserveRates = 0;
 let numberRevertedTrades = {};
 let listRevertedReasons = [];
+
+const logger = winston.createLogger({
+    format: winston.format.combine(winston.format.colorize(), winston.format.splat(), winston.format.simple()),
+    transports: [
+      new winston.transports.Console({ level: 'info' }),
+      new winston.transports.File({ filename: 'fuzz_trade.log', level: 'debug' })
+    ]
+});
 
 // do fuzz trade tests with number of loops
 // then log the results of the whoe loop
@@ -45,14 +55,14 @@ module.exports.doFuzzTradeTests = async function(
                 consecutiveFails++;
                 if (consecutiveFails == Math.max(1, numberLoops / 10000)) {
                     // too many consecutive times we can not get a valid trade inputs
-                    console.log(`Loop ${loop}: Update rates for reserves`);
+                    logger.debug(`Loop ${loop}: Update rates for reserves`);
                     await updateRatesForReserves(reserveInstances, tokens, accounts);
                     hasUpdatedRates = true;
                     consecutiveFails = 0;
                 }
             }
         } else if (nextOperation == UPDATE_RESERVE_RATE) {
-            console.log(`Loop ${loop}: Update rates for reserves`);
+            logger.debug(`Loop ${loop}: Update rates for reserves`);
             await updateRatesForReserves(reserveInstances, tokens, accounts);
             hasUpdatedRates = true;
         }
@@ -90,14 +100,14 @@ module.exports.doRandomFuzzTradeTests = async function(
                 consecutiveFails++;
                 if (consecutiveFails == Math.max(1, numberLoops / 10000)) {
                     // too many consecutive times we can not get a valid trade inputs
-                    console.log(`Loop ${loop}: Update rates for reserves`);
+                    logger.debug(`Loop ${loop}: Update rates for reserves`);
                     await updateRatesForReserves(reserveInstances, tokens, accounts);
                     hasUpdatedRates = true;
                     consecutiveFails = 0;
                 }
             }
         } else if (nextOperation == UPDATE_RESERVE_RATE) {
-            console.log(`Loop ${loop}: Update rates for reserves`);
+            logger.debug(`Loop ${loop}: Update rates for reserves`);
             await updateRatesForReserves(reserveInstances, tokens, accounts);
             hasUpdatedRates = true;
         }
@@ -125,7 +135,7 @@ async function doTradeAndCompare(
             // calculate expected result
             let expectedResult = tradeData.expectedResult;
             let actualSrcQty = tradeData.actualSrcQty;
-            console.log(`Loop ${loop}: Execute trade ${tradeData.message}, networkFeeBps=${tradeData.networkFeeBps.toString(10)},
+            logger.debug(`Loop ${loop}: Execute trade ${tradeData.message}, networkFeeBps=${tradeData.networkFeeBps.toString(10)},
                 srcQty=${tradeData.srcQty.toString(10)}, srcDecimals=${tradeData.srcDecimals}, actualSrcQty=${actualSrcQty.toString(10)},
                 dstQty=${expectedResult.actualDestAmount.toString(10)}, dstDecimals=${tradeData.destDecimals},
                 platformFee=${expectedResult.platformFeeWei.toString(10)}, networkFee=${expectedResult.networkFeeWei.toString(10)}, accountedFeeBps=${expectedResult.feePayingReservesBps.toString(10)},
@@ -146,14 +156,14 @@ async function doTradeAndCompare(
             await testTradeShouldRevert(tradeData.srcAddress, tradeData.destAddress, tradeData, tradeData.taker,
                 tradeData.recipient, tradeData.callValue, networkProxy, tradeData.gasPrice, tradeData.message);
 
-            console.log(`Loop ${loop}: Execute trade fail with reason: ${tradeData.revertType}`)
+            logger.debug(`Loop ${loop}: Execute trade fail with reason: ${tradeData.revertType}`)
             // reset some data like: transfer back src token, reset allowance, enable network if needed, etc
             await TradeParamGenerator.resetDataAfterTradeReverted(tradeData, network, networkProxy, accounts);
         }
         return true;
     }
 
-    console.log(`Loop ${loop}: Getting zero rates for trade`);
+    logger.debug(`Loop ${loop}: Getting zero rates for trade`);
     numberGettingsZeroRates++;
     return false;
 }
@@ -162,7 +172,7 @@ async function doTradeAndCompare(
 // test is reverted with unspecified, e.g: sender not enough src token, not enough allowance
 // test is reverted but with assertion
 // test is reverted but can not check, e.g: callValue + fee > eth balance of sender
-// test is reverted with the given reasion in errorMessage
+// test is reverted with the given reason in errorMessage
 async function testTradeShouldRevert(srcAddress, destAddress, tradeData, taker, recipientAddress, callValue, networkProxy, gasPrice, errorMessage) {
     if (errorMessage == "unspecified") {
         // unspecified revert
@@ -195,6 +205,7 @@ async function testTradeShouldRevert(srcAddress, destAddress, tradeData, taker, 
                 {from: taker, value: callValue, gasPrice: gasPrice}
             )
         )
+        logger.error("ASSERTION");
     } else if (errorMessage == "try/catch") {
         // need to do try catch
         try {
@@ -282,11 +293,11 @@ async function updateRatesForReserves(reserveInstances, tokens, accounts) {
 }
 
 function logTestResults() {
-    console.log(`--- SUMMARY RESULTS ---`)
-    console.log(`${numberSuccessfulTrades} succesful trades`);
-    console.log(`${numberUpdateReserveRates} times updating reserve rates`);
-    console.log(`${numberGettingsZeroRates} times getting zero for rates`);
+    logger.info(`--- SUMMARY RESULTS ---`)
+    logger.info(`${numberSuccessfulTrades} succesful trades`);
+    logger.info(`${numberUpdateReserveRates} times updating reserve rates`);
+    logger.info(`${numberGettingsZeroRates} times getting zero for rates`);
     for(let i = 0; i < listRevertedReasons.length; i++) {
-        console.log(`${numberRevertedTrades[listRevertedReasons[i]]} reverted trades with reason: ${listRevertedReasons[i]}`);
+        logger.info(`${numberRevertedTrades[listRevertedReasons[i]]} reverted trades with reason: ${listRevertedReasons[i]}`);
     }
 }
