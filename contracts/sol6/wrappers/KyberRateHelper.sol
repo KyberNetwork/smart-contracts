@@ -142,6 +142,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         }
 
         if (bestRate == 0) {
+            sellRates = new uint256[](reserves.length);
             return (reserves, buyRates, sellRates);
         }
         uint256 sellAmount = calcDstQty(buyAmount, ETH_DECIMALS, getDecimals(token), bestRate);
@@ -250,10 +251,9 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
     function getSellInfo(
         IERC20 token,
-        uint256 optionalSellAmount,
+        uint256 sellAmount,
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory sellReserves, uint256[] memory sellRates) {
-        uint256 sellAmount = optionalSellAmount > 0 ? optionalSellAmount : 1000;
         sellReserves = kyberStorage.getReserveIdsPerTokenSrc(token);
         sellRates = getSellRate(token, sellAmount, networkFeeBps, sellReserves);
     }
@@ -308,7 +308,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             bytes32[] memory sellReserves,
             uint256[] memory sellRates
         ) = getReservesRates(token, ethAmount);
-        // map pair of buyRate and sell Rate from the same Reserve
+        // map pair of buyRate and sellRate from the same Reserve
         uint256[] memory validReserves = new uint256[](buyReserves.length);
         uint256[] memory revertReserveIndex = new uint256[](buyReserves.length);
         uint256 validReserveSize = 0;
@@ -352,8 +352,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
     function getSlippageRateInfo(
         IERC20 token,
-        uint256 optinalEthAmount,
-        uint256 optinalSlippageAmount
+        uint256 optionalEthAmount,
+        uint256 optionalSlippageAmount
     )
         public
         view
@@ -365,19 +365,23 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             int256[] memory sellSlippageRateBps
         )
     {
-        uint256 baseAmount = optinalEthAmount > 0 ? optinalEthAmount : DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI;
+        uint256 baseAmount = optionalEthAmount > 0 ? optionalEthAmount : DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI;
         uint256[] memory baseBuyRates;
         uint256[] memory baseSellRates;
         (buyReserves, baseBuyRates, sellReserves, baseSellRates) = getReservesRates(
             token,
             baseAmount
         );
-        uint256 slippageAmount = optinalSlippageAmount > 0
-            ? optinalSlippageAmount
+        uint256 slippageAmount = optionalSlippageAmount > 0
+            ? optionalSlippageAmount
             : DEFAULT_SLIPPAGE_QUERY_AMOUNT_WEI;
         uint256[] memory slippageBuyRates;
         uint256[] memory slippageSellRates;
         (, slippageBuyRates, , slippageSellRates) = getReservesRates(token, slippageAmount);
+        // no rate exists for slippageAmount but rate exists for baseAmount
+        if (slippageSellRates.length == 0 && baseSellRates.length != 0) {
+            slippageSellRates = new uint256[](baseSellRates.length);
+        }
 
         assert(slippageSellRates.length == baseSellRates.length);
         assert(slippageBuyRates.length == baseBuyRates.length);
@@ -395,8 +399,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
     function getSlippageRateInfoWithConfigReserves(
         IERC20 token,
-        uint256 optinalEthAmount,
-        uint256 optinalSlippageAmount
+        uint256 optionalEthAmount,
+        uint256 optionalSlippageAmount
     )
         public
         view
@@ -406,15 +410,15 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             int256[] memory sellSlippageRateBps
         )
     {
-        uint256 baseAmount = optinalEthAmount > 0 ? optinalEthAmount : DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI;
+        uint256 baseAmount = optionalEthAmount > 0 ? optionalEthAmount : DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI;
         uint256[] memory baseBuyRates;
         uint256[] memory baseSellRates;
         (reserves, baseBuyRates, baseSellRates) = getReservesRatesWithConfigReserves(
             token,
             baseAmount
         );
-        uint256 slippageAmount = optinalSlippageAmount > 0
-            ? optinalSlippageAmount
+        uint256 slippageAmount = optionalSlippageAmount > 0
+            ? optionalSlippageAmount
             : DEFAULT_SLIPPAGE_QUERY_AMOUNT_WEI;
         uint256[] memory slippageBuyRates;
         uint256[] memory slippageSellRates;
