@@ -25,6 +25,9 @@ const logger = winston.createLogger({
     ]
 });
 
+// number iterations to print the progress of the test
+const progressIterations = 20;
+
 // do fuzz trade tests with number of loops
 // then log the results of the whoe loop
 // random revert type, then create inputs
@@ -32,6 +35,7 @@ module.exports.doFuzzTradeTests = async function(
     network, networkProxy, storage, matchingEngine,
     reserveInstances, accounts, tokens, numberLoops
 ) {
+    logger.info(`Running semi-random fuzz trade tests with ${numberLoops} loops`);
     // prepare number of reverted trades for each revert message
     for(let i = 0; i < allRevertMessages.length; i++) {
         numberRevertedTrades[allRevertMessages[i]] = 0;
@@ -41,6 +45,9 @@ module.exports.doFuzzTradeTests = async function(
     let consecutiveFails = 0;
     let hasUpdatedRates = true;
     for(let loop = 0; loop < numberLoops; loop++) {
+        if (loop % progressIterations == 0) {
+            process.stdout.write(".");
+        }
         let nextOperation = TradeParamGenerator.getNextOperation();
         if (nextOperation == TRADE || hasUpdatedRates) {
             hasUpdatedRates = false;
@@ -67,7 +74,8 @@ module.exports.doFuzzTradeTests = async function(
             hasUpdatedRates = true;
         }
     }
-    logTestResults();
+    process.stdout.write("\n");
+    logTestResults(numberLoops);
 }
 
 // do fuzz trade tests with number of loops
@@ -77,6 +85,7 @@ module.exports.doRandomFuzzTradeTests = async function(
     network, networkProxy, storage, matchingEngine,
     reserveInstances, accounts, tokens, numberLoops
 ) {
+    logger.info(`Running random fuzz trade tests with ${numberLoops} loops`);
     // prepare number of reverted trades for each revert message
     for(let i = 0; i < allRevertMessages.length; i++) {
         numberRevertedTrades[allRevertMessages[i]] = 0;
@@ -86,6 +95,9 @@ module.exports.doRandomFuzzTradeTests = async function(
     let consecutiveFails = 0;
     let hasUpdatedRates = true;
     for(let loop = 0; loop < numberLoops; loop++) {
+        if (loop % progressIterations == 0) {
+            process.stdout.write(".");
+        }
         let nextOperation = TradeParamGenerator.getNextOperation();
         if (nextOperation == TRADE || hasUpdatedRates) {
             hasUpdatedRates = false;
@@ -112,7 +124,8 @@ module.exports.doRandomFuzzTradeTests = async function(
             hasUpdatedRates = true;
         }
     }
-    logTestResults();
+    process.stdout.write("\n");
+    logTestResults(numberLoops);
 }
 
 // do trade and compare result if trade is successful
@@ -292,8 +305,8 @@ async function updateRatesForReserves(reserveInstances, tokens, accounts) {
     }
 }
 
-function logTestResults() {
-    logger.info(`--- SUMMARY RESULTS ---`)
+function logTestResults(numberLoops) {
+    logger.info(`--- SUMMARY RESULTS AFTER ${numberLoops} LOOPS ---`)
     logger.info(`${numberSuccessfulTrades} succesful trades`);
     logger.info(`${numberUpdateReserveRates} times updating reserve rates`);
     logger.info(`${numberGettingsZeroRates} times getting zero for rates`);
