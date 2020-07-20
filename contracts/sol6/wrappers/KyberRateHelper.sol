@@ -70,8 +70,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
     function getPricesForToken(
         IERC20 token,
-        uint256 optionalBuyAmount,
-        uint256 optionalSellAmount
+        uint256 optionalBuyAmountWei,
+        uint256 optionalSellAmountTwei
     )
         public
         view
@@ -83,7 +83,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             uint256[] memory sellRates
         )
     {
-        return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, 0);
+        return getRatesForTokenWithCustomFee(token, optionalBuyAmountWei, optionalSellAmountTwei, 0);
     }
 
     /// @dev function to cover backward compatible with old network interface
@@ -151,8 +151,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
     function getRatesForToken(
         IERC20 token,
-        uint256 optionalBuyAmount,
-        uint256 optionalSellAmount
+        uint256 optionalBuyAmountWei,
+        uint256 optionalSellAmountTwei
     )
         public
         view
@@ -165,13 +165,13 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         )
     {
         (uint256 feeBps, ) = kyberDao.getLatestNetworkFeeData();
-        return getRatesForTokenWithCustomFee(token, optionalBuyAmount, optionalSellAmount, feeBps);
+        return getRatesForTokenWithCustomFee(token, optionalBuyAmountWei, optionalSellAmountTwei, feeBps);
     }
 
     function getRatesForTokenWithCustomFee(
         IERC20 token,
-        uint256 optionalBuyAmount,
-        uint256 optionalSellAmount,
+        uint256 optionalBuyAmountWei,
+        uint256 optionalSellAmountTwei,
         uint256 networkFeeBps
     )
         public
@@ -184,9 +184,9 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             uint256[] memory sellRates
         )
     {
-        uint256 buyAmountWei = optionalBuyAmount > 0 ? optionalBuyAmount : DEFAULT_RATE_QUERY_AMOUNT_WEI;
+        uint256 buyAmountWei = optionalBuyAmountWei > 0 ? optionalBuyAmountWei : DEFAULT_RATE_QUERY_AMOUNT_WEI;
         (buyReserves, buyRates) = getBuyInfo(token, buyAmountWei, networkFeeBps);
-        uint256 sellAmountTwei = optionalSellAmount;
+        uint256 sellAmountTwei = optionalSellAmountTwei;
         if (sellAmountTwei == 0) {
             uint256 bestRate = 0;
             for (uint256 i = 0; i < buyRates.length; i++) {
