@@ -426,13 +426,13 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         assert(slippageSellRates.length == baseSellRates.length);
         assert(slippageBuyRates.length == baseBuyRates.length);
 
-        buySlippageRateBps = new int256[](reserves.length);
-        for (uint256 i = 0; i < reserves.length; i++) {
+        buySlippageRateBps = new int256[](baseBuyRates.length);
+        for (uint256 i = 0; i < baseBuyRates.length; i++) {
             buySlippageRateBps[i] = calcSlippageRateInBps(baseBuyRates[i], slippageBuyRates[i], true);
         }
 
-        sellSlippageRateBps = new int256[](reserves.length);
-        for (uint256 i = 0; i < reserves.length; i++) {
+        sellSlippageRateBps = new int256[](baseSellRates.length);
+        for (uint256 i = 0; i < baseSellRates.length; i++) {
             sellSlippageRateBps[i] = calcSlippageRateInBps(baseSellRates[i], slippageSellRates[i], false);
         }
     }
