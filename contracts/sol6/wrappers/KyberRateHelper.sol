@@ -89,8 +89,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
     /// @dev function to cover backward compatible with old network interface
     /// @dev get rate from eth to token, use the best token amount to get rate from token to eth
     /// @param token Token to get rate
-    /// @param optionalEthAmount Eth amount to get rate (default: 0)
-    function getReservesRates(IERC20 token, uint256 optionalEthAmount)
+    /// @param optionalAmountWei Eth amount to get rate (default: 0)
+    function getReservesRates(IERC20 token, uint256 optionalAmountWei)
         public
         override
         view
@@ -102,9 +102,9 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         )
     {
         (uint256 networkFeeBps, ) = kyberDao.getLatestNetworkFeeData();
-        uint256 buyAmount = optionalEthAmount > 0 ? optionalEthAmount : DEFAULT_RATE_QUERY_AMOUNT_WEI;
+        uint256 buyAmountWei = optionalAmountWei > 0 ? optionalAmountWei : DEFAULT_RATE_QUERY_AMOUNT_WEI;
 
-        (buyReserves, buyRates) = getBuyInfo(token, buyAmount, networkFeeBps);
+        (buyReserves, buyRates) = getBuyInfo(token, buyAmountWei, networkFeeBps);
 
         uint256 bestRate = 0;
         for (uint256 i = 0; i < buyRates.length; i++) {
@@ -116,11 +116,11 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         if (bestRate == 0) {
             return (buyReserves, buyRates, sellReserves, sellRates);
         }
-        uint256 sellAmount = calcDstQty(buyAmount, ETH_DECIMALS, getDecimals(token), bestRate);
-        (sellReserves, sellRates) = getSellInfo(token, sellAmount, networkFeeBps);
+        uint256 sellAmountTwei = calcDstQty(buyAmountWei, ETH_DECIMALS, getDecimals(token), bestRate);
+        (sellReserves, sellRates) = getSellInfo(token, sellAmountTwei, networkFeeBps);
     }
 
-    function getReservesRatesWithConfigReserves(IERC20 token, uint256 optionalEthAmount)
+    function getReservesRatesWithConfigReserves(IERC20 token, uint256 optionalAmountWei)
         public
         view
         returns (
@@ -130,9 +130,9 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         )
     {
         (uint256 networkFeeBps, ) = kyberDao.getLatestNetworkFeeData();
-        uint256 buyAmount = optionalEthAmount > 0 ? optionalEthAmount : DEFAULT_RATE_QUERY_AMOUNT_WEI;
+        uint256 buyAmountWei = optionalAmountWei > 0 ? optionalAmountWei : DEFAULT_RATE_QUERY_AMOUNT_WEI;
         reserves = reserveIds;
-        buyRates = getBuyRate(token, buyAmount, networkFeeBps, reserves);
+        buyRates = getBuyRate(token, buyAmountWei, networkFeeBps, reserves);
 
         uint256 bestRate = 0;
         for (uint256 i = 0; i < buyRates.length; i++) {
@@ -145,8 +145,8 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             sellRates = new uint256[](reserves.length);
             return (reserves, buyRates, sellRates);
         }
-        uint256 sellAmount = calcDstQty(buyAmount, ETH_DECIMALS, getDecimals(token), bestRate);
-        sellRates = getSellRate(token, sellAmount, networkFeeBps, reserves);
+        uint256 sellAmountTwei = calcDstQty(buyAmountWei, ETH_DECIMALS, getDecimals(token), bestRate);
+        sellRates = getSellRate(token, sellAmountTwei, networkFeeBps, reserves);
     }
 
     function getRatesForToken(
@@ -184,10 +184,10 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             uint256[] memory sellRates
         )
     {
-        uint256 buyAmount = optionalBuyAmount > 0 ? optionalBuyAmount : DEFAULT_RATE_QUERY_AMOUNT_WEI;
-        (buyReserves, buyRates) = getBuyInfo(token, buyAmount, networkFeeBps);
-        uint256 sellAmount = optionalSellAmount;
-        if (sellAmount == 0) {
+        uint256 buyAmountWei = optionalBuyAmount > 0 ? optionalBuyAmount : DEFAULT_RATE_QUERY_AMOUNT_WEI;
+        (buyReserves, buyRates) = getBuyInfo(token, buyAmountWei, networkFeeBps);
+        uint256 sellAmountTwei = optionalSellAmount;
+        if (sellAmountTwei == 0) {
             uint256 bestRate = 0;
             for (uint256 i = 0; i < buyRates.length; i++) {
                 if (buyRates[i] > bestRate) {
@@ -195,24 +195,24 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
                 }
             }
             if (bestRate != 0) {
-                sellAmount = calcDstQty(buyAmount, ETH_DECIMALS, getDecimals(token), bestRate);
+                sellAmountTwei = calcDstQty(buyAmountWei, ETH_DECIMALS, getDecimals(token), bestRate);
             }
         }
-        (sellReserves, sellRates) = getSellInfo(token, sellAmount, networkFeeBps);
+        (sellReserves, sellRates) = getSellInfo(token, sellAmountTwei, networkFeeBps);
     }
 
     function getBuyInfo(
         IERC20 token,
-        uint256 buyAmount,
+        uint256 buyAmountWei,
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory buyReserves, uint256[] memory buyRates) {
         buyReserves = kyberStorage.getReserveIdsPerTokenDest(token);
-        buyRates = getBuyRate(token, buyAmount, networkFeeBps, buyReserves);
+        buyRates = getBuyRate(token, buyAmountWei, networkFeeBps, buyReserves);
     }
 
     function getBuyRate(
         IERC20 token,
-        uint256 buyAmount,
+        uint256 buyAmountWei,
         uint256 networkFeeBps,
         bytes32[] memory buyReserves
     ) internal view returns (uint256[] memory buyRates) {
@@ -221,13 +221,13 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             buyReserves
         );
         buyRates = new uint256[](buyReserves.length);
-        uint256 buyAmountWithFee = buyAmount - ((buyAmount * networkFeeBps) / BPS);
+        uint256 buyAmountWithFee = buyAmountWei - ((buyAmountWei * networkFeeBps) / BPS);
         for (uint256 i = 0; i < buyReserves.length; i++) {
             if (networkFeeBps == 0 || !isFeeAccountedFlags[i]) {
                 buyRates[i] = IKyberReserve(buyReserveAddresses[i]).getConversionRate(
                     ETH_TOKEN_ADDRESS,
                     token,
-                    buyAmount,
+                    buyAmountWei,
                     block.number
                 );
                 continue;
@@ -245,22 +245,22 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
                 buyRates[i]
             );
             //use amount instead of ethSrcAmount to account for network fee
-            buyRates[i] = calcRateFromQty(buyAmount, destAmount, ETH_DECIMALS, getDecimals(token));
+            buyRates[i] = calcRateFromQty(buyAmountWei, destAmount, ETH_DECIMALS, getDecimals(token));
         }
     }
 
     function getSellInfo(
         IERC20 token,
-        uint256 sellAmount,
+        uint256 sellAmountTwei,
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory sellReserves, uint256[] memory sellRates) {
         sellReserves = kyberStorage.getReserveIdsPerTokenSrc(token);
-        sellRates = getSellRate(token, sellAmount, networkFeeBps, sellReserves);
+        sellRates = getSellRate(token, sellAmountTwei, networkFeeBps, sellReserves);
     }
 
     function getSellRate(
         IERC20 token,
-        uint256 sellAmount,
+        uint256 sellAmountTwei,
         uint256 networkFeeBps,
         bytes32[] memory sellReserves
     ) internal view returns (uint256[] memory sellRates) {
@@ -273,21 +273,21 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             sellRates[i] = IKyberReserve(sellReserveAddresses[i]).getConversionRate(
                 token,
                 ETH_TOKEN_ADDRESS,
-                sellAmount,
+                sellAmountTwei,
                 block.number
             );
             if (networkFeeBps == 0 || !isFeeAccountedFlags[i]) {
                 continue;
             }
             uint256 destAmount = calcDstQty(
-                sellAmount,
+                sellAmountTwei,
                 getDecimals(token),
                 ETH_DECIMALS,
                 sellRates[i]
             );
             destAmount -= (networkFeeBps * destAmount) / BPS;
             sellRates[i] = calcRateFromQty(
-                sellAmount,
+                sellAmountTwei,
                 destAmount,
                 getDecimals(token),
                 ETH_DECIMALS
@@ -295,19 +295,19 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         }
     }
 
-    function getSpreadInfo(IERC20 token, uint256 optionalEthAmount)
+    function getSpreadInfo(IERC20 token, uint256 optionalAmountWei)
         public
         view
         override
         returns (bytes32[] memory reserves, int256[] memory spreads)
     {
-        uint256 ethAmount = optionalEthAmount > 0 ? optionalEthAmount : DEFAULT_SPREAD_QUERY_AMOUNT_WEI;
+        uint256 amountWei = optionalAmountWei > 0 ? optionalAmountWei : DEFAULT_SPREAD_QUERY_AMOUNT_WEI;
         (
             bytes32[] memory buyReserves,
             uint256[] memory buyRates,
             bytes32[] memory sellReserves,
             uint256[] memory sellRates
-        ) = getReservesRates(token, ethAmount);
+        ) = getReservesRates(token, amountWei);
         // map pair of buyRate and sellRate from the same Reserve
         uint256[] memory validReserves = new uint256[](buyReserves.length);
         uint256[] memory revertReserveIndex = new uint256[](buyReserves.length);
@@ -334,15 +334,15 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         }
     }
 
-    function getSpreadInfoWithConfigReserves(IERC20 token, uint256 optionalEthAmount)
+    function getSpreadInfoWithConfigReserves(IERC20 token, uint256 optionalAmountWei)
         public
         view
         returns (bytes32[] memory reserves, int256[] memory spreads)
     {
         uint256[] memory buyRates;
         uint256[] memory sellRates;
-        uint256 ethAmount = optionalEthAmount > 0 ? optionalEthAmount : DEFAULT_SPREAD_QUERY_AMOUNT_WEI;
-        (reserves, buyRates, sellRates) = getReservesRatesWithConfigReserves(token, ethAmount);
+        uint256 amountWei = optionalAmountWei > 0 ? optionalAmountWei : DEFAULT_SPREAD_QUERY_AMOUNT_WEI;
+        (reserves, buyRates, sellRates) = getReservesRatesWithConfigReserves(token, amountWei);
 
         spreads = new int256[](reserves.length);
         for (uint256 i = 0; i < buyRates.length; i++) {
@@ -352,7 +352,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
     function getSlippageRateInfo(
         IERC20 token,
-        uint256 optionalEthAmount,
+        uint256 optionalAmountWei,
         uint256 optionalSlippageAmount
     )
         public
@@ -365,7 +365,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             int256[] memory sellSlippageRateBps
         )
     {
-        uint256 baseAmount = optionalEthAmount > 0 ? optionalEthAmount : DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI;
+        uint256 baseAmount = optionalAmountWei > 0 ? optionalAmountWei : DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI;
         uint256[] memory baseBuyRates;
         uint256[] memory baseSellRates;
         (buyReserves, baseBuyRates, sellReserves, baseSellRates) = getReservesRates(
@@ -399,7 +399,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
 
     function getSlippageRateInfoWithConfigReserves(
         IERC20 token,
-        uint256 optionalEthAmount,
+        uint256 optionalAmountWei,
         uint256 optionalSlippageAmount
     )
         public
@@ -410,7 +410,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             int256[] memory sellSlippageRateBps
         )
     {
-        uint256 baseAmount = optionalEthAmount > 0 ? optionalEthAmount : DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI;
+        uint256 baseAmount = optionalAmountWei > 0 ? optionalAmountWei : DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI;
         uint256[] memory baseBuyRates;
         uint256[] memory baseSellRates;
         (reserves, baseBuyRates, baseSellRates) = getReservesRatesWithConfigReserves(
