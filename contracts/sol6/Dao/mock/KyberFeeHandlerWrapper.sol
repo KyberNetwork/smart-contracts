@@ -75,7 +75,7 @@ contract KyberFeeHandlerWrapper is DaoOperator {
         for (uint256 i = startTokenIndex; i < endTokenId; i++) {
             KyberFeeHandlerData[] memory kyberFeeHandlerArray = kyberFeeHandlersPerToken[supportedTokens[i]];
             uint256 endKyberFeeHandlerId = (endKyberFeeHandlerIndex >= kyberFeeHandlerArray.length) ?
-                kyberFeeHandlerArray.length - 1: endKyberFeeHandlerIndex;
+                kyberFeeHandlerArray.length - 1: endKyberFeeHandlerIndex - 1;
             require(endKyberFeeHandlerId >= startKyberFeeHandlerIndex, "bad array indices");
             amounts = new uint256[](endKyberFeeHandlerId - startKyberFeeHandlerIndex + 1);
 
