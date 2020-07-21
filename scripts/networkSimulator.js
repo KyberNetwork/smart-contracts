@@ -35,6 +35,7 @@ module.exports.doFuzzTradeTests = async function(
     network, networkProxy, storage, matchingEngine,
     reserveInstances, accounts, tokens, numberLoops
 ) {
+    listRevertedReasons = [];
     logger.info(`Running semi-random fuzz trade tests with ${numberLoops} loops`);
     // prepare number of reverted trades for each revert message
     for(let i = 0; i < allRevertMessages.length; i++) {
@@ -85,6 +86,7 @@ module.exports.doRandomFuzzTradeTests = async function(
     network, networkProxy, storage, matchingEngine,
     reserveInstances, accounts, tokens, numberLoops
 ) {
+    listRevertedReasons = [];
     logger.info(`Running random fuzz trade tests with ${numberLoops} loops`);
     // prepare number of reverted trades for each revert message
     for(let i = 0; i < allRevertMessages.length; i++) {
