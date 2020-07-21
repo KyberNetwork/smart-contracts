@@ -251,7 +251,8 @@ module.exports.generateTradeParams = async function generateTradeParams(tokens, 
 
     // get hint if the trade is not reverted, otherwise use empty as hint
     if (revertType == RevertType.None) {
-        let hintData = await getTradeHint(srcToken, destToken, storage, true);
+        let shouldTestHintError = getRandomInt(0, 100) >= 90;
+        let hintData = await getTradeHint(srcToken, destToken, storage, shouldTestHintError);
         revertType = hintData.revertType;
         hint = hintData.hint;
         if (revertType == RevertType.None) {
@@ -417,10 +418,10 @@ module.exports.generateRandomizedTradeParams = async function generateRandomized
     let srcDecimals = srcToken == ethAddress ? ethDecimals : await srcToken.decimals();
     let destDecimals = destToken == ethAddress ? ethDecimals : await destToken.decimals();
     // random platform fee
-    let platformFeeBps = new BN(getRandomInt(0, 12000));
+    let platformFeeBps = new BN(getRandomInt(0, 11000));
 
     let maxGasPrice = await network.maxGasPrice();
-    let gasPrice = new BN(getRandomInt(0, Math.floor(maxGasPrice * 11 / 10)));
+    let gasPrice = new BN(getRandomInt(0, Math.floor(maxGasPrice * 105 / 100)));
 
     let hint = emptyHint;
     let srcQty = zeroBN;
@@ -449,9 +450,9 @@ module.exports.generateRandomizedTradeParams = async function generateRandomized
     hint = hintData.hint;
 
     // 90% src qty should be valid
-    let isValidSrcQty = getRandomInt(0, 100) <= 90;
+    let isValidSrcQty = getRandomInt(0, 100) <= 95;
     if (isValidSrcQty) {
-        if (!BPS.gt(platformFeeBps) || !BPS.gt(platformFeeBps.add(networkFeeBps).add(networkFeeBps))) {
+        if (!BPS.gt(platformFeeBps) || !BPS.gt(platformFeeBps.add(networkFeeBps).add(networkFeeBps)) || hintRevertType != RevertType.None) {
             // if fees are invalid, get expected rate will revert
             srcQty = (new BN(getRandomInt(1, 100))).mul((new BN(10)).pow(new BN(srcDecimals)));
         } else {
@@ -708,7 +709,7 @@ async function getTradeSrcQty(network, srcToken, destToken, platformFeeBps, hint
 // return hint data for the trade, including revert type of hint
 // if hint is correct, return revertType as None
 async function getTradeHint(srcToken, destToken, storage, shouldTestRevert) {
-    if (Math.random() <= 0.2) {
+    if (shouldTestRevert == false && Math.random() <= 0.2) {
         // 20% empty hint, may be more
         return {
             hint: emptyHint,
@@ -1007,9 +1008,6 @@ function getMinConversionRateData(expectedRate) {
 // as with error hint get expected rate should have returned 0
 // Make each revert hint error has equal chance to happen
 function getRevertTypeHintError() {
-    if (getRandomInt(0, 100) < 75) {
-        return RevertType.None;
-    }
     // should revert
     let number = getRandomInt(0, 8);
     switch (number) {
