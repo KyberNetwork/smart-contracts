@@ -96,7 +96,7 @@ module.exports.doFuzzStakeTests = async function(
         }
     }
 
-    console.log(`--- SIM RESULTS ---`);
+    console.log(`--- FUZZ RESULTS ---`);
     console.log(`Deposit: ${depositRuns}`);
     console.log(`Delegate: ${delegateRuns}`);
     console.log(`Withdraw: ${withdrawRuns}`);
@@ -126,7 +126,7 @@ async function executeDeposit(kyberStaking, result, epochPeriod) {
         } catch(e) {
             console.log('Valid deposit, but failed');
             console.log(e);
-            return;
+            process.exit(1);
         }
     } else {
         if (result.revertMsg != '') {
