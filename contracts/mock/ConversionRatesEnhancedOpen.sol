@@ -16,7 +16,7 @@ contract ConversionRateEnhancedOpen is ConversionRateEnhancedSteps {
         ConversionRateEnhancedSteps(_admin)
         { } // solhint-disable-line no-empty-blocks
 
-    ///@dev enables calling get rate and watching extra BPS from step functio.
+    ///@dev enables calling get rate and watching extra BPS from step function.
     ///@dev doesn't check: token listed, valid rate duration.
     ///         this logic isn't required since only used to show getRate internal values. extra logic isn't
     ///@dev rateWithSteps value should be equal to rate value from getRate call
