@@ -1,6 +1,7 @@
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper");
 const BN = web3.utils.BN;
+const { expectRevert } = require('@openzeppelin/test-helpers');
 
 const MockKyberDao = artifacts.require("MockKyberDao.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
@@ -550,6 +551,48 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
             }
             let newBalances = await getBalances(platformWallet, tokens);
             assertBalancesIncreased(initialBalances, newBalances, "platformWallet's balance(s) did not increase");
+        });
+
+        it("should revert for bad array indices", async() => {
+            // set startKyberFeeHandlerIndex > num of feeHandlers
+            let selectedEpoch = currentEpoch - 2;
+            let startKyberFeeHandlerIndex = 5;
+            let endKyberFeeHandlerIndex = 10;
+            await expectRevert(
+                feeWrapper.claimStakerReward(
+                    staker,
+                    selectedEpoch,
+                    tokenIndex,
+                    tokenIndex + 1,
+                    startKyberFeeHandlerIndex,
+                    endKyberFeeHandlerIndex
+                ),
+                "bad array indices"
+            );
+
+            for (const rebateWallet of rebateWallets) {
+                await expectRevert(
+                    feeWrapper.claimReserveRebate(
+                    rebateWallet,
+                    tokenIndex,
+                    tokenIndex + 1,
+                    startKyberFeeHandlerIndex,
+                    endKyberFeeHandlerIndex
+                    ),
+                "bad array indices"
+                );
+            };
+            
+            await expectRevert(
+                feeWrapper.claimPlatformFee(
+                    platformWallet,
+                    tokenIndex,
+                    tokenIndex + 1,
+                    startKyberFeeHandlerIndex,
+                    endKyberFeeHandlerIndex
+                ),
+                "bad array indices"
+            );
         });
     });
 });

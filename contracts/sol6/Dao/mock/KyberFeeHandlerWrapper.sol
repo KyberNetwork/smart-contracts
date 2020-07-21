@@ -76,6 +76,7 @@ contract KyberFeeHandlerWrapper is DaoOperator {
             KyberFeeHandlerData[] memory kyberFeeHandlerArray = kyberFeeHandlersPerToken[supportedTokens[i]];
             uint256 endKyberFeeHandlerId = (endKyberFeeHandlerIndex >= kyberFeeHandlerArray.length) ?
                 kyberFeeHandlerArray.length - 1: endKyberFeeHandlerIndex;
+            require(endKyberFeeHandlerId >= startKyberFeeHandlerIndex, "bad array indices");
             amounts = new uint256[](endKyberFeeHandlerId - startKyberFeeHandlerIndex + 1);
 
             // iteration starts from endIndex, differs from claiming reserve rebates and platform wallets
@@ -126,6 +127,7 @@ contract KyberFeeHandlerWrapper is DaoOperator {
             KyberFeeHandlerData[] memory kyberFeeHandlerArray = kyberFeeHandlersPerToken[supportedTokens[i]];
             uint256 endKyberFeeHandlerId = (endKyberFeeHandlerIndex >= kyberFeeHandlerArray.length) ?
                 kyberFeeHandlerArray.length : endKyberFeeHandlerIndex;
+            require(endKyberFeeHandlerId >= startKyberFeeHandlerIndex, "bad array indices");
             amounts = new uint256[](endKyberFeeHandlerId - startKyberFeeHandlerIndex + 1);
             
             for (uint256 j = startKyberFeeHandlerIndex; j < endKyberFeeHandlerId; j++) {
@@ -168,6 +170,7 @@ contract KyberFeeHandlerWrapper is DaoOperator {
             KyberFeeHandlerData[] memory kyberFeeHandlerArray = kyberFeeHandlersPerToken[supportedTokens[i]];
             uint256 endKyberFeeHandlerId = (endKyberFeeHandlerIndex >= kyberFeeHandlerArray.length) ?
                 kyberFeeHandlerArray.length : endKyberFeeHandlerIndex;
+            require(endKyberFeeHandlerId >= startKyberFeeHandlerIndex, "bad array indices");
             amounts = new uint256[](endKyberFeeHandlerId - startKyberFeeHandlerIndex + 1);
 
             for (uint256 j = startKyberFeeHandlerIndex; j < endKyberFeeHandlerId; j++) {
