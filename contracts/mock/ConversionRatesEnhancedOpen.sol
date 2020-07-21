@@ -2,13 +2,24 @@ pragma solidity 0.4.18;
 
 import "../reserves/fprConversionRate/ConversionRateEnhancedSteps.sol";
 
-
+/**
+ *   @title ConversionRateEnhancedOpen
+ *   Inherits ConversionRateEnhancedSteps.
+ *   Supports API to check new getRate logic by exposing internal data.
+ *   Additional API enables 2 options: 
+ *      - get rate queries that also show steps data (accumulated Y value).
+ *      - query get rate with fake imbalance.
+ */
 contract ConversionRateEnhancedOpen is ConversionRateEnhancedSteps {
 
     function ConversionRateEnhancedOpen(address _admin) public 
         ConversionRateEnhancedSteps(_admin)
         { } // solhint-disable-line no-empty-blocks
 
+    ///@dev enables calling get rate and watching extra BPS from step functio.
+    ///@dev doesn't check: token listed, valid rate duration.
+    ///         this logic isn't required since only used to show getRate internal values. extra logic isn't
+    ///@dev rateWithSteps value should be equal to rate value from getRate call
     function getRateOpenData(
         ERC20 token, 
         uint currentBlockNumber, 
@@ -32,6 +43,8 @@ contract ConversionRateEnhancedOpen is ConversionRateEnhancedSteps {
         return getRateDataFakeImbalance(token, buy, qty, totalImbalance);
     }
 
+    ///@dev enables calling get rate and watching extra BPS from step function.
+    ///@dev can supply fake imbalance and see steps values with this fake imbalance.
     function getRateDataFakeImbalance(
         ERC20 token,
         bool buy, 
