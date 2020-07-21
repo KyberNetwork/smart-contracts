@@ -110,7 +110,7 @@ contract('KyberNetworkProxy', function(accounts) {
         await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, storage.address, {from: admin});
+        await rateHelper.setContracts(kyberDao.address, storage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
@@ -512,7 +512,7 @@ contract('KyberNetworkProxy', function(accounts) {
             await tempStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
             mockRateHelper = await RateHelper.new(admin);
-            await mockRateHelper.setContracts(mockMatchingEngine.address, mockKyberDao.address, tempStorage.address, {from: admin});
+            await mockRateHelper.setContracts(mockKyberDao.address, tempStorage.address, {from: admin});
 
             // setup proxy
             await mockProxy.setKyberNetwork(mockNetwork.address, {from: admin});

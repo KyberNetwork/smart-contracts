@@ -101,7 +101,7 @@ contract('Parallel Proxy V1 + V2', function(accounts) {
         await networkStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, networkStorage.address, {from: admin});
+        await rateHelper.setContracts(kyberDao.address, networkStorage.address, {from: admin});
 
         // setup proxy
         await networkProxy.setKyberNetwork(network.address, {from: admin});
