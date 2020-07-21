@@ -9,7 +9,7 @@ require("chai")
 
 
 const {BPS, ethDecimals, ethAddress, emptyHint, zeroBN, zeroAddress }  = require("../../test/helper.js")
-    const { MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE }  = require('../../test/sol6/networkHelper.js');
+const { MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE }  = require('../../test/sol6/networkHelper.js');
 
 // Operations
 const TRADE = 'trade';
