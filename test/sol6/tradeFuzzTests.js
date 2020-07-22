@@ -111,7 +111,7 @@ contract('TradeFuzzTests', function(accounts) {
 
         // init rateHelper
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, storage.address, {from: admin});
+        await rateHelper.setContracts(kyberDao.address, storage.address, {from: admin});
 
         // init gas helper
         // tests gasHelper when gasHelper != address(0), and when a trade is being done
