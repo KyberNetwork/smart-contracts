@@ -1022,7 +1022,7 @@ function getRevertTypeHintError() {
         case 4:
             return RevertType.HINT_ERROR_NOT_INCREASING;
         case 5:
-            return RevertType.HINT_ERROR_RESERVES_EMPTY;
+            return RevertType.HINT_ERROR_RESERVE_ID_NOT_FOUND;
         case 6:
             return RevertType.HINT_ERROR_SPLIT_NOT_EMPTY;
         case 7:
