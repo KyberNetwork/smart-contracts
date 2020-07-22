@@ -345,7 +345,14 @@ module.exports.generateTradeParams = async function generateTradeParams(tokens, 
         message = revertType;
         if (message.startsWith("hint error")) {
             // all hint errors will have this revert
-            message = "trade invalid, if hint involved, try parseHint API";
+            if (revertType == RevertType.HINT_ERROR_RESERVE_ID_NOT_FOUND) {
+                // one issue with current implementation
+                // if reserve id is not found, it will be reverted
+                // because of accessing first element of empty array
+                message = "unspecified"
+            } else {
+                message = "trade invalid, if hint involved, try parseHint API";
+            }
         } else if (revertType == RevertType.NOT_ENOUGH_SRC_TOKEN && srcToken == ethAddress) {
             // if not enough src token + src == eth, we have to use normal try/catch
             message = "try/catch"
@@ -486,7 +493,7 @@ module.exports.generateRandomizedTradeParams = async function generateRandomized
     }
 
     let expectedRates;
-    if (BPS.gt(platformFeeBps) && BPS.gt(platformFeeBps.add(networkFeeBps).add(networkFeeBps)) && srcQty.gt(zeroBN)) {
+    if (hintRevertType == RevertType.None && BPS.gt(platformFeeBps) && BPS.gt(platformFeeBps.add(networkFeeBps).add(networkFeeBps)) && srcQty.gt(zeroBN)) {
         // get expected will revert if fees are invalid
         expectedRates = await network.getExpectedRateWithHintAndFee(getAddress(srcToken), getAddress(destToken), srcQty, platformFeeBps, hint);
         if (expectedRates.rateWithNetworkFee.gt(zeroBN)) {
@@ -595,7 +602,14 @@ module.exports.generateRandomizedTradeParams = async function generateRandomized
             // hint error will give zero rates
             revertType = hintRevertType;
         }
-        message = "trade invalid, if hint involved, try parseHint API";
+        if (revertType == RevertType.HINT_ERROR_RESERVE_ID_NOT_FOUND) {
+            // one issue with current implementation
+            // if reserve id is not found, it will be reverted
+            // because of accessing first element of empty array
+            message = "unspecified";
+        } else {
+            message = "trade invalid, if hint involved, try parseHint API";
+        }
     }
 
     if (revertType == RevertType.None && minConversionRate.gt(expectedRates.rateWithNetworkFee)) {
@@ -866,6 +880,13 @@ function getHintType(errorType) {
     if (errorType == RevertType.HINT_ERROR_SPLIT_NOT_EMPTY) {
         // only mask in or mask out
         return getRandomInt(0, 100) <= 50 ? MASK_IN_HINTTYPE : MASK_OUT_HINTTYPE;
+    }
+    if (errorType == RevertType.HINT_ERROR_RESERVE_ID_NOT_FOUND) {
+        // should exclude mask out
+        let rand = getRandomInt(0, 100);
+        if (rand < 30) return MASK_IN_HINTTYPE;
+        if (rand < 60) return SPLIT_HINTTYPE;
+        return BEST_OF_ALL_HINTTYPE;
     }
 
     let rand = getRandomInt(0, 100);

@@ -63,7 +63,7 @@ module.exports.doFuzzTradeTests = async function(
                 consecutiveFails++;
                 if (consecutiveFails == Math.max(1, numberLoops / 10000)) {
                     // too many consecutive times we can not get a valid trade inputs
-                    logger.debug(`Loop ${loop}: Update rates for reserves`);
+                    logger.debug(`Update rates for reserves`);
                     await updateRatesForReserves(reserveInstances, tokens, accounts);
                     hasUpdatedRates = true;
                     consecutiveFails = 0;
@@ -168,10 +168,10 @@ async function doTradeAndCompare(
             if (!listRevertedReasons.includes(tradeData.revertType)) {
                 listRevertedReasons.push(tradeData.revertType);
             }
+            logger.debug(`Loop ${loop}: Execute trade fail with reason: ${tradeData.revertType}`)
             await testTradeShouldRevert(tradeData.srcAddress, tradeData.destAddress, tradeData, tradeData.taker,
                 tradeData.recipient, tradeData.callValue, networkProxy, tradeData.gasPrice, tradeData.message);
 
-            logger.debug(`Loop ${loop}: Execute trade fail with reason: ${tradeData.revertType}`)
             // reset some data like: transfer back src token, reset allowance, enable network if needed, etc
             await TradeParamGenerator.resetDataAfterTradeReverted(tradeData, network, networkProxy, accounts);
         }
