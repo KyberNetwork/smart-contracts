@@ -80,6 +80,9 @@ contract MockReserve is IKyberReserve, Utils5 {
             : sellTokenRates[address(src)];
         uint256 srcDecimals = getDecimals(src);
         uint256 destDecimals = getDecimals(dest);
+        if (srcQty > MAX_QTY || rate > MAX_RATE ) {
+            return 0;
+        }
         uint256 destAmount = calcDstQty(srcQty, srcDecimals, destDecimals, rate);
         if (dest == ETH_TOKEN_ADDRESS && address(this).balance < destAmount) {
             return 0;
