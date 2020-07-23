@@ -4,9 +4,19 @@ const { DEPOSIT, DELEGATE, WITHDRAW, NO_ACTION } = require("./simulator/stakingA
 const { expectRevert } = require('@openzeppelin/test-helpers');
 const StakeGenerator = require("./simulator/stakingActionsGenerator.js");
 
+const winston = require("winston");
+const logger = winston.createLogger({
+    format: winston.format.combine(winston.format.colorize(), winston.format.splat(), winston.format.simple()),
+    transports: [
+      new winston.transports.Console({ level: 'info' }),
+      new winston.transports.File({ filename: 'fuzz_staking.log', level: 'debug' })
+    ]
+});
+
 //global variables
 //////////////////
 const { zeroBN, zeroAddress } = require("../test/helper.js");
+const progressIterations = 20;
 
 // for keeping score
 let depositRuns = 0;
@@ -23,28 +33,28 @@ module.exports.genPerformStakingAction = async function(
         case DEPOSIT:
             result = await StakeGenerator.genDeposit(kncToken, stakers);
             result.dAddress = await kyberStaking.getLatestRepresentative(result.staker);
-            console.log(result.msg);
-            console.log(`Deposit: staker ${result.staker}, amount: ${result.amount}`);
+            logger.debug(result.msg);
+            logger.debug(`Deposit: staker ${result.staker}, amount: ${result.amount}`);
             await executeDeposit(kyberStaking, result, epochPeriod);
             break;
         case DELEGATE:
             result = await StakeGenerator.genDelegate(stakers);
-            console.log(result.msg);
-            console.log(`Delegate: staker ${result.staker}, address: ${result.dAddress}`);
+            logger.debug(result.msg);
+            logger.debug(`Delegate: staker ${result.staker}, address: ${result.dAddress}`);
             await executeDelegate(kyberStaking, result, epochPeriod);
             break;
         case WITHDRAW:
             result = await StakeGenerator.genWithdraw(kyberStaking, stakers);
             result.dAddress = await kyberStaking.getLatestRepresentative(result.staker);
-            console.log(result.msg);
-            console.log(`Withdrawal: staker ${result.staker}, amount: ${result.amount}`);
+            logger.debug(result.msg);
+            logger.debug(`Withdrawal: staker ${result.staker}, amount: ${result.amount}`);
             await executeWithdraw(kyberStaking, result, epochPeriod);
         case NO_ACTION:
-            console.log("no action in epoch period...");
+            logger.debug("no action in epoch period...");
             await executeNoAction(epochPeriod);
             break;
         default:
-            console.log("unexpected operation: " + operation);
+            logger.debug("unexpected operation: " + operation);
             break;
     }
 }
@@ -54,22 +64,27 @@ module.exports.doFuzzStakeTests = async function(
 ) {
     let result;
     let validity;
+    logger.info(`Running staking fuzz tests with ${NUM_RUNS} loops`);
     for(let loop = 0; loop < NUM_RUNS; loop++) {
+        if (loop % progressIterations == 0) {
+            process.stdout.write(`${loop / NUM_RUNS * 100}% complete\n`);
+        }
+
         let operation = StakeGenerator.genNextOp(loop, NUM_RUNS);
         switch(operation) {
             case DEPOSIT:
                 result = await StakeGenerator.genDeposit(kncToken, stakers);
                 result.dAddress = await kyberStaking.getLatestRepresentative(result.staker);
-                console.log(result.msg);
-                console.log(`Deposit: staker ${result.staker}, amount: ${result.amount}`);
+                logger.debug(result.msg);
+                logger.debug(`Deposit: staker ${result.staker}, amount: ${result.amount}`);
                 validity = await executeAndVerifyDepositInvariants(kyberStaking, result, epochPeriod);
                 depositRuns = logResult(validity, depositRuns);
                 break;
 
             case DELEGATE:
                 result = await StakeGenerator.genDelegate(stakers);
-                console.log(result.msg);
-                console.log(`Delegate: staker ${result.staker}, address: ${result.dAddress}`);
+                logger.debug(result.msg);
+                logger.debug(`Delegate: staker ${result.staker}, address: ${result.dAddress}`);
                 validity = await executeAndVerifyDelegateInvariants(kyberStaking, result, epochPeriod);
                 delegateRuns = logResult(validity, delegateRuns);
                 break;
@@ -77,8 +92,8 @@ module.exports.doFuzzStakeTests = async function(
             case WITHDRAW:
                 result = await StakeGenerator.genWithdraw(kyberStaking, stakers);
                 result.dAddress = await kyberStaking.getLatestRepresentative(result.staker);
-                console.log(result.msg);
-                console.log(`Withdrawal: staker ${result.staker}, amount: ${result.amount}`);
+                logger.debug(result.msg);
+                logger.debug(`Withdrawal: staker ${result.staker}, amount: ${result.amount}`);
                 validity = await executeAndVerifyWithdrawInvariants(kyberStaking, result, epochPeriod);
                 withdrawRuns = logResult(validity, withdrawRuns);
                 break;
@@ -86,21 +101,24 @@ module.exports.doFuzzStakeTests = async function(
             case NO_ACTION:
                 result = await StakeGenerator.genNoAction(stakers);
                 result.dAddress = await kyberStaking.getLatestRepresentative(result.staker);
-                console.log("no action in epoch period...");
+                logger.debug("no action in epoch period...");
                 validity = await executeAndVerifyNoActionInvariants(kyberStaking, result, epochPeriod);
                 noActionRuns = logResult(validity, noActionRuns);
                 break;
             default:
-                console.log("unexpected operation: " + operation);
+                logger.debug("unexpected operation: " + operation);
+                validity = false;
                 break;
         }
+
+        if (!validity) break;
     }
 
-    console.log(`--- FUZZ RESULTS ---`);
-    console.log(`Deposit: ${depositRuns}`);
-    console.log(`Delegate: ${delegateRuns}`);
-    console.log(`Withdraw: ${withdrawRuns}`);
-    console.log(`Do nothing: ${noActionRuns}`);
+    logger.info(`--- SUMMARY RESULTS AFTER ${NUM_RUNS} LOOPS ---`);
+    logger.info(`Deposit runs: ${depositRuns}`);
+    logger.info(`Delegate runs: ${delegateRuns}`);
+    logger.info(`Withdraw runs: ${withdrawRuns}`);
+    logger.info(`No action runs: ${noActionRuns}`);
 }
 
 async function executeAndVerifyDepositInvariants(kyberStaking, result, epochPeriod) {
@@ -124,9 +142,9 @@ async function executeDeposit(kyberStaking, result, epochPeriod) {
         try {
             await kyberStaking.deposit(result.amount, {from: result.staker});
         } catch(e) {
-            console.log('Valid deposit, but failed');
-            console.log(e);
-            process.exit(1);
+            logger.debug('Valid deposit, but failed');
+            logger.debug(e);
+            return;
         }
     } else {
         if (result.revertMsg != '') {
@@ -193,8 +211,8 @@ async function executeWithdraw(kyberStaking, result, epochPeriod) {
         try {
             await kyberStaking.withdraw(result.amount, {from: result.staker});
         } catch(e) {
-            console.log('Valid withdrawal, but failed');
-            console.log(e);
+            logger.debug('Valid withdrawal, but failed');
+            logger.debug(e);
         }
     } else {
         await expectRevert(
@@ -610,9 +628,9 @@ async function verifyDelegateChanges(initState, newState, result) {
             }
         }
     } else {
-        console.log("Unrecognised case....");
+        logger.debug("Unrecognised case....");
         logStates({'initState': initState, 'newState': newState});
-        process.exit(0);
+        return false;
     }
     return isValid;
 }
@@ -792,20 +810,20 @@ function assertSameStakerDataInvariants(initStakerData, newStakerData, actionDon
     if (actionDoneInSameEpoch) {
         isValid &= assertSameStakerData(initStakerData.dataCurEpoch, newStakerData.dataCurEpoch);
         if (!isValid) {
-            console.log(`dataCurEpochs don't match`);
+            logger.debug(`dataCurEpochs don't match`);
         }
         isValid &= assertSameStakerData(newStakerData.dataNextEpoch, newStakerData.latestData);
         if (!isValid) {
-            console.log(`newStaker latestData & dataNextEpoch don't match`);
+            logger.debug(`newStaker latestData & dataNextEpoch don't match`);
         }
     } else {
         isValid &= assertSameStakerData(initStakerData.dataNextEpoch, newStakerData.dataCurEpoch);
         if (!isValid) {
-            console.log(`Diff epochs: newStaker dataCurEpoch & initStakerData.dataNextEpoch don't match`);
+            logger.debug(`Diff epochs: newStaker dataCurEpoch & initStakerData.dataNextEpoch don't match`);
         }
         isValid &= assertSameStakerData(newStakerData.dataNextEpoch, newStakerData.latestData);
         if (!isValid) {
-            console.log(`Diff epochs: newStaker dataNextEpoch & latestData don't match`);
+            logger.debug(`Diff epochs: newStaker dataNextEpoch & latestData don't match`);
         }
     }
     return isValid;
@@ -815,18 +833,18 @@ function assertSameStakerData(stakerData1, stakerData2) {
     let isValid = true;
     isValid &= (stakerData1.stake.eq(stakerData2.stake));
     if (!isValid) {
-        console.log(`stakes don't match`);
-        console.log(`${stakerData1.stake.toString()} != ${stakerData2.stake.toString()}`);
+        logger.debug(`stakes don't match`);
+        logger.debug(`${stakerData1.stake.toString()} != ${stakerData2.stake.toString()}`);
     }
     isValid &= (stakerData1.dStake.eq(stakerData2.dStake));
     if (!isValid) {
-        console.log(`delegated stakes don't match`);
-        console.log(`${stakerData1.dStake.toString()} != ${stakerData2.dStake.toString()}`);
+        logger.debug(`delegated stakes don't match`);
+        logger.debug(`${stakerData1.dStake.toString()} != ${stakerData2.dStake.toString()}`);
     }
     isValid &= (stakerData1.dAddress == stakerData2.dAddress);
     if (!isValid) {
-        console.log(`delegated addresses don't match`);
-        console.log(`${stakerData1.dAddress.toString()} != ${stakerData2.dAddress.toString()}`);
+        logger.debug(`delegated addresses don't match`);
+        logger.debug(`${stakerData1.dAddress.toString()} != ${stakerData2.dAddress.toString()}`);
     }
     return isValid;
 }
@@ -868,14 +886,13 @@ function assertSameDelegateAddress(initStaker, newStaker, sameEpoch) {
 
 function logValidity(isValid, reason) {
     if (!isValid) {
-        console.log(`${reason}`);
+        logger.debug(`${reason}`);
     }
 }
 
 function logResult(validity, score) {
     if (!validity.isValid) {
         logStates(validity.states);
-        process.exit(0);
     } else {
         score += 1;
     }
@@ -883,50 +900,50 @@ function logResult(validity, score) {
 }
 
 function logStates(states) {
-    console.log(`---INITIAL STATE---`);
+    logger.debug(`---INITIAL STATE---`);
     logState(states.initState);
-    console.log(`---RESULTING STATE---`);
+    logger.debug(`---RESULTING STATE---`);
     logState(states.newState);
 }
 
 function logState(state) {
-    console.log(`epochNum: ${state.epochNum}`);
-    console.log(`oldDAddr: ${state.oldRepAddress}`);
-    console.log(`newDAddr: ${state.newRepAddress}`);
+    logger.debug(`epochNum: ${state.epochNum}`);
+    logger.debug(`oldDAddr: ${state.oldRepAddress}`);
+    logger.debug(`newDAddr: ${state.newRepAddress}`);
 
-    console.log(`staker's curEpochStake: ${state.staker.dataCurEpoch.stake.toString()}`);
-    console.log(`staker's curEpochDStake: ${state.staker.dataCurEpoch.dStake.toString()}`);
-    console.log(`staker's curEpochDAddr: ${state.staker.dataCurEpoch.dAddress.toString()}`);
+    logger.debug(`staker's curEpochStake: ${state.staker.dataCurEpoch.stake.toString()}`);
+    logger.debug(`staker's curEpochDStake: ${state.staker.dataCurEpoch.dStake.toString()}`);
+    logger.debug(`staker's curEpochDAddr: ${state.staker.dataCurEpoch.dAddress.toString()}`);
 
-    console.log(`oldDAddr's curEpochStake: ${state.oldRep.dataCurEpoch.stake.toString()}`);
-    console.log(`oldDAddr's curEpochDStake: ${state.oldRep.dataCurEpoch.dStake.toString()}`);
-    console.log(`oldDAddr's curEpochDAddr: ${state.oldRep.dataCurEpoch.dAddress.toString()}`);
+    logger.debug(`oldDAddr's curEpochStake: ${state.oldRep.dataCurEpoch.stake.toString()}`);
+    logger.debug(`oldDAddr's curEpochDStake: ${state.oldRep.dataCurEpoch.dStake.toString()}`);
+    logger.debug(`oldDAddr's curEpochDAddr: ${state.oldRep.dataCurEpoch.dAddress.toString()}`);
     
-    console.log(`newDAddr's curEpochStake: ${state.newRep.dataCurEpoch.stake.toString()}`);
-    console.log(`newDAddr's curEpochDStake: ${state.newRep.dataCurEpoch.dStake.toString()}`);
-    console.log(`newDAddr's curEpochDAddr: ${state.newRep.dataCurEpoch.dAddress.toString()}`);
+    logger.debug(`newDAddr's curEpochStake: ${state.newRep.dataCurEpoch.stake.toString()}`);
+    logger.debug(`newDAddr's curEpochDStake: ${state.newRep.dataCurEpoch.dStake.toString()}`);
+    logger.debug(`newDAddr's curEpochDAddr: ${state.newRep.dataCurEpoch.dAddress.toString()}`);
 
-    console.log(`staker's nextEpochStake: ${state.staker.dataNextEpoch.stake.toString()}`);
-    console.log(`staker's nextEpochDStake: ${state.staker.dataNextEpoch.dStake.toString()}`);
-    console.log(`staker's nextEpochDAddr: ${state.staker.dataNextEpoch.dAddress.toString()}`);
+    logger.debug(`staker's nextEpochStake: ${state.staker.dataNextEpoch.stake.toString()}`);
+    logger.debug(`staker's nextEpochDStake: ${state.staker.dataNextEpoch.dStake.toString()}`);
+    logger.debug(`staker's nextEpochDAddr: ${state.staker.dataNextEpoch.dAddress.toString()}`);
 
-    console.log(`oldDAddr's nextEpochStake: ${state.oldRep.dataNextEpoch.stake.toString()}`);
-    console.log(`oldDAddr's nextEpochDStake: ${state.oldRep.dataNextEpoch.dStake.toString()}`);
-    console.log(`oldDAddr's nextEpochDAddr: ${state.oldRep.dataNextEpoch.dAddress.toString()}`);
+    logger.debug(`oldDAddr's nextEpochStake: ${state.oldRep.dataNextEpoch.stake.toString()}`);
+    logger.debug(`oldDAddr's nextEpochDStake: ${state.oldRep.dataNextEpoch.dStake.toString()}`);
+    logger.debug(`oldDAddr's nextEpochDAddr: ${state.oldRep.dataNextEpoch.dAddress.toString()}`);
     
-    console.log(`newDAddr's nextEpochStake: ${state.newRep.dataNextEpoch.stake.toString()}`);
-    console.log(`newDAddr's nextEpochDStake: ${state.newRep.dataNextEpoch.dStake.toString()}`);
-    console.log(`newDAddr's nextEpochDAddr: ${state.newRep.dataNextEpoch.dAddress.toString()}`);
+    logger.debug(`newDAddr's nextEpochStake: ${state.newRep.dataNextEpoch.stake.toString()}`);
+    logger.debug(`newDAddr's nextEpochDStake: ${state.newRep.dataNextEpoch.dStake.toString()}`);
+    logger.debug(`newDAddr's nextEpochDAddr: ${state.newRep.dataNextEpoch.dAddress.toString()}`);
 
-    console.log(`staker's latestDataStake: ${state.staker.latestData.stake.toString()}`);
-    console.log(`staker's latestDataDStake: ${state.staker.latestData.dStake.toString()}`);
-    console.log(`staker's latestDataDAddr: ${state.staker.latestData.dAddress.toString()}`);
+    logger.debug(`staker's latestDataStake: ${state.staker.latestData.stake.toString()}`);
+    logger.debug(`staker's latestDataDStake: ${state.staker.latestData.dStake.toString()}`);
+    logger.debug(`staker's latestDataDAddr: ${state.staker.latestData.dAddress.toString()}`);
 
-    console.log(`oldDAddr's latestDataStake: ${state.oldRep.latestData.stake.toString()}`);
-    console.log(`oldDAddr's latestDataDStake: ${state.oldRep.latestData.dStake.toString()}`);
-    console.log(`oldDAddr's latestDataDAddr: ${state.oldRep.latestData.dAddress.toString()}`);
+    logger.debug(`oldDAddr's latestDataStake: ${state.oldRep.latestData.stake.toString()}`);
+    logger.debug(`oldDAddr's latestDataDStake: ${state.oldRep.latestData.dStake.toString()}`);
+    logger.debug(`oldDAddr's latestDataDAddr: ${state.oldRep.latestData.dAddress.toString()}`);
     
-    console.log(`newDAddr's latestDataStake: ${state.newRep.latestData.stake.toString()}`);
-    console.log(`newDAddr's latestDataDStake: ${state.newRep.latestData.dStake.toString()}`);
-    console.log(`newDAddr's latestDataDAddr: ${state.newRep.latestData.dAddress.toString()}`);
+    logger.debug(`newDAddr's latestDataStake: ${state.newRep.latestData.stake.toString()}`);
+    logger.debug(`newDAddr's latestDataDStake: ${state.newRep.latestData.dStake.toString()}`);
+    logger.debug(`newDAddr's latestDataDAddr: ${state.newRep.latestData.dAddress.toString()}`);
 }

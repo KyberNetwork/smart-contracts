@@ -9,7 +9,7 @@ const { precisionUnits } = require("../helper.js");
 
 //global variables
 //////////////////
-const NUM_RUNS = 25;
+const NUM_RUNS = 100;
 
 // accounts
 let admin;
