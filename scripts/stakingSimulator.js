@@ -67,7 +67,7 @@ module.exports.doFuzzStakeTests = async function(
     logger.info(`Running staking fuzz tests with ${NUM_RUNS} loops`);
     for(let loop = 0; loop < NUM_RUNS; loop++) {
         if (loop % progressIterations == 0) {
-            process.stdout.write(`${loop / NUM_RUNS * 100}% complete\n`);
+            process.stdout.write(`${(loop / NUM_RUNS * 100).toFixed(1)}% complete\n`);
         }
 
         let operation = StakeGenerator.genNextOp(loop, NUM_RUNS);
