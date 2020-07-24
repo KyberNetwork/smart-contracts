@@ -445,7 +445,7 @@ module.exports.generateRandomizedTradeParams = async function generateRandomized
     let recipient = accountsWithZeroAddress[getRandomInt(1, accountsWithZeroAddress.length - 1)];
 
     // 80% hints are valid
-    let shouldTestHintError = getRandomInt(0, 100) >= 80;
+    let shouldTestHintError = getRandomInt(0, 100) >= 90;
     let hintData = {
         hint: emptyHint,
         revertType: RevertType.None
@@ -457,7 +457,7 @@ module.exports.generateRandomizedTradeParams = async function generateRandomized
     hint = hintData.hint;
 
     // 90% src qty should be valid
-    let isValidSrcQty = getRandomInt(0, 100) <= 95;
+    let isValidSrcQty = getRandomInt(0, 100) <= 90;
     if (isValidSrcQty) {
         if (!BPS.gt(platformFeeBps) || !BPS.gt(platformFeeBps.add(networkFeeBps).add(networkFeeBps)) || hintRevertType != RevertType.None) {
             // if fees are invalid, get expected rate will revert
