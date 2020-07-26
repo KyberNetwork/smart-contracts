@@ -1,7 +1,7 @@
-const ConversionRates = artifacts.require("ConversionRates.sol");
-const EnhancedStepFunctions = artifacts.require("MockEnhancedStepFunctions.sol");
-const TestToken = artifacts.require("TestToken.sol");
-const Reserve = artifacts.require("KyberReserveHighRate.sol");
+const ConversionRates = artifacts.require("ConversionRates");
+const EnhancedStepFunctions = artifacts.require("MockEnhancedStepFunctions");
+const TestToken = artifacts.require("TestToken");
+const Reserve = artifacts.require("MockKyberReserveHighRate");
 const SanityRates = artifacts.require("SanityRates");
 
 const Helper = require("./helper.js");
@@ -14,6 +14,7 @@ const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const zeroAddress = '0x0000000000000000000000000000000000000000';
 const precision = new BN(10).pow(new BN(18));
 const maxAllowance = new BN(2).pow(new BN(255));
+const MAX_RATE =  precisionUnits.mul(new BN(10 ** 7));
 
 //balances
 let expectedReserveBalanceWei = new BN(0);
@@ -234,6 +235,44 @@ contract('KyberReserveHighRate', function(accounts) {
 
             reserveTokenBalance2.push(amount);
             reserveTokenImbalance2.push(new BN(0));
+        }
+    });
+
+    it("test MAX_RATE as expected for internal calcDstQty", async function() {
+        const srcQty = new BN(5000);
+        const decimals = 18;
+        let rate = MAX_RATE;
+
+        const expectedDstQty = Helper.calcDstQty(srcQty, decimals, decimals, rate);
+
+        const rxDestQty = await reserveInst.MockCalcDstQty(srcQty, decimals, decimals, rate);
+        Helper.assertEqual(expectedDstQty, rxDestQty);
+
+        rate = MAX_RATE.add(new BN(1));
+        try {
+            await reserveInst.MockCalcDstQty(srcQty, decimals, decimals, rate);
+            assert(false,  "shouldn't reach this line. expected line above to throw.")
+        } catch(e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+    });
+
+    it("test MAX_RATE as expected for internal calcSrcQty", async function() {
+        const dstQty = new BN(50000000000);
+        const decimals = 18;
+        let rate = MAX_RATE;
+
+        const expectedSrcQty = Helper.calcSrcQty(dstQty, decimals, decimals, rate);
+
+        const rxSrcQty = await reserveInst.MockCalcSrcQty(dstQty, decimals, decimals, rate);
+        Helper.assertEqual(expectedSrcQty, rxSrcQty);
+
+        rate = MAX_RATE.add(new BN(1));
+        try {
+            await reserveInst.MockCalcSrcQty(dstQty, decimals, decimals, rate);
+            assert(false,  "shouldn't reach this line. expected line above to throw.")
+        } catch(e) {
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
     });
 
