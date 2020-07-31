@@ -456,8 +456,9 @@ module.exports.generateRandomizedTradeParams = async function generateRandomized
     let hintRevertType = hintData.revertType;
     hint = hintData.hint;
 
-    // 90% src qty should be valid
+    // 80% src qty should be valid
     let isValidSrcQty = getRandomInt(0, 100) <= 90;
+    let maxQty = (new BN(10).pow(new BN(28)));
     if (isValidSrcQty) {
         if (!BPS.gt(platformFeeBps) || !BPS.gt(platformFeeBps.add(networkFeeBps).add(networkFeeBps)) || hintRevertType != RevertType.None) {
             // if fees are invalid, get expected rate will revert
@@ -473,8 +474,9 @@ module.exports.generateRandomizedTradeParams = async function generateRandomized
             srcQty = zeroBN;
             break;
         case 2:
-            srcQty = (new BN(10).pow(new BN(28))).add(new BN(getRandomInt(1, 1000000)));
+            srcQty = maxQty.add(new BN(getRandomInt(1, 1000000)));
             callValue = srcToken == ethAddress ? srcQty : zeroBN;
+            break
         default:
             srcQty = (new BN(getRandomInt(1, 100))).mul((new BN(10)).pow(new BN(srcDecimals)));
             if (getRandomInt(0, 100) >= 80) {
@@ -493,11 +495,15 @@ module.exports.generateRandomizedTradeParams = async function generateRandomized
     }
 
     let expectedRates;
-    if (hintRevertType == RevertType.None && BPS.gt(platformFeeBps) && BPS.gt(platformFeeBps.add(networkFeeBps).add(networkFeeBps)) && srcQty.gt(zeroBN)) {
+    if (hintRevertType == RevertType.None && BPS.gt(platformFeeBps) && BPS.gt(platformFeeBps.add(networkFeeBps).add(networkFeeBps)) && srcQty.gt(zeroBN) && maxQty.gt(srcQty)) {
         // get expected will revert if fees are invalid
         expectedRates = await network.getExpectedRateWithHintAndFee(getAddress(srcToken), getAddress(destToken), srcQty, platformFeeBps, hint);
         if (expectedRates.rateWithNetworkFee.gt(zeroBN)) {
-            minConversionRate = expectedRates.rateWithAllFees.add(new BN(getRandomInt(1, 50))).sub(new BN(getRandomInt(1, 100)));
+            if (getRandomInt(0, 100) <= 75) {
+                minConversionRate = expectedRates.rateWithNetworkFee.sub(new BN(getRandomInt(0, 100)));
+            } else {
+                minConversionRate = expectedRates.rateWithNetworkFee.add(new BN(getRandomInt(1, 75)));
+            }
         }
     } else {
         expectedRates = {
@@ -557,12 +563,9 @@ module.exports.generateRandomizedTradeParams = async function generateRandomized
     }
 
     // check src qty < max qty
-    if (revertType == RevertType.None) {
-        let maxQty = (new BN(10).pow(new BN(28)));
-        if (srcQty.gt(maxQty)) {
-            revertType = RevertType.SRC_AMOUNT_HIGH;
-            message = revertType;
-        }
+    if (revertType == RevertType.None && srcQty.gt(maxQty)) {
+        revertType = RevertType.SRC_AMOUNT_HIGH;
+        message = revertType;
     }
 
     // src is 0
