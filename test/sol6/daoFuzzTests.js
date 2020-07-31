@@ -45,7 +45,6 @@ let latestRebateBps = new BN(2000) // 20%
 let link = web3.utils.fromAscii('https://kyberswap.com')
 
 let NUM_RUNS = 250
-// let NUM_RUNS = 5000
 
 // statistic about operation
 // for operation, failing means the generated operation is revert
@@ -65,7 +64,7 @@ const logger = winston.createLogger({
   level: 'debug',
   format: winston.format.combine(winston.format.colorize(), winston.format.splat(), winston.format.simple()),
   transports: [
-    new winston.transports.Console({level: 'verbose'}),
+    new winston.transports.Console({level: 'info'}),
     new winston.transports.File({
       filename: 'debug.log',
       level: 'debug'
@@ -131,7 +130,8 @@ contract('KyberDAO fuzz', function (accounts) {
         await checkWinningCampaign(daoContract, currentBlockTime, currentEpoch)
         await checkAllStakerReward(daoContract, stakingContract, stakers, currentEpoch, false)
         currentEpoch = nextEpoch
-        if (currentEpoch.toNumber() % 5 == 0) printResult(loop)
+        // uncomment this line to print intermediate result
+        // if (currentEpoch.toNumber() % 5 == 0) printResult(loop)
         continue
       }
 
@@ -334,7 +334,7 @@ contract('KyberDAO fuzz', function (accounts) {
   async function checkWinningCampaign (daoContract, currentBlockTime, epoch) {
     let campaignIDs = await daoContract.getListCampaignIDs(epoch)
     if (campaignIDs.length == 0) {
-      logger.warn('No campaign to checkWinningCampaign epoch=%d', epoch)
+      logger.verbose('No campaign to checkWinningCampaign epoch=%d', epoch)
       return
     }
     logger.verbose('CheckWinningCampaign epoch=%d', epoch)
