@@ -306,6 +306,12 @@ module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecima
     }
 }
 
+module.exports.getRandomInt = function (min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 module.exports.increaseBlockNumber = async function (blocks) {
     for (let id = 0; id < blocks; id++) {
         await time.advanceBlock();
