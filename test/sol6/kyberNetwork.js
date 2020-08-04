@@ -895,7 +895,7 @@ contract('KyberNetwork', function(accounts) {
         });
 
         beforeEach("zero network balance", async() => {
-            await zeroNetworkBalance(network, tokens, admin);
+            await Helper.zeroNetworkBalance(network, tokens, admin);
         });
 
         it("should test enabling network", async() => {
@@ -3035,7 +3035,7 @@ contract('KyberNetwork', function(accounts) {
         });
 
         beforeEach("zero network balance", async() => {
-            await zeroNetworkBalance(tempNetwork, tokens, admin);
+            await Helper.zeroNetworkBalance(tempNetwork, tokens, admin);
         });
 
         it("trade zero source amount", async function(){
@@ -3285,7 +3285,7 @@ contract('KyberNetwork', function(accounts) {
                     await Helper.assertSameEtherBalance(reserve.address, MAX_QTY);
                 }
             }
-            await zeroNetworkBalance(network, tokens, admin);
+            await Helper.zeroNetworkBalance(network, tokens, admin);
         });
 
         it("test t2e success with max_qty, normal rate", async() => {
@@ -3355,7 +3355,7 @@ contract('KyberNetwork', function(accounts) {
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
                         { from: kyberProxy }
                     ),
-                "Trade wei > MAX_QTY"
+                "revert trade invalid, if hint involved, try parseHint API"
             );
         });
 
@@ -3383,7 +3383,7 @@ contract('KyberNetwork', function(accounts) {
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), hint, 
                         { from: kyberProxy }
                     ),
-                "Trade wei > MAX_QTY"
+                "revert trade invalid, if hint involved, try parseHint API"
             );
         });
 
@@ -3430,18 +3430,3 @@ function log(str) {
     console.log(str);
 }
 
-async function zeroNetworkBalance(network, tokens, admin) {
-    let balance = await Helper.getBalancePromise(network.address);
-
-    if (balance.gt(new BN(0))) {
-        await network.withdrawEther(balance, admin, {from: admin});
-    }
-
-    for (let i = 0 ; i < tokens.length; i++) {
-        balance = await tokens[i].balanceOf(network.address);
-
-        if (balance.gt(new BN(0))) {
-            await network.withdrawToken(tokens[i].address, balance, admin, {from: admin});
-        }
-    }
-}

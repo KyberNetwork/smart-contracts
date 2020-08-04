@@ -89,6 +89,8 @@ contract('KyberRateHelper', accounts => {
         await storage.addReserve(reserve.address, reserveId, ReserveType.BRIDGE, reserve.address, {
           from: operator
         });
+        await token.transfer(reserve.address, (new BN(1000000)).mul(new BN(10).pow(new BN(await token.decimals()))));
+        await Helper.sendEtherWithPromise(accounts[0], reserve.address, (new BN(100)).mul(new BN(10).pow(new BN(ethDecimals))));
       }
       // 1 reserve is listed in 1 side, other reserves are not listed in the same order
       await storage.listPairForReserve(reserveIds[0], token.address, false, true, true, {

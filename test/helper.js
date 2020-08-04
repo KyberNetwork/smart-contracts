@@ -486,3 +486,19 @@ module.exports.buildHintT2T = function(
       [t2eHint, e2tHint],
   );
 }
+
+module.exports.zeroNetworkBalance = async function(network, tokens, admin) {
+    let balance = await getBalancePromise(network.address);
+
+    if (balance.gt(zeroBN)) {
+        await network.withdrawEther(balance, admin, {from: admin});
+    }
+
+    for (let i = 0 ; i < tokens.length; i++) {
+        balance = await tokens[i].balanceOf(network.address);
+
+        if (balance.gt(zeroBN)) {
+            await network.withdrawToken(tokens[i].address, balance, admin, {from: admin});
+        }
+    }
+}
