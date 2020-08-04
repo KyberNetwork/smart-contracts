@@ -2,7 +2,7 @@ const ConversionRates = artifacts.require("MockConversionRate.sol");
 const TestToken = artifacts.require("TestToken.sol");
 const WrapConversionRate = artifacts.require("WrapConversionRate.sol");
 
-const Helper = require("../helper.js");
+const Helper = require("./helper.js");
 const BN = web3.utils.BN;
 const zeroAddress = '0x0000000000000000000000000000000000000000';
 
