@@ -137,7 +137,7 @@ contract('KyberProxyV1', function(accounts) {
 
         // init rate helper
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(matchingEngine.address, kyberDao.address, storage.address, {from: admin});
+        await rateHelper.setContracts(kyberDao.address, storage.address, {from: admin});
 
         // deploy proxy
         networkProxyV1 = await NetworkProxyV1.new(admin);

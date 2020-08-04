@@ -306,6 +306,12 @@ module.exports.calcRateFromQty = function(srcQty, dstQty, srcDecimals, dstDecima
     }
 }
 
+module.exports.getRandomInt = function (min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 module.exports.increaseBlockNumber = async function (blocks) {
     for (let id = 0; id < blocks; id++) {
         await time.advanceBlock();
@@ -479,4 +485,20 @@ module.exports.buildHintT2T = function(
       ['bytes', 'bytes'],
       [t2eHint, e2tHint],
   );
+}
+
+module.exports.zeroNetworkBalance = async function(network, tokens, admin) {
+    let balance = await getBalancePromise(network.address);
+
+    if (balance.gt(zeroBN)) {
+        await network.withdrawEther(balance, admin, {from: admin});
+    }
+
+    for (let i = 0 ; i < tokens.length; i++) {
+        balance = await tokens[i].balanceOf(network.address);
+
+        if (balance.gt(zeroBN)) {
+            await network.withdrawToken(tokens[i].address, balance, admin, {from: admin});
+        }
+    }
 }

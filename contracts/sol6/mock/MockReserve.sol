@@ -22,6 +22,14 @@ contract MockReserve is IKyberReserve, Utils5 {
         sellTokenRates[address(token)] = sellRate;
     }
 
+    function withdrawAllEth() public {
+        msg.sender.transfer(address(this).balance);
+    }
+
+    function withdrawAllToken(IERC20 token) public {
+        token.transfer(msg.sender, token.balanceOf(address(this)));
+    }
+
     function trade(
         IERC20 srcToken,
         uint256 srcAmount,
@@ -40,6 +48,7 @@ contract MockReserve is IKyberReserve, Utils5 {
         uint256 srcDecimals = getDecimals(srcToken);
         uint256 destDecimals = getDecimals(destToken);
         uint256 destAmount = calcDstQty(srcAmount, srcDecimals, destDecimals, conversionRate);
+        require(destAmount > 0, "dest amount is 0");
 
         // collect src tokens
         if (srcToken != ETH_TOKEN_ADDRESS) {
@@ -66,12 +75,21 @@ contract MockReserve is IKyberReserve, Utils5 {
         uint256 blockNumber
     ) public view override returns (uint256) {
         blockNumber;
-        uint256 rate;
-        srcQty;
-
-        rate = (src == ETH_TOKEN_ADDRESS)
+        uint256 rate = (src == ETH_TOKEN_ADDRESS)
             ? buyTokenRates[address(dest)]
             : sellTokenRates[address(src)];
+        uint256 srcDecimals = getDecimals(src);
+        uint256 destDecimals = getDecimals(dest);
+        if (srcQty > MAX_QTY || rate > MAX_RATE ) {
+            return 0;
+        }
+        uint256 destAmount = calcDstQty(srcQty, srcDecimals, destDecimals, rate);
+        if (dest == ETH_TOKEN_ADDRESS && address(this).balance < destAmount) {
+            return 0;
+        }
+        if (dest != ETH_TOKEN_ADDRESS && dest.balanceOf(address(this)) < destAmount) {
+            return 0;
+        }
         return rate;
     }
 }

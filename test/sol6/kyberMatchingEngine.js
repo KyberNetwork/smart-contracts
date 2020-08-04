@@ -82,7 +82,7 @@ contract('KyberMatchingEngine', function(accounts) {
             token = await TestToken.new("test", "tst", 18);
 
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, accounts[9], storage.address, {from: admin});
+            await rateHelper.setContracts(accounts[9], storage.address, {from: admin});
 
             //init 1 mock reserve
             let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
@@ -218,7 +218,7 @@ contract('KyberMatchingEngine', function(accounts) {
             await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             await storage.setNetworkContract(network.address, {from: admin});
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, accounts[9], storage.address, {from: admin});
+            await rateHelper.setContracts(accounts[9], storage.address, {from: admin});
 
             //init 2 tokens
             srcDecimals = new BN(8);

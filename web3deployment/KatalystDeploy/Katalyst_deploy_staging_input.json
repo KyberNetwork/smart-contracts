@@ -1,0 +1,1053 @@
+{
+  "reserveTypes": {
+    "FPR": 1,
+    "APR": 2,
+    "BRIDGE": 3,
+    "UTILITY": 4,
+    "CUSTOM": 5,
+    "ORDERBOOK": 6
+  },
+  "isFeeAccounted": {
+    "FPR": true,
+    "APR": true,
+    "BRIDGE": false,
+    "UTILITY": false,
+    "CUSTOM": true,
+    "ORDERBOOK": true
+  },
+  "isEntitledRebate": {
+    "FPR": true,
+    "APR": true,
+    "BRIDGE": false,
+    "UTILITY": false,
+    "CUSTOM": true,
+    "ORDERBOOK": true
+  },
+  "permission": {
+    "KyberDao": {
+      "DaoOperator": "0xfdb39391184481df0f8e7d57c029f9bf8dbdaca8"
+    },
+    "FeeHandler": {
+      "DaoOperator": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43"
+    },
+    "MatchingEngine": {
+      "admin": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43",
+      "operators": [],
+      "alerters": []
+    },
+    "Network": {
+      "admin": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43",
+      "operators": ["0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43"],
+      "alerters": []
+    },
+    "Proxy": {
+      "admin": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43",
+      "operators": [],
+      "alerters": []
+    },
+    "Storage": {
+      "admin": "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43",
+      "operators": [
+        "0xbDd33F411DA0B40018922a3BC69001B458227f5c",
+        "0x833164041AaFF3CD6c7D80Affbd923C1d1cEB4b3",
+        "0xec610F53d0A191b17D7984c6D31598b2181Ace15",
+        "0xbe2f0354d970265bfc36d383af77f72736b81b54",
+        "0xd3cc03c1d1e9d46f28aebc4ba26c5990c7ffbc3e",
+        "0xfdb39391184481df0f8e7d57c029f9bf8dbdaca8"
+      ],
+      "alerters": []
+    }
+  },
+  "max gas price": 100000000000,
+  "neg diff in bps": 5,
+  "epoch period": 2700,
+  "start timestamp": 1593662400,
+  "network fee bps": 500,
+  "reward fee bps": 10,
+  "rebate bps": 9990,
+  "burn block interval": 10,
+  "contracts filename" : "katalystStagingContracts.json",
+  "output filename" : "katalystStaging.json",
+  "tokens": {
+    "OMG": {
+      "name": "OMGToken",
+      "decimals": "18",
+      "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07"
+    },
+    "KNC": {
+      "name": "Kyber Network Crystal",
+      "decimals": "18",
+      "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200"
+    },
+    "SNT": {
+      "name": "Status Network Token",
+      "decimals": "18",
+      "address": "0x744d70FDBE2Ba4CF95131626614a1763DF805B9E"
+    },
+    "ELF": {
+      "name": "ELF Token",
+      "decimals": "18",
+      "address": "0xbf2179859fc6D5BEE9Bf9158632Dc51678a4100e"
+    },
+    "POWR": {
+      "name": "PowerLedger",
+      "decimals": "6",
+      "address": "0x595832F8FC6BF59c85C527fEC3740A1b7a361269"
+    },
+    "MANA": {
+      "name": "Decentraland MANA",
+      "decimals": "18",
+      "address": "0x0F5D2fB29fb7d3CFeE444a200298f468908cC942"
+    },
+    "BAT": {
+      "name": "Basic Attention Token",
+      "decimals": "18",
+      "address": "0x0D8775F648430679A709E98d2b0Cb6250d2887EF"
+    },
+    "REQ": {
+      "name": "Request Token",
+      "decimals": "18",
+      "address": "0x8f8221aFbB33998d8584A2B05749bA73c37a938a"
+    },
+    "GTO": {
+      "name": "Gifto",
+      "decimals": "5",
+      "address": "0xC5bBaE50781Be1669306b9e001EFF57a2957b09d"
+    },
+    "ENG": {
+      "name": "Enigma",
+      "decimals": "8",
+      "address": "0xf0Ee6b27b759C9893Ce4f094b49ad28fd15A23e4"
+    },
+    "SALT": {
+      "name": "Salt",
+      "decimals": "8",
+      "address": "0x4156D3342D5c385a87D264F90653733592000581"
+    },
+    "APPC": {
+      "name": "AppCoins",
+      "decimals": "18",
+      "address": "0x1a7a8BD9106F2B8D977E08582DC7d24c723ab0DB"
+    },
+    "VGX": {
+      "name": "Voyager",
+      "decimals": "8",
+      "address": "0x5Af2Be193a6ABCa9c8817001F45744777Db30756"
+    },
+    "ZIL": {
+      "name": "Zilliqa",
+      "decimals": "12",
+      "address": "0x05f4a42e251f2d52b8ed15E9FEdAacFcEF1FAD27"
+    },
+    "AST": {
+      "name": "AirSwap Token",
+      "decimals": "4",
+      "address": "0x27054b13b1B798B345b591a4d22e6562d47eA75a"
+    },
+    "LINK": {
+      "name": "ChainLink Token",
+      "decimals": "18",
+      "address": "0x514910771AF9Ca656af840dff83E8264EcF986CA"
+    },
+    "DGX": {
+      "name": "Digix Gold Token",
+      "decimals": "9",
+      "address": "0x4f3AfEC4E5a3F2A6a1A411DEF7D7dFe50eE057bF"
+    },
+    "ABT": {
+      "name": "ArcBlock",
+      "decimals": "18",
+      "address": "0xB98d4C97425d9908E66E53A6fDf673ACcA0BE986"
+    },
+    "ENJ": {
+      "name": "Enjin Coin",
+      "decimals": "18",
+      "address": "0xF629cBd94d3791C9250152BD8dfBDF380E2a3B9c"
+    },
+    "NAS": {
+      "name": "Nebulas Token",
+      "decimals": "18",
+      "address": "0x5d65D971895Edc438f465c17DB6992698a52318D"
+    },
+    "BLZ": {
+      "name": "Bluzelle Token",
+      "decimals": "18",
+      "address": "0x5732046A883704404F284Ce41FfADd5b007FD668"
+    },
+    "POLY": {
+      "name": "Polymath",
+      "decimals": "18",
+      "address": "0x9992eC3cF6A55b00978cdDF2b27BC6882d88D1eC"
+    },
+    "LBA": {
+      "name": "LibraToken",
+      "decimals": "18",
+      "address": "0xfe5F141Bf94fE84bC28deD0AB966c16B17490657"
+    },
+    "EDU": {
+      "name": "EduCoin",
+      "decimals": "18",
+      "address": "0xf263292e14d9D8ECd55B58dAD1F1dF825a874b7c"
+    },
+    "CVC": {
+      "name": "Civic",
+      "decimals": "8",
+      "address": "0x41e5560054824eA6B0732E656E3Ad64E20e94E45"
+    },
+    "BNT": {
+      "name": "Bancor Network Token",
+      "decimals": "18",
+      "address": "0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C"
+    },
+    "CHAT": {
+      "name": "Chatcoin",
+      "decimals": "18",
+      "address": "0x442Bc47357919446eAbC18C7211E57a13d983469"
+    },
+    "DTA": {
+      "name": "Data Token",
+      "decimals": "18",
+      "address": "0x69b148395Ce0015C13e36BFfBAd63f49EF874E03"
+    },
+    "POE": {
+      "name": "Po.et",
+      "decimals": "8",
+      "address": "0x0e0989b1f9B8A38983c2BA8053269Ca62Ec9B195"
+    },
+    "REP": {
+      "name": "Reputation",
+      "decimals": "18",
+      "address": "0x1985365e9f78359a9B6AD760e32412f4a445E862"
+    },
+    "WAX": {
+      "name": "Wax Token",
+      "decimals": "8",
+      "address": "0x39Bb259F66E1C59d5ABEF88375979b4D20D98022"
+    },
+    "PAY": {
+      "name": "TenX Pay Token",
+      "decimals": "18",
+      "address": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280"
+    },
+    "SUB": {
+      "name": "Substratum",
+      "decimals": "2",
+      "address": "0x12480E24eb5bec1a9D4369CaB6a80caD3c0A377A"
+    },
+    "TUSD": {
+      "name": "TrueUSD",
+      "decimals": "18",
+      "address": "0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E"
+    },
+    "BNB": {
+      "name": "BNB",
+      "decimals": "18",
+      "address": "0xB8c77482e45F1F44dE1745F52C74426C631bDD52"
+    },
+    "ZRX": {
+      "name": "0x Protocol Token",
+      "decimals": "18",
+      "address": "0xE41d2489571d322189246DaFA5ebDe1F4699F498"
+    },
+    "QKC": {
+      "name": "QuarkChain Token",
+      "decimals": "18",
+      "address": "0xEA26c4aC16D4a5A106820BC8AEE85fd0b7b2b664"
+    },
+    "DAT": {
+      "name": "Datum Token",
+      "decimals": "18",
+      "address": "0x81c9151de0C8bafCd325a57E3dB5a5dF1CEBf79c"
+    },
+    "REN": {
+      "name": "Republic Token",
+      "decimals": "18",
+      "address": "0x408e41876cCCDC0F92210600ef50372656052a38"
+    },
+    "HOT": {
+      "name": "Hydro Protocol Token",
+      "decimals": "18",
+      "address": "0x9AF839687F6C94542ac5ece2e317dAAE355493A1"
+    },
+    "ST": {
+      "name": "Simple Token",
+      "decimals": "18",
+      "address": "0x2C4e8f2D746113d0696cE89B35F0d8bF88E0AEcA"
+    },
+    "EKO": {
+      "name": "EchoLink",
+      "decimals": "18",
+      "address": "0xa6a840E50bCaa50dA017b91A0D86B8b2d41156EE"
+    },
+    "WBTC": {
+      "name": "Wrapped BTC",
+      "decimals": "8",
+      "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
+    },
+    "BIX": {
+      "name": "BIX Token",
+      "decimals": "18",
+      "address": "0xb3104b4B9Da82025E8b9F8Fb28b3553ce2f67069"
+    },
+    "CDT": {
+      "name": "CoinDash Token",
+      "decimals": "18",
+      "address": "0x177d39AC676ED1C67A2b268AD7F1E58826E5B0af"
+    },
+    "MCO": {
+      "name": "Monaco",
+      "decimals": "8",
+      "address": "0xB63B606Ac810a52cCa15e44bB630fd42D8d1d83d"
+    },
+    "LRC": {
+      "name": "LoopringCoin V2",
+      "decimals": "18",
+      "address": "0xBBbbCA6A901c926F240b89EacB641d8Aec7AEafD"
+    },
+    "RLC": {
+      "name": "iEx.ec Network Token",
+      "decimals": "9",
+      "address": "0x607F4C5BB672230e8672085532f7e901544a7375"
+    },
+    "NPXS": {
+      "name": "Pundi X Token",
+      "decimals": "18",
+      "address": "0xA15C7Ebe1f07CaF6bFF097D8a589fb8AC49Ae5B3"
+    },
+    "CND": {
+      "name": "Cindicator Token",
+      "decimals": "18",
+      "address": "0xd4c435F5B09F855C3317c8524Cb1F586E42795fa"
+    },
+    "USDC": {
+      "name": "USD//C",
+      "decimals": "6",
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    },
+    "USDT": {
+      "name": "Tether USD",
+      "decimals": "6",
+      "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+    },
+    "LEND": {
+      "name": "EthLend Token",
+      "decimals": "18",
+      "address": "0x80fB784B7eD66730e8b1DBd9820aFD29931aab03"
+    },
+    "EDO": {
+      "name": "Eidoo Token",
+      "decimals": "18",
+      "address": "0xCeD4E93198734dDaFf8492d525Bd258D49eb388E"
+    },
+    "WaBi": {
+      "name": "WaBi",
+      "decimals": "18",
+      "address": "0x286BDA1413a2Df81731D4930ce2F862a35A609fE"
+    },
+    "AE": {
+      "name": "Aeternity",
+      "decimals": "18",
+      "address": "0x5CA9a71B1d01849C0a95490Cc00559717fCF0D1d"
+    },
+    "DAI": {
+      "name": "Dai Stablecoin",
+      "decimals": "18",
+      "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+    },
+    "USDS": {
+      "name": "StableUSD",
+      "decimals": "6",
+      "address": "0xA4Bdb11dc0a2bEC88d24A3aa1E6Bb17201112eBe"
+    },
+    "STORM": {
+      "name": "Storm Token",
+      "decimals": "18",
+      "address": "0xD0a4b8946Cb52f0661273bfbC6fD0E0C75Fc6433"
+    },
+    "LOOM": {
+      "name": "LoomToken",
+      "decimals": "18",
+      "address": "0xA4e8C3Ec456107eA67d3075bF9e3DF3A75823DB0"
+    },
+    "GUSD": {
+      "name": "Gemini dollar",
+      "decimals": "2",
+      "address": "0x056Fd409E1d7A124BD7017459dFEa2F387b6d5Cd"
+    },
+    "EURS": {
+      "name": "STASIS EURS Token",
+      "decimals": "2",
+      "address": "0xdB25f211AB05b1c97D595516F45794528a807ad8"
+    },
+    "PAX": {
+      "name": "Paxos Standard",
+      "decimals": "18",
+      "address": "0x8E870D67F660D95d5be530380D0eC0bd388289E1"
+    },
+    "MKR": {
+      "name": "Maker",
+      "decimals": "18",
+      "address": "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2"
+    },
+    "MLN": {
+      "name": "Melon Token",
+      "decimals": "18",
+      "address": "0xec67005c4E498Ec7f55E092bd1d35cbC47C91892"
+    },
+    "sUSD": {
+      "name": "Synth sUSD",
+      "decimals": "18",
+      "address": "0x57Ab1ec28D129707052df4dF418D58a2D46d5f51"
+    },
+    "SNX": {
+      "name": "Synthetix Network Token",
+      "decimals": "18",
+      "address": "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F"
+    },
+    "GNO": {
+      "name": "Gnosis Token",
+      "decimals": "18",
+      "address": "0x6810e776880C02933D47DB1b9fc05908e5386b96"
+    },
+    "PNT": {
+      "name": "pNetwork Token",
+      "decimals": "18",
+      "address": "0x89Ab32156e46F46D02ade3FEcbe5Fc4243B9AAeD"
+    },
+    "RBG": {
+      "name": "RankingBall Gold",
+      "decimals": "18",
+      "address": "0x0794ce7d4459105926Da230F318c1e34BC790517"
+    },
+    "BTU": {
+      "name": "BTU Protocol",
+      "decimals": "18",
+      "address": "0xb683D83a532e2Cb7DFa5275eED3698436371cc9f"
+    },
+    "PT": {
+      "name": "Promotion Token @ https://kyber.network/swap",
+      "decimals": "18",
+      "address": "0x094c875704c14783049DDF8136E298B3a099c446"
+    },
+    "SAN": {
+      "name": "SANtiment network token",
+      "decimals": "18",
+      "address": "0x7C5A0CE9267ED19B22F8cae653F198e3E8daf098"
+    },
+    "SPIKE": {
+      "name": "Spiking",
+      "decimals": "10",
+      "address": "0xA7fC5D2453E3F68aF0cc1B78bcFEe94A1B293650"
+    },
+    "NEXXO": {
+      "name": "Nexxo Tokens",
+      "decimals": "18",
+      "address": "0x278a83B64C3e3E1139f8E8A52D96360cA3c69A3D"
+    },
+    "EKG": {
+      "name": "Ekon Gold",
+      "decimals": "18",
+      "address": "0x6A9b3E36436B7abde8C4E2E2a98Ea40455E615cf"
+    },
+    "ANT": {
+      "name": "Aragon Network Token",
+      "decimals": "18",
+      "address": "0x960b236A07cf122663c4303350609A66A7B288C0"
+    },
+    "TKX": {
+      "name": "Tokenize Emblem",
+      "decimals": "8",
+      "address": "0x667102BD3413bFEaa3Dffb48fa8288819E480a88"
+    },
+    "AMPL": {
+      "name": "Ampleforth",
+      "decimals": "9",
+      "address": "0xD46bA6D942050d489DBd938a2C909A5d5039A161"
+    },
+    "BUSD": {
+      "name": "Binance USD",
+      "decimals": "18",
+      "address": "0x4Fabb145d64652a948d72533023f6E7A623C7C53"
+    },
+    "HUSD": {
+      "name": "HUSD",
+      "decimals": "8",
+      "address": "0xdF574c24545E5FfEcb9a659c229253D4111d87e1"
+    },
+    "MET": {
+      "name": "Metronome",
+      "decimals": "18",
+      "address": "0xa3d58c4E56fedCae3a7c43A725aeE9A71F0ece4e"
+    },
+    "MFG": {
+      "name": "SyncFab Smart Manufacturing Blockchain",
+      "decimals": "18",
+      "address": "0x6710c63432A2De02954fc0f851db07146a6c0312"
+    },
+    "FXC": {
+      "name": "Flexacoin",
+      "decimals": "18",
+      "address": "0x4a57E687b9126435a9B19E4A802113e266AdeBde"
+    },
+    "UBT": {
+      "name": "UniBright",
+      "decimals": "8",
+      "address": "0x8400D94A5cb0fa0D041a3788e395285d61c9ee5e"
+    },
+    "BAND": {
+      "name": "BandToken",
+      "decimals": "18",
+      "address": "0xBA11D00c5f74255f56a5E366F4F77f5A186d7f55"
+    },
+    "pBTC": {
+      "name": "pTokens BTC",
+      "decimals": "18",
+      "address": "0x5228a22e72ccC52d415EcFd199F99D0665E7733b"
+    },
+    "OGN": {
+      "name": "OriginToken",
+      "decimals": "18",
+      "address": "0x8207c1FfC5B6804F6024322CcF34F29c3541Ae26"
+    },
+    "RSV": {
+      "name": "Reserve",
+      "decimals": "18",
+      "address": "0x1C5857e110CD8411054660F60B5De6a6958CfAE2"
+    },
+    "RSR": {
+      "name": "Reserve Rights",
+      "decimals": "18",
+      "address": "0x8762db106B2c2A0bccB3A80d1Ed41273552616E8"
+    },
+    "KEY": {
+      "name": "SelfKey",
+      "decimals": "18",
+      "address": "0x4CC19356f2D37338b9802aa8E8fc58B0373296E7"
+    },
+    "IXO": {
+      "name": "IXO Token",
+      "decimals": "8",
+      "address": "0x519D822F0832b8e8C8DfC594E718f8dfdAE74B47"
+    },
+    "PNK": {
+      "name": "Pinakion",
+      "decimals": "18",
+      "address": "0x93ED3FBe21207Ec2E8f2d3c3de6e058Cb73Bc04d"
+    },
+    "GHT": {
+      "name": "Global Human Trust",
+      "decimals": "18",
+      "address": "0xbe30F684d62C9F7883a75A29c162c332c0d98f23"
+    },
+    "TRYB": {
+      "name": "BiLira",
+      "decimals": "6",
+      "address": "0x2C537E5624e4af88A7ae4060C022609376C8D0EB"
+    },
+    "2KEY": {
+      "name": "TwoKeyEconomy",
+      "decimals": "18",
+      "address": "0xE48972fCd82a274411c01834e2f031D4377Fa2c0"
+    },
+    "PLR": {
+      "name": "PILLAR",
+      "decimals": "18",
+      "address": "0xe3818504c1B32bF1557b16C238B2E01Fd3149C17"
+    },
+    "QNT": {
+      "name": "Quant",
+      "decimals": "18",
+      "address": "0x4a220E6096B25EADb88358cb44068A3248254675"
+    },
+    "COMP": {
+      "name": "Compound",
+      "decimals": "18",
+      "address": "0xc00e94Cb662C3520282E6f5717214004A7f26888"
+    }
+  },
+  "reserves": [
+    {
+      "address": "0x2C5a182d280EeB5824377B98CD74871f78d6b8BC",
+      "id": "0xff4b796265722073746167696e6720667072",
+      "type": "FPR",
+      "rebateWallet": "0xf214dDE57f32F3F34492Ba3148641693058D4A9e",
+      "tokens": [
+        {
+          "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x744d70FDBE2Ba4CF95131626614a1763DF805B9E",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xbf2179859fc6D5BEE9Bf9158632Dc51678a4100e",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x595832F8FC6BF59c85C527fEC3740A1b7a361269",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x0F5D2fB29fb7d3CFeE444a200298f468908cC942",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x0D8775F648430679A709E98d2b0Cb6250d2887EF",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x8f8221aFbB33998d8584A2B05749bA73c37a938a",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xC5bBaE50781Be1669306b9e001EFF57a2957b09d",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xf0Ee6b27b759C9893Ce4f094b49ad28fd15A23e4",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x4156D3342D5c385a87D264F90653733592000581",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x1a7a8BD9106F2B8D977E08582DC7d24c723ab0DB",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x5Af2Be193a6ABCa9c8817001F45744777Db30756",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x05f4a42e251f2d52b8ed15E9FEdAacFcEF1FAD27",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x27054b13b1B798B345b591a4d22e6562d47eA75a",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x4f3AfEC4E5a3F2A6a1A411DEF7D7dFe50eE057bF",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xB98d4C97425d9908E66E53A6fDf673ACcA0BE986",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xF629cBd94d3791C9250152BD8dfBDF380E2a3B9c",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x5d65D971895Edc438f465c17DB6992698a52318D",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x5732046A883704404F284Ce41FfADd5b007FD668",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x9992eC3cF6A55b00978cdDF2b27BC6882d88D1eC",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xfe5F141Bf94fE84bC28deD0AB966c16B17490657",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xf263292e14d9D8ECd55B58dAD1F1dF825a874b7c",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x41e5560054824eA6B0732E656E3Ad64E20e94E45",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x442Bc47357919446eAbC18C7211E57a13d983469",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x69b148395Ce0015C13e36BFfBAd63f49EF874E03",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x0e0989b1f9B8A38983c2BA8053269Ca62Ec9B195",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xE94327D07Fc17907b4DB788E5aDf2ed424adDff6",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x39Bb259F66E1C59d5ABEF88375979b4D20D98022",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x12480E24eb5bec1a9D4369CaB6a80caD3c0A377A",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xB8c77482e45F1F44dE1745F52C74426C631bDD52",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x1985365e9f78359a9B6AD760e32412f4a445E862",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xE41d2489571d322189246DaFA5ebDe1F4699F498",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xEA26c4aC16D4a5A106820BC8AEE85fd0b7b2b664",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x81c9151de0C8bafCd325a57E3dB5a5dF1CEBf79c",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x408e41876cCCDC0F92210600ef50372656052a38",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x9AF839687F6C94542ac5ece2e317dAAE355493A1",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x2C4e8f2D746113d0696cE89B35F0d8bF88E0AEcA",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xa6a840E50bCaa50dA017b91A0D86B8b2d41156EE",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xb3104b4B9Da82025E8b9F8Fb28b3553ce2f67069",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x177d39AC676ED1C67A2b268AD7F1E58826E5B0af",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xB63B606Ac810a52cCa15e44bB630fd42D8d1d83d",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xBBbbCA6A901c926F240b89EacB641d8Aec7AEafD",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x607F4C5BB672230e8672085532f7e901544a7375",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xA15C7Ebe1f07CaF6bFF097D8a589fb8AC49Ae5B3",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xd4c435F5B09F855C3317c8524Cb1F586E42795fa",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x80fB784B7eD66730e8b1DBd9820aFD29931aab03",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xCeD4E93198734dDaFf8492d525Bd258D49eb388E",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x286BDA1413a2Df81731D4930ce2F862a35A609fE",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x5CA9a71B1d01849C0a95490Cc00559717fCF0D1d",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xA4Bdb11dc0a2bEC88d24A3aa1E6Bb17201112eBe",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xD0a4b8946Cb52f0661273bfbC6fD0E0C75Fc6433",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xA4e8C3Ec456107eA67d3075bF9e3DF3A75823DB0",
+          "ethToToken": true,
+          "tokenToEth": true
+        }
+      ]
+    },
+    {
+      "address": "0xbCEDF929cDCB0858731eA8637C07efE6075b6138",
+      "id": "0xffabcd",
+      "type": "FPR",
+      "rebateWallet": "0xf214dDE57f32F3F34492Ba3148641693058D4A9e",
+      "tokens": [
+        {
+          "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x8E870D67F660D95d5be530380D0eC0bd388289E1",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x0D8775F648430679A709E98d2b0Cb6250d2887EF",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xE41d2489571d322189246DaFA5ebDe1F4699F498",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x4f3AfEC4E5a3F2A6a1A411DEF7D7dFe50eE057bF",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x1985365e9f78359a9B6AD760e32412f4a445E862",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+          "ethToToken": true,
+          "tokenToEth": true
+        }
+      ]
+    },
+    {
+      "address": "0x1263D106951283dD85692765C2e3e6Ee28858BC1",
+      "id": "0xbb62616e636f72",
+      "type": "BRIDGE",
+      "rebateWallet": "0xf214dDE57f32F3F34492Ba3148641693058D4A9e",
+      "tokens": [
+        {
+          "address": "0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C",
+          "ethToToken": true,
+          "tokenToEth": true
+        }
+      ]
+    },
+    {
+      "address": "0xB5A6De4Dafdd7CC377652F7628E1fC40BA5DDb7F",
+      "id": "0xbb6f61736973",
+      "type": "BRIDGE",
+      "rebateWallet": "0xf214dDE57f32F3F34492Ba3148641693058D4A9e",
+      "tokens": [
+        {
+          "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x89d24A6b4CcB1B6fAA2625fE562bDD9a23260359",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2",
+          "ethToToken": true,
+          "tokenToEth": true
+        }
+      ]
+    },
+    {
+      "address": "0x09a65468078ef0e2ef7959EA60D2ad90515d9B53",
+      "id": "0xff4f6e65426974205175616e74",
+      "type": "FPR",
+      "rebateWallet": "0xbc63aC3c8489E903f98478a7d816940cdd4c08f9",
+      "tokens": [
+        {
+          "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0x4Fabb145d64652a948d72533023f6E7A623C7C53",
+          "ethToToken": true,
+          "tokenToEth": true
+        },
+        {
+          "address": "0xdF574c24545E5FfEcb9a659c229253D4111d87e1",
+          "ethToToken": true,
+          "tokenToEth": true
+        }
+      ]
+    },
+    {
+      "address": "0xd3c44aE91EB161a9a356BAf8eD7336d802891c46",
+      "id": "0xbb556e69737761705632",
+      "type": "BRIDGE",
+      "rebateWallet": "0xf214dDE57f32F3F34492Ba3148641693058D4A9e",
+      "tokens": [
+        {
+          "address": "0xc00e94Cb662C3520282E6f5717214004A7f26888",
+          "ethToToken": true,
+          "tokenToEth": true
+        }
+      ]
+    }
+  ]
+}

@@ -25,6 +25,13 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
     mapping(address => uint256) public rebatePerWallet;
     uint256 public totalRewardWei;
 
+    struct BRRWei {
+        uint256 rewardWei;
+        uint256 fullRebateWei;
+        uint256 paidRebateWei;
+        uint256 burnWei;
+    }
+
     event HandleFeeFailed(address[] rebateWallets, uint256[] rebateBpsPerWallet, uint256 feeBRRWei);
 
     event HandleFee(
@@ -131,21 +138,27 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
         uint256 feeBRRWei
     ) external virtual {
         require(msg.sender == address(this), "only Feehandler contract can call this function");
-        uint256 rebateWei = feeBRRWei.mul(rebateBps).div(BPS);
-        uint256 rewardWei = feeBRRWei.mul(rewardBps).div(BPS);
+        BRRWei memory brrAmounts;
 
-        rebateWei = updateRebateValues(rebateWei, rebateWallets, rebateBpsPerWallet);
+        brrAmounts.fullRebateWei = feeBRRWei.mul(rebateBps).div(BPS);
+        brrAmounts.rewardWei = feeBRRWei.mul(rewardBps).div(BPS);
 
-        totalRewardWei = totalRewardWei.add(rewardWei);
+        brrAmounts.paidRebateWei = updateRebateValues(brrAmounts.fullRebateWei, rebateWallets, rebateBpsPerWallet);
 
-        uint burnAmountWei = feeBRRWei.sub(rewardWei).sub(rebateWei);
+        brrAmounts.rewardWei = brrAmounts.rewardWei.add(
+            brrAmounts.fullRebateWei.sub(brrAmounts.paidRebateWei)
+        );
+
+        totalRewardWei = totalRewardWei.add(brrAmounts.rewardWei);
+
+        uint burnAmountWei = feeBRRWei.sub(brrAmounts.rewardWei).sub(brrAmounts.paidRebateWei);
 
         emit FeeDistribution(
             ETH_TOKEN_ADDRESS,
             platformWallet,
             platformFee,
-            rewardWei,
-            rebateWei,
+            brrAmounts.rewardWei,
+            brrAmounts.paidRebateWei,
             rebateWallets,
             rebateBpsPerWallet,
             burnAmountWei

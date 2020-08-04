@@ -435,7 +435,7 @@ contract('KyberNetwork', function(accounts) {
             KNC = await TestToken.new("kyber network crystal", "KNC", 18);
             feeHandler = await FeeHandler.new(kyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, kyberDao.address);
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, kyberDao.address, tempStorage.address, {from: admin});
+            await rateHelper.setContracts(kyberDao.address, tempStorage.address, {from: admin});
         });
 
         it("ETH receival", async() => {
@@ -768,7 +768,7 @@ contract('KyberNetwork', function(accounts) {
             proxyForFeeHandler = tempNetwork;
             feeHandler = await FeeHandler.new(kyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, kyberDao.address);
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, kyberDao.address, tempStorage.address, {from: admin});
+            await rateHelper.setContracts(kyberDao.address, tempStorage.address, {from: admin});
         });
 
         it("set enable without feeHandler", async function(){
@@ -807,7 +807,7 @@ contract('KyberNetwork', function(accounts) {
             proxyForFeeHandler = tempNetwork;
             feeHandler = await FeeHandler.new(kyberDao.address, proxyForFeeHandler.address, tempNetwork.address, KNC.address, burnBlockInterval, kyberDao.address);
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(tempMatchingEngine.address, kyberDao.address, tempStorage.address, {from: admin});
+            await rateHelper.setContracts(kyberDao.address, tempStorage.address, {from: admin});
             await tempNetwork.setContracts(feeHandler.address, tempMatchingEngine.address, gasHelperAdd, {from: admin});
         });
 
@@ -877,7 +877,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init rateHelper
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, kyberDao.address, storage.address, {from: admin});
+            await rateHelper.setContracts(kyberDao.address, storage.address, {from: admin});
 
             // init gas helper
             // tests gasHelper when gasHelper != address(0), and when a trade is being done
@@ -895,7 +895,7 @@ contract('KyberNetwork', function(accounts) {
         });
 
         beforeEach("zero network balance", async() => {
-            await zeroNetworkBalance(network, tokens, admin);
+            await Helper.zeroNetworkBalance(network, tokens, admin);
         });
 
         it("should test enabling network", async() => {
@@ -2006,7 +2006,7 @@ contract('KyberNetwork', function(accounts) {
 
                 // init rateHelper
                 mockRateHelper = await RateHelper.new(admin);
-                await mockRateHelper.setContracts(mockMatchingEngine.address, kyberDao.address, mockStorage.address, {from: admin});
+                await mockRateHelper.setContracts(kyberDao.address, mockStorage.address, {from: admin});
 
                 // init gas helper
                 // tests gasHelper when gasHelper != address(0), and when a trade is being done
@@ -2425,7 +2425,7 @@ contract('KyberNetwork', function(accounts) {
 
             // init rateHelper
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(contracts.kyberMatchingEngineAddress, kyberDao.address, storage.address, {from: admin});
+            await rateHelper.setContracts(kyberDao.address, storage.address, {from: admin});
             
             //init reserves
             rebateWallets = [accounts[7], accounts[8]];
@@ -2634,7 +2634,7 @@ contract('KyberNetwork', function(accounts) {
             await network.setEnable(true, { from: admin });
 
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, kyberDao.address, storage.address, { from: admin });
+            await rateHelper.setContracts(kyberDao.address, storage.address, { from: admin });
 
             // setup + add reserves
             reserveInstances = {};
@@ -3031,11 +3031,11 @@ contract('KyberNetwork', function(accounts) {
             }
 
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, kyberDao.address, tempStorage.address, {from: admin});
+            await rateHelper.setContracts(kyberDao.address, tempStorage.address, {from: admin});
         });
 
         beforeEach("zero network balance", async() => {
-            await zeroNetworkBalance(tempNetwork, tokens, admin);
+            await Helper.zeroNetworkBalance(tempNetwork, tokens, admin);
         });
 
         it("trade zero source amount", async function(){
@@ -3266,7 +3266,7 @@ contract('KyberNetwork', function(accounts) {
                 await reserve.setRate(normalToken2.address, tokensPerEther, ethersPerToken);
             }
             rateHelper = await RateHelper.new(admin);
-            await rateHelper.setContracts(matchingEngine.address, kyberDao.address, storage.address, {from: admin});
+            await rateHelper.setContracts(kyberDao.address, storage.address, {from: admin});
         });
 
         beforeEach("ensure each reserve have max eth-token value", async() => {
@@ -3285,7 +3285,7 @@ contract('KyberNetwork', function(accounts) {
                     await Helper.assertSameEtherBalance(reserve.address, MAX_QTY);
                 }
             }
-            await zeroNetworkBalance(network, tokens, admin);
+            await Helper.zeroNetworkBalance(network, tokens, admin);
         });
 
         it("test t2e success with max_qty, normal rate", async() => {
@@ -3355,7 +3355,7 @@ contract('KyberNetwork', function(accounts) {
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), emptyHint, 
                         { from: kyberProxy }
                     ),
-                "Trade wei > MAX_QTY"
+                "revert trade invalid, if hint involved, try parseHint API"
             );
         });
 
@@ -3383,7 +3383,7 @@ contract('KyberNetwork', function(accounts) {
                         maxDestAmt, minConversionRate, platformWallet, new BN(0), hint, 
                         { from: kyberProxy }
                     ),
-                "Trade wei > MAX_QTY"
+                "revert trade invalid, if hint involved, try parseHint API"
             );
         });
 
@@ -3430,18 +3430,3 @@ function log(str) {
     console.log(str);
 }
 
-async function zeroNetworkBalance(network, tokens, admin) {
-    let balance = await Helper.getBalancePromise(network.address);
-
-    if (balance.gt(new BN(0))) {
-        await network.withdrawEther(balance, admin, {from: admin});
-    }
-
-    for (let i = 0 ; i < tokens.length; i++) {
-        balance = await tokens[i].balanceOf(network.address);
-
-        if (balance.gt(new BN(0))) {
-            await network.withdrawToken(tokens[i].address, balance, admin, {from: admin});
-        }
-    }
-}
