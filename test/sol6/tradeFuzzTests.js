@@ -54,6 +54,7 @@ let reserveInstances = {};
 let numTokens = 5;
 let tokens = [];
 let tokenDecimals = [];
+// for more loops, consider 'export NODE_OPTIONS=--max_old_space_size=8192'
 let numberLoops = 10;
 
 // Running Trade Fuzz Tests to test trade with semi random inputs
