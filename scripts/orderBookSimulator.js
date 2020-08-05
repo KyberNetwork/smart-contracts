@@ -16,8 +16,8 @@ const MockUtils = artifacts.require("MockUtils.sol");
 
 const Helper = require("../helper.js");
 const BigNumber = require('bignumber.js');
-const ReserveSim = require("./simulator/simulator_orderbookReserve.js");
-const OrderGenerator = require("./simulator/tradeGenerator_orderbook.js");
+const ReserveSim = require("../test/sol4/orderBookFuzzer/simulator_orderbookReserve.js");
+const OrderGenerator = require("../test/sol4/orderBookFuzzer/tradeGenerator_orderbook.js");
 
 const lowRate = 42;
 

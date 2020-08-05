@@ -8,7 +8,7 @@ require("chai")
     .should();
 
 
-const {BPS, ethDecimals, ethAddress, emptyHint, zeroBN, zeroAddress }  = require("../../../helper.js")
+const {BPS, ethDecimals, ethAddress, emptyHint, zeroBN, zeroAddress }  = require("../../../helper.js");
 const { MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE }  = require('../../networkHelper.js');
 
 // Operations
