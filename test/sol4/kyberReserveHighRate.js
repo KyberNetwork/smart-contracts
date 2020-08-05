@@ -4,7 +4,7 @@ const TestToken = artifacts.require("TestToken");
 const Reserve = artifacts.require("MockKyberReserveHighRate");
 const SanityRates = artifacts.require("SanityRates");
 
-const Helper = require("./helper.js");
+const Helper = require("../helper.js");
 const BN = web3.utils.BN;
 
 //global variables

@@ -1,6 +1,6 @@
-const ConversionRates = artifacts.require("MockConversionRate.sol");
+const ConversionRates = artifacts.require("MockConversionRateEnhancedSteps.sol");
 const TestToken = artifacts.require("TestToken.sol");
-const WrapConversionRate = artifacts.require("WrapConversionRate.sol");
+const WrapConversionRate = artifacts.require("WrapConversionRateEnhancedSteps.sol");
 
 const Helper = require("../helper.js");
 const BN = web3.utils.BN;
@@ -26,7 +26,7 @@ let validRateDurationInBlocks = new BN(60);
 let convRatesInst;
 let wrapConvRateInst;
 
-contract('WrapConversionRates', function(accounts) {
+contract('WrapConversionRatesEnhancedSteps', function(accounts) {
     it("should init ConversionRates Inst and set general parameters.", async function () {
         admin = accounts[0];
         alerter = accounts[1];
