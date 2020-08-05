@@ -71,7 +71,7 @@ let minNewOrderWei;
 let baseKncPerEthRatePrecision;
 let dollarsPerEthPrecision = precisionUnits.mul(500);
 
-contract('OrderbookReserve simulator', async (accounts) => {
+contract('OrderbookReserve fuzzer', async (accounts) => {
 
     let expectedRate;
 
@@ -120,7 +120,7 @@ contract('OrderbookReserve simulator', async (accounts) => {
         firstFreeOrderIdPerReserveList = (await orders.nextFreeId()).valueOf();
     });
 
-    beforeEach('setup reserve contract for each test', async () => {
+    beforeEach('setup reserve contract', async () => {
         ethKncRate = initialEthKncRate;
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
         let kncToEthRatePrecision = precisionUnits.div(ethKncRate);

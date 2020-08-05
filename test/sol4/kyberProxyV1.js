@@ -118,7 +118,7 @@ contract('KyberProxyV1', function(accounts) {
         await kyberDao.setNetworkFeeBps(networkFeeBps);
 
         // deploy storage and network
-        storage = await KyberStorage.new(admin);
+        storage = await nwHelper.setupStorage(admin);
         network = await KyberNetwork.new(admin, storage.address);
         await storage.setNetworkContract(network.address, {from: admin});
         await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
