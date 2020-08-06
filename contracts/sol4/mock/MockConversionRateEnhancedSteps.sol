@@ -12,7 +12,7 @@ contract MockConversionRateEnhancedSteps is ConversionRateEnhancedSteps {
         returns(int totalImbalance, int currentBlockImbalance)
     {
         (totalImbalance, currentBlockImbalance) = getImbalance(token, rateUpdateBlock, currentBlock);
-//        return(totalImbalance, currentBlockImbalance);
+            return(totalImbalance, currentBlockImbalance);
     }
 
     function mockGetMaxTotalImbalance(ERC20 token) public view returns(uint) {
