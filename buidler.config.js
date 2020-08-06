@@ -145,7 +145,7 @@ module.exports = {
 
   paths: {
     sources: "./contracts/sol6",
-    tests: "./test/",
+    tests: "./test/sol6",
   },
 
   mocha: {
