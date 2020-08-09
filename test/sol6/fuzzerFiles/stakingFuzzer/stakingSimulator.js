@@ -1,8 +1,8 @@
-const Helper = require("../test/helper.js");
+const Helper = require("../../../helper.js");
 const BN = web3.utils.BN;
-const { DEPOSIT, DELEGATE, WITHDRAW, NO_ACTION } = require("./simulator/stakingActionsGenerator.js");
+const { DEPOSIT, DELEGATE, WITHDRAW, NO_ACTION } = require("./stakingActionsGenerator.js");
 const { expectRevert } = require('@openzeppelin/test-helpers');
-const StakeGenerator = require("./simulator/stakingActionsGenerator.js");
+const StakeGenerator = require("./stakingActionsGenerator.js");
 
 const winston = require("winston");
 const logger = winston.createLogger({
@@ -15,7 +15,7 @@ const logger = winston.createLogger({
 
 //global variables
 //////////////////
-const { zeroBN, zeroAddress } = require("../test/helper.js");
+const { zeroBN, zeroAddress } = require("../../../helper.js");
 const progressIterations = 20;
 
 // for keeping score

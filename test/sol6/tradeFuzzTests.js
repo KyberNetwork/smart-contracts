@@ -15,7 +15,7 @@ const BN = web3.utils.BN;
 
 const { ReserveType }  = require('./networkHelper.js');
 
-const networkSimulator = require("../../scripts/networkSimulator.js");
+const networkSimulator = require("./fuzzerFiles/tradeFuzzer/networkSimulator.js");
 
 //global variables
 //////////////////
