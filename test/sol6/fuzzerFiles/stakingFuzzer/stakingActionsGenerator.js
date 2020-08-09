@@ -1,6 +1,6 @@
 const BN = web3.utils.BN;
 const BASE = 100; // base for weighted operations
-const { zeroBN, zeroAddress } = require("../../test/helper.js");
+const { zeroBN, zeroAddress } = require("../../../helper.js");
 const { genRandomSeed, genRandomBN } = require("../randomNumberGenerator.js");
 
 //next operation options.

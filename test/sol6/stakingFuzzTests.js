@@ -4,7 +4,7 @@ const MockKyberStaking = artifacts.require("MockKyberStaking.sol");
 
 const Helper = require("../helper.js");
 const BN = web3.utils.BN;
-const StakeSimulator = require("../../scripts/stakingSimulator.js");
+const StakeSimulator = require("./fuzzerFiles/stakingFuzzer/stakingSimulator.js");
 const { precisionUnits } = require("../helper.js");
 
 //global variables

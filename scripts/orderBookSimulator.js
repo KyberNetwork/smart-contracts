@@ -16,8 +16,8 @@ const MockUtils = artifacts.require("MockUtils.sol");
 
 const Helper = require("../helper.js");
 const BigNumber = require('bignumber.js');
-const ReserveSim = require("./simulator/simulator_orderbookReserve.js");
-const OrderGenerator = require("./simulator/tradeGenerator_orderbook.js");
+const ReserveSim = require("../test/sol4/orderBookFuzzer/simulator_orderbookReserve.js");
+const OrderGenerator = require("../test/sol4/orderBookFuzzer/tradeGenerator_orderbook.js");
 
 const lowRate = 42;
 
@@ -71,7 +71,7 @@ let minNewOrderWei;
 let baseKncPerEthRatePrecision;
 let dollarsPerEthPrecision = precisionUnits.mul(500);
 
-contract('OrderbookReserve simulator', async (accounts) => {
+contract('OrderbookReserve fuzzer', async (accounts) => {
 
     let expectedRate;
 
@@ -120,7 +120,7 @@ contract('OrderbookReserve simulator', async (accounts) => {
         firstFreeOrderIdPerReserveList = (await orders.nextFreeId()).valueOf();
     });
 
-    beforeEach('setup reserve contract for each test', async () => {
+    beforeEach('setup reserve contract', async () => {
         ethKncRate = initialEthKncRate;
         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
         let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
