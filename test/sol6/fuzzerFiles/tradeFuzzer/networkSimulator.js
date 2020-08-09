@@ -1,15 +1,15 @@
-const Helper = require("../test/helper.js");
-const nwHelper = require("../test/sol6/networkHelper.js");
+const Helper = require("../../../helper.js");
+const nwHelper = require("../../networkHelper.js");
 
 const BN = web3.utils.BN;
 
-const { precisionUnits, zeroBN } = require("../test/helper.js");
+const { precisionUnits, zeroBN } = require("../../../helper.js");
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
 const winston = require('winston');
 
-const TradeParamGenerator = require("./trades/tradeParamsGenerator.js");
-const { TRADE, UPDATE_RESERVE_RATE, RevertType, allRevertMessages } = require("./trades/tradeParamsGenerator.js");
+const TradeParamGenerator = require("./tradeParamsGenerator.js");
+const { TRADE, UPDATE_RESERVE_RATE, RevertType, allRevertMessages } = require("./tradeParamsGenerator.js");
 
 let numberSuccessfulTrades = 0;
 let numberGettingsZeroRates = 0;

@@ -14,7 +14,7 @@
     "func-name-mixedcase": "error",
     "func-order": "error",
     "imports-on-top": "error",
-    "mark-callable-contracts": "error",
+    "mark-callable-contracts": "off",
     "max-line-length": ["error", 99],
     "max-states-count": ["error", 20],
     "multiple-sends": "error",
