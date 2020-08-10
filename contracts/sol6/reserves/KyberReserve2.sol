@@ -20,6 +20,7 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
 
     address public kyberNetwork;
     bool public tradeEnabled;
+    uint256 public maxGasPrice;
 
     IConversionRates public conversionRatesContract;
     ISanityRates public sanityRatesContract;
@@ -35,6 +36,7 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         address payable destAddress
     );
     event TradeEnabled(bool enable);
+    event MaxGasPriceUpdated(uint256 newMaxGasPrice);
     event WithdrawAddressApproved(IERC20 indexed token, address indexed addr, bool approve);
     event NewTokenWallet(IERC20 indexed token, address indexed wallet);
     event WithdrawFunds(IERC20 indexed token, uint256 amount, address indexed destination);
@@ -49,6 +51,7 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         address _kyberNetwork,
         IConversionRates _ratesContract,
         IWeth _weth,
+        uint256 _maxGasPrice,
         address _admin
     )
         Withdrawable3(_admin) public
@@ -60,6 +63,7 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         conversionRatesContract = _ratesContract;
         weth = _weth;
         tradeEnabled = true;
+        maxGasPrice = _maxGasPrice;
     }
 
     receive() external payable {
@@ -101,6 +105,13 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
             emit TradeEnabled(false);
         }
         return true;
+    }
+
+    function setMaxGasPrice(uint256 newMaxGasPrice) onlyAdmin external {
+        if (maxGasPrice != newMaxGasPrice) {
+            maxGasPrice = newMaxGasPrice;
+            emit MaxGasPriceUpdated(newMaxGasPrice);
+        }
     }
 
     function approveWithdrawAddress(IERC20 token, address addr, bool approve) onlyAdmin external {
@@ -179,6 +190,7 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         returns(uint256)
     {
         if (!tradeEnabled) return 0;
+        if (tx.gasprice > maxGasPrice) return 0;
 
         IERC20 token;
         bool isBuy;
