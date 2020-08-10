@@ -9,7 +9,6 @@ import "../IERC20.sol";
 import "../utils/Utils5.sol";
 import "../utils/Withdrawable3.sol";
 import "../utils/zeppelin/SafeERC20.sol";
-import "../utils/zeppelin/ReentrancyGuard.sol";
 
 
 contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
@@ -32,7 +31,7 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         IERC20 indexed src,
         uint256 srcAmount,
         IERC20 indexed destToken,
-        uint destAmount,
+        uint256 destAmount,
         address payable destAddress
     );
     event TradeEnabled(bool enable);
@@ -89,21 +88,24 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
     }
 
     function enableTrade() onlyAdmin external returns(bool) {
-        tradeEnabled = true;
-        emit TradeEnabled(true);
-
+        if (!tradeEnabled) {
+            tradeEnabled = true;
+            emit TradeEnabled(true);
+        }
         return true;
     }
 
     function disableTrade() onlyAlerter external returns(bool) {
-        tradeEnabled = false;
-        emit TradeEnabled(false);
-
+        if (tradeEnabled) {
+            tradeEnabled = false;
+            emit TradeEnabled(false);
+        }
         return true;
     }
 
     function approveWithdrawAddress(IERC20 token, address addr, bool approve) onlyAdmin external {
         approvedWithdrawAddresses[keccak256(abi.encodePacked(address(token), addr))] = approve;
+        setDecimals(token);
         emit WithdrawAddressApproved(token, addr, approve);
     }
 
@@ -116,8 +118,16 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         setDecimals(token);
     }
 
+    /// @dev withdraw amount of token to an approved destination
+    /// @dev if reserve is using weth instead of eth, should call withdraw weth
+    /// @param token token to withdraw
+    /// @param amount amount to withdraw
+    /// @param destination address to transfer fund to
     function withdraw(IERC20 token, uint256 amount, address destination) onlyOperator external {
-        require(approvedWithdrawAddresses[keccak256(abi.encodePacked(address(token), destination))]);
+        require(
+            approvedWithdrawAddresses[keccak256(abi.encodePacked(address(token), destination))],
+            "destination is not approved"
+        );
 
         if (token == ETH_TOKEN_ADDRESS) {
             (bool success, ) = destination.call{value: amount}("");
@@ -127,7 +137,7 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
             if (wallet == address(this)) {
                 token.safeTransfer(destination, amount);
             } else {
-                token.safeTransferFrom(tokenWallet[address(token)], destination, amount);
+                token.safeTransferFrom(wallet, destination, amount);
             }
         }
 
@@ -151,14 +161,27 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         weth = _weth;
         sanityRatesContract = _sanityRates;
 
-        emit SetContractAddresses(kyberNetwork, conversionRatesContract, weth, sanityRatesContract);
+        emit SetContractAddresses(
+            kyberNetwork,
+            conversionRatesContract,
+            weth,
+            sanityRatesContract
+        );
     }
 
-    function getConversionRate(IERC20 src, IERC20 dest, uint256 srcQty, uint256 blockNumber) override external view returns(uint256) {
+    function getConversionRate(
+        IERC20 src,
+        IERC20 dest,
+        uint256 srcQty,
+        uint256 blockNumber
+    ) 
+        override external view
+        returns(uint256)
+    {
+        if (!tradeEnabled) return 0;
+
         IERC20 token;
         bool isBuy;
-
-        if (!tradeEnabled) return 0;
 
         if (ETH_TOKEN_ADDRESS == src) {
             isBuy = true;
@@ -187,6 +210,7 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         address wallet = getTokenWallet(token);
         if (token == ETH_TOKEN_ADDRESS) {
             if (wallet == address(this)) {
+                // reserve should be using eth instead of weth
                 return address(this).balance;
             }
             return weth.balanceOf(wallet);
@@ -198,7 +222,7 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
             uint256 balanceOfWallet = token.balanceOf(wallet);
             uint256 allowanceOfWallet = token.allowance(wallet, address(this));
 
-            return (balanceOfWallet < allowanceOfWallet) ? balanceOfWallet : allowanceOfWallet;
+            return minOf(balanceOfWallet, allowanceOfWallet);
         }
     }
 
@@ -215,7 +239,6 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
     /// @param destToken Destination token
     /// @param destAddress Destination address to send tokens to
     /// @param validate If true, additional validations are applicable
-    /// @return true iff trade is successful
     function doTrade(
         IERC20 srcToken,
         uint256 srcAmount,
@@ -225,7 +248,6 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         bool validate
     )
         internal
-        returns(bool)
     {
         // can skip validation if done at kyber network level
         if (validate) {
@@ -258,11 +280,12 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
             block.number
         );
 
-        // collect src tokens, transfer to token wallet
+        // collect src tokens, transfer to token wallet if needed
         address srcTokenWallet = getTokenWallet(srcToken);
         if (srcToken == ETH_TOKEN_ADDRESS) {
             if (srcTokenWallet != address(this)) {
-                // convert eth to weth and send to token wallet
+                // reserve is using weth instead of eth
+                // convert eth to weth and send to weth's token wallet
                 weth.deposit{value: msg.value}();
                 IERC20(weth).safeTransfer(srcTokenWallet, msg.value);
             }
@@ -274,7 +297,9 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         // send dest tokens
         if (destToken == ETH_TOKEN_ADDRESS) {
             if (destTokenWallet != address(this)) {
-                // unwrap weth to eth
+                // transfer weth from weth's token wallet to this address
+                // then unwrap weth to eth to this contract address
+                IERC20(weth).safeTransferFrom(destTokenWallet, address(this), destAmount);
                 weth.withdraw(destAmount);
             }
             // transfer eth to dest address
@@ -289,12 +314,15 @@ contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
         }
 
         emit TradeExecute(msg.sender, srcToken, srcAmount, destToken, destAmount, destAddress);
-
-        return true;
     }
 
+    /// @dev return wallet that holds the token
+    /// @dev if token is ETH, check tokenWallet of WETH instead
+    /// @dev if wallet is 0x0, consider as this reserve address
     function getTokenWallet(IERC20 token) internal view returns(address wallet) {
         wallet = token == ETH_TOKEN_ADDRESS ? tokenWallet[address(weth)] : tokenWallet[address(token)];
-        return (wallet == address(0)) ? address(this) : wallet;
+        if (wallet == address(0)) {
+            wallet = address(this);
+        }
     }
 }
