@@ -11,7 +11,7 @@ import "../utils/Withdrawable3.sol";
 import "../utils/zeppelin/SafeERC20.sol";
 
 
-contract KyberReserve2 is IKyberReserve, Utils5, Withdrawable3 {
+contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
