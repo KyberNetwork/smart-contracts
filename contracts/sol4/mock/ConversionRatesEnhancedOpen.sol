@@ -22,7 +22,6 @@ contract ConversionRateEnhancedOpen is ConversionRateEnhancedSteps {
     ///@dev rateWithSteps value should be equal to rate value from getRate call
     function getRateOpenData(
         ERC20 token, 
-        uint currentBlockNumber, 
         bool buy, 
         uint qty 
     ) public view returns(
@@ -34,11 +33,11 @@ contract ConversionRateEnhancedOpen is ConversionRateEnhancedSteps {
         bytes32 compactData = tokenRatesCompactData[tokenData[token].compactDataArrayIndex];
 
         uint updateRateBlock = getLast4Bytes(compactData);
-        if (currentBlockNumber >= updateRateBlock + validRateDurationInBlocks) return (0, 0, 0); // rate is expired
+
         // check imbalance
         int totalImbalance;
         int blockImbalance;
-        (totalImbalance, blockImbalance) = getImbalance(token, updateRateBlock, currentBlockNumber);
+        (totalImbalance, blockImbalance) = getImbalance(token, updateRateBlock, block.number);
 
         return getRateDataFakeImbalance(token, buy, qty, totalImbalance);
     }
