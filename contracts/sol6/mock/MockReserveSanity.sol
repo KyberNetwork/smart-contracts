@@ -4,7 +4,6 @@ import "../IKyberReserve.sol";
 import "../SanityRatesGasPrice.sol";
 import "../utils/Utils5.sol";
 import "../utils/zeppelin/SafeERC20.sol";
-import "@nomiclabs/buidler/console.sol";
 
 
 contract MockReserveSanity is IKyberReserve, Utils5 {
