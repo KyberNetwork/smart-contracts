@@ -72,7 +72,7 @@ contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
 
         if (reasonableDiffInBps == MAX_RATE) return MAX_RATE;
 
-        return (rate * (BPS + data.reasonableDiffInBps)) / 10000;
+        return (rate * (BPS + data.reasonableDiffInBps)) / BPS;
     }
 
     function setGasPrice(uint256 _maxGasPriceWei) internal {
