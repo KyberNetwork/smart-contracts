@@ -1,44 +1,49 @@
 pragma solidity 0.6.6;
 
+import "./IKyberSanity.sol";
 import "./utils/Utils5.sol";
 import "./utils/Withdrawable3.sol";
 
-contract SanityRatesGasPrice is Withdrawable3, Utils5 {
+contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
     struct SanityData {
         uint224 tokenRate;
         uint32 reasonableDiffInBps;
     }
 
     mapping(address => SanityData) public sanityData;
-    uint256 public maxGasPriceWei = 50 * 1000 * 1000 * 1000; // 50 gwei
+    uint256 public maxGasPriceWei;
 
     event SanityMaxGasPriceSet(uint256 maxGasPrice);
 
-    constructor(address _admin) public Withdrawable3(_admin) {
-        require(_admin != address(0), "admin 0");
-        admin = _admin;
+    constructor(address _admin, uint256 _maxGasPriceWei) public Withdrawable3(_admin) {
+        setGasPrice(_maxGasPriceWei);
     }
 
     /// @dev set reasonableDiffInBps of a token to MAX_RATE if you want to ignore
     ///      sanity rate for it, and return the token's normal rate
-    function setReasonableDiff(IERC20[] memory srcs, uint256[] memory diff) public onlyAdmin {
+    function setReasonableDiff(IERC20[] calldata srcs, uint256[] calldata diff)
+        external
+        onlyAdmin
+    {
         require(srcs.length == diff.length, "srcs,diff length mismatch");
         for (uint256 i = 0; i < srcs.length; i++) {
             require(
-                diff[i] <= 100 * 100 || diff[i] == MAX_RATE,
+                diff[i] <= BPS || diff[i] == MAX_RATE,
                 "Diff must be <= 10000 BPS or == MAX_RATE"
             );
             sanityData[address(srcs[i])].reasonableDiffInBps = uint32(diff[i]);
         }
     }
 
-    function setMaxGasPriceWei(uint256 _maxGasPriceWei) public onlyOperator {
-        require(_maxGasPriceWei > 0, "maxGasPriceWei must be > 0");
-        maxGasPriceWei = _maxGasPriceWei;
+    function setMaxGasPriceWei(uint256 _maxGasPriceWei) external onlyOperator {
+        setGasPrice(_maxGasPriceWei);
         emit SanityMaxGasPriceSet(maxGasPriceWei);
     }
 
-    function setSanityRates(IERC20[] memory srcs, uint256[] memory rates) public onlyOperator {
+    function setSanityRates(IERC20[] calldata srcs, uint256[] calldata rates)
+        external
+        onlyOperator
+    {
         require(srcs.length == rates.length, "srcs,rates length mismatch");
 
         for (uint256 i = 0; i < srcs.length; i++) {
@@ -47,7 +52,7 @@ contract SanityRatesGasPrice is Withdrawable3, Utils5 {
         }
     }
 
-    function getSanityRate(IERC20 src, IERC20 dest) public view returns (uint256) {
+    function getSanityRate(IERC20 src, IERC20 dest) external override view returns (uint256) {
         SanityData memory data;
 
         if (src != ETH_TOKEN_ADDRESS && dest != ETH_TOKEN_ADDRESS) return 0;
@@ -67,6 +72,11 @@ contract SanityRatesGasPrice is Withdrawable3, Utils5 {
 
         if (reasonableDiffInBps == MAX_RATE) return MAX_RATE;
 
-        return (rate * (10000 + data.reasonableDiffInBps)) / 10000;
+        return (rate * (BPS + data.reasonableDiffInBps)) / 10000;
+    }
+
+    function setGasPrice(uint256 _maxGasPriceWei) internal {
+        require(_maxGasPriceWei > 0, "maxGasPriceWei must be > 0");
+        maxGasPriceWei = _maxGasPriceWei;
     }
 }

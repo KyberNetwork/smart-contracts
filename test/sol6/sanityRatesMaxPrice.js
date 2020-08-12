@@ -19,6 +19,7 @@ let rates = [];
 let buyRate = [];
 let sellRate = [];
 let reasonableDiffs = [];
+let gasPrice = web3.utils.toWei('100', 'gwei');
 
 contract('SanityRatesGasPrice', function (accounts) {
   before('init globals.', async function () {
@@ -40,7 +41,7 @@ contract('SanityRatesGasPrice', function (accounts) {
         reasonableDiffs[i] = new BN(i * 100);
       }
   
-      sanityRates = await SanityRates.new(admin);
+      sanityRates = await SanityRates.new(admin, gasPrice);
       await sanityRates.addOperator(operator);
   
       await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
@@ -86,13 +87,13 @@ contract('SanityRatesGasPrice', function (accounts) {
       let sanityRatess;
 
       try {
-        sanityRatess = await SanityRates.new(zeroAddress);
+        sanityRatess = await SanityRates.new(zeroAddress, gasPrice);
         assert(false, 'throw was expected in line above.');
       } catch (e) {
         assert(Helper.isRevertErrorMessage(e), 'expected throw but got: ' + e);
       }
 
-      sanityRatess = await SanityRates.new(admin);
+      sanityRatess = await SanityRates.new(admin, gasPrice);
     });
 
     it("should test can't init diffs when array lengths aren't the same.", async function () {
@@ -166,7 +167,7 @@ contract('SanityRatesGasPrice', function (accounts) {
     });
 
     it('should test setting max gas price.', async function () {
-      const gasPrice = web3.utils.toWei('100', 'gwei');
+      gasPrice = web3.utils.toWei('150', 'gwei');
       const txResult = await sanityRates.setMaxGasPriceWei(gasPrice, {from: operator});
 
       expectEvent(txResult, 'SanityMaxGasPriceSet', {
@@ -175,13 +176,13 @@ contract('SanityRatesGasPrice', function (accounts) {
     });
 
     it('should test reverts when not operator is setting max gas price.', async function () {
-      const gasPrice = web3.utils.toWei('100', 'gwei');
+      gasPrice = web3.utils.toWei('100', 'gwei');
 
       await expectRevert(sanityRates.setMaxGasPriceWei(gasPrice), 'only operator');
     });
 
     it('should test reverts setting max gas price to 0.', async function () {
-      const gasPrice = web3.utils.toWei('0', 'gwei');
+      gasPrice = web3.utils.toWei('0', 'gwei');
 
       await expectRevert(
         sanityRates.setMaxGasPriceWei(gasPrice, {from: operator}),
@@ -191,7 +192,7 @@ contract('SanityRatesGasPrice', function (accounts) {
 
     it('should test sanity rate is 0 when tx gas price > maxGasPrice.', async function () {
       const tokenToEthRate = await sanityRates.getSanityRate(tokens[0], ethAddress, {
-        gasPrice: web3.utils.toWei('101', 'gwei'),
+        gasPrice: web3.utils.toWei('151', 'gwei'),
       });
       Helper.assertEqual(tokenToEthRate, 0, 'unexpected rate');
     });
@@ -199,7 +200,8 @@ contract('SanityRatesGasPrice', function (accounts) {
 
   describe('test reserve that uses SanityRatesGasPrice', function () {
     before('setup mock reserve and init sanity rates.', async function () {
-      sanityRates = await SanityRates.new(admin);
+      gasPrice = web3.utils.toWei('100', 'gwei');
+      sanityRates = await SanityRates.new(admin, gasPrice);
       mockReserve = await MockReserveSanity.new();
       await sanityRates.addOperator(operator);
       await mockReserve.setContracts(sanityRates.address);
