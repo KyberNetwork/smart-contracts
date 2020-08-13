@@ -196,6 +196,23 @@ contract('SanityRatesGasPrice', function (accounts) {
       });
       Helper.assertEqual(tokenToEthRate, 0, 'unexpected rate');
     });
+
+    it('should test getting MAX_RATE as sanity rate if reasonable diff is set to MAX_RATE.', async function () {
+      let sanityRate;
+      for (let i = 0; i < numTokens; i++) {
+        reasonableDiffs[i] = MAX_RATE;
+      }
+
+      await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+
+      for (let i = 0; i < numTokens; i++) {
+        sanityRate = await sanityRates.getSanityRate(tokens[i], ethAddress);
+        Helper.assertEqual(sanityRate, MAX_RATE, 'unexpected rate');
+
+        sanityRate = await sanityRates.getSanityRate(ethAddress, tokens[i]);
+        Helper.assertEqual(sanityRate, MAX_RATE, 'unexpected rate');
+      }
+    });
   });
 
   describe('test reserve that uses SanityRatesGasPrice', function () {
@@ -274,7 +291,6 @@ contract('SanityRatesGasPrice', function (accounts) {
     });
 
     it('should test getting conversion rates if reasonable diff is set to MAX_RATE.', async function () {
-      let maxRates = [];
       for (let i = 0; i < numTokens; i++) {
         reasonableDiffs[i] = MAX_RATE;
       }

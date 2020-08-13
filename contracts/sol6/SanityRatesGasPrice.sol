@@ -4,10 +4,27 @@ import "./IKyberSanity.sol";
 import "./utils/Utils5.sol";
 import "./utils/Withdrawable3.sol";
 
+/**
+ *   @title SanityRatesGasPrice contract
+ *   The contract is an update from the previous SanityRates contract, and provides
+ *   the following functionality:
+ *       - setting reasonable diff
+ *       - setting max gas price criteria for a trade
+ *       - setting sanity rates
+ *       - getting sanity rates
+ *
+ *       What's new from previous SanityRates contract:
+ *           1) Setting max gas price - essentially allows the reserve manager to
+ *              limit taker's trade gas price, in order to discourage front running
+ *              price updates.
+ *           2) Fix to https://github.com/KyberNetwork/smart-contracts/issues/168.
+ *           3) Update to Solidity 6.
+ */
+
 contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
     struct SanityData {
-        uint224 tokenRate;
-        uint32 reasonableDiffInBps;
+        uint168 tokenRate;
+        uint88 reasonableDiffInBps;
     }
 
     mapping(address => SanityData) public sanityData;
@@ -31,7 +48,7 @@ contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
                 diff[i] <= BPS || diff[i] == MAX_RATE,
                 "Diff must be <= 10000 BPS or == MAX_RATE"
             );
-            sanityData[address(srcs[i])].reasonableDiffInBps = uint32(diff[i]);
+            sanityData[address(srcs[i])].reasonableDiffInBps = uint88(diff[i]);
         }
     }
 
@@ -48,7 +65,7 @@ contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
 
         for (uint256 i = 0; i < srcs.length; i++) {
             require(rates[i] > 0 && rates[i] <= MAX_RATE, "rate must be > 0 and <= MAX_RATE");
-            sanityData[address(srcs[i])].tokenRate = uint224(rates[i]);
+            sanityData[address(srcs[i])].tokenRate = uint168(rates[i]);
         }
     }
 
@@ -59,7 +76,7 @@ contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
         if (tx.gasprice > maxGasPriceWei) return 0;
 
         uint256 rate;
-        uint32 reasonableDiffInBps;
+        uint88 reasonableDiffInBps;
         if (src == ETH_TOKEN_ADDRESS) {
             data = sanityData[address(dest)];
             reasonableDiffInBps = data.reasonableDiffInBps;
