@@ -1,23 +1,25 @@
 pragma solidity 0.6.6;
 
-import "./MaliciousKyberNetwork.sol";
+import "../KyberNetwork.sol";
 
 
 /*
- * @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
+ * @title Kyber Network main contract, takes some fee but returns actual dest amount as if fee wasn't taken
  */
-contract MaliciousKyberNetwork2 is MaliciousKyberNetwork {
-    
+contract MaliciousKyberNetwork2 is KyberNetwork {
+    uint256 public myFeeWei = 10;
+
     constructor(address _admin, IKyberStorage _kyberStorage)
         public
-        MaliciousKyberNetwork(_admin, _kyberStorage)
-    {
-        myFeeWei = 10;
+        KyberNetwork(_admin, _kyberStorage)
+    {}
+
+    function setMyFeeWei(uint256 fee) public {
+        myFeeWei = fee;
     }
 
     function doReserveTrades(
         IERC20 src,
-        uint256 amount,
         IERC20 dest,
         address payable destAddress,
         ReservesData memory reservesData,
@@ -27,38 +29,24 @@ contract MaliciousKyberNetwork2 is MaliciousKyberNetwork {
     ) internal override {
         if (src == dest) {
             //E2E, need not do anything except for T2E, transfer ETH to destAddress
-            if (destAddress != (address(this))) destAddress.transfer(amount - myFeeWei);
+            if (destAddress != (address(this))) {
+                (bool success, ) = destAddress.call{value: expectedDestAmount - myFeeWei}("");
+                require(success, "send dest qty failed");
+            }
             return;
         }
 
-        srcDecimals;
-        destDecimals;
-
-        uint256 callValue;
-        uint256 srcAmountSoFar;
-
-        for (uint256 i = 0; i < reservesData.addresses.length; i++) {
-            uint256 splitAmount = i == (reservesData.splitsBps.length - 1)
-                ? (amount - srcAmountSoFar)
-                : (reservesData.splitsBps[i] * amount) / BPS;
-            srcAmountSoFar += splitAmount;
-            callValue = (src == ETH_TOKEN_ADDRESS) ? splitAmount : 0;
-
-            // reserve sends tokens/eth to network. network sends it to destination
-            require(
-                reservesData.addresses[i].trade{value: callValue}(
-                    src,
-                    splitAmount,
-                    dest,
-                    address(this),
-                    reservesData.rates[i],
-                    true
-                )
-            );
-        }
+        tradeAndVerifyNetworkBalance(
+            reservesData,
+            src,
+            dest,
+            srcDecimals,
+            destDecimals
+        );
 
         if (destAddress != address(this)) {
-            dest.safeTransfer(destAddress, (expectedDestAmount - myFeeWei));
+            // for eth -> token / token -> token, transfer tokens to destAddress
+            dest.safeTransfer(destAddress, expectedDestAmount - myFeeWei);
         }
 
         return;

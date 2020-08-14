@@ -1032,7 +1032,7 @@ contract('KyberNetwork', function(accounts) {
                             await reserve.setRate(tokens[j].address, precisionUnits, precisionUnits);
                         }
                         reserveIds.push(value.reserveId);
-                        splitValueBps.push(BPS.div(new BN(2))); // 2 mock reserve, each have splitValue is BPS/2
+                        splitValueBps.push((BPS.div(new BN(2))).toString()); // 2 mock reserve, each have splitValue is BPS/2
                     }
                     reserveIds.sort();
 
@@ -1060,7 +1060,8 @@ contract('KyberNetwork', function(accounts) {
                 });
 
                 // 2 types of trade that specific which reserve will be choosen
-                for(hintType of [MASK_IN_HINTTYPE, SPLIT_HINTTYPE]) {
+                for(tradeType of [MASK_IN_HINTTYPE, SPLIT_HINTTYPE]) {
+                    let hintType = tradeType;
                     it(`should return 0 rate for t2e trade (${tradeStr[hintType]}) if reserveID is not listed`, async() => {
                         splits = (hintType == MASK_IN_HINTTYPE) ? [] : splitValueBps;
                         hint = Helper.buildHint(tradeStr[hintType])(hintType, reserveIds, splits);
