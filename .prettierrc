@@ -14,7 +14,7 @@
     {
       "files": "*.js",
       "options": {
-        "printWidth": 99,
+        "printWidth": 119,
         "tabWidth": 2,
         "useTabs": false,
         "singleQuote": true,
