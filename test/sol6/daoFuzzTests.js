@@ -64,7 +64,7 @@ const logger = winston.createLogger({
   transports: [
     new winston.transports.Console({level: 'info'}),
     new winston.transports.File({
-      filename: 'debug.log',
+      filename: 'fuzz_dao.log',
       level: 'debug'
     })
   ]
