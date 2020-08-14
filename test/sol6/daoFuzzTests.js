@@ -43,6 +43,7 @@ let latestRebateBps = new BN(2000); // 20%
 let link = web3.utils.fromAscii('https://kyberswap.com');
 
 let NUM_RUNS = 500;
+let progressIterations = 20;
 
 // statistic about operation
 // for operation, failing means the generated operation is revert
@@ -121,6 +122,9 @@ contract('KyberDAO fuzz', function (accounts) {
     let currentEpoch = new BN(0);
     let loop;
     for (loop = 0; loop < NUM_RUNS; loop++) {
+      if (loop % progressIterations == 0) {
+        process.stdout.write(`${(loop / NUM_RUNS * 100).toFixed(0.1)}% complete\n`);
+      }
       let currentBlockTime = (await Helper.getCurrentBlockTime()) + 10;
       let nextEpoch = DaoGenerator.getEpochNumber(epochPeriod, startTime, currentBlockTime);
       if (!nextEpoch.eq(currentEpoch)) {
