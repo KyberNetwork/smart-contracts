@@ -1,6 +1,7 @@
 pragma solidity 0.6.6;
 
 import "../IKyberReserve.sol";
+import "../IKyberSanity.sol";
 import "../utils/Utils5.sol";
 import "../utils/zeppelin/SafeERC20.sol";
 
@@ -8,10 +9,17 @@ import "../utils/zeppelin/SafeERC20.sol";
 contract MockReserve is IKyberReserve, Utils5 {
     using SafeERC20 for IERC20;
 
+    IKyberSanity public sanityRatesContract;
     mapping(address => uint256) public buyTokenRates;
     mapping(address => uint256) public sellTokenRates;
 
     receive() external payable {}
+
+    function setContracts(
+        IKyberSanity _sanityRates
+    ) public {
+        sanityRatesContract = _sanityRates;
+    }
 
     function setRate(
         IERC20 token,
@@ -90,6 +98,12 @@ contract MockReserve is IKyberReserve, Utils5 {
         if (dest != ETH_TOKEN_ADDRESS && dest.balanceOf(address(this)) < destAmount) {
             return 0;
         }
+
+        if (address(sanityRatesContract) != address(0)) {
+            uint sanityRate = sanityRatesContract.getSanityRate(src, dest);
+            if (rate > sanityRate) return 0;
+        }
+
         return rate;
     }
 }
