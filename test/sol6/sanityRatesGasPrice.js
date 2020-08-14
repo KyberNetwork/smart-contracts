@@ -1,8 +1,8 @@
 const SanityRates = artifacts.require('SanityRatesGasPrice.sol');
-const MockReserveSanity = artifacts.require('MockReserveSanity.sol');
 const TestToken = artifacts.require('Token.sol');
 const {expectEvent, expectRevert} = require('@openzeppelin/test-helpers');
 const Helper = require('../helper.js');
+const nwHelper = require("./networkHelper.js");
 const {BPS, precisionUnits, ethAddress, zeroAddress} = require('../helper.js');
 const {web3} = require('@openzeppelin/test-helpers/src/setup');
 const BN = web3.utils.BN;
@@ -14,6 +14,7 @@ let operator;
 let numTokens = 5;
 let token;
 let tokens = [];
+let tokenAddresses = [];
 let tokenDecimals = [];
 let rates = [];
 let buyRate = [];
@@ -25,12 +26,14 @@ contract('SanityRatesGasPrice', function (accounts) {
   before('init globals.', async function () {
     admin = accounts[0];
     operator = accounts[5];
+    randomAccount = accounts[9];
 
     //init tokens
     for (let i = 0; i < numTokens; i++) {
       tokenDecimals[i] = new BN(15).add(new BN(i));
       token = await TestToken.new(`test${i}`, 'tst' + i, tokenDecimals[i]);
-      tokens[i] = token.address;
+      tokens[i] = token;
+      tokenAddresses[i] = token.address;
     }
   });
 
@@ -40,28 +43,28 @@ contract('SanityRatesGasPrice', function (accounts) {
         rates[i] = new BN(i + 1).mul(precisionUnits.div(new BN(10)));
         reasonableDiffs[i] = new BN(i * 100);
       }
-  
+
       sanityRates = await SanityRates.new(admin, gasPrice);
       await sanityRates.addOperator(operator);
-  
-      await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+
+      await sanityRates.setReasonableDiff(tokenAddresses, reasonableDiffs);
     });
 
     it('should test return rate 0 when rate has not been set yet.', async function () {
-      const rate0 = await sanityRates.getSanityRate(tokens[0], ethAddress);
+      const rate0 = await sanityRates.getSanityRate(tokenAddresses[0], ethAddress);
       Helper.assertEqual(rate0, 0, '0 rate expected');
     });
 
     it('should test setting sanity rates.', async function () {
-      await sanityRates.setSanityRates(tokens, rates, {from: operator});
+      await sanityRates.setSanityRates(tokenAddresses, rates, {from: operator});
     });
 
     it('check rates for token 0 (where diff is 0) so only tests rates.', async function () {
-      const tokenToEthRate = await sanityRates.getSanityRate(tokens[0], ethAddress);
+      const tokenToEthRate = await sanityRates.getSanityRate(tokenAddresses[0], ethAddress);
       Helper.assertEqual(tokenToEthRate, rates[0], 'unexpected rate');
 
       const expectedEthToToken = precisionUnits.mul(precisionUnits).div(tokenToEthRate);
-      const ethToTokenRate = await sanityRates.getSanityRate(ethAddress, tokens[0]);
+      const ethToTokenRate = await sanityRates.getSanityRate(ethAddress, tokenAddresses[0]);
       Helper.assertEqual(expectedEthToToken, ethToTokenRate, 'unexpected rate');
     });
 
@@ -71,7 +74,7 @@ contract('SanityRatesGasPrice', function (accounts) {
         .mul(BPS.add(reasonableDiffs[tokenInd]))
         .div(BPS);
 
-      const tokenToEthRate = await sanityRates.getSanityRate(tokens[tokenInd], ethAddress);
+      const tokenToEthRate = await sanityRates.getSanityRate(tokenAddresses[tokenInd], ethAddress);
       Helper.assertEqual(tokenToEthRate, expectedTokenToEthRate, 'unexpected rate');
 
       const expectedEthToToken = precisionUnits
@@ -79,7 +82,7 @@ contract('SanityRatesGasPrice', function (accounts) {
         .div(rates[tokenInd])
         .mul(BPS.add(reasonableDiffs[tokenInd]))
         .div(BPS);
-      const ethToTokenRate = await sanityRates.getSanityRate(ethAddress, tokens[tokenInd]);
+      const ethToTokenRate = await sanityRates.getSanityRate(ethAddress, tokenAddresses[tokenInd]);
       Helper.assertEqual(expectedEthToToken, ethToTokenRate, 'unexpected rate');
     });
 
@@ -100,36 +103,36 @@ contract('SanityRatesGasPrice', function (accounts) {
       reasonableDiffs.push(8);
 
       await expectRevert(
-        sanityRates.setReasonableDiff(tokens, reasonableDiffs),
+        sanityRates.setReasonableDiff(tokenAddresses, reasonableDiffs),
         'srcs,diff length mismatch'
       );
 
-      reasonableDiffs.length = tokens.length;
-      await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+      reasonableDiffs.length = tokenAddresses.length;
+      await sanityRates.setReasonableDiff(tokenAddresses, reasonableDiffs);
     });
 
     it("should test can't init diffs when value > max diff (10000 = 100%).", async function () {
       reasonableDiffs[0] = new BN(10001);
 
       await expectRevert(
-        sanityRates.setReasonableDiff(tokens, reasonableDiffs),
+        sanityRates.setReasonableDiff(tokenAddresses, reasonableDiffs),
         'Diff must be <= 10000 BPS or == MAX_RATE'
       );
 
       reasonableDiffs[0] = new BN(10000);
-      await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+      await sanityRates.setReasonableDiff(tokenAddresses, reasonableDiffs);
     });
 
     it("should test can't init rates when array lengths aren't the same.", async function () {
       rates.push(new BN(8));
 
       await expectRevert(
-        sanityRates.setSanityRates(tokens, rates, {from: operator}),
+        sanityRates.setSanityRates(tokenAddresses, rates, {from: operator}),
         'srcs,rates length mismatch'
       );
 
-      rates.length = tokens.length;
-      await sanityRates.setSanityRates(tokens, rates, {from: operator});
+      rates.length = tokenAddresses.length;
+      await sanityRates.setSanityRates(tokenAddresses, rates, {from: operator});
     });
 
     it('should test reverts when setting sanity rate to < 0 and > MAX_RATE.', async function () {
@@ -140,29 +143,29 @@ contract('SanityRatesGasPrice', function (accounts) {
       rates[0] = illegalMaxRate;
 
       await expectRevert(
-        sanityRates.setSanityRates(tokens, rates, {from: operator}),
+        sanityRates.setSanityRates(tokenAddresses, rates, {from: operator}),
         'rate must be > 0 and <= MAX_RATE'
       );
 
       rates[0] = illegalZeroRate;
 
       await expectRevert(
-        sanityRates.setSanityRates(tokens, rates, {from: operator}),
+        sanityRates.setSanityRates(tokenAddresses, rates, {from: operator}),
         'rate must be > 0 and <= MAX_RATE'
       );
 
       rates[0] = legalRate;
-      await sanityRates.setSanityRates(tokens, rates, {from: operator});
+      await sanityRates.setSanityRates(tokenAddresses, rates, {from: operator});
     });
 
     it('should test return rate 0 when both are tokens (no ether).', async function () {
-      let rate0 = await sanityRates.getSanityRate(tokens[1], tokens[2]);
+      let rate0 = await sanityRates.getSanityRate(tokenAddresses[1], tokenAddresses[2]);
       Helper.assertEqual(rate0, 0, '0 rate expected');
 
-      rate0 = await sanityRates.getSanityRate(tokens[0], tokens[1]);
+      rate0 = await sanityRates.getSanityRate(tokenAddresses[0], tokenAddresses[1]);
       Helper.assertEqual(rate0, 0, '0 rate expected');
 
-      rate0 = await sanityRates.getSanityRate(tokens[2], tokens[3]);
+      rate0 = await sanityRates.getSanityRate(tokenAddresses[2], tokenAddresses[3]);
       Helper.assertEqual(rate0, 0, '0 rate expected');
     });
 
@@ -175,10 +178,44 @@ contract('SanityRatesGasPrice', function (accounts) {
       });
     });
 
-    it('should test reverts when not operator is setting max gas price.', async function () {
+    it('should test reverts when non admin is adding an operator.', async function () {
       gasPrice = web3.utils.toWei('100', 'gwei');
 
-      await expectRevert(sanityRates.setMaxGasPriceWei(gasPrice), 'only operator');
+      await expectRevert(
+        sanityRates.addOperator(operator, {
+          from: randomAccount,
+        }),
+        'only admin'
+      );
+    });
+
+    it('should test reverts when non admin is setting reasonable diff.', async function () {
+      await expectRevert(
+        sanityRates.setReasonableDiff(tokenAddresses, reasonableDiffs, {
+          from: randomAccount,
+        }),
+        'only admin'
+      );
+    });
+
+    it('should test reverts when non operator is setting max gas price.', async function () {
+      gasPrice = web3.utils.toWei('100', 'gwei');
+
+      await expectRevert(
+        sanityRates.setMaxGasPriceWei(gasPrice, {
+          from: randomAccount,
+        }),
+        'only operator'
+      );
+    });
+
+    it('should test reverts when non operator is setting sanity rates.', async function () {
+      await expectRevert(
+        sanityRates.setSanityRates(tokenAddresses, rates, {
+          from: randomAccount,
+        }),
+        'only operator'
+      );
     });
 
     it('should test reverts setting max gas price to 0.', async function () {
@@ -191,7 +228,7 @@ contract('SanityRatesGasPrice', function (accounts) {
     });
 
     it('should test sanity rate is 0 when tx gas price > maxGasPrice.', async function () {
-      const tokenToEthRate = await sanityRates.getSanityRate(tokens[0], ethAddress, {
+      const tokenToEthRate = await sanityRates.getSanityRate(tokenAddresses[0], ethAddress, {
         gasPrice: web3.utils.toWei('151', 'gwei'),
       });
       Helper.assertEqual(tokenToEthRate, 0, 'unexpected rate');
@@ -203,13 +240,13 @@ contract('SanityRatesGasPrice', function (accounts) {
         reasonableDiffs[i] = MAX_RATE;
       }
 
-      await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+      await sanityRates.setReasonableDiff(tokenAddresses, reasonableDiffs);
 
       for (let i = 0; i < numTokens; i++) {
-        sanityRate = await sanityRates.getSanityRate(tokens[i], ethAddress);
+        sanityRate = await sanityRates.getSanityRate(tokenAddresses[i], ethAddress);
         Helper.assertEqual(sanityRate, MAX_RATE, 'unexpected rate');
 
-        sanityRate = await sanityRates.getSanityRate(ethAddress, tokens[i]);
+        sanityRate = await sanityRates.getSanityRate(ethAddress, tokenAddresses[i]);
         Helper.assertEqual(sanityRate, MAX_RATE, 'unexpected rate');
       }
     });
@@ -217,9 +254,12 @@ contract('SanityRatesGasPrice', function (accounts) {
 
   describe('test reserve that uses SanityRatesGasPrice', function () {
     before('setup mock reserve and init sanity rates.', async function () {
+      // init and setup mock reserve
+      const reserves = await nwHelper.setupReserves(0, tokens, 1, 0, 0, 0, accounts, admin, operator);
+      mockReserve = reserves.reserveInstances[Object.keys(reserves.reserveInstances)[0]].instance;
+      
       gasPrice = web3.utils.toWei('100', 'gwei');
       sanityRates = await SanityRates.new(admin, gasPrice);
-      mockReserve = await MockReserveSanity.new();
       await sanityRates.addOperator(operator);
       await mockReserve.setContracts(sanityRates.address);
 
@@ -229,11 +269,11 @@ contract('SanityRatesGasPrice', function (accounts) {
 
         buyRate[i] = precisionUnits.mul(precisionUnits).div(rates[i]);
         sellRate[i] = rates[i];
-        await mockReserve.setRate(tokens[i], buyRate[i], sellRate[i]);
+        await mockReserve.setRate(tokenAddresses[i], buyRate[i], sellRate[i]);
       }
-  
-      await sanityRates.setSanityRates(tokens, rates, {from: operator});
-      await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+
+      await sanityRates.setSanityRates(tokenAddresses, rates, {from: operator});
+      await sanityRates.setReasonableDiff(tokenAddresses, reasonableDiffs);
     });
 
     it('should test getting conversion rate.', async function () {
@@ -244,14 +284,14 @@ contract('SanityRatesGasPrice', function (accounts) {
       for (let i = 0; i < numTokens; i++) {
         conversionRate = await mockReserve.getConversionRate(
           ethAddress,
-          tokens[i],
+          tokenAddresses[i],
           amountWei,
           currentBlock
         );
         Helper.assertEqual(conversionRate, buyRate[i], 'unexpected rate');
 
         conversionRate = await mockReserve.getConversionRate(
-          tokens[i],
+          tokenAddresses[i],
           ethAddress,
           amountWei,
           currentBlock
@@ -268,7 +308,7 @@ contract('SanityRatesGasPrice', function (accounts) {
       for (let i = 0; i < numTokens; i++) {
         conversionRate = await mockReserve.getConversionRate(
           ethAddress,
-          tokens[i],
+          tokenAddresses[i],
           amountWei,
           currentBlock,
           {
@@ -278,7 +318,7 @@ contract('SanityRatesGasPrice', function (accounts) {
         Helper.assertEqual(conversionRate, 0, 'unexpected rate');
 
         conversionRate = await mockReserve.getConversionRate(
-          tokens[i],
+          tokenAddresses[i],
           ethAddress,
           amountWei,
           currentBlock,
@@ -295,7 +335,7 @@ contract('SanityRatesGasPrice', function (accounts) {
         reasonableDiffs[i] = MAX_RATE;
       }
 
-      await sanityRates.setReasonableDiff(tokens, reasonableDiffs);
+      await sanityRates.setReasonableDiff(tokenAddresses, reasonableDiffs);
 
       const amountWei = new BN(2);
       const currentBlock = await Helper.getCurrentBlock();
@@ -304,7 +344,7 @@ contract('SanityRatesGasPrice', function (accounts) {
       for (let i = 0; i < numTokens; i++) {
         conversionRate = await mockReserve.getConversionRate(
           ethAddress,
-          tokens[i],
+          tokenAddresses[i],
           amountWei,
           currentBlock
         );
@@ -316,7 +356,7 @@ contract('SanityRatesGasPrice', function (accounts) {
         );
 
         conversionRate = await mockReserve.getConversionRate(
-          tokens[i],
+          tokenAddresses[i],
           ethAddress,
           amountWei,
           currentBlock

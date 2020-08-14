@@ -6,25 +6,24 @@ import "./utils/Withdrawable3.sol";
 
 /**
  *   @title SanityRatesGasPrice contract
- *   The contract is an update from the previous SanityRates contract, and provides
- *   the following functionality:
+ *   The contract provides the following functionality:
  *       - setting reasonable diff
  *       - setting max gas price criteria for a trade
  *       - setting sanity rates
  *       - getting sanity rates
  *
- *       What's new from previous SanityRates contract:
- *           1) Setting max gas price - essentially allows the reserve manager to
- *              limit taker's trade gas price, in order to discourage front running
- *              price updates.
- *           2) Fix to https://github.com/KyberNetwork/smart-contracts/issues/168.
- *           3) Update to Solidity 6.
+ *   This allows FPR managers to protect their price updates from
+ *   front runners by setting the maxGasPriceWei param. But it mainly
+ *   protects reserves from (1) bugs in the conversion rate logic or
+ *   from (2) hacks into the conversion rate system. If there are large
+ *   inconsistencies between the sanity rates and the actual rates,
+ *   then trades involving the reserve will be disabled.
  */
 
 contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
     struct SanityData {
-        uint168 tokenRate;
-        uint88 reasonableDiffInBps;
+        uint128 tokenRate;
+        uint128 reasonableDiffInBps;
     }
 
     mapping(address => SanityData) public sanityData;
@@ -36,8 +35,8 @@ contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
         setGasPrice(_maxGasPriceWei);
     }
 
-    /// @dev set reasonableDiffInBps of a token to MAX_RATE if you want to ignore
-    ///      sanity rate for it, and return the token's normal rate
+    /// @dev set reasonableDiffInBps of a token to MAX_RATE to avoid handling the
+    ///      price feed for this token
     function setReasonableDiff(IERC20[] calldata srcs, uint256[] calldata diff)
         external
         onlyAdmin
@@ -48,7 +47,7 @@ contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
                 diff[i] <= BPS || diff[i] == MAX_RATE,
                 "Diff must be <= 10000 BPS or == MAX_RATE"
             );
-            sanityData[address(srcs[i])].reasonableDiffInBps = uint88(diff[i]);
+            sanityData[address(srcs[i])].reasonableDiffInBps = uint128(diff[i]);
         }
     }
 
@@ -65,18 +64,17 @@ contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
 
         for (uint256 i = 0; i < srcs.length; i++) {
             require(rates[i] > 0 && rates[i] <= MAX_RATE, "rate must be > 0 and <= MAX_RATE");
-            sanityData[address(srcs[i])].tokenRate = uint168(rates[i]);
+            sanityData[address(srcs[i])].tokenRate = uint128(rates[i]);
         }
     }
 
-    function getSanityRate(IERC20 src, IERC20 dest) external override view returns (uint256) {
+    function getSanityRate(IERC20 src, IERC20 dest) external override view returns (uint256 rate) {
         SanityData memory data;
 
         if (src != ETH_TOKEN_ADDRESS && dest != ETH_TOKEN_ADDRESS) return 0;
         if (tx.gasprice > maxGasPriceWei) return 0;
 
-        uint256 rate;
-        uint88 reasonableDiffInBps;
+        uint128 reasonableDiffInBps;
         if (src == ETH_TOKEN_ADDRESS) {
             data = sanityData[address(dest)];
             reasonableDiffInBps = data.reasonableDiffInBps;
