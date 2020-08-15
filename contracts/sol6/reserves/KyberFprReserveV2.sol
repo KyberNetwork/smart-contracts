@@ -11,6 +11,9 @@ import "../utils/Withdrawable3.sol";
 import "../utils/zeppelin/SafeERC20.sol";
 
 
+/// @title KyberFrpReserve version 2
+/// Allow Reserve to work with both WETH and ETH by specifying address to hold WETH
+/// Allow Reserve to set maxGasPriceWei to trade with
 contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -20,7 +23,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
 
     address public kyberNetwork;
     bool public tradeEnabled;
-    uint256 public maxGasPrice;
+    uint256 public maxGasPriceWei;
 
     IConversionRates public conversionRatesContract;
     ISanityRates public sanityRatesContract;
@@ -51,19 +54,19 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         address _kyberNetwork,
         IConversionRates _ratesContract,
         IWeth _weth,
-        uint256 _maxGasPrice,
+        uint256 _maxGasPriceWei,
         address _admin
     )
         Withdrawable3(_admin) public
     {
-        require(_ratesContract != IConversionRates(0), "ratesContract 0");
         require(_kyberNetwork != address(0), "kyberNetwork 0");
+        require(_ratesContract != IConversionRates(0), "ratesContract 0");
         require(_weth != IWeth(0), "weth 0");
         kyberNetwork = _kyberNetwork;
         conversionRatesContract = _ratesContract;
         weth = _weth;
         tradeEnabled = true;
-        maxGasPrice = _maxGasPrice;
+        maxGasPriceWei = _maxGasPriceWei;
     }
 
     receive() external payable {
@@ -92,26 +95,20 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     }
 
     function enableTrade() onlyAdmin external returns(bool) {
-        if (!tradeEnabled) {
-            tradeEnabled = true;
-            emit TradeEnabled(true);
-        }
+        tradeEnabled = true;
+        emit TradeEnabled(true);
         return true;
     }
 
     function disableTrade() onlyAlerter external returns(bool) {
-        if (tradeEnabled) {
-            tradeEnabled = false;
-            emit TradeEnabled(false);
-        }
+        tradeEnabled = false;
+        emit TradeEnabled(false);
         return true;
     }
 
-    function setMaxGasPrice(uint256 newMaxGasPrice) onlyAdmin external {
-        if (maxGasPrice != newMaxGasPrice) {
-            maxGasPrice = newMaxGasPrice;
-            emit MaxGasPriceUpdated(newMaxGasPrice);
-        }
+    function setMaxGasPrice(uint256 newMaxGasPrice) onlyOperator external {
+        maxGasPriceWei = newMaxGasPrice;
+        emit MaxGasPriceUpdated(newMaxGasPrice);
     }
 
     function approveWithdrawAddress(IERC20 token, address addr, bool approve) onlyAdmin external {
@@ -122,11 +119,9 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
 
     /// @dev allow set tokenWallet[token] back to 0x0 address
     function setTokenWallet(IERC20 token, address wallet) onlyAdmin external {
-        if (tokenWallet[address(token)] != wallet) {
-            tokenWallet[address(token)] = wallet;
-            emit NewTokenWallet(token, wallet);
-        }
+        tokenWallet[address(token)] = wallet;
         setDecimals(token);
+        emit NewTokenWallet(token, wallet);
     }
 
     /// @dev withdraw amount of token to an approved destination
@@ -190,7 +185,8 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         returns(uint256)
     {
         if (!tradeEnabled) return 0;
-        if (tx.gasprice > maxGasPrice) return 0;
+        if (tx.gasprice > maxGasPriceWei) return 0;
+        if (srcQty == 0) return 0;
 
         IERC20 token;
         bool isBuy;
@@ -216,6 +212,10 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         }
 
         return rate;
+    }
+
+    function isAddressApprovedForWithdrawal(IERC20 token, address addr) external view returns(bool) {
+        return approvedWithdrawAddresses[keccak256(abi.encodePacked(address(token), addr))];
     }
 
     function getBalance(IERC20 token) public view returns(uint256) {
