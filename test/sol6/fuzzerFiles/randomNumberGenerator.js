@@ -1,7 +1,7 @@
 const BN = web3.utils.BN;
 module.exports.genRandomSeed = genRandomSeed;
 function genRandomSeed(base) {
-    return Math.floor(Math.random() * Math.random() * base) % base;
+    return Math.floor(Math.random() * base) % base;
 }
 
 module.exports.genRandomBN = function(minBN, maxBN) {
