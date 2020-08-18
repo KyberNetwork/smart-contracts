@@ -1059,7 +1059,7 @@ contract('KyberNetwork', function(accounts) {
                     await storage.listPairForReserve(delistedReserve.reserveId, destToken.address, true, false, true, {from: operator});
                 });
 
-                // 2 types of trade that specific which reserve will be choosen
+                // 2 types of trade that specify which reserve will be chosen
                 for(tradeType of [MASK_IN_HINTTYPE, SPLIT_HINTTYPE]) {
                     let hintType = tradeType;
                     it(`should return 0 rate for t2e trade (${tradeStr[hintType]}) if reserveID is not listed`, async() => {

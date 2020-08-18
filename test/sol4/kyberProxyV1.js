@@ -1573,8 +1573,8 @@ contract('KyberProxyV1', function(accounts) {
         it("verify sell with malicious network2 reverts when using any min rate (0).", async function () {
             let amountTwei = new BN(1000);
 
-            //set steal amount to 100 wei
-            let myFee = 100;
+            //set steal amount to 1 wei
+            let myFee = 1;
             await maliciousNetwork2.setMyFeeWei(myFee);
             let rxFeeWei = await maliciousNetwork2.myFeeWei();
             Helper.assertEqual(rxFeeWei, myFee);
