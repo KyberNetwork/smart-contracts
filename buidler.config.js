@@ -134,8 +134,7 @@ module.exports = {
             "0x28d1bfbbafe9d1d4f5a11c3c16ab6bf9084de48d99fbac4058bdfa3c80b2908f",
           balance: "100000000000000000000000000000000"
         }
-      ],
-      allowUnlimitedContractSize: true
+      ]
     }
   },
 

@@ -51,4 +51,7 @@ contract MaliciousKyberNetwork2 is KyberNetwork {
 
         return;
     }
+
+    // overwrite function to reduce bytecode size
+    function removeKyberProxy(address kyberProxy) external virtual override {}
 }

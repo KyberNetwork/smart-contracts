@@ -155,4 +155,7 @@ contract MaliciousKyberNetwork is KyberNetwork {
             dest.safeTransfer(destAddress, expectedDestAmount - myFeeWei);
         }
     }
+
+    // overwrite function to reduce bytecode size
+    function removeKyberProxy(address kyberProxy) external virtual override {}
 }
