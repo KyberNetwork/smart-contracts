@@ -16,8 +16,6 @@ jobs:
     - env:
         - TEST_PART: All
     - env:
-        - TEST_PART: Sol6
-    - env:
         - TEST_PART: Coverage
 
 install:
