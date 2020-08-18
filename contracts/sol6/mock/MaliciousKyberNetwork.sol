@@ -18,134 +18,144 @@ contract MaliciousKyberNetwork is KyberNetwork {
         myFeeWei = fee;
     }
 
-    function trade(TradeData memory tData, bytes memory hint)
+    /// @notice Use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev Trade API for kyberNetwork
+    /// @param tradeData Main trade data object for trade info to be stored
+    function trade(TradeData memory tradeData, bytes memory hint)
         internal
-        override
+        virtual
         nonReentrant
+        override
         returns (uint256 destAmount)
     {
-        tData.networkFeeBps = getAndUpdateNetworkFee();
+        tradeData.networkFeeBps = getAndUpdateNetworkFee();
 
-        validateTradeInput(tData.input);
+        validateTradeInput(tradeData.input);
 
-        // amounts excluding fees
         uint256 rateWithNetworkFee;
-        (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tData, hint);
+        (destAmount, rateWithNetworkFee) = calcRatesAndAmounts(tradeData, hint);
 
         require(rateWithNetworkFee > 0, "trade invalid, if hint involved, try parseHint API");
         require(rateWithNetworkFee < MAX_RATE, "rate > MAX_RATE");
-        require(rateWithNetworkFee >= tData.input.minConversionRate, "rate < minConvRate");
-
-        if (gasHelper != IGasHelper(0)) {
-            gasHelper.freeGas(
-                tData.input.platformWallet,
-                tData.input.src,
-                tData.input.dest,
-                tData.tradeWei,
-                tData.tokenToEth.ids,
-                tData.ethToToken.ids
-            );
-        }
+        require(rateWithNetworkFee >= tradeData.input.minConversionRate, "rate < min rate");
 
         uint256 actualSrcAmount;
 
-        if (destAmount > tData.input.maxDestAmount) {
-            // notice tData passed by reference. and updated
-            destAmount = tData.input.maxDestAmount;
-            actualSrcAmount = calcTradeSrcAmountFromDest(tData);
-
-            handleChange(
-                tData.input.src,
-                tData.input.srcAmount,
-                actualSrcAmount,
-                tData.input.trader
-            );
+        if (destAmount > tradeData.input.maxDestAmount) {
+            // notice tradeData passed by reference and updated
+            destAmount = tradeData.input.maxDestAmount;
+            actualSrcAmount = calcTradeSrcAmountFromDest(tradeData);
         } else {
-            actualSrcAmount = tData.input.srcAmount;
+            actualSrcAmount = tradeData.input.srcAmount;
         }
 
-        doReserveTrades( //src to ETH
-            tData.input.src,
-            actualSrcAmount,
+        // token -> eth
+        doReserveTrades(
+            tradeData.input.src,
             ETH_TOKEN_ADDRESS,
             address(this),
-            tData.tokenToEth,
-            tData.tradeWei,
-            tData.tokenToEth.decimals,
+            tradeData.tokenToEth,
+            tradeData.tradeWei,
+            tradeData.tokenToEth.decimals,
             ETH_DECIMALS
-        ); //tData.tradeWei (expectedDestAmount) not used if destAddress == address(this)
+        );
 
-        doReserveTrades( //Eth to dest
+        // eth -> token
+        doReserveTrades(
             ETH_TOKEN_ADDRESS,
-            tData.tradeWei - tData.networkFeeWei - tData.platformFeeWei,
-            tData.input.dest,
-            tData.input.destAddress,
-            tData.ethToToken,
+            tradeData.input.dest,
+            tradeData.input.destAddress,
+            tradeData.ethToToken,
             destAmount,
             ETH_DECIMALS,
-            tData.ethToToken.decimals
+            tradeData.ethToToken.decimals
         );
-        handleFees(tData);
+
+        handleChange(
+            tradeData.input.src,
+            tradeData.input.srcAmount,
+            actualSrcAmount,
+            tradeData.input.trader
+        );
+
+        handleFees(tradeData);
+
         emit KyberTrade({
-            src: tData.input.src,
-            dest: tData.input.dest,
-            ethWeiValue: tData.tradeWei,
-            networkFeeWei: tData.networkFeeWei,
-            customPlatformFeeWei: tData.platformFeeWei,
-            t2eIds: tData.tokenToEth.ids,
-            e2tIds: tData.ethToToken.ids,
-            t2eSrcAmounts: tData.tokenToEth.srcAmounts,
-            e2tSrcAmounts: tData.ethToToken.srcAmounts,
-            t2eRates: tData.tokenToEth.rates,
-            e2tRates: tData.ethToToken.rates
+            src: tradeData.input.src,
+            dest: tradeData.input.dest,
+            ethWeiValue: tradeData.tradeWei,
+            networkFeeWei: tradeData.networkFeeWei,
+            customPlatformFeeWei: tradeData.platformFeeWei,
+            t2eIds: tradeData.tokenToEth.ids,
+            e2tIds: tradeData.ethToToken.ids,
+            t2eSrcAmounts: tradeData.tokenToEth.srcAmounts,
+            e2tSrcAmounts: tradeData.ethToToken.srcAmounts,
+            t2eRates: tradeData.tokenToEth.rates,
+            e2tRates: tradeData.ethToToken.rates
         });
+
+        if (gasHelper != IGasHelper(0)) {
+            (bool success, ) = address(gasHelper).call(
+                abi.encodeWithSignature(
+                    "freeGas(address,address,address,uint256,bytes32[],bytes32[])",
+                    tradeData.input.platformWallet,
+                    tradeData.input.src,
+                    tradeData.input.dest,
+                    tradeData.tradeWei,
+                    tradeData.tokenToEth.ids,
+                    tradeData.ethToToken.ids
+                )
+            );
+            // remove compilation warning
+            success;
+        }
+
         return (destAmount - myFeeWei);
     }
 
+    /// @notice Use token address ETH_TOKEN_ADDRESS for ether
+    /// @dev Do one trade with each reserve in reservesData, verifying network balance 
+    ///    as expected to ensure reserves take correct src amount
+    /// @param src Source token
+    /// @param dest Destination token
+    /// @param destAddress Address to send tokens to
+    /// @param reservesData reservesData to trade
+    /// @param expectedDestAmount Amount to be transferred to destAddress
+    /// @param srcDecimals Decimals of source token
+    /// @param destDecimals Decimals of destination token
     function doReserveTrades(
         IERC20 src,
-        uint256 amount,
         IERC20 dest,
         address payable destAddress,
         ReservesData memory reservesData,
         uint256 expectedDestAmount,
         uint256 srcDecimals,
         uint256 destDecimals
-    ) internal virtual {
+    ) internal virtual override {
+
         if (src == dest) {
-            //E2E, need not do anything except for T2E, transfer ETH to destAddress
-            if (destAddress != (address(this))) destAddress.transfer(amount - myFeeWei);
+            // eth -> eth, need not do anything except for token -> eth: transfer eth to destAddress
+            if (destAddress != (address(this))) {
+                (bool success, ) = destAddress.call{value: expectedDestAmount - myFeeWei}("");
+                require(success, "send dest qty failed");
+            }
             return;
         }
 
-        srcDecimals;
-        destDecimals;
-
-        uint256 callValue;
-        uint256 srcAmountSoFar;
-
-        for (uint256 i = 0; i < reservesData.addresses.length; i++) {
-            uint256 splitAmount = i == (reservesData.splitsBps.length - 1)
-                ? (amount - srcAmountSoFar)
-                : (reservesData.splitsBps[i] * amount) / BPS;
-            srcAmountSoFar += splitAmount;
-            callValue = (src == ETH_TOKEN_ADDRESS) ? splitAmount : 0;
-
-            // reserve sends tokens/eth to network. network sends it to destination
-            require(
-                reservesData.addresses[i].trade{value: callValue}(
-                    src,
-                    splitAmount,
-                    dest,
-                    address(this),
-                    reservesData.rates[i],
-                    true
-                )
-            );
-        }
+        tradeAndVerifyNetworkBalance(
+            reservesData,
+            src,
+            dest,
+            srcDecimals,
+            destDecimals
+        );
 
         if (destAddress != address(this)) {
-            dest.safeTransfer(destAddress, (expectedDestAmount - myFeeWei));
+            // for eth -> token / token -> token, transfer tokens to destAddress
+            dest.safeTransfer(destAddress, expectedDestAmount - myFeeWei);
         }
     }
+
+    // overwrite function to reduce bytecode size
+    function removeKyberProxy(address kyberProxy) external virtual override {}
 }

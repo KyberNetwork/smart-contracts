@@ -14,7 +14,7 @@ env:
 jobs:
   include:
     - env:
-        - TEST_PART: Sol6
+        - TEST_PART: All
     - env:
         - TEST_PART: Coverage
 

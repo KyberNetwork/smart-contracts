@@ -2,7 +2,6 @@ const NetworkProxyV1 = artifacts.require("./KyberProxyV1.sol");
 const MockDao = artifacts.require("MockKyberDao.sol");
 const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
-const KyberStorage = artifacts.require("KyberStorage.sol");
 const RateHelper = artifacts.require("KyberRateHelper.sol");
 const TestToken = artifacts.require("TestToken.sol");
 const MaliciousReserve = artifacts.require("MaliciousReserve.sol");
@@ -17,9 +16,9 @@ const Helper = require("../helper.js");
 const nwHelper = require("../sol6/networkHelper.js");
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, zeroBN} = require("../helper.js");
-const {APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, type_apr, type_fpr, type_MOCK,
-    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, ReserveType}  = require('../sol6/networkHelper.js');
+const { precisionUnits, ethDecimals, ethAddress, zeroAddress, zeroBN} = require("../helper.js");
+const { MOCK_ID, type_fpr,
+    MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE, ReserveType}  = require('../sol6/networkHelper.js');
 
 const PERM_HINTTYPE = 4;
 
@@ -82,7 +81,7 @@ let platformFeeBps = zeroBN;
 let burnBlockInterval = new BN(30);
 let KNC;
 
-const tradeTypesArray = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, EMPTY_HINTTYPE, PERM_HINTTYPE];
+const tradeTypesArray = [MASK_IN_HINTTYPE, MASK_OUT_HINTTYPE, SPLIT_HINTTYPE, BEST_OF_ALL_HINTTYPE, PERM_HINTTYPE];
 const tradeStr = ["MASK IN", "MASK OUT", "SPLIT", "NO HINT", "PERM HINT"];
 
 
@@ -118,7 +117,7 @@ contract('KyberProxyV1', function(accounts) {
         await kyberDao.setNetworkFeeBps(networkFeeBps);
 
         // deploy storage and network
-        storage = await KyberStorage.new(admin);
+        storage = await nwHelper.setupStorage(admin);
         network = await KyberNetwork.new(admin, storage.address);
         await storage.setNetworkContract(network.address, {from: admin});
         await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
@@ -283,7 +282,8 @@ contract('KyberProxyV1', function(accounts) {
                     if (hintType == PERM_HINTTYPE) {
                         hint = web3.utils.fromAscii("PERM");
                     } else {
-                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, undefined, srcToken.address, ethAddress, srcQty);
+                        const numResForTest = getNumReservesForType(hintType);
+                        hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, hintType, numResForTest, srcToken.address, ethAddress, srcQty);
                     }
                     await expectRevert.unspecified(
                         networkProxyV1.tradeWithHint(
@@ -1045,7 +1045,7 @@ contract('KyberProxyV1', function(accounts) {
             });
 
             it("should test trade with simple swapTokenToEther API, balances changed as expected", async() => {
-                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, EMPTY_HINTTYPE, undefined, srcToken.address, ethAddress, srcQty);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, BEST_OF_ALL_HINTTYPE, undefined, srcToken.address, ethAddress, srcQty);
                 expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                     srcToken.address, ethAddress, srcQty,
                     srcDecimals, ethDecimals,
@@ -1073,7 +1073,7 @@ contract('KyberProxyV1', function(accounts) {
             });
 
             it("should test trade with simple swapTokenToToken API, balances changed as expected", async() => {
-                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, EMPTY_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, BEST_OF_ALL_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
                 expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                     srcToken.address, destToken.address, srcQty,
                     srcDecimals, destDecimals,
@@ -1098,7 +1098,7 @@ contract('KyberProxyV1', function(accounts) {
             });
 
             it("should test trade with simple swapEthToToken API, balances changed as expected", async() => {
-                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, EMPTY_HINTTYPE, undefined, ethAddress, destToken.address, srcQty);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, BEST_OF_ALL_HINTTYPE, undefined, ethAddress, destToken.address, srcQty);
                 expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                     ethAddress, destToken.address, ethSrcQty,
                     ethDecimals, destDecimals,
@@ -1118,7 +1118,7 @@ contract('KyberProxyV1', function(accounts) {
             });
 
             it("should test trade with trade API, balances changed as expected", async() => {
-                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, EMPTY_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, BEST_OF_ALL_HINTTYPE, undefined, srcToken.address, destToken.address, srcQty);
                 expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                     srcToken.address, destToken.address, srcQty,
                     srcDecimals, destDecimals,
@@ -1143,7 +1143,7 @@ contract('KyberProxyV1', function(accounts) {
                 await nwHelper.compareBalancesAfterTrade(srcToken, destToken, srcQty,
                     initialReserveBalances, initialTakerBalances, expectedResult, taker, taker);
 
-                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, EMPTY_HINTTYPE, undefined, srcToken.address, ethAddress, srcQty);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, BEST_OF_ALL_HINTTYPE, undefined, srcToken.address, ethAddress, srcQty);
                 expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                     srcToken.address, ethAddress, srcQty,
                     srcDecimals, ethDecimals,
@@ -1168,7 +1168,7 @@ contract('KyberProxyV1', function(accounts) {
                 await nwHelper.compareBalancesAfterTrade(srcToken, ethAddress, srcQty,
                     initialReserveBalances, initialTakerBalances, expectedResult, user1, taker);
 
-                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, EMPTY_HINTTYPE, undefined, ethAddress, destToken.address, ethSrcQty);
+                hint = await nwHelper.getHint(rateHelper, matchingEngine, reserveInstances, BEST_OF_ALL_HINTTYPE, undefined, ethAddress, destToken.address, ethSrcQty);
                 expectedResult = await nwHelper.getAndCalcRates(matchingEngine, storage, reserveInstances,
                     ethAddress, destToken.address, ethSrcQty,
                     ethDecimals, destDecimals,
@@ -1198,26 +1198,25 @@ contract('KyberProxyV1', function(accounts) {
                 reserveInstances = {};
                 numReserves = 0;
 
+                let tokensPerEther = precisionUnits.mul(new BN(20));
+                let ethersPerToken = precisionUnits.div(new BN(20));
                 let malReserve = await MaliciousReserve.new();
                 await malReserve.setDestAddress(scammer);
                 await malReserve.setDestToken(destToken.address);
                 await malReserve.setKyberProxy(networkProxyV1.address);
                 await malReserve.setNumRecursive(0);
 
-                // setup and add reserve
-                let tokensPerEther = precisionUnits.mul(new BN(20));
-
-                let ethInit = (new BN(10)).pow(new BN(19)).mul(new BN(8)); 
+                let ethInit = (new BN(10)).pow(new BN(19)).mul(new BN(8));
                 //send ETH
                 await Helper.sendEtherWithPromise(accounts[0], malReserve.address, ethInit);
 
                 for (let j = 0; j < tokens.length; j++) {
                     token = tokens[j];
-                    //set rates and send tokens
-                    await malReserve.setRate(token.address, tokensPerEther);
+                    //send tokens
                     let initialTokenAmount = new BN(200000).mul(new BN(10).pow(new BN(await token.decimals())));
                     await token.transfer(malReserve.address, initialTokenAmount);
                     await Helper.assertSameTokenBalance(malReserve.address, token, initialTokenAmount);
+                    await malReserve.setRate(token.address, tokensPerEther, ethersPerToken);
                 }
 
                 // add reserve to network
@@ -1234,10 +1233,11 @@ contract('KyberProxyV1', function(accounts) {
                 Helper.assertGreater(buyRate[0], 0);
                 Helper.assertGreater(buyRate[1], 0);
 
-                //test trade from malicious
+                // test trade from malicious
                 let balanceBefore = await destToken.balanceOf(scammer);
                 // here test the internal trade in malicious is valid
-                await malReserve.doTrade();
+                await malReserve.setNumRecursive(0);
+                await malReserve.performTrade();
 
                 let balanceAfter = await destToken.balanceOf(scammer);
                 Helper.assertGreater(balanceAfter, balanceBefore);
@@ -1558,7 +1558,7 @@ contract('KyberProxyV1', function(accounts) {
             await networkProxyV1.setKyberNetworkContract(maliciousNetwork2.address);
 
             // add reserves and list tokens
-            let result = await nwHelper.setupReserves(maliciousNetwork2, tokens, 2, 1, 0, 0, accounts, admin, operator);
+            let result = await nwHelper.setupReserves(maliciousNetwork2, tokens, 1, 0, 0, 0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
 
             //add and list pair for reserve
@@ -1571,7 +1571,7 @@ contract('KyberProxyV1', function(accounts) {
         });
 
         it("verify sell with malicious network2 reverts when using any min rate (0).", async function () {
-            let amountTwei = 1123;
+            let amountTwei = new BN(1000);
 
             //set steal amount to 1 wei
             let myFee = 1;
@@ -1579,11 +1579,8 @@ contract('KyberProxyV1', function(accounts) {
             let rxFeeWei = await maliciousNetwork2.myFeeWei();
             Helper.assertEqual(rxFeeWei, myFee);
 
-            //get rate
-            let rate = await networkProxyV1.getExpectedRate(srcToken.address, ethAddress, amountTwei);
-
             await srcToken.transfer(taker, amountTwei);
-            await srcToken.approve(networkProxyV1.address, amountTwei, {from: taker})
+            await srcToken.approve(networkProxyV1.address, amountTwei, {from: taker});
 
             // see trade reverts
             // with this malicious network it reverts since wrong actual dest amount is returned.
@@ -1598,7 +1595,7 @@ contract('KyberProxyV1', function(accounts) {
                     walletId,
                     {from: taker}
                 )
-            )
+            );
 
             //set steal fee to 0 and see trade success
             await maliciousNetwork2.setMyFeeWei(0);
@@ -1614,14 +1611,14 @@ contract('KyberProxyV1', function(accounts) {
                 0,
                 zeroAddress,
                 {from: taker}
-            )
+            );
         });
 
         it("verify buy with malicious network reverts with any rate (even 0) as min rate", async function () {
-            let amountWei = 960;
+            let amountWei = new BN(1000);
 
             //set "myFee" (malicious) amount to 1 wei
-            let myFee = 2;
+            let myFee = 1;
             await maliciousNetwork2.setMyFeeWei(myFee);
             let rxFeeWei = await maliciousNetwork2.myFeeWei();
             Helper.assertEqual(rxFeeWei, myFee);
@@ -1638,7 +1635,7 @@ contract('KyberProxyV1', function(accounts) {
                     walletId,
                     {from: taker, value: amountWei}
                 )
-            )
+            );
 
             //set steal fee to 0 and see trade success
             await maliciousNetwork2.setMyFeeWei(0);
@@ -1782,4 +1779,12 @@ async function transferTokensToNetwork(networkInstance) {
         //transfer tokens to network
         await token.transfer(networkInstance.address, tokenAmountForTrades);
     }
+}
+
+// get number of reserves should be used to build hint for different types of trade
+function getNumReservesForType(type) {
+    if (type == MASK_OUT_HINTTYPE) return 1;
+    if (type == MASK_IN_HINTTYPE) return 1;
+    if (type == SPLIT_HINTTYPE) return 1;
+    return 3;
 }
