@@ -88,6 +88,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     {
         require(tradeEnabled, "trade not enable");
         require(msg.sender == kyberNetwork, "wrong sender");
+        require(tx.gasprice <= maxGasPriceWei, "gas price too high");
 
         doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate);
 
