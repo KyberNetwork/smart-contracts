@@ -86,16 +86,14 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         return true;
     }
 
-    function enableTrade() external onlyAdmin returns (bool) {
+    function enableTrade() external onlyAdmin {
         tradeEnabled = true;
         emit TradeEnabled(true);
-        return true;
     }
 
-    function disableTrade() external onlyAlerter returns (bool) {
+    function disableTrade() external onlyAlerter {
         tradeEnabled = false;
         emit TradeEnabled(false);
-        return true;
     }
 
     function setMaxGasPrice(uint256 newMaxGasPrice) external onlyOperator {
