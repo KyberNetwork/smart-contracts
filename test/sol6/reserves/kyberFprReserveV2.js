@@ -33,7 +33,6 @@ let reserveInst;
 let sanityRate = 0;
 
 //block data
-let priceUpdateBlock;
 let currentBlock;
 let validRateDurationInBlocks = 1000;
 let maxGasPrice = new BN(150).mul(new BN(10).pow(new BN(9))); // 150 * 10^9
@@ -99,8 +98,8 @@ contract('KyberFprReserveV2', function(accounts) {
         user3 = accounts[8];
         user4 = accounts[9];
 
-        currentBlock = priceUpdateBlock = await Helper.getCurrentBlock();
-        weth = await WethToken.new();
+        currentBlock = await Helper.getCurrentBlock();
+        weth = await WethToken.new("WrapETH", "WETH", 18);
 
         // create tokens
         for (let i = 0; i < numTokens; ++i) {
@@ -112,6 +111,7 @@ contract('KyberFprReserveV2', function(accounts) {
     });
 
     const setupConversionRatesContract = async function(needToken) {
+
         convRatesInst = await ConversionRates.new(admin);
 
         //set pricing general parameters
@@ -346,10 +346,13 @@ contract('KyberFprReserveV2', function(accounts) {
             if (wethBalance.gt(zeroBN)) {
                 weth.transfer(accounts[0], wethBalance, {from: tokenWallet});
             }
+            await weth.deposit({value: reserveEtherInit});
             await weth.transfer(tokenWallet, reserveEtherInit);
 
+            await reserveInst.approveWithdrawAddress(weth.address, withdrawAddress, true, {from: admin});
+
             let balance = await weth.balanceOf(tokenWallet);
-            expectedReserveBalanceWei = 0;
+            expectedReserveBalanceWei = new BN(0);
             expectedReserveBalanceWeth = balance;
 
             Helper.assertEqual(balance, reserveEtherInit, "wrong weth balance");
@@ -389,6 +392,16 @@ contract('KyberFprReserveV2', function(accounts) {
             //init conversion rate
             await setupConversionRatesContract(true);
             await generalSetupReserveContract(false, false);
+        });
+
+        beforeEach("reset balance and allowance of network", async() => {
+            for(let i = 0; i < numTokens; i++) {
+                await tokens[i].approve(reserveInst.address, 0, {from: network});
+                let tokenBal = await tokens[i].balanceOf(network);
+                if (tokenBal.gt(zeroBN)) {
+                    await tokens[i].transfer(accounts[0], tokenBal, {from: network});
+                }
+            }
         });
 
         after("collect funds", async() => {
@@ -605,6 +618,16 @@ contract('KyberFprReserveV2', function(accounts) {
             }
         });
 
+        beforeEach("reset balance and allowance of network", async() => {
+            for(let i = 0; i < numTokens; i++) {
+                await tokens[i].approve(reserveInst.address, 0, {from: network});
+                let tokenBal = await tokens[i].balanceOf(network);
+                if (tokenBal.gt(zeroBN)) {
+                    await tokens[i].transfer(accounts[0], tokenBal, {from: network});
+                }
+            }
+        });
+
         after("collect funds", async() => {
             await collectFundsAfterTests(walletForToken);
         });
@@ -733,13 +756,11 @@ contract('KyberFprReserveV2', function(accounts) {
             let tokenInd = 2;
             let amountWei = new BN(200);
 
-            currentBlock = await Helper.getCurrentBlock();
             let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
             Helper.assertGreater(conversionRate, 0, "conversion rate should be > 0");
 
             await tokens[tokenInd].approve(reserveInst.address, 0, {from: walletForToken});
 
-            currentBlock = await Helper.getCurrentBlock();
             conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
 
             Helper.assertEqual(0, conversionRate, "conversion rate should be 0");
@@ -750,7 +771,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd],
                     user1, conversionRate, true,
                     {
-                        from: admin,
+                        from: network,
                         value: amountWei
                     }
                 )
@@ -758,7 +779,6 @@ contract('KyberFprReserveV2', function(accounts) {
 
             await tokens[tokenInd].approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
 
-            currentBlock = await Helper.getCurrentBlock();
             conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
             Helper.assertGreater(conversionRate, 0, "conversion rate should be > 0");
             let destQty = Helper.calcDstQty(amountWei, ethDecimals, tokenDecimals[tokenInd], conversionRate);
@@ -771,7 +791,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd],
                     user1, conversionRate, true,
                     {
-                        from: admin,
+                        from: network,
                         value: amountWei
                     }
                 )
@@ -784,7 +804,6 @@ contract('KyberFprReserveV2', function(accounts) {
             let tokenInd = 2;
             let amountWei = new BN(200);
 
-            currentBlock = await Helper.getCurrentBlock();
             let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
             Helper.assertGreater(conversionRate, 0, "conversion rate should be > 0");
             let destQty = Helper.calcDstQty(amountWei, ethDecimals, tokenDecimals[tokenInd], conversionRate);
@@ -803,7 +822,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd],
                     user1, conversionRate, true,
                     {
-                        from: admin,
+                        from: network,
                         value: amountWei
                     }
                 )
@@ -815,7 +834,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd],
                     user1, conversionRate, true,
                     {
-                        from: admin,
+                        from: network,
                         value: amountWei
                     }
                 )
@@ -883,6 +902,480 @@ contract('KyberFprReserveV2', function(accounts) {
                 await tokens[tokenInd].transfer(walletForToken, tokenBal);
                 reserveTokenBalance[tokenInd] = tokenBal;
             }
+        });
+    });
+
+    describe("#Test using weth", async() => {
+        before("setup contracts", async() => {
+            await setupConversionRatesContract(true);
+            // using wallet for token, wallet for weth
+            await generalSetupReserveContract(true, true);
+
+            // approve
+            await reserveInst.setTokenWallet(weth.address, walletForToken, {from: admin});
+            await weth.approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
+            for(let i = 0; i < numTokens; i++) {
+                await reserveInst.setTokenWallet(tokenAdd[i], walletForToken, {from: admin});
+                await tokens[i].approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
+            }
+        });
+
+        beforeEach("reset balance and allowance of network", async() => {
+            for(let i = 0; i < numTokens; i++) {
+                await tokens[i].approve(reserveInst.address, 0, {from: network});
+                let tokenBal = await tokens[i].balanceOf(network);
+                if (tokenBal.gt(zeroBN)) {
+                    await tokens[i].transfer(accounts[0], tokenBal, {from: network});
+                }
+            }
+        });
+
+        after("collect funds", async() => {
+            await collectFundsAfterTests(walletForToken);
+        });
+
+        it("Test a small buy (no steps) and check: balances changed, rate is expected rate.", async function () {
+            let tokenInd = 1;
+            let amountWei = new BN(20);
+
+            await tradeAndVerifyData(
+                reserveInst,
+                true, // is buy
+                tokenInd,
+                amountWei,
+                user1, // recipient
+                walletForToken, // wallet to hold src token
+                walletForToken, // wallet to hold dest token
+                true, // using weth
+                true // validate
+            );
+        });
+
+        it("Test a few buys with steps and check: correct balances change, rate is expected rate", async function () {
+            let tokenInd = 1;
+
+            for (let i = 0; i < 15; i++) {
+                let amountWei = new BN(Helper.getRandomInt(100, 1500));
+                await tradeAndVerifyData(
+                    reserveInst,
+                    true, // is buy
+                    tokenInd,
+                    amountWei,
+                    user1, // recipient
+                    walletForToken, // address to hold src token
+                    walletForToken, // address to hold dest token
+                    true, // using weth
+                    true // validate
+                );
+            };
+        });
+
+        it("Test a small sell and check: balances changed, rate is expected rate.", async function () {
+            let tokenInd = 1;
+            let token = tokens[tokenInd];
+            let amountTwei = new BN(300);
+
+            // transfer and approve token to network
+            await token.transfer(network, amountTwei);
+            await token.approve(reserveInst.address, amountTwei, {from: network});
+
+            await tradeAndVerifyData(
+                reserveInst,
+                false, // sell trade
+                tokenInd,
+                amountTwei,
+                user1, // recipient
+                walletForToken, // wallet to hold src token
+                walletForToken, // wallet to hold dest token
+                true, // using weth
+                true // validate
+            );
+        });
+
+        it("Test a few sells with steps and check: correct balances change, rate is expected rate.", async function () {
+            let tokenInd = 2;
+            let token = tokens[tokenInd];
+
+            for (let i = 0; i < 15; i++) {
+                let amountTwei = new BN(Helper.getRandomInt(500, 5000));
+                // transfer and approve token to network
+                await token.transfer(network, amountTwei);
+                await token.approve(reserveInst.address, amountTwei, {from: network});
+
+                await tradeAndVerifyData(
+                    reserveInst,
+                    false, // sell trade
+                    tokenInd,
+                    amountTwei,
+                    user1, // recipient
+                    walletForToken, // address to hold src token
+                    walletForToken, // address to hold dest token
+                    true, // using weth
+                    true // validate
+                );
+            };
+        });
+
+        it("Test verify trade success when validation disabled.", async function () {
+            let tokenInd = 3;
+            let amountWei = new BN(20);
+
+            // eth -> token
+            await tradeAndVerifyData(
+                reserveInst,
+                true, // is buy
+                tokenInd,
+                amountWei,
+                user1, // recipient
+                walletForToken, // wallet to hold src token
+                walletForToken, // wallet to hold dest token
+                true, // using weth
+                false // disable validate
+            );
+
+            // token -> eth
+            let token = tokens[tokenInd];
+            let amountTwei = new BN(25);
+
+            // transfer and approve token to network
+            await token.transfer(network, amountTwei);
+            await token.approve(reserveInst.address, amountTwei, {from: network});
+
+            await tradeAndVerifyData(
+                reserveInst,
+                false, // is buy = false
+                tokenInd,
+                amountTwei,
+                user1, // recipient
+                walletForToken, // wallet to hold src token
+                walletForToken, // wallet to hold dest token
+                true, // using weth
+                false // validate
+            );
+        });
+
+        it("Test buy is successful when no weth balance or allowance", async() => {
+            let tokenInd = 3;
+            let amountWei = new BN(20);
+
+            // set allowance to 0
+            await weth.approve(reserveInst.address, 0, {from: walletForToken});
+
+            await tradeAndVerifyData(
+                reserveInst,
+                true, // is buy
+                tokenInd,
+                amountWei,
+                user1, // recipient
+                walletForToken, // wallet to hold src token
+                walletForToken, // wallet to hold dest token
+                true, // using weth
+                false // disable validate
+            );
+
+            // set back allowance to max
+            await weth.approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
+            // withdraw all weth
+            let wethBalance = expectedReserveBalanceWeth;
+            if (wethBalance.gt(zeroBN)) {
+                await weth.transfer(accounts[0], wethBalance, {from: walletForToken});
+                expectedReserveBalanceWeth = new BN(0);
+            }
+
+            await tradeAndVerifyData(
+                reserveInst,
+                true, // is buy
+                tokenInd,
+                amountWei,
+                user1, // recipient
+                walletForToken, // wallet to hold src token
+                walletForToken, // wallet to hold dest token
+                true, // using weth
+                false // disable validate
+            );
+
+            // transfer back weth
+            if (wethBalance.gt(zeroBN)) {
+                await weth.transfer(walletForToken, wethBalance, {from: accounts[0]});
+                expectedReserveBalanceWeth = expectedReserveBalanceWeth.add(wethBalance);
+            }
+        });
+
+        it("Test sell is reverted not enough allowance for weth", async() => {
+            let tokenInd = 2;
+            let token = tokens[tokenInd];
+            let amountTwei = new BN(30);
+
+            // transfer and approve token to network
+            await token.transfer(network, amountTwei);
+            await token.approve(reserveInst.address, amountTwei, {from: network});
+
+            let conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
+            Helper.assertGreater(conversionRate, 0);
+            let destQty = Helper.calcDstQty(amountTwei, tokenDecimals[tokenInd], ethDecimals, conversionRate);
+
+            await weth.approve(reserveInst.address, 0, {from: walletForToken});
+            await weth.approve(reserveInst.address, destQty.sub(new BN(1)), {from: walletForToken});
+
+            await expectRevert.unspecified(
+                reserveInst.trade(tokenAdd[tokenInd], amountTwei, ethAddress,
+                    user1, conversionRate, true,
+                    {
+                        from: network
+                    }
+                )
+            )
+
+            await weth.approve(reserveInst.address, 0, {from: walletForToken});
+            await weth.approve(reserveInst.address, destQty, {from: walletForToken});
+
+            await tradeAndVerifyData(
+                reserveInst,
+                false, // is buy = false
+                tokenInd,
+                amountTwei,
+                user1, // recipient
+                walletForToken, // wallet to hold src token
+                walletForToken, // wallet to hold dest token
+                true, // using weth
+                false // validate
+            );
+
+            await weth.approve(reserveInst.address, 0, {from: walletForToken});
+            await weth.approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
+        });
+
+        it("Test sell is reverted not enough weth balance", async() => {
+            let tokenInd = 2;
+            let token = tokens[tokenInd];
+            let amountTwei = new BN(30);
+
+            // transfer and approve token to network
+            await token.transfer(network, amountTwei);
+            await token.approve(reserveInst.address, amountTwei, {from: network});
+
+            let conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
+            Helper.assertGreater(conversionRate, 0);
+            let destQty = Helper.calcDstQty(amountTwei, tokenDecimals[tokenInd], ethDecimals, conversionRate);
+
+            let wethBalance = expectedReserveBalanceWeth;
+            if (wethBalance.gt(destQty)) {
+                let remainToken = destQty.sub(new BN(1));
+                expectedReserveBalanceWeth = remainToken;
+                await weth.transfer(accounts[0], wethBalance.sub(remainToken), {from: walletForToken});
+            }
+
+            await expectRevert.unspecified(
+                reserveInst.trade(tokenAdd[tokenInd], amountTwei, ethAddress,
+                    user1, conversionRate, true,
+                    {
+                        from: network
+                    }
+                )
+            )
+
+            let newWethBalance = expectedReserveBalanceWeth;
+            if (destQty.gt(newWethBalance)) {
+                let addedAmount = destQty.sub(newWethBalance);
+                expectedReserveBalanceWeth = expectedReserveBalanceWeth.add(addedAmount);
+                await weth.transfer(walletForToken, addedAmount);
+            }
+
+            await tradeAndVerifyData(
+                reserveInst,
+                false, // is buy = false
+                tokenInd,
+                amountTwei,
+                user1, // recipient
+                walletForToken, // wallet to hold src token
+                walletForToken, // wallet to hold dest token
+                true, // using weth
+                false // validate
+            );
+
+            // transfer more weth to wallet
+            await weth.deposit({value: wethBalance});
+            await weth.transfer(walletForToken, wethBalance);
+            expectedReserveBalanceWeth = expectedReserveBalanceWeth.add(wethBalance);
+        });
+
+        it("Test sell is reverted, reserve has eth but reserve uses weth and does not enough weth", async() => {
+            let tokenInd = 2;
+            let token = tokens[tokenInd];
+            let amountTwei = new BN(30);
+
+            // transfer and approve token to network
+            await token.transfer(network, amountTwei);
+            await token.approve(reserveInst.address, amountTwei, {from: network});
+
+            let conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
+            Helper.assertGreater(conversionRate, 0);
+            let destQty = Helper.calcDstQty(amountTwei, tokenDecimals[tokenInd], ethDecimals, conversionRate);
+
+            // transfer enough eth to reserve
+            await Helper.sendEtherWithPromise(withdrawAddress, reserveInst.address, destQty);
+            expectedReserveBalanceWei = expectedReserveBalanceWei.add(destQty);
+
+            // approve less, expect to revert
+            await weth.approve(reserveInst.address, 0, {from: walletForToken});
+            await weth.approve(reserveInst.address, destQty.sub(new BN(1)), {from: walletForToken});
+
+            await expectRevert.unspecified(
+                reserveInst.trade(tokenAdd[tokenInd], amountTwei, ethAddress,
+                    user1, conversionRate, true,
+                    {
+                        from: network
+                    }
+                )
+            )
+
+            // approve max again
+            await weth.approve(reserveInst.address, 0, {from: walletForToken});
+            await weth.approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
+
+            // withdraw some weth
+            let wethBalance = expectedReserveBalanceWeth;
+            if (wethBalance.gt(destQty)) {
+                let remainToken = destQty.sub(new BN(1));
+                expectedReserveBalanceWeth = remainToken;
+                await weth.transfer(accounts[0], wethBalance.sub(remainToken), {from: walletForToken});
+            }
+
+            await expectRevert.unspecified(
+                reserveInst.trade(tokenAdd[tokenInd], amountTwei, ethAddress,
+                    user1, conversionRate, true,
+                    {
+                        from: network
+                    }
+                )
+            )
+
+            // transfer back weth
+            if (wethBalance.gt(expectedReserveBalanceWeth)) {
+                let amountToTransfer = wethBalance.sub(expectedReserveBalanceWeth);
+                await weth.transfer(walletForToken, amountToTransfer, {from: accounts[0]});
+                expectedReserveBalanceWeth = expectedReserveBalanceWeth.add(amountToTransfer);
+            }
+
+            // withdraw all eth
+            await reserveInst.approveWithdrawAddress(ethAddress, withdrawAddress, {from: admin});
+            await reserveInst.withdraw(ethAddress, expectedReserveBalanceWei, withdrawAddress, {from: operator});
+            expectedReserveBalanceWei = new BN(0);
+        });
+
+        it("Test set weth token wallet to reserve address, should trade with eth", async() => {
+            // either zero address or reserve's address, reserve should trade with eth
+            let tokenWallets = [zeroAddress, reserveInst.address];
+            for(let i = 0; i < 2; i++) {
+                await reserveInst.setTokenWallet(weth.address, tokenWallets[i], {from: admin});
+                // Test buy, eth goes to reserve
+                let tokenInd = 2;
+                let amountWei = new BN(200);
+
+                await tradeAndVerifyData(
+                    reserveInst,
+                    true, // is buy = true
+                    tokenInd,
+                    amountWei,
+                    user1, // recipient
+                    reserveInst.address, // wallet to hold src token
+                    walletForToken, // wallet to hold dest token
+                    false, // using weth
+                    false // validate
+                );
+
+                // withdraw all eth
+                await reserveInst.withdraw(ethAddress, expectedReserveBalanceWei, withdrawAddress, {from: operator});
+                expectedReserveBalanceWei = new BN(0);
+
+                let amountTwei = new BN(100);
+                let conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
+                // rate should be 0 as we haven't transferred eth to reserve yet
+                Helper.assertEqual(conversionRate, 0);
+
+                // transfer some eth to reserve
+                await Helper.sendEtherWithPromise(withdrawAddress, reserveInst.address, precisionUnits);
+                expectedReserveBalanceWei = expectedReserveBalanceWei.add(precisionUnits);
+                conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
+                let destQty = Helper.calcDstQty(amountTwei, tokenDecimals[tokenInd], ethDecimals, conversionRate);
+                // should have rate now
+                Helper.assertGreater(conversionRate, 0);
+
+                // transfer and approve token to network
+                await tokens[tokenInd].transfer(network, amountTwei);
+                await tokens[tokenInd].approve(reserveInst.address, amountTwei, {from: network});
+
+                await tradeAndVerifyData(
+                    reserveInst,
+                    false, // is buy = false
+                    tokenInd,
+                    amountTwei,
+                    user1, // recipient
+                    walletForToken, // wallet to hold src token
+                    reserveInst.address, // wallet to hold dest token
+                    false, // using weth
+                    false // validate
+                );
+            }
+            // set back token wallet
+            await reserveInst.setTokenWallet(weth.address, walletForToken, {from: admin});
+        });
+
+        it("Test set token wallet to reserve address, should trade as normal", async() => {
+            // either zero address or reserve's address, reserve should trade with eth
+            let tokenWallets = [zeroAddress, reserveInst.address];
+            let tokenInd = 2;
+            for(let i = 0; i < 2; i++) {
+                await reserveInst.setTokenWallet(tokenAdd[tokenInd], tokenWallets[i], {from: admin});
+                reserveTokenBalance[tokenInd] = await tokens[tokenInd].balanceOf(reserveInst.address);
+                // test sell, should be successful without token in reserve
+                let amountTwei = new BN(100);
+
+                // transfer and approve token to network
+                await tokens[tokenInd].transfer(network, amountTwei);
+                await tokens[tokenInd].approve(reserveInst.address, amountTwei, {from: network});
+
+                await tradeAndVerifyData(
+                    reserveInst,
+                    false, // is buy = false
+                    tokenInd,
+                    amountTwei,
+                    user1, // recipient
+                    reserveInst.address, // wallet to hold src token
+                    walletForToken, // wallet to hold dest token
+                    true, // using weth
+                    false // validate
+                );
+
+                // withdraw all token
+                await reserveInst.withdraw(tokenAdd[tokenInd], reserveTokenBalance[tokenInd], withdrawAddress, {from: operator});
+                reserveTokenBalance[tokenInd] = new BN(0);
+                // test buy
+                let amountWei = new BN(200);
+
+                // rate should be 0, as 0 token in reserve
+                let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
+                Helper.assertEqual(conversionRate, 0);
+
+                // transfer some token to reserve
+                let amountToTransfer = new BN(tokenUnits(tokenDecimals[tokenInd])).mul(new BN(10000));
+                reserveTokenBalance[tokenInd] = amountToTransfer;
+                await tokens[tokenInd].transfer(reserveInst.address, amountToTransfer);
+
+                await tradeAndVerifyData(
+                    reserveInst,
+                    true, // is buy = true
+                    tokenInd,
+                    amountWei,
+                    user1, // recipient
+                    walletForToken, // wallet to hold src token
+                    reserveInst.address, // wallet to hold dest token
+                    true, // using weth
+                    false // validate
+                );
+            }
+            // set back token wallet
+            await reserveInst.setTokenWallet(tokenAdd[tokenInd], walletForToken, {from: admin});
         });
     });
 
@@ -1331,38 +1824,32 @@ contract('KyberFprReserveV2', function(accounts) {
             it("Test withdraw address can not receive eth", async() => {
             });
 
-            it("Test withdraw not enogh eth", async() => {
+            it("Test withdraw not enough eth", async() => {
             });
         });
 
         describe("Test withdraw weth", async() => {
-            it("Test withdraw eth success, balance changes", async() => {
+            it("Test withdraw weth success, balance changes", async() => {
             });
 
-            it("Test withdraw address can not receive eth", async() => {
-            });
-
-            it("Test withdraw not enogh eth", async() => {
+            it("Test withdraw not enough balance or allowance", async() => {
             });
         });
 
         describe("Test withdraw other tokens", async() => {
-            it("Test withdraw eth success, balance changes", async() => {
+            it("Test withdraw token success, balance changes", async() => {
             });
 
-            it("Test withdraw address can not receive eth", async() => {
-            });
-
-            it("Test withdraw not enogh eth", async() => {
+            it("Test withdraw not enough balance or allowance", async() => {
             });
         });
     });
 
     // it("trade when eth is in reserve, but has set weth wallet != reserve with 0 weth");
-    // it("trade when eth is in reserve, but has set weth wallet != reserve");
+    // [Done] it("trade when eth is in reserve, but has set weth wallet != reserve");
     // it("trade when no eth, no weth set")
-    // it("trade when no eth, has weth set, no weth bal")
-    // it("trade when no eth, has weth set, has weth bal")
+    // [Done] it("trade when no eth, has weth set, no weth bal")
+    // [Done] it("trade when no eth, has weth set, has weth bal")
 });
 
 function getExtraBpsForImbalanceBuyQuantity(index, imbalance, qty) {
