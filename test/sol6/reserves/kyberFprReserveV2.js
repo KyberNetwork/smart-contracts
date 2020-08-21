@@ -85,7 +85,7 @@ let indices = [];
 let compactBuyArr = [];
 let compactSellArr = [];
 
-contract('KyberReserve', function(accounts) {
+contract('KyberFprReserveV2', function(accounts) {
     before("Global setup", async function () {
         // set account addresses
         admin = accounts[0];

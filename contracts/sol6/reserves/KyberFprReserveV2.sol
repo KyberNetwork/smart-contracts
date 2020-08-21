@@ -3,7 +3,7 @@ pragma solidity 0.6.6;
 
 import "./IConversionRates.sol";
 import "./IWeth.sol";
-import "./ISanityRates.sol";
+import "../IKyberSanity.sol";
 import "../IKyberReserve.sol";
 import "../IERC20.sol";
 import "../utils/Utils5.sol";
@@ -11,8 +11,8 @@ import "../utils/Withdrawable3.sol";
 import "../utils/zeppelin/SafeERC20.sol";
 
 
-/// @title KyberFrpReserve version 2
-/// Allow Reserve to work with both WETH and ETH by specifying address to hold WETH
+/// @title KyberFprReserve version 2
+/// Allow Reserve to work with both WETH by specifying address to hold WETH or ETH
 /// Allow Reserve to set maxGasPriceWei to trade with
 contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     using SafeERC20 for IERC20;
@@ -26,7 +26,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     uint256 public maxGasPriceWei;
 
     IConversionRates public conversionRatesContract;
-    ISanityRates public sanityRatesContract;
+    IKyberSanity public sanityRatesContract;
     IWeth public weth;
 
     event DepositToken(IERC20 indexed token, uint256 amount);
@@ -47,7 +47,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         address indexed network,
         IConversionRates indexed rate,
         IWeth weth,
-        ISanityRates sanity
+        IKyberSanity sanity
     );
 
     constructor(
@@ -155,7 +155,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         address _kyberNetwork,
         IConversionRates _conversionRates,
         IWeth _weth,
-        ISanityRates _sanityRates
+        IKyberSanity _sanityRates
     )
         onlyAdmin external
     {
@@ -207,7 +207,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
 
         if (getBalance(dest) < destQty) return 0;
 
-        if (sanityRatesContract != ISanityRates(0)) {
+        if (sanityRatesContract != IKyberSanity(0)) {
             uint256 sanityRate = sanityRatesContract.getSanityRate(src, dest);
             if (rate > sanityRate) return 0;
         }
