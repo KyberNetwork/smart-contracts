@@ -9,9 +9,8 @@ const BN = web3.utils.BN;
 
 //global variables
 //////////////////
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, emptyHint, 
+const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, 
     zeroBN, MAX_QTY, MAX_RATE, MAX_ALLOWANCE} = require("../../helper.js");
-const maxAllowance = new BN(2).pow(new BN(255));
 const {expectEvent, expectRevert} = require('@openzeppelin/test-helpers');
 
 //balances
@@ -602,7 +601,7 @@ contract('KyberFprReserveV2', function(accounts) {
             // approve
             for(let i = 0; i < numTokens; i++) {
                 await reserveInst.setTokenWallet(tokenAdd[i], walletForToken, {from: admin});
-                await tokens[i].approve(reserveInst.address, maxAllowance, {from: walletForToken});
+                await tokens[i].approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
             }
         });
 
@@ -757,7 +756,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 )
             )
 
-            await tokens[tokenInd].approve(reserveInst.address, maxAllowance, {from: walletForToken});
+            await tokens[tokenInd].approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
 
             currentBlock = await Helper.getCurrentBlock();
             conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
@@ -778,7 +777,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 )
             )
 
-            await tokens[tokenInd].approve(reserveInst.address, maxAllowance, {from: walletForToken});
+            await tokens[tokenInd].approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
         });
 
         it("Test buy is reverted when walletForToken does not have enough balance", async() => {
@@ -956,6 +955,34 @@ contract('KyberFprReserveV2', function(accounts) {
                 ),
                 "gas price too high"
             );
+
+            // trade success with max gas price
+            await reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd],
+                user1, conversionRate, true,
+                {
+                    from: network,
+                    value: amountWei,
+                    gasPrice: maxGasPrice
+                }
+            )
+
+            // set new lower max gas price
+            let newMaxGasPrice = maxGasPrice.sub(new BN(1));
+            await reserveInst.setMaxGasPrice(newMaxGasPrice, {from: operator});
+
+            // trade revert with previous max gas price
+            await expectRevert(
+                reserveInst.trade(ethAddress, amountWei, tokenAdd[tokenInd],
+                    user1, conversionRate, true,
+                    {
+                        from: network,
+                        value: amountWei,
+                        gasPrice: maxGasPrice
+                    }
+                ),
+                "gas price too high"
+            );
+            await reserveInst.setMaxGasPrice(maxGasPrice, {from: operator});
         });
 
         it("Test revert conversion rate 0", async() => {
@@ -1226,15 +1253,55 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test max gas price", async() => {
         before("setup reserve", async() => {
+            await setupConversionRatesContract(false);
+            reserve = await Reserve.new(
+                network,
+                convRatesInst.address,
+                weth.address,
+                maxGasPrice,
+                admin
+            );
+            await reserve.addAlerter(alerter, {from: admin});
+            await reserve.addOperator(operator, {from: admin});
         });
 
         it("Test revert set max gas price sender not operator", async() => {
+            let newMaxGasWei = new BN(10 * 1000000000);
+            await expectRevert(
+                reserve.setMaxGasPrice(newMaxGasWei, {from: alerter}),
+                "only operator"
+            )
+            await expectRevert(
+                reserve.setMaxGasPrice(newMaxGasWei, {from: admin}),
+                "only operator"
+            )
+            await reserve.setMaxGasPrice(newMaxGasWei, {from: operator});
+            await reserve.setMaxGasPrice(maxGasPrice, {from: operator});
         });
 
         it("Test set max gas price event", async() => {
+            let newMaxGasWei = new BN(10 * 1000000000);
+            let tx = await reserve.setMaxGasPrice(newMaxGasWei, {from: operator});
+            expectEvent(tx, "MaxGasPriceUpdated", {
+                newMaxGasPrice: newMaxGasWei
+            })
+            tx = await reserve.setMaxGasPrice(maxGasPrice, {from: operator});
+            expectEvent(tx, "MaxGasPriceUpdated", {
+                newMaxGasPrice: maxGasPrice
+            });
+            // set the same value, still got event
+            tx = await reserve.setMaxGasPrice(maxGasPrice, {from: operator});
+            expectEvent(tx, "MaxGasPriceUpdated", {
+                newMaxGasPrice: maxGasPrice
+            })
         });
 
         it("Test max gas price after updated successfully", async() => {
+            let newMaxGasWei = new BN(10 * 1000000000);
+            await reserve.setMaxGasPrice(newMaxGasWei, {from: operator});
+            Helper.assertEqual(newMaxGasWei, await reserve.maxGasPriceWei());
+            await reserve.setMaxGasPrice(maxGasPrice, {from: operator});
+            Helper.assertEqual(maxGasPrice, await reserve.maxGasPriceWei());
         });
     });
 
