@@ -119,7 +119,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     }
 
     /// @dev withdraw amount of token to an approved destination
-    /// @dev if reserve is using weth instead of eth, should call withdraw weth
+    ///      if reserve is using weth instead of eth, should call withdraw weth
     /// @param token token to withdraw
     /// @param amount amount to withdraw
     /// @param destination address to transfer fund to
@@ -215,6 +215,10 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         return approvedWithdrawAddresses[keccak256(abi.encodePacked(address(token), addr))];
     }
 
+    /// @dev return available balance of a token that reserve can use
+    ///      if using weth, call getBalance(eth) will return weth balance
+    ///      if using wallet for token, will return min of balance and allowance
+    /// @param token token to get available balance that reserve can use
     function getBalance(IERC20 token) public view returns (uint256) {
         address wallet = getTokenWallet(token);
         IERC20 usingToken;
@@ -329,8 +333,8 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     }
 
     /// @dev return wallet that holds the token
-    /// @dev if token is ETH, check tokenWallet of WETH instead
-    /// @dev if wallet is 0x0, consider as this reserve address
+    ///      if token is ETH, check tokenWallet of WETH instead
+    ///      if wallet is 0x0, consider as this reserve address
     function getTokenWallet(IERC20 token) internal view returns (address wallet) {
         wallet = (token == ETH_TOKEN_ADDRESS)
             ? tokenWallet[address(weth)]
