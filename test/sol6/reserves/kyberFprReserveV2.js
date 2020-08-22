@@ -2,7 +2,7 @@ const ConversionRates = artifacts.require("MockEnhancedStepFunctions.sol");
 const TestToken = artifacts.require("TestToken.sol");
 const WethToken = artifacts.require("Weth9.sol");
 const Reserve = artifacts.require("KyberFprReserveV2");
-const SanityRates = artifacts.require("SanityRates");
+const MockSanityRates = artifacts.require("MockSanityRates");
 const NoPayableFallback = artifacts.require("NoPayableFallback");
 
 const Helper = require("../../helper.js");
@@ -31,7 +31,7 @@ let withdrawAddress;
 let weth;
 let convRatesInst;
 let reserveInst;
-let sanityRate = 0;
+let sanityRate;
 
 //block data
 let currentBlock;
@@ -230,7 +230,7 @@ contract('KyberFprReserveV2', function(accounts) {
         Helper.assertEqual(conversionRate, expectedRate, "unexpected rate.");
 
         //perform trade
-        await reserveInst.trade(
+        let tx = await reserveInst.trade(
             srcAddress,
             srcAmount,
             destAddress,
@@ -242,10 +242,24 @@ contract('KyberFprReserveV2', function(accounts) {
                 value: isBuy ? srcAmount : 0
             }
         );
+        let expectedDestAmount;
+        if (isBuy) {
+            expectedDestAmount = Helper.calcDstQty(srcAmount, ethDecimals, tokenDecimals[tokenInd], conversionRate);
+        } else {
+            expectedDestAmount = Helper.calcDstQty(srcAmount, tokenDecimals[tokenInd], ethDecimals, conversionRate);
+        }
+        // check trade event
+        expectEvent(tx, "TradeExecute", {
+            origin: network,
+            src: srcAddress,
+            srcAmount: srcAmount,
+            destToken: destAddress,
+            destAmount: expectedDestAmount,
+            destAddress: recipient
+        })
 
         // check reserve has received token
         if (isBuy) {
-            let expectedDestAmount = Helper.calcDstQty(srcAmount, ethDecimals, tokenDecimals[tokenInd], conversionRate);
             // check reserve has received eth
             if (!isUsingWeth) {
                 // eth is transferred to reserve
@@ -274,7 +288,6 @@ contract('KyberFprReserveV2', function(accounts) {
 
             return expectedDestAmount;
         } else {
-            let expectedDestAmount = Helper.calcDstQty(srcAmount, tokenDecimals[tokenInd], ethDecimals, conversionRate);
             // check reserve has received token
             reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].add(srcAmount);
             let srcTokenBal = await token.balanceOf(srcTokenWallet);
@@ -1380,6 +1393,357 @@ contract('KyberFprReserveV2', function(accounts) {
         });
     });
 
+    describe("#Test getConversionRate", async() => {
+        before("set up contracts", async() => {
+            //init conversion rate
+            await setupConversionRatesContract(true);
+            //init reserve, not using weth, not using wallet token
+            await generalSetupReserveContract(false, false);
+        });
+
+        const checkRateShouldBePositive = async() => {
+            let amount = new BN(100);
+            let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[2], amount, currentBlock);
+            Helper.assertGreater(conversionRate, 0, "rate should be > 0");
+            conversionRate = await reserveInst.getConversionRate(tokenAdd[1], ethAddress, amount, currentBlock);
+            Helper.assertGreater(conversionRate, 0, "rate should be > 0");
+        }
+        it("Test getConversionRate trade is disabled", async() => {
+            // disable trade
+            await reserveInst.disableTrade({from: alerter});
+            let amountWei = new BN(100);
+            let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[1], amountWei, currentBlock);
+            Helper.assertEqual(0, conversionRate, "rate should be 0");
+            let amountTwei = new BN(1000);
+            conversionRate = await reserveInst.getConversionRate(tokenAdd[1], ethAddress, amountTwei, currentBlock);
+            Helper.assertEqual(0, conversionRate, "rate should be 0");
+            // enable trade
+            await reserveInst.enableTrade({from: admin});
+            await checkRateShouldBePositive();
+        });
+
+        it("Test getConversionRate gas price is higher than max gas price", async() => {
+            let amountWei = new BN(100);
+            let conversionRate = await reserveInst.getConversionRate(
+                ethAddress, tokenAdd[1], amountWei, currentBlock,
+                {
+                    gasPrice: maxGasPrice.add(new BN(1))
+                }
+            );
+            Helper.assertEqual(0, conversionRate, "rate should be 0");
+            let amountTwei = new BN(1000);
+            conversionRate = await reserveInst.getConversionRate(
+                tokenAdd[1], ethAddress, amountTwei, currentBlock,
+                {
+                    gasPrice: maxGasPrice.add(new BN(1))
+                }
+            );
+            Helper.assertEqual(0, conversionRate, "rate should be 0");
+            await checkRateShouldBePositive();
+        });
+
+        it("Test getConversionRate src qty is 0", async() => {
+            let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[1], zeroBN, currentBlock);
+            Helper.assertEqual(0, conversionRate, "rate should be 0");
+            conversionRate = await reserveInst.getConversionRate(tokenAdd[1], ethAddress, zeroBN, currentBlock);
+            Helper.assertEqual(0, conversionRate, "rate should be 0");
+            await checkRateShouldBePositive();
+        });
+
+        it("Test getConversionRate src and dest tokens are not eth", async() => {
+            let amount = new BN(1000);
+            let conversionRate = await reserveInst.getConversionRate(tokenAdd[1], tokenAdd[2], amount, currentBlock);
+            Helper.assertEqual(0, conversionRate, "rate should be 0");
+            conversionRate = await reserveInst.getConversionRate(tokenAdd[1], tokenAdd[1], amount, currentBlock);
+            Helper.assertEqual(0, conversionRate, "rate should be 0");
+            await checkRateShouldBePositive();
+        });
+
+        it("Test getConversionRate rate is 0", async() => {
+            let buyRates = [];
+            let sellRates = [];
+            for(let i = 0; i < numTokens; i++) {
+                buyRates.push(zeroBN);
+                sellRates.push(zeroBN);
+            }
+            await convRatesInst.setBaseRate(tokenAdd, buyRates, sellRates, [], [], currentBlock, [], {from: operator});
+
+            let amount = new BN(100);
+            let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[2], amount, currentBlock);
+            Helper.assertEqual(0, conversionRate, "rate should be 0");
+            conversionRate = await reserveInst.getConversionRate(tokenAdd[1], ethAddress, amount, currentBlock);
+            Helper.assertEqual(0, conversionRate, "rate should be 0");
+
+            await convRatesInst.setBaseRate(tokenAdd, baseBuyRate, baseSellRate, [], [], currentBlock, [], {from: operator});
+            await checkRateShouldBePositive();
+        });
+
+        describe("#Test getBalance < destQty", async() => {
+            after("reset wallet for token to reserve", async() => {
+                await reserveInst.setTokenWallet(weth.address, zeroAddress, {from: admin});
+                await Helper.sendEtherWithPromise(accounts[0], reserveInst.address, precisionUnits);
+                for(let i = 0; i < numTokens; i++) {
+                    await reserveInst.setTokenWallet(tokenAdd[i], zeroAddress, {from: admin});
+                    // send some more token to reserve
+                    let amount = new BN(tokenUnits(tokenDecimals[i])).mul(new BN(10000));
+                    await tokens[i].transfer(reserveInst.address, amount);
+                }
+            });
+
+            it("Test getConversionRate for sell token, using eth", async() => {
+                // set weth wallet to 0x0 or reserve's address -> reserve is using eth
+                let wallets = [zeroAddress, reserveInst.address];
+                for(let i = 0; i < wallets.length; i++) {
+                    await reserveInst.setTokenWallet(weth.address, wallets[i], {from: admin});
+                    let amount = new BN(100);
+                    let tokenInd = 1;
+                    let rate = await convRatesInst.getRate(tokenAdd[tokenInd], currentBlock, false, amount);
+                    Helper.assertGreater(rate, 0, "conversion rate returns rate > 0");
+                    let destQty = Helper.calcDstQty(amount, tokenDecimals[tokenInd], ethDecimals, rate);
+
+                    // withdraw all eth
+                    let ethBalance = await Helper.getBalancePromise(reserveInst.address);
+                    await reserveInst.approveWithdrawAddress(ethAddress, withdrawAddress, true, {from: admin});
+                    if (ethBalance.gt(zeroBN)) {
+                        await reserveInst.withdraw(ethAddress, ethBalance, withdrawAddress, {from: operator});
+                    }
+
+                    // get rate should be = 0
+                    let conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
+                    Helper.assertEqual(0, conversionRate, "rate should be 0");
+
+                    // transfer eth but not enough
+                    await Helper.sendEtherWithPromise(withdrawAddress, reserveInst.address, destQty.sub(new BN(1)));
+                    // get rate should be = 0
+                    conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
+                    Helper.assertEqual(0, conversionRate, "rate should be 0");
+                    // transfer more eth, should have rate
+                    await Helper.sendEtherWithPromise(withdrawAddress, reserveInst.address, new BN(1));
+                    conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
+                    Helper.assertGreater(conversionRate, 0, "rate should be > 0");
+                }
+            });
+
+            it("Test getConversionRate for sell token, using weth", async() => {
+                await reserveInst.setTokenWallet(weth.address, walletForToken, {from: admin});
+                let amount = new BN(100);
+                let tokenInd = 1;
+                let rate = await convRatesInst.getRate(tokenAdd[tokenInd], currentBlock, false, amount);
+                Helper.assertGreater(rate, 0, "conversion rate returns rate > 0");
+                let destQty = Helper.calcDstQty(amount, tokenDecimals[tokenInd], ethDecimals, rate);
+                Helper.assertGreater(destQty, 0, "dest qty should be > 0");
+
+                // transfer enough eth to reserve, but it should use weth
+                await Helper.sendEtherWithPromise(accounts[0], reserveInst.address, destQty);
+
+                // enough balance not not allowance
+                await weth.approve(reserveInst.address, 0, {from: walletForToken});
+                await weth.approve(reserveInst.address, destQty.sub(new BN(1)), {from: walletForToken});
+                await weth.deposit({from: walletForToken, value: destQty});
+                // get rate should be = 0
+                let conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
+                Helper.assertEqual(0, conversionRate, "rate should be 0");
+
+                // enough allowance but not enough balance
+                // withdraw all balance weth
+                let wethBalance = await weth.balanceOf(walletForToken);
+                await weth.withdraw(wethBalance, {from: walletForToken});
+                await weth.approve(reserveInst.address, 0, {from: walletForToken});
+                await weth.approve(reserveInst.address, destQty, {from: walletForToken});
+                // get rate should be = 0
+                conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
+                Helper.assertEqual(0, conversionRate, "rate should be 0");
+                // add more balance, but < destQty
+                await weth.deposit({from: walletForToken, value: destQty.sub(new BN(1))});
+                // get rate should be = 0
+                conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
+                Helper.assertEqual(0, conversionRate, "rate should be 0");
+                // add more balance, should have rate now
+                await weth.deposit({from: walletForToken, value: new BN(1)});
+                conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
+                Helper.assertGreater(conversionRate, 0, "rate should be > 0");
+            });
+
+            it("Test getConversionRate for buy token, token is in reserve", async() => {
+                let tokenInd = 0;
+                let token = tokens[tokenInd];
+                // set token wallet to 0x0 or reserve's address -> token is in reserve
+                let wallets = [zeroAddress, reserveInst.address];
+                for(let i = 0; i < wallets.length; i++) {
+                    await reserveInst.setTokenWallet(tokenAdd[tokenInd], wallets[i], {from: admin});
+
+                    let amountWei = new BN(100);
+                    let rate = await convRatesInst.getRate(tokenAdd[tokenInd], currentBlock, true, amountWei);
+                    Helper.assertGreater(rate, 0, "conversion rate returns rate > 0");
+                    let destQty = Helper.calcDstQty(amountWei, ethDecimals, tokenDecimals[tokenInd], rate);
+                    Helper.assertGreater(destQty, 0, "dest qty should be > 0");
+
+                    // withdraw all token
+                    await reserveInst.approveWithdrawAddress(tokenAdd[tokenInd], withdrawAddress, true, {from: admin});
+                    let tokenBalance = await token.balanceOf(reserveInst.address);
+                    if (tokenBalance.gt(zeroBN)) {
+                        await reserveInst.withdraw(tokenAdd[tokenInd], tokenBalance, withdrawAddress, {from: operator});
+                    }
+                    // get conversion rate should be 0 now
+                    let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
+                    Helper.assertEqual(0, conversionRate, "rate should be 0");
+                    // transfer token but < dest qty
+                    await token.transfer(reserveInst.address, destQty.sub(new BN(1)));
+
+                    // get conversion rate should be 0
+                    conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
+                    Helper.assertEqual(0, conversionRate, "rate should be 0");
+
+                    // transfer enough balance for get conversion rate
+                    await token.transfer(reserveInst.address, new BN(1));
+                    // get conversion rate should be > 0
+                    conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
+                    Helper.assertGreater(conversionRate, 0, "rate should be > 0");
+                }
+            });
+
+            it("Test getConversionRate for buy token, using walletForToken", async() => {
+                let amountWei = new BN(100);
+                let tokenInd = 1;
+                let token = tokens[tokenInd];
+                await reserveInst.setTokenWallet(tokenAdd[tokenInd], walletForToken, {from: admin});
+                let rate = await convRatesInst.getRate(tokenAdd[tokenInd], currentBlock, true, amountWei);
+                Helper.assertGreater(rate, 0, "conversion rate returns rate > 0");
+                let destQty = Helper.calcDstQty(amountWei, ethDecimals, tokenDecimals[tokenInd], rate);
+                Helper.assertGreater(destQty, 0, "dest qty should be > 0");
+
+                // transfer enough token to reserve, but it should use token from wallet
+                await token.transfer(reserveInst.address, destQty);
+
+                // enough balance not not allowance
+                await token.approve(reserveInst.address, 0, {from: walletForToken});
+                await token.approve(reserveInst.address, destQty.sub(new BN(1)), {from: walletForToken});
+                await token.transfer(walletForToken, destQty);
+                // get rate should be = 0
+                let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
+                Helper.assertEqual(0, conversionRate, "rate should be 0");
+
+                // enough allowance but not enough balance
+                // withdraw all balance
+                let tokenBalance = await token.balanceOf(walletForToken);
+                await token.transfer(accounts[0], tokenBalance, {from: walletForToken});
+                await token.approve(reserveInst.address, 0, {from: walletForToken});
+                await token.approve(reserveInst.address, destQty, {from: walletForToken});
+                // get rate should be = 0
+                conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
+                Helper.assertEqual(0, conversionRate, "rate should be 0");
+                // add more balance, but < destQty
+                await token.transfer(walletForToken, destQty.sub(new BN(1)));
+                // get rate should be = 0
+                conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
+                Helper.assertEqual(0, conversionRate, "rate should be 0");
+                // add more balance, should have rate now
+                await token.transfer(walletForToken, 1);
+                conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amountWei, currentBlock);
+                Helper.assertGreater(conversionRate, 0, "rate should be > 0");
+            });
+        });
+
+        it("Test getConversionRate still returns rate when rate > 0 but destQty is 0", async() => {
+            let amount = new BN(1);
+            let rate = await convRatesInst.getRate(tokenAdd[0], currentBlock, false, amount);
+            Helper.assertGreater(rate, 0, "conversion rate returns rate > 0");
+            let destQty = Helper.calcDstQty(amount, tokenDecimals[0], ethDecimals, rate);
+            Helper.assertEqual(0, destQty, "dest qty is 0");
+            let conversionRate = await reserveInst.getConversionRate(tokenAdd[0], ethAddress, amount, currentBlock);
+            Helper.assertGreater(conversionRate, 0, "rate should be > 0");
+        });
+
+        it("Test getConversionRate reverts when conversionRate contract reverts", async() => {
+            // set conversion rate to normal address
+            await reserveInst.setContracts(
+                network, accounts[0], weth.address, zeroAddress, {from: admin}
+            );
+
+            // test buy rate
+            let amount = new BN(100);
+            await expectRevert.unspecified(
+                reserveInst.getConversionRate(ethAddress, tokenAdd[1], amount, currentBlock)
+            );
+
+            // test sell
+            await expectRevert.unspecified(
+                reserveInst.getConversionRate(tokenAdd[1], ethAddress, amount, currentBlock)
+            );
+
+            // set back contracts
+            await reserveInst.setContracts(
+                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
+            );
+        });
+
+        it("Test getConversionRate reverts when sanity contract reverts", async() => {
+            // set conversion rate to normal address
+            await reserveInst.setContracts(
+                network, convRatesInst.address, weth.address, accounts[0], {from: admin}
+            );
+
+            // test buy rate
+            let amount = new BN(100);
+            await expectRevert.unspecified(
+                reserveInst.getConversionRate(ethAddress, tokenAdd[1], amount, currentBlock)
+            );
+
+            // test sell
+            await expectRevert.unspecified(
+                reserveInst.getConversionRate(tokenAdd[1], ethAddress, amount, currentBlock)
+            );
+
+            // set back contracts
+            await reserveInst.setContracts(
+                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
+            );
+        });
+
+        it("Test getConversionRate returns 0 when higher than sanity rate", async() => {
+            let sanityRate = await MockSanityRates.new();
+            // set contracts
+            await reserveInst.setContracts(
+                network, convRatesInst.address, weth.address, sanityRate.address, {from: admin}
+            );
+            // test buy
+            let amount = new BN(100);
+            let rate = await convRatesInst.getRate(tokenAdd[0], currentBlock, true, amount);
+            Helper.assertGreater(rate, 0, "conversion rate returns rate > 0");
+
+            await sanityRate.setSanityRateValue(rate.sub(new BN(1)));
+            // get conversion rate should be 0
+            let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[0], amount, currentBlock);
+            Helper.assertEqual(conversionRate, 0, "rate should be 0");
+
+            await sanityRate.setSanityRateValue(rate);
+            // get conversion rate should be > 0
+            conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[0], amount, currentBlock);
+            Helper.assertGreater(conversionRate, 0, "rate should be > 0");
+            Helper.assertEqual(conversionRate, rate);
+
+            // test sell
+            rate = await convRatesInst.getRate(tokenAdd[0], currentBlock, false, amount);
+            Helper.assertGreater(rate, 0, "conversion rate returns rate > 0");
+
+            await sanityRate.setSanityRateValue(rate.sub(new BN(1)));
+            // get conversion rate should be 0
+            conversionRate = await reserveInst.getConversionRate(tokenAdd[0], ethAddress, amount, currentBlock);
+            Helper.assertEqual(conversionRate, 0, "rate should be 0");
+
+            await sanityRate.setSanityRateValue(rate);
+            // get conversion rate should be > 0
+            conversionRate = await reserveInst.getConversionRate(tokenAdd[0], ethAddress, amount, currentBlock);
+            Helper.assertGreater(conversionRate, 0, "rate should be > 0");
+            Helper.assertEqual(conversionRate, rate);
+
+            // set back contracts
+            await reserveInst.setContracts(
+                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
+            );
+        });
+    });
+
     describe("#Test doTrade revert invalid params", async() => {
         before("set up contracts", async() => {
             //init conversion rate
@@ -1957,7 +2321,7 @@ contract('KyberFprReserveV2', function(accounts) {
         });
     });
 
-    describe("#Test getBalance", async() => {
+    describe("#Test getBalance & getDestQty", async() => {
         before("setup reserve", async() => {
             await setupConversionRatesContract(false);
             reserve = await Reserve.new(
@@ -2078,6 +2442,26 @@ contract('KyberFprReserveV2', function(accounts) {
                 await token.balanceOf(walletForToken),
                 await reserve.getBalance(tokenAdd[tokenInd])
             );
+        });
+
+        it("Test getDestQty returns correct value", async function() {
+            let srcQty = new BN(100);
+            let rate = precisionUnits.div(new BN(2));
+
+            let srcDecimal = 10;
+            let dstDecimal = 13;
+
+            let tokenA = await TestToken.new("source", "src", srcDecimal);
+            let tokenB = await TestToken.new("dest", "dst", dstDecimal);
+
+            // get dest QTY
+            let expectedDestQty = Helper.calcDstQty(srcQty, srcDecimal, dstDecimal, rate);
+            let reportedDstQty = await reserve.getDestQty(tokenA.address, tokenB.address, srcQty, rate);
+            Helper.assertEqual(expectedDestQty, reportedDstQty, "unexpected dst qty");
+
+            expectedDestQty = Helper.calcDstQty(srcQty, dstDecimal, srcDecimal, rate);
+            reportedDstQty = await reserve.getDestQty(tokenB.address, tokenA.address, srcQty, rate);
+            Helper.assertEqual(expectedDestQty, reportedDstQty, "unexpected dst qty");
         });
     });
 
