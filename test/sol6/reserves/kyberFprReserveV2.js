@@ -1799,6 +1799,51 @@ contract('KyberFprReserveV2', function(accounts) {
         });
     });
 
+    describe("#Test set token wallet", async() => {
+        before("setup reserve", async() => {
+            await setupConversionRatesContract(false);
+            reserve = await Reserve.new(
+                network,
+                convRatesInst.address,
+                weth.address,
+                maxGasPrice,
+                admin
+            );
+            await reserve.addAlerter(alerter, {from: admin});
+            await reserve.addOperator(operator, {from: admin});
+        });
+
+        it("Test set token wallet reverts not admin", async() => {
+            let tokenAddresses = [ethAddress, weth.address, tokenAdd[1], tokenAdd[2]];
+            for(let i = 0; i < tokenAddresses.length; i++) {
+                await expectRevert(
+                    reserve.setTokenWallet(tokenAddresses[i], withdrawAddress, {from: operator}),
+                    "only admin"
+                );
+
+            }
+        });
+
+        it("Test set token wallet successful, data changes, event emits", async() => {
+            let tokenAddresses = [ethAddress, weth.address, tokenAdd[1], tokenAdd[2]];
+            let wallets = [withdrawAddress, reserve.address, zeroAddress];
+            for(let i = 0; i < tokenAddresses.length; i++) {
+                for(let j = 0; j < wallets.length; j++) {
+                    let tx = await reserve.setTokenWallet(tokenAddresses[i], wallets[j], {from: admin});
+                    expectEvent(tx, "NewTokenWallet", {
+                        token: tokenAddresses[i],
+                        wallet: wallets[j]
+                    });
+                    Helper.assertEqual(
+                        wallets[j],
+                        await reserve.tokenWallet(tokenAddresses[i]),
+                        "wrong token wallet set"
+                    )
+                }
+            }
+        });
+    });
+
     describe("#Test withdrawal", async() => {
         before("setup reserve", async() => {
             await setupConversionRatesContract(false);
