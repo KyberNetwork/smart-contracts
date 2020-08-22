@@ -1957,6 +1957,130 @@ contract('KyberFprReserveV2', function(accounts) {
         });
     });
 
+    describe("#Test getBalance", async() => {
+        before("setup reserve", async() => {
+            await setupConversionRatesContract(false);
+            reserve = await Reserve.new(
+                network,
+                convRatesInst.address,
+                weth.address,
+                maxGasPrice,
+                admin
+            );
+            await reserve.addAlerter(alerter, {from: admin});
+            await reserve.addOperator(operator, {from: admin});
+        });
+
+        it("Test getBalance eth when using eth", async() => {
+            let addresses = [zeroAddress, reserve.address];
+            let reserveBalance = new BN(0);
+            await reserve.approveWithdrawAddress(ethAddress, withdrawAddress, {from: admin});
+            for(let i = 0; i < addresses.length; i++) {
+                await reserve.setTokenWallet(weth.address, addresses[i], {from: admin});
+                let amount = new BN(Helper.getRandomInt(10, 100));
+                await Helper.sendEtherWithPromise(accounts[0], reserve.address, amount);
+                reserveBalance = reserveBalance.add(amount);
+                Helper.assertEqual(
+                    reserveBalance,
+                    await reserve.getBalance(ethAddress),
+                    "eth balance is wrong"
+                );
+                // withdraw and check balance
+                amount = new BN(Helper.getRandomInt(1, 10));
+                await reserve.withdraw(ethAddress, amount, withdrawAddress, {from: operator});
+                reserveBalance = reserveBalance.sub(amount);
+                Helper.assertEqual(
+                    reserveBalance,
+                    await reserve.getBalance(ethAddress),
+                    "eth balance is wrong"
+                );
+            }
+        });
+
+        it("Test getBalance eth when using weth", async() => {
+            await reserve.setTokenWallet(weth.address, walletForToken, {from: admin});
+            // send some eth to reserve, shouldn't affect result of getBalance
+            await Helper.sendEtherWithPromise(accounts[0], reserve.address, new BN(1000));
+            // reset allowance, check get balance is 0
+            await weth.approve(reserve.address, 0, {from: walletForToken});
+            await weth.deposit({from: walletForToken, value: new BN(10)});
+            Helper.assertEqual(0, await reserve.getBalance(ethAddress));
+
+            // approve less than balance
+            await weth.approve(reserve.address, new BN(2), {from: walletForToken});
+            Helper.assertEqual(new BN(2), await reserve.getBalance(ethAddress));
+
+            // approve more than balance
+            await weth.approve(reserve.address, 0, {from: walletForToken});
+            await weth.approve(reserve.address, MAX_ALLOWANCE, {from: walletForToken});
+
+            Helper.assertEqual(
+                await weth.balanceOf(walletForToken),
+                await reserve.getBalance(ethAddress)
+            );
+        });
+
+        it("Test getBalance token when token is in reserve", async() => {
+            let tokenInd = 1;
+            let addresses = [zeroAddress, reserve.address];
+            let reserveTokenBalance = new BN(0);
+            await reserve.approveWithdrawAddress(tokenAdd[tokenInd], withdrawAddress, {from: admin});
+            for(let i = 0; i < addresses.length; i++) {
+                await reserve.setTokenWallet(tokenAdd[tokenInd], addresses[i], {from: admin});
+                let amount = new BN(Helper.getRandomInt(10, 100));
+                await tokens[tokenInd].transfer(reserve.address, amount);
+                reserveTokenBalance = reserveTokenBalance.add(amount);
+                Helper.assertEqual(
+                    reserveTokenBalance,
+                    await reserve.getBalance(tokenAdd[tokenInd]),
+                    "token balance is wrong"
+                );
+                // withdraw and check balance
+                amount = new BN(Helper.getRandomInt(1, 10));
+                await reserve.withdraw(tokenAdd[tokenInd], amount, withdrawAddress, {from: operator});
+                reserveTokenBalance = reserveTokenBalance.sub(amount);
+                Helper.assertEqual(
+                    reserveTokenBalance,
+                    await reserve.getBalance(tokenAdd[tokenInd]),
+                    "token balance is wrong"
+                );
+            }
+        });
+
+        it("Test getBalance when token is in walletForToken", async() => {
+            let tokenInd = 1;
+            let token = tokens[tokenInd];
+            await reserve.setTokenWallet(tokenAdd[tokenInd], walletForToken, {from: admin});
+            // transfer some token to reserve, shouldn't affect result
+            await token.transfer(reserve.address, new BN(100));
+
+            // reset allowance, check get balance is 0
+            await token.approve(reserve.address, 0, {from: walletForToken});
+            await token.transfer(walletForToken, new BN(10));
+            Helper.assertEqual(0, await reserve.getBalance(tokenAdd[tokenInd]));
+
+            // approve less than balance
+            await token.approve(reserve.address, new BN(2), {from: walletForToken});
+            Helper.assertEqual(new BN(2), await reserve.getBalance(tokenAdd[tokenInd]));
+
+            // approve more than balance
+            await token.approve(reserve.address, 0, {from: walletForToken});
+            await token.approve(reserve.address, MAX_ALLOWANCE, {from: walletForToken});
+
+            Helper.assertEqual(
+                await token.balanceOf(walletForToken),
+                await reserve.getBalance(tokenAdd[tokenInd])
+            );
+
+            // deposit more token to reserve, get balance shouldn't affect
+            await token.transfer(reserve.address, new BN(100));
+            Helper.assertEqual(
+                await token.balanceOf(walletForToken),
+                await reserve.getBalance(tokenAdd[tokenInd])
+            );
+        });
+    });
+
     describe("#Test withdrawal", async() => {
         before("setup reserve", async() => {
             await setupConversionRatesContract(false);

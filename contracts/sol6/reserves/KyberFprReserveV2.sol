@@ -217,22 +217,27 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
 
     function getBalance(IERC20 token) public view returns (uint256) {
         address wallet = getTokenWallet(token);
+        IERC20 usingToken;
+
         if (token == ETH_TOKEN_ADDRESS) {
             if (wallet == address(this)) {
                 // reserve should be using eth instead of weth
                 return address(this).balance;
             }
-            return weth.balanceOf(wallet);
+            // reserve is using weth instead of eth
+            usingToken = weth;
         } else {
             if (wallet == address(this)) {
-                // not set token wallet or reserve is the token wallet
+                // not set token wallet or reserve is the token wallet, no need to check allowance
                 return token.balanceOf(address(this));
             }
-            uint256 balanceOfWallet = token.balanceOf(wallet);
-            uint256 allowanceOfWallet = token.allowance(wallet, address(this));
-
-            return minOf(balanceOfWallet, allowanceOfWallet);
+            usingToken = token;
         }
+
+        uint256 balanceOfWallet = usingToken.balanceOf(wallet);
+        uint256 allowanceOfWallet = usingToken.allowance(wallet, address(this));
+
+        return minOf(balanceOfWallet, allowanceOfWallet);
     }
 
     function getDestQty(
