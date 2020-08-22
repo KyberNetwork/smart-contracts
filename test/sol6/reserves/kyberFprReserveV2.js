@@ -1844,6 +1844,119 @@ contract('KyberFprReserveV2', function(accounts) {
         });
     });
 
+    describe("#Test setContracts", async() => {
+        before("setup reserve", async() => {
+            await setupConversionRatesContract(false);
+            reserve = await Reserve.new(
+                network,
+                convRatesInst.address,
+                weth.address,
+                maxGasPrice,
+                admin
+            );
+            await reserve.addAlerter(alerter, {from: admin});
+            await reserve.addOperator(operator, {from: admin});
+        });
+
+        it("Test setContracts reverts not admin", async() => {
+            await expectRevert(
+                reserve.setContracts(
+                    network,
+                    convRatesInst.address,
+                    weth.address,
+                    zeroAddress,
+                    {from: operator}
+                ),
+                "only admin"
+            )
+        });
+
+        it("Test setContracts reverts params are invalid", async() => {
+            await expectRevert(
+                reserve.setContracts(
+                    zeroAddress,
+                    convRatesInst.address,
+                    weth.address,
+                    zeroAddress,
+                    {from: admin}
+                ),
+                "kyberNetwork 0"
+            );
+            await expectRevert(
+                reserve.setContracts(
+                    network,
+                    zeroAddress,
+                    weth.address,
+                    zeroAddress,
+                    {from: admin}
+                ),
+                "conversionRates 0"
+            );
+            await expectRevert(
+                reserve.setContracts(
+                    network,
+                    convRatesInst.address,
+                    zeroAddress,
+                    zeroAddress,
+                    {from: admin}
+                ),
+                "weth 0"
+            );
+            // can set with sanity rate zero
+            await reserve.setContracts(
+                network,
+                convRatesInst.address,
+                weth.address,
+                zeroAddress,
+                {from: admin}
+            );
+        });
+
+        it("Test setContracts is successful, data changes, event emits", async() => {
+            let tx = await reserve.setContracts(
+                network,
+                convRatesInst.address,
+                weth.address,
+                zeroAddress,
+                {from: admin}
+            );
+            expectEvent(tx, "SetContractAddresses", {
+                network: network,
+                rate: convRatesInst.address,
+                weth: weth.address,
+                sanity: zeroAddress
+            });
+            Helper.assertEqual(network, await reserve.kyberNetwork());
+            Helper.assertEqual(convRatesInst.address, await reserve.conversionRatesContract());
+            Helper.assertEqual(weth.address, await reserve.weth());
+            Helper.assertEqual(zeroAddress, await reserve.sanityRatesContract());
+            tx = await reserve.setContracts(
+                accounts[0],
+                accounts[1],
+                accounts[2],
+                accounts[3],
+                {from: admin}
+            );
+            expectEvent(tx, "SetContractAddresses", {
+                network: accounts[0],
+                rate: accounts[1],
+                weth: accounts[2],
+                sanity: accounts[3]
+            });
+            Helper.assertEqual(accounts[0], await reserve.kyberNetwork());
+            Helper.assertEqual(accounts[1], await reserve.conversionRatesContract());
+            Helper.assertEqual(accounts[2], await reserve.weth());
+            Helper.assertEqual(accounts[3], await reserve.sanityRatesContract());
+            await reserve.setContracts(
+                network,
+                convRatesInst.address,
+                weth.address,
+                zeroAddress,
+                {from: admin}
+            );
+        });
+    });
+
     describe("#Test withdrawal", async() => {
         before("setup reserve", async() => {
             await setupConversionRatesContract(false);
