@@ -46,7 +46,7 @@ let tokenDecimals = [];
 let tokenAdd = [];
 
 // imbalance data
-let minimalRecordResolution = new BN(2); //low resolution so I don't lose too much data. then easier to compare calculated imbalance values.
+let minimalRecordResolution = new BN(2);
 let maxPerBlockImbalance = 40000;
 let maxTotalImbalance = maxPerBlockImbalance * 12;
 
@@ -66,14 +66,12 @@ let baseSellRate = [];
 
 
 //imbalance buy steps
-let imbalanceBuyStepX = [-8500, -2800, -1500, 0, 1500, 2800, 4500];
-let imbalanceBuyStepXs = [];
+let imbalanceBuyStepX = [-85000, -28000, -15000, 0, 15000, 28000, 45000];
 let imbalanceBuyStepY = [ 1300, 130, 43, 0, 0, -110, -160, -1600];
 
 
 //sell imbalance step
-let imbalanceSellStepX = [-8500, -2800, -1000, 0, 1000, 2800, 4500];
-let imbalanceSellStepXs = [];
+let imbalanceSellStepX = [-85000, -28000, -10000, 0, 10000, 28000, 45000];
 let imbalanceSellStepY = [-1500, -320, -75, 0, 0, 110, 350, 650];
 
 
@@ -170,22 +168,9 @@ contract('KyberFprReserveV2', function(accounts) {
 
         await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
-        imbalanceBuyStepXs = [];
-        imbalanceSellStepXs = [];
-
         //all start with same step functions.
         for (let i = 0; i < numTokens; ++i) {
-            let buyX = [];
-            let sellX = [];
-            for(let j = 0; j < imbalanceBuyStepX.length; j++) {
-                buyX.push(imbalanceBuyStepX[j] * 10);
-            }
-            for(let j = 0; j < imbalanceSellStepX.length; j++) {
-                sellX.push(imbalanceSellStepX[j] * 10);
-            }
-            imbalanceBuyStepXs.push(buyX);
-            imbalanceSellStepXs.push(sellX);
-            await convRatesInst.setImbalanceStepFunction(tokenAdd[i], buyX, imbalanceBuyStepY, sellX, imbalanceSellStepY, {from:operator});
+            await convRatesInst.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         }
     }
 
@@ -216,13 +201,13 @@ contract('KyberFprReserveV2', function(accounts) {
             let extraBps = compactBuyArr[tokenInd] * 10;
             expectedRate = Helper.addBps(expectedRate, extraBps);
             let destQty = Helper.calcDstQty(srcAmount, ethDecimals, tokenDecimals[tokenInd], expectedRate);
-            extraBps = getExtraBpsForImbalanceBuyQuantity(tokenInd, reserveTokenImbalance[tokenInd].toNumber(), destQty.toNumber());
+            extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].toNumber(), destQty.toNumber());
             expectedRate = Helper.addBps(expectedRate, extraBps);
         } else {
             expectedRate = baseSellRate[tokenInd];
             let extraBps = compactSellArr[tokenInd] * 10;
             expectedRate = Helper.addBps(expectedRate, extraBps);
-            extraBps = getExtraBpsForImbalanceSellQuantity(tokenInd, reserveTokenImbalance[tokenInd].toNumber(), srcAmount.toNumber());
+            extraBps = getExtraBpsForImbalanceSellQuantity(reserveTokenImbalance[tokenInd].toNumber(), srcAmount.toNumber());
             expectedRate = Helper.addBps(expectedRate, extraBps);
         }
 
@@ -540,6 +525,33 @@ contract('KyberFprReserveV2', function(accounts) {
                 false, // not using weth
                 false // validate
             );
+        });
+
+        it("Test sell reverts recipient can not receive eth", async() => {
+            let tokenInd = 3;
+            let token = tokens[tokenInd];
+            let amountTwei = new BN(25);
+
+            // transfer and approve token to network
+            await token.transfer(network, amountTwei);
+            await token.approve(reserveInst.address, amountTwei, {from: network});
+
+            let conversionRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amountTwei, currentBlock);
+            Helper.assertGreater(conversionRate, 0);
+
+            let recipient = await NoPayableFallback.new();
+
+            await expectRevert(
+                reserveInst.trade(tokenAdd[tokenInd], amountTwei, ethAddress,
+                    recipient.address, conversionRate, true,
+                    {
+                        from: network
+                    }
+                ),
+                "transfer back eth failed",
+            );
+            await token.transfer(accounts[0], amountTwei, {from: network});
+            await token.approve(reserveInst.address, 0, {from: network});
         });
 
         it("Test set token wallet to reserve, trade should be successful", async() => {
@@ -2813,12 +2825,12 @@ contract('KyberFprReserveV2', function(accounts) {
     });
 });
 
-function getExtraBpsForImbalanceBuyQuantity(index, imbalance, qty) {
-    return getExtraBpsForQuantity(imbalance, imbalance + qty, imbalanceBuyStepXs[index], imbalanceBuyStepY);
+function getExtraBpsForImbalanceBuyQuantity(imbalance, qty) {
+    return getExtraBpsForQuantity(imbalance, imbalance + qty, imbalanceBuyStepX, imbalanceBuyStepY);
 };
 
-function getExtraBpsForImbalanceSellQuantity(index, imbalance, qty) {
-    return getExtraBpsForQuantity(imbalance - qty, imbalance, imbalanceSellStepXs[index], imbalanceSellStepY);
+function getExtraBpsForImbalanceSellQuantity(imbalance, qty) {
+    return getExtraBpsForQuantity(imbalance - qty, imbalance, imbalanceSellStepX, imbalanceSellStepY);
 };
 
 function getExtraBpsForQuantity(from, to, stepX, stepY) {
