@@ -3,6 +3,7 @@ const TestToken = artifacts.require("TestToken.sol");
 const WethToken = artifacts.require("Weth9.sol");
 const Reserve = artifacts.require("KyberFprReserveV2");
 const SanityRates = artifacts.require("SanityRates");
+const NoPayableFallback = artifacts.require("NoPayableFallback");
 
 const Helper = require("../../helper.js");
 const BN = web3.utils.BN;
@@ -1668,7 +1669,7 @@ contract('KyberFprReserveV2', function(accounts) {
             Helper.assertEqual(await reserve.maxGasPriceWei(), maxGasPrice);
             Helper.assertEqual(await reserve.tradeEnabled(), true);
             Helper.assertEqual(await reserve.admin(), admin);
-        })
+        });
     });
 
     describe("#Test enable/disable trade", async() => {
@@ -1800,56 +1801,350 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test withdrawal", async() => {
         before("setup reserve", async() => {
+            await setupConversionRatesContract(false);
+            reserve = await Reserve.new(
+                network,
+                convRatesInst.address,
+                weth.address,
+                maxGasPrice,
+                admin
+            );
+            await reserve.addAlerter(alerter, {from: admin});
+            await reserve.addOperator(operator, {from: admin});
         });
 
         it("Test revert approve withdrawl address sender not admin", async() => {
+            let tokenAddresses = [ethAddress, weth.address, tokenAdd[1], tokenAdd[3]];
+            for(let i = 0; i < tokenAddresses.length; i++) {
+                await expectRevert(
+                    reserve.approveWithdrawAddress(tokenAddresses[i], withdrawAddress, false, {from: operator}),
+                    "only admin"
+                )
+                await expectRevert(
+                    reserve.approveWithdrawAddress(tokenAddresses[i], withdrawAddress, true, {from: operator}),
+                    "only admin"
+                )
+            }
         });
 
         it("Test approve withdrawal address event", async() => {
+            let tokenAddresses = [ethAddress, weth.address, tokenAdd[1], tokenAdd[3]];
+            for(let i = 0; i < tokenAddresses.length; i++) {
+                let tx = await reserve.approveWithdrawAddress(tokenAddresses[i], withdrawAddress, false, {from: admin});
+                expectEvent(tx, "WithdrawAddressApproved", {
+                    token: tokenAddresses[i],
+                    addr: withdrawAddress,
+                    approve: false
+                })
+                tx = await reserve.approveWithdrawAddress(tokenAddresses[i], withdrawAddress, true, {from: admin});
+                expectEvent(tx, "WithdrawAddressApproved", {
+                    token: tokenAddresses[i],
+                    addr: withdrawAddress,
+                    approve: true
+                })
+            }
         });
 
         it("Test approve withdrawal address data changes as expected", async() => {
+            let tokenAddresses = [ethAddress, weth.address, tokenAdd[1], tokenAdd[3]];
+            let addresses = [accounts[0], withdrawAddress, accounts[3]];
+            for(let i = 0; i < tokenAddresses.length; i++) {
+                for(let j = 0; j < addresses.length; j++) {
+                    await reserve.approveWithdrawAddress(tokenAddresses[i], addresses[j], true, {from: admin});
+                    let approve = await reserve.isAddressApprovedForWithdrawal(tokenAddresses[i], addresses[j]);
+                    Helper.assertEqual(true, approve);
+                    // reset approval
+                    await reserve.approveWithdrawAddress(tokenAddresses[i], addresses[j], false, {from: admin});
+                    approve = await reserve.isAddressApprovedForWithdrawal(tokenAddresses[i], addresses[j]);
+                    Helper.assertEqual(false, approve);
+                }
+            }
         });
 
         it("Test revert withdraw sender not operator", async() => {
+            await reserve.approveWithdrawAddress(ethAddress, withdrawAddress, true, {from: admin});
+            await Helper.sendEtherWithPromise(accounts[0], reserve.address, precisionUnits);
+            await expectRevert(
+                reserve.withdraw(ethAddress, precisionUnits, withdrawAddress, {from: admin}),
+                "only operator"
+            );
+            // can withdraw eth with operator
+            await reserve.withdraw(ethAddress, precisionUnits, withdrawAddress, {from: operator});
+
+            // check token
+            let tokenInd = 1;
+            await reserve.approveWithdrawAddress(tokenAdd[tokenInd], withdrawAddress, true, {from: admin});
+            let tokenAmount = tokenUnits(tokenDecimals[tokenInd]);
+            await tokens[tokenInd].transfer(reserve.address, tokenAmount);
+            await expectRevert(
+                reserve.withdraw(tokenAdd[tokenInd], tokenAmount, withdrawAddress, {from: admin}),
+                "only operator"
+            );
+            // can withdraw token with operator
+            await reserve.withdraw(tokenAdd[tokenInd], tokenAmount, withdrawAddress, {from: operator});
         });
 
         it("Test revert withdraw recipient is not approved", async() => {
+            await reserve.approveWithdrawAddress(ethAddress, withdrawAddress, false, {from: admin});
+            await Helper.sendEtherWithPromise(accounts[0], reserve.address, precisionUnits);
+            await expectRevert(
+                reserve.withdraw(ethAddress, precisionUnits, withdrawAddress, {from: operator}),
+                "destination is not approved"
+            );
+            let tokenInd = 1;
+            await reserve.approveWithdrawAddress(tokenAdd[tokenInd], withdrawAddress, false, {from: admin});
+            let tokenAmount = tokenUnits(tokenDecimals[tokenInd]);
+            await tokens[tokenInd].transfer(reserve.address, tokenAmount);
+            await expectRevert(
+                reserve.withdraw(tokenAdd[tokenInd], tokenAmount, withdrawAddress, {from: operator}),
+                "destination is not approved"
+            );
         });
 
         describe("Test withdraw eth", async() => {
+            before("approve withdrawl address", async() => {
+                await reserve.approveWithdrawAddress(ethAddress, withdrawAddress, true, {from: admin});
+                await Helper.sendEtherWithPromise(accounts[0], reserve.address, precisionUnits);
+            });
+
             it("Test withdraw eth success, balance changes", async() => {
+                let withdrawlAddressBal = await Helper.getBalancePromise(withdrawAddress);
+                let reserveEthBal = await Helper.getBalancePromise(reserve.address);
+
+                // withdraw
+                await reserve.withdraw(ethAddress, precisionUnits, withdrawAddress, {from: operator});
+
+                withdrawlAddressBal = withdrawlAddressBal.add(precisionUnits);
+                reserveEthBal = reserveEthBal.sub(precisionUnits);
+                Helper.assertEqual(
+                    withdrawlAddressBal,
+                    await Helper.getBalancePromise(withdrawAddress),
+                    "wrong eth bal for withdrawl address"
+                );
+                Helper.assertEqual(
+                    reserveEthBal,
+                    await Helper.getBalancePromise(reserve.address),
+                    "wrong eth bal for reserve"
+                );
+            });
+
+            it("Test withdraw eth event", async() => {
+                await Helper.sendEtherWithPromise(withdrawAddress, reserve.address, precisionUnits);
+                // withdraw
+                let tx = await reserve.withdraw(ethAddress, precisionUnits, withdrawAddress, {from: operator});
+
+                expectEvent(tx, "WithdrawFunds", {
+                    token: ethAddress,
+                    amount: precisionUnits,
+                    destination: withdrawAddress
+                });
             });
 
             it("Test withdraw address can not receive eth", async() => {
+                let contract = await NoPayableFallback.new();
+                await reserve.approveWithdrawAddress(ethAddress, contract.address, true, {from: admin});
+                // transfer some eth to reserve
+                await Helper.sendEtherWithPromise(accounts[0], reserve.address, precisionUnits);
+                // withdraw should fail, contract doesn't allow to receive eth
+                await expectRevert(
+                    reserve.withdraw(ethAddress, precisionUnits, contract.address, {from: operator}),
+                    "transfer back eth failed"
+                );
+                let anotherReserve = await Reserve.new(
+                    network,
+                    convRatesInst.address,
+                    weth.address,
+                    maxGasPrice,
+                    admin
+                );
+                // approve, withdraw and verify balance
+                let withdrawAmount = new BN(100);
+                await reserve.approveWithdrawAddress(ethAddress, anotherReserve.address, true, {from: admin});
+                await reserve.withdraw(ethAddress, withdrawAmount, anotherReserve.address, {from: operator});
+                Helper.assertEqual(withdrawAmount, await Helper.getBalancePromise(anotherReserve.address));
+                // send all eth back to accounts
+                await reserve.approveWithdrawAddress(ethAddress, accounts[0], true, {from: admin});
+                reserve.withdraw(ethAddress, precisionUnits.sub(withdrawAmount), accounts[0], {from: operator});
             });
 
             it("Test withdraw not enough eth", async() => {
+                let reserveEthBal = await Helper.getBalancePromise(reserve.address);
+                await expectRevert.unspecified(
+                    reserve.withdraw(ethAddress, reserveEthBal.add(new BN(1)), withdrawAddress, {from: operator})
+                )
+            });
+
+            it("Test set token wallet for eth, should withdraw reserve's eth", async() => {
+                await reserve.setTokenWallet(ethAddress, walletForToken, {from: admin});
+                let withdrawlAddressBal = await Helper.getBalancePromise(withdrawAddress);
+                let reserveEthBal = await Helper.getBalancePromise(reserve.address);
+                // withdraw
+                await reserve.withdraw(ethAddress, precisionUnits, withdrawAddress, {from: operator});
+
+                withdrawlAddressBal = withdrawlAddressBal.add(precisionUnits);
+                reserveEthBal = reserveEthBal.sub(precisionUnits);
+
+                Helper.assertEqual(
+                    withdrawlAddressBal,
+                    await Helper.getBalancePromise(withdrawAddress),
+                    "wrong eth bal for withdrawl address"
+                );
+                Helper.assertEqual(
+                    reserveEthBal,
+                    await Helper.getBalancePromise(reserve.address),
+                    "wrong eth bal for reserve"
+                );
             });
         });
 
-        describe("Test withdraw weth", async() => {
-            it("Test withdraw weth success, balance changes", async() => {
+        describe("Test withdraw weth or token", async() => {
+            before("approve withdrawl address", async() => {
+                await reserve.approveWithdrawAddress(weth.address, withdrawAddress, true, {from: admin});
+                for(let i = 0; i < numTokens; i++) {
+                    await reserve.approveWithdrawAddress(tokenAdd[i], withdrawAddress, true, {from: admin});
+                }
             });
 
-            it("Test withdraw not enough balance or allowance", async() => {
-            });
-        });
+            it("Test set token wallet to 0x0 or reserve, withdraw token success, balance changes, event emits", async() => {
+                let tokenWallets = [zeroAddress, reserve.address];
+                let tokenList = [weth, tokens[1], tokens[3]];
 
-        describe("Test withdraw other tokens", async() => {
-            it("Test withdraw token success, balance changes", async() => {
+                for(let i = 0; i < tokenList.length; i++) {
+                    for(let j = 0; j < tokenWallets.length; j++) {
+                        await reserve.setTokenWallet(tokenList[i].address, tokenWallets[j], {from: admin});
+
+                        let amount = new BN(10).pow(new BN(await tokenList[i].decimals()));
+                        // transfer token to reserve
+                        if (tokenList[i] == weth) {
+                            // need to deposit to get weth first
+                            await weth.deposit({value: amount});
+                        }
+                        await tokenList[i].transfer(reserve.address, amount);
+
+                        let walletBal = await tokenList[i].balanceOf(withdrawAddress);
+                        let reserveBal = await tokenList[i].balanceOf(reserve.address);
+
+                        let tx = await reserve.withdraw(tokenList[i].address, amount, withdrawAddress, {from: operator});
+                        expectEvent(tx, "WithdrawFunds", {
+                            token: tokenList[i].address,
+                            amount: amount,
+                            destination: withdrawAddress
+                        });
+
+                        walletBal = walletBal.add(amount);
+                        reserveBal = reserveBal.sub(amount);
+
+                        Helper.assertEqual(
+                            walletBal,
+                            await tokenList[i].balanceOf(withdrawAddress),
+                            "wrong token bal for withdrawl address"
+                        );
+                        Helper.assertEqual(
+                            reserveBal,
+                            await tokenList[i].balanceOf(reserve.address),
+                            "wrong token bal for reserve"
+                        );
+                    }
+                }
             });
 
-            it("Test withdraw not enough balance or allowance", async() => {
+            it("Test set token wallet to wallet address, withdraw token success, balance changes", async() => {
+                let tokenList = [weth, tokens[1], tokens[3]];
+                for(let i = 0; i < tokenList.length; i++) {
+                    await reserve.setTokenWallet(tokenList[i].address, walletForToken, {from: admin});
+                    let amount = new BN(10).pow(new BN(await tokenList[i].decimals()));
+                    // init 1 token to wallet
+                    if (tokenList[i] == weth) {
+                        await weth.deposit({from: walletForToken, value: amount});
+                    } else {
+                        await tokenList[i].transfer(walletForToken, amount);
+                    }
+                    // approve allowance
+                    await tokenList[i].approve(reserve.address, amount, {from: walletForToken});
+
+                    let walletBal = await tokenList[i].balanceOf(withdrawAddress);
+                    let reserveBal = await tokenList[i].balanceOf(walletForToken);
+
+                    await reserve.withdraw(tokenList[i].address, amount, withdrawAddress, {from: operator});
+
+                    walletBal = walletBal.add(amount);
+                    reserveBal = reserveBal.sub(amount);
+
+                    Helper.assertEqual(
+                        walletBal,
+                        await tokenList[i].balanceOf(withdrawAddress),
+                        "wrong token bal for withdrawl address"
+                    );
+                    Helper.assertEqual(
+                        reserveBal,
+                        await tokenList[i].balanceOf(walletForToken),
+                        "wrong token bal for walletForToken"
+                    );
+                }
+            });
+
+            it("Test withdraw should revert, not enough balance or allowance", async() => {
+                let tokenList = [weth, tokens[1], tokens[3]];
+                for(let i = 0; i < tokenList.length; i++) {
+                    // amount of token to deposit to reserve
+                    // test 2 scenarios: no token in reserve, or have enough token in reserve
+                    let tokenAmount = tokenUnits(await tokenList[i].decimals());
+                    let depositedAmounts = [zeroBN, tokenAmount];
+                    let withdrawalAmount = tokenAmount;
+                    await reserve.setTokenWallet(tokenList[i].address, walletForToken, {from: admin});
+
+                    for(let i = 0; i < depositedAmounts.length; i++) {
+                        // transfer token to reserve if needed
+                        if (depositedAmounts[i].gt(zeroBN)) {
+                            if (tokenList[i] == weth) {
+                                // need to get some weth first
+                                await weth.deposit({value: depositedAmounts[i]});
+                            }
+                            // transfer token to reserve
+                            await tokenList[i].transfer(reserve.address, depositedAmounts[i]);
+                        }
+
+                        // make sure not enough allowance
+                        await tokenList[i].approve(reserve.address, 0, {from: walletForToken});
+                        await tokenList[i].approve(reserve.address, withdrawalAmount.sub(new BN(1)), {from: walletForToken});
+
+                        // deposit enough token to walletForToken
+                        if (tokenList[i] == weth) {
+                            await weth.deposit({value: withdrawalAmount, from: walletForToken});
+                        } else {
+                            await tokenList[i].transfer(walletForToken, withdrawalAmount);
+                        }
+
+                        // withdraw should revert, not enough allowance
+                        await expectRevert.unspecified(
+                            reserve.withdraw(tokenList[i].address, withdrawalAmount, withdrawAddress, {from: operator})
+                        );
+
+                        // make sure enough allowance
+                        await tokenList[i].approve(reserve.address, 0, {from: walletForToken});
+                        await tokenList[i].approve(reserve.address, withdrawalAmount, {from: walletForToken});
+
+                        // withdraw token to make sure not enough balance
+                        let tokenBalance = await tokenList[i].balanceOf(walletForToken);
+                        // leave only (withdrawalAmount - 1) token in wallet
+                        let remainTokenAmount = withdrawalAmount.sub(new BN(1));
+                        if (tokenBalance.gt(remainTokenAmount)) {
+                            if (tokenList[i] == weth) {
+                                // withdraw weth
+                                await weth.withdraw(tokenBalance.sub(remainTokenAmount), {from: walletForToken});
+                            } else {
+                                await tokenList[i].transfer(accounts[0], tokenBalance.sub(remainTokenAmount), {from: walletForToken});
+                            }
+                        }
+                        // withdraw should revert, enough allowance but not enough balance
+                        await expectRevert.unspecified(
+                            reserve.withdraw(tokenList[i].address, withdrawalAmount, withdrawAddress, {from: operator})
+                        );
+                    }
+                }
             });
         });
     });
-
-    // it("trade when eth is in reserve, but has set weth wallet != reserve with 0 weth");
-    // [Done] it("trade when eth is in reserve, but has set weth wallet != reserve");
-    // it("trade when no eth, no weth set")
-    // [Done] it("trade when no eth, has weth set, no weth bal")
-    // [Done] it("trade when no eth, has weth set, has weth bal")
 });
 
 function getExtraBpsForImbalanceBuyQuantity(index, imbalance, qty) {
