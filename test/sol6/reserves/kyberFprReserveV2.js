@@ -1666,7 +1666,29 @@ contract('KyberFprReserveV2', function(accounts) {
             Helper.assertGreater(conversionRate, 0, "rate should be > 0");
         });
 
-        it("Test getConversionRate reverts when conversionRate contract reverts", async() => {
+        it("Test getConversionRate returns 0 when conversionRate reverts", async() => {
+            // set conversion rate to a random contract
+            let contract = await NoPayableFallback.new();
+            await reserveInst.setContracts(
+                network, contract.address, weth.address, zeroAddress, {from: admin}
+            );
+
+            // test buy rate
+            let amount = new BN(100);
+            let rate = await reserveInst.getConversionRate(ethAddress, tokenAdd[1], amount, currentBlock);
+            Helper.assertEqual(0, rate, "rate should be 0");
+
+            // test sell
+            rate = await reserveInst.getConversionRate(tokenAdd[1], ethAddress, amount, currentBlock);
+            Helper.assertEqual(0, rate, "rate should be 0");
+
+            // set back contracts
+            await reserveInst.setContracts(
+                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
+            );
+        });
+
+        it("Test getConversionRate reverts when conversionRate is a normal address", async() => {
             // set conversion rate to normal address
             await reserveInst.setContracts(
                 network, accounts[0], weth.address, zeroAddress, {from: admin}

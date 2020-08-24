@@ -194,7 +194,12 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
             return 0; // pair is not listed
         }
 
-        uint256 rate = conversionRatesContract.getRate(token, blockNumber, isBuy, srcQty);
+        uint256 rate;
+        try conversionRatesContract.getRate(token, blockNumber, isBuy, srcQty) returns (uint256 r) {
+            rate = r;
+        } catch {
+            return 0;
+        }
         uint256 destQty = getDestQty(src, dest, srcQty, rate);
 
         if (getBalance(dest) < destQty) return 0;
