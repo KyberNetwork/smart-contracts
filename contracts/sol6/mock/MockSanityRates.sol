@@ -4,8 +4,7 @@ import "../IKyberSanity.sol";
 
 
 contract MockSanityRates is IKyberSanity {
-
-    uint256 sanityRateValue;
+    uint256 public sanityRateValue;
 
     function setSanityRateValue(uint256 _value) external {
         sanityRateValue = _value;

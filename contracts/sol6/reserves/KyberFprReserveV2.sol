@@ -195,7 +195,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         }
 
         uint256 rate;
-        try conversionRatesContract.getRate(token, blockNumber, isBuy, srcQty) returns (uint256 r) {
+        try conversionRatesContract.getRate(token, blockNumber, isBuy, srcQty) returns(uint256 r) {
             rate = r;
         } catch {
             return 0;
@@ -278,10 +278,8 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         // can skip validation if done at kyber network level
         if (validate) {
             require(conversionRate > 0, "rate is 0");
-            if (srcToken == ETH_TOKEN_ADDRESS)
-                require(msg.value == srcAmount, "wrong msg value");
-            else
-                require(msg.value == 0, "bad msg value");
+            if (srcToken == ETH_TOKEN_ADDRESS) require(msg.value == srcAmount, "wrong msg value");
+            else require(msg.value == 0, "bad msg value");
         }
 
         uint256 destAmount = getDestQty(srcToken, destToken, srcAmount, conversionRate);

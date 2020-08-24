@@ -1,6 +1,6 @@
 const ConversionRates = artifacts.require("MockEnhancedStepFunctions.sol");
 const TestToken = artifacts.require("TestToken.sol");
-const WethToken = artifacts.require("Weth9.sol");
+const WethToken = artifacts.require("WethToken.sol");
 const Reserve = artifacts.require("KyberFprReserveV2");
 const MockSanityRates = artifacts.require("MockSanityRates");
 const NoPayableFallback = artifacts.require("NoPayableFallback");
