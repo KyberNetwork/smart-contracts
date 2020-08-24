@@ -381,8 +381,11 @@ contract('KyberFprReserveV2', function(accounts) {
             Helper.assertEqual(amount, balance);
 
             reserveTokenBalance.push(amount);
-            // we set some garbage data
-            reserveTokenImbalance.push(new BN(10));
+        };
+        currentBlock = await Helper.getCurrentBlock();
+        for (let i = 0; i < numTokens; i++) {
+            let imbalance = await convRatesInst.getInitImbalance(tokenAdd[i]);
+            reserveTokenImbalance.push(imbalance);
         }
     }
 
