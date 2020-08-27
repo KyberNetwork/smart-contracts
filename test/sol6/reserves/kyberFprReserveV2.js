@@ -6,12 +6,13 @@ const MockSanityRates = artifacts.require("MockSanityRates");
 const NoPayableFallback = artifacts.require("NoPayableFallback");
 
 const Helper = require("../../helper.js");
+const reserveSetup = require("../../reserveSetup.js");
 const BN = web3.utils.BN;
 
 //global variables
 //////////////////
-const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, 
-    zeroBN, MAX_QTY, MAX_RATE, MAX_ALLOWANCE} = require("../../helper.js");
+const {precisionUnits, ethDecimals, ethAddress, zeroAddress,
+    zeroBN, MAX_ALLOWANCE} = require("../../helper.js");
 const {expectEvent, expectRevert} = require('@openzeppelin/test-helpers');
 
 //balances
@@ -89,13 +90,9 @@ contract('KyberFprReserveV2', function(accounts) {
         operator = accounts[1];
         network = accounts[2];
         user1 = accounts[4];
-        user2 = accounts[5];
         withdrawAddress = accounts[6];
-        sanityRate = accounts[7];
         alerter = accounts[8];
         walletForToken = accounts[9];
-        user3 = accounts[8];
-        user4 = accounts[9];
 
         currentBlock = await Helper.getCurrentBlock();
         weth = await WethToken.new("WrapETH", "WETH", 18);
@@ -110,68 +107,16 @@ contract('KyberFprReserveV2', function(accounts) {
     });
 
     const setupConversionRatesContract = async function(needToken) {
-
-        convRatesInst = await ConversionRates.new(admin);
-
-        //set pricing general parameters
-        await convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
-
-        // no need to setup token
-        if (!needToken) { return; }
-
-        //create and add token addresses...
-        for (let i = 0; i < numTokens; ++i) {
-            let token = tokens[i];
-            await convRatesInst.addToken(token.address);
-            await convRatesInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
-            await convRatesInst.enableTokenTrade(token.address);
-        }
-
-        Helper.assertEqual(tokens.length, numTokens, "bad number tokens");
-
-        await convRatesInst.addOperator(operator);
-        await convRatesInst.addAlerter(alerter);
-
-        // init rates
-        // buy is ether to token rate. sale is token to ether rate. so sell == 1 / buy. assuming we have no spread.
-        let tokensPerEther;
-        let ethersPerToken;
-        baseBuyRate = [];
-        baseSellRate = [];
-
-        for (i = 0; i < numTokens; ++i) {
-            tokensPerEther = precisionUnits.mul(new BN((i + 1) * 3));
-            ethersPerToken = precisionUnits.div(new BN((i + 1) * 3));
-            baseBuyRate.push(tokensPerEther);
-            baseSellRate.push(ethersPerToken);
-        }
-        Helper.assertEqual(baseBuyRate.length, tokens.length);
-        Helper.assertEqual(baseSellRate.length, tokens.length);
-
-        buys.length = sells.length = indices.length = 0;
-
-        await convRatesInst.setBaseRate(tokenAdd, baseBuyRate, baseSellRate, buys, sells, currentBlock, indices, {from: operator});
-
-        //set compact data
-        compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 1, 0, 11, 12, 13, 14];
-        let compactBuyHex = Helper.bytesToHex(compactBuyArr);
-        buys.push(compactBuyHex);
-
-        compactSellArr = [0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
-        let compactSellHex = Helper.bytesToHex(compactSellArr);
-        sells.push(compactSellHex);
-
-        indices[0] = 0;
-
-        Helper.assertEqual(indices.length, sells.length, "bad sells array size");
-        Helper.assertEqual(indices.length, buys.length, "bad buys array size");
-
-        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
-
-        //all start with same step functions.
-        for (let i = 0; i < numTokens; ++i) {
-            await convRatesInst.setImbalanceStepFunction(tokenAdd[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
-        }
+        let setupData = await reserveSetup.setupConversionRate(tokens, admin, operator, alerter, needToken);
+        convRatesInst = setupData.convRatesInst;
+        baseBuyRate = setupData.baseBuyRate;
+        compactBuyArr = setupData.compactBuyArr;
+        baseSellRate = setupData.baseSellRate;
+        compactSellArr = setupData.compactSellArr;
+        imbalanceBuyStepX = setupData.imbalanceBuyStepX;
+        imbalanceBuyStepY = setupData.imbalanceBuyStepY;
+        imbalanceSellStepX = setupData.imbalanceSellStepX;
+        imbalanceSellStepY = setupData.imbalanceSellStepY;
     }
 
     const tradeAndVerifyData = async function(
@@ -322,71 +267,18 @@ contract('KyberFprReserveV2', function(accounts) {
     // general setup reserve contract with fund in token wallet
     // need to set token wallet manually
     const generalSetupReserveContract = async function(isUsingTokenWallet, isUsingWeth) {
-        // init reserves and balances
-        reserveInst = await Reserve.new(network, convRatesInst.address, weth.address, maxGasPrice, admin);
-        await reserveInst.setContracts(network, convRatesInst.address, weth.address, zeroAddress);
-
-        await reserveInst.addOperator(operator);
-        await reserveInst.addAlerter(alerter);
-        await convRatesInst.setReserveAddress(reserveInst.address);
-
-        await reserveInst.approveWithdrawAddress(ethAddress, withdrawAddress, true, {from: admin});
-        for (let i = 0; i < numTokens; ++i) {
-            await reserveInst.approveWithdrawAddress(tokenAdd[i], withdrawAddress, true, {from: admin});
-        }
-
-        let tokenWallet = isUsingTokenWallet ? walletForToken : reserveInst.address;
-        //set reserve balance
-        let amountEth = new BN(10);
-        let reserveEtherInit = precisionUnits.mul(amountEth);
-        if (isUsingWeth) {
-            // empty token wallet
-            let wethBalance = await weth.balanceOf(tokenWallet);
-            if (wethBalance.gt(zeroBN)) {
-                weth.transfer(accounts[0], wethBalance, {from: tokenWallet});
-            }
-            await weth.deposit({value: reserveEtherInit});
-            await weth.transfer(tokenWallet, reserveEtherInit);
-
-            await reserveInst.approveWithdrawAddress(weth.address, withdrawAddress, true, {from: admin});
-
-            let balance = await weth.balanceOf(tokenWallet);
-            expectedReserveBalanceWei = new BN(0);
-            expectedReserveBalanceWeth = balance;
-
-            Helper.assertEqual(balance, reserveEtherInit, "wrong weth balance");
-        } else {
-            await Helper.sendEtherWithPromise(withdrawAddress, reserveInst.address, reserveEtherInit);
-
-            let balance = await Helper.getBalancePromise(reserveInst.address);
-            expectedReserveBalanceWei = balance;
-            expectedReserveBalanceWeth = new BN(0);
-
-            Helper.assertEqual(balance, reserveEtherInit, "wrong ether balance");
-        }
-
-        //transfer tokens to reserve
-        reserveTokenImbalance = [];
-        reserveTokenBalance = [];
-        for (let i = 0; i < numTokens; ++i) {
-            // empty token wallet
-            token = tokens[i];
-            let tokenBalance = await token.balanceOf(tokenWallet);
-            if (tokenBalance.gt(zeroBN)) {
-                await token.transfer(accounts[0], tokenBalance, {from: tokenWallet});
-            }
-            let amount = (amountEth.mul(new BN((i + 1) * 3))).mul(tokenUnits(tokenDecimals[i]));
-            await token.transfer(tokenWallet, amount);
-            let balance = await token.balanceOf(tokenWallet);
-            Helper.assertEqual(amount, balance);
-
-            reserveTokenBalance.push(amount);
-        };
+        let tokenWallet = isUsingTokenWallet ? walletForToken : zeroAddress;
+        let setupData = await reserveSetup.setupFprReserveV2(
+            convRatesInst, tokens, weth, network, maxGasPrice,
+            accounts, admin, operator, alerter,
+            withdrawAddress, tokenWallet, isUsingWeth
+        );
+        reserveInst = setupData.reserveInst;
+        expectedReserveBalanceWei = setupData.reserveBalanceWei;
+        expectedReserveBalanceWeth = setupData.reserveBalanceWeth;
+        reserveTokenBalance = setupData.tokenBalances;
+        reserveTokenImbalance = setupData.tokenImbalances;
         currentBlock = await Helper.getCurrentBlock();
-        for (let i = 0; i < numTokens; i++) {
-            let imbalance = await convRatesInst.getInitImbalance(tokenAdd[i]);
-            reserveTokenImbalance.push(imbalance);
-        }
     }
 
     describe("#Test using eth + tokens in reserve", async() => {
@@ -551,7 +443,7 @@ contract('KyberFprReserveV2', function(accounts) {
                         from: network
                     }
                 ),
-                "transfer back eth failed",
+                "transfer eth from reserve to destAddress failed",
             );
             await token.transfer(accounts[0], amountTwei, {from: network});
             await token.approve(reserveInst.address, 0, {from: network});
@@ -2480,25 +2372,48 @@ contract('KyberFprReserveV2', function(accounts) {
                 await reserve.getBalance(tokenAdd[tokenInd])
             );
         });
+    });
 
-        it("Test getDestQty returns correct value", async function() {
-            let srcQty = new BN(100);
-            let rate = precisionUnits.div(new BN(2));
+    describe("#Test getTokenWallet", async() => {
+        before("setup reserve", async() => {
+            await setupConversionRatesContract(false);
+            reserve = await Reserve.new(
+                network,
+                convRatesInst.address,
+                weth.address,
+                maxGasPrice,
+                admin
+            );
+            await reserve.addAlerter(alerter, {from: admin});
+            await reserve.addOperator(operator, {from: admin});
+        });
 
-            let srcDecimal = 10;
-            let dstDecimal = 13;
+        it("Test getTokenWallet default value", async() => {
+            Helper.assertEqual(reserve.address, await reserve.getTokenWallet(ethAddress));
+            Helper.assertEqual(reserve.address, await reserve.getTokenWallet(weth.address));
+            Helper.assertEqual(reserve.address, await reserve.getTokenWallet(tokenAdd[2]));
+        });
 
-            let tokenA = await TestToken.new("source", "src", srcDecimal);
-            let tokenB = await TestToken.new("dest", "dst", dstDecimal);
+        it("Test getTokenWallet of eth", async() => {
+            Helper.assertEqual(reserve.address, await reserve.getTokenWallet(ethAddress));
+            // set eth token wallet, but this data shouldn't change
+            await reserve.setTokenWallet(ethAddress, walletForToken, {from: admin});
+            // token wallet for eth should use weth's token wallet data
+            Helper.assertEqual(reserve.address, await reserve.getTokenWallet(ethAddress));
+            await reserve.setTokenWallet(weth.address, walletForToken, {from: admin});
+            Helper.assertEqual(walletForToken, await reserve.getTokenWallet(ethAddress));
+            // set back to 0x0
+            await reserve.setTokenWallet(weth.address, zeroAddress, {from: admin});
+            Helper.assertEqual(reserve.address, await reserve.getTokenWallet(ethAddress));
+        });
 
-            // get dest QTY
-            let expectedDestQty = Helper.calcDstQty(srcQty, srcDecimal, dstDecimal, rate);
-            let reportedDstQty = await reserve.getDestQty(tokenA.address, tokenB.address, srcQty, rate);
-            Helper.assertEqual(expectedDestQty, reportedDstQty, "unexpected dst qty");
-
-            expectedDestQty = Helper.calcDstQty(srcQty, dstDecimal, srcDecimal, rate);
-            reportedDstQty = await reserve.getDestQty(tokenB.address, tokenA.address, srcQty, rate);
-            Helper.assertEqual(expectedDestQty, reportedDstQty, "unexpected dst qty");
+        it("Test getTokenWallet of token", async() => {
+            Helper.assertEqual(reserve.address, await reserve.getTokenWallet(weth.address));
+            await reserve.setTokenWallet(weth.address, walletForToken, {from: admin});
+            Helper.assertEqual(walletForToken, await reserve.getTokenWallet(weth.address));
+            Helper.assertEqual(reserve.address, await reserve.getTokenWallet(tokenAdd[1]));
+            await reserve.setTokenWallet(tokenAdd[1], walletForToken, {from: admin});
+            Helper.assertEqual(walletForToken, await reserve.getTokenWallet(tokenAdd[1]));
         });
     });
 
@@ -2651,7 +2566,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 // withdraw should fail, contract doesn't allow to receive eth
                 await expectRevert(
                     reserve.withdraw(ethAddress, precisionUnits, contract.address, {from: operator}),
-                    "transfer back eth failed"
+                    "withdraw eth failed"
                 );
                 let anotherReserve = await Reserve.new(
                     network,

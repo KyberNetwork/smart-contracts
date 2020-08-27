@@ -10,7 +10,8 @@ import "../utils/Withdrawable3.sol";
 import "../utils/zeppelin/SafeERC20.sol";
 
 /// @title KyberFprReserve version 2
-/// Allow Reserve to work with both WETH by specifying address to hold WETH or ETH
+/// Allow Reserve to work work with either weth or eth.
+/// for working with weth should specify external address to hold weth.
 /// Allow Reserve to set maxGasPriceWei to trade with
 contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     using SafeERC20 for IERC20;
@@ -19,9 +20,13 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     mapping(bytes32 => bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
     mapping(address => address) public tokenWallet;
 
+    struct ConfigData {
+        bool tradeEnabled;
+        uint128 maxGasPriceWei;
+    }
+
     address public kyberNetwork;
-    bool public tradeEnabled;
-    uint256 public maxGasPriceWei;
+    ConfigData configData;
 
     IConversionRates public conversionRatesContract;
     IKyberSanity public sanityRatesContract;
@@ -37,7 +42,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         address payable destAddress
     );
     event TradeEnabled(bool enable);
-    event MaxGasPriceUpdated(uint256 newMaxGasPrice);
+    event MaxGasPriceUpdated(uint128 newMaxGasPrice);
     event WithdrawAddressApproved(IERC20 indexed token, address indexed addr, bool approve);
     event NewTokenWallet(IERC20 indexed token, address indexed wallet);
     event WithdrawFunds(IERC20 indexed token, uint256 amount, address indexed destination);
@@ -52,7 +57,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         address _kyberNetwork,
         IConversionRates _ratesContract,
         IWeth _weth,
-        uint256 _maxGasPriceWei,
+        uint128 _maxGasPriceWei,
         address _admin
     ) public Withdrawable3(_admin) {
         require(_kyberNetwork != address(0), "kyberNetwork 0");
@@ -61,8 +66,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         kyberNetwork = _kyberNetwork;
         conversionRatesContract = _ratesContract;
         weth = _weth;
-        tradeEnabled = true;
-        maxGasPriceWei = _maxGasPriceWei;
+        configData = ConfigData({tradeEnabled: true, maxGasPriceWei: _maxGasPriceWei});
     }
 
     receive() external payable {
@@ -77,9 +81,9 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         uint256 conversionRate,
         bool validate
     ) external override payable returns (bool) {
-        require(tradeEnabled, "trade not enable");
+        require(configData.tradeEnabled, "trade not enable");
         require(msg.sender == kyberNetwork, "wrong sender");
-        require(tx.gasprice <= maxGasPriceWei, "gas price too high");
+        require(tx.gasprice <= uint256(configData.maxGasPriceWei), "gas price too high");
 
         doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate);
 
@@ -87,17 +91,17 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     }
 
     function enableTrade() external onlyAdmin {
-        tradeEnabled = true;
+        configData.tradeEnabled = true;
         emit TradeEnabled(true);
     }
 
     function disableTrade() external onlyAlerter {
-        tradeEnabled = false;
+        configData.tradeEnabled = false;
         emit TradeEnabled(false);
     }
 
-    function setMaxGasPrice(uint256 newMaxGasPrice) external onlyOperator {
-        maxGasPriceWei = newMaxGasPrice;
+    function setMaxGasPrice(uint128 newMaxGasPrice) external onlyOperator {
+        configData.maxGasPriceWei = newMaxGasPrice;
         emit MaxGasPriceUpdated(newMaxGasPrice);
     }
 
@@ -135,7 +139,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
 
         if (token == ETH_TOKEN_ADDRESS) {
             (bool success, ) = destination.call{value: amount}("");
-            require(success, "transfer back eth failed");
+            require(success, "withdraw eth failed");
         } else {
             address wallet = getTokenWallet(token);
             if (wallet == address(this)) {
@@ -177,8 +181,8 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         uint256 srcQty,
         uint256 blockNumber
     ) external override view returns (uint256) {
-        if (!tradeEnabled) return 0;
-        if (tx.gasprice > maxGasPriceWei) return 0;
+        if (!configData.tradeEnabled) return 0;
+        if (tx.gasprice > uint256(configData.maxGasPriceWei)) return 0;
         if (srcQty == 0) return 0;
 
         IERC20 token;
@@ -200,7 +204,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         } catch {
             return 0;
         }
-        uint256 destQty = getDestQty(src, dest, srcQty, rate);
+        uint256 destQty = calcDestAmount(src, dest, srcQty, rate);
 
         if (getBalance(dest) < destQty) return 0;
 
@@ -218,6 +222,14 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         returns (bool)
     {
         return approvedWithdrawAddresses[keccak256(abi.encodePacked(address(token), addr))];
+    }
+
+    function tradeEnabled() external view returns (bool) {
+        return configData.tradeEnabled;
+    }
+
+    function maxGasPriceWei() external view returns (uint128) {
+        return configData.maxGasPriceWei;
     }
 
     /// @dev return available balance of a token that reserve can use
@@ -249,16 +261,16 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         return minOf(balanceOfWallet, allowanceOfWallet);
     }
 
-    function getDestQty(
-        IERC20 src,
-        IERC20 dest,
-        uint256 srcQty,
-        uint256 rate
-    ) public view returns (uint256) {
-        uint256 dstDecimals = getDecimals(dest);
-        uint256 srcDecimals = getDecimals(src);
-
-        return calcDstQty(srcQty, srcDecimals, dstDecimals, rate);
+    /// @dev return wallet that holds the token
+    ///      if token is ETH, check tokenWallet of WETH instead
+    ///      if wallet is 0x0, consider as this reserve address
+    function getTokenWallet(IERC20 token) public view returns (address wallet) {
+        wallet = (token == ETH_TOKEN_ADDRESS)
+            ? tokenWallet[address(weth)]
+            : tokenWallet[address(token)];
+        if (wallet == address(0)) {
+            wallet = address(this);
+        }
     }
 
     /// @dev do a trade
@@ -282,7 +294,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
             else require(msg.value == 0, "bad msg value");
         }
 
-        uint256 destAmount = getDestQty(srcToken, destToken, srcAmount, conversionRate);
+        uint256 destAmount = calcDestAmount(srcToken, destToken, srcAmount, conversionRate);
         // sanity check
         require(destAmount > 0, "dest amount is 0");
 
@@ -323,7 +335,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
             }
             // transfer eth to dest address
             (bool success, ) = destAddress.call{value: destAmount}("");
-            require(success, "transfer back eth failed");
+            require(success, "transfer eth from reserve to destAddress failed");
         } else {
             if (destTokenWallet == address(this)) {
                 destToken.safeTransfer(destAddress, destAmount);
@@ -333,17 +345,5 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         }
 
         emit TradeExecute(msg.sender, srcToken, srcAmount, destToken, destAmount, destAddress);
-    }
-
-    /// @dev return wallet that holds the token
-    ///      if token is ETH, check tokenWallet of WETH instead
-    ///      if wallet is 0x0, consider as this reserve address
-    function getTokenWallet(IERC20 token) internal view returns (address wallet) {
-        wallet = (token == ETH_TOKEN_ADDRESS)
-            ? tokenWallet[address(weth)]
-            : tokenWallet[address(token)];
-        if (wallet == address(0)) {
-            wallet = address(this);
-        }
     }
 }
