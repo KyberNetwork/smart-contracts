@@ -81,11 +81,12 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         uint256 conversionRate,
         bool validate
     ) external override payable returns (bool) {
+        validate;
         require(configData.tradeEnabled, "trade not enable");
         require(msg.sender == kyberNetwork, "wrong sender");
         require(tx.gasprice <= uint256(configData.maxGasPriceWei), "gas price too high");
 
-        doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate);
+        doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate);
 
         return true;
     }
@@ -273,75 +274,72 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         }
     }
 
-    /// @dev do a trade
+    /// @dev do a trade, re-validate the conversion rate, remove trust assumption with network
     /// @param srcToken Src token
     /// @param srcAmount Amount of src token
     /// @param destToken Destination token
     /// @param destAddress Destination address to send tokens to
-    /// @param validate If true, additional validations are applicable
     function doTrade(
         IERC20 srcToken,
         uint256 srcAmount,
         IERC20 destToken,
         address payable destAddress,
-        uint256 conversionRate,
-        bool validate
+        uint256 conversionRate
     ) internal {
-        // can skip validation if done at kyber network level
-        if (validate) {
-            require(conversionRate > 0, "rate is 0");
-            if (srcToken == ETH_TOKEN_ADDRESS) require(msg.value == srcAmount, "wrong msg value");
-            else require(msg.value == 0, "bad msg value");
+        require(conversionRate > 0, "rate is 0");
+
+        uint256 rate;
+
+        if (srcToken == ETH_TOKEN_ADDRESS) {
+            require(msg.value == srcAmount, "wrong msg value");
+            rate = conversionRatesContract.getRate(destToken, block.number, true, srcAmount);
+        } else {
+            require(msg.value == 0, "bad msg value");
+            rate = conversionRatesContract.getRate(srcToken, block.number, false, srcAmount);
+        }
+
+        // re-validate conversion rate
+        require(rate >= conversionRate, "rate is lower than conversion rate");
+        if (sanityRatesContract != IKyberSanity(0)) {
+            // sanity rate check
+            uint256 sanityRate = sanityRatesContract.getSanityRate(srcToken, destToken);
+            require(rate <= sanityRate, "rate should not be greater than sanity rate" );
         }
 
         uint256 destAmount = calcDestAmount(srcToken, destToken, srcAmount, conversionRate);
-        // sanity check
         require(destAmount > 0, "dest amount is 0");
 
-        // add to imbalance
-        IERC20 token;
-        int256 tradeAmount;
-        if (srcToken == ETH_TOKEN_ADDRESS) {
-            tradeAmount = int256(destAmount);
-            token = destToken;
-        } else {
-            tradeAmount = -1 * int256(srcAmount);
-            token = srcToken;
-        }
-
-        conversionRatesContract.recordImbalance(token, tradeAmount, 0, block.number);
-
-        // collect src tokens, transfer to token wallet if needed
         address srcTokenWallet = getTokenWallet(srcToken);
+        address destTokenWallet = getTokenWallet(destToken);
+
         if (srcToken == ETH_TOKEN_ADDRESS) {
+            // add to imbalance
+            conversionRatesContract.recordImbalance(destToken, int256(destAmount), 0, block.number);
+            // if reserve is using weth, convert eth to weth and transfer weth to weth's tokenWallet
             if (srcTokenWallet != address(this)) {
-                // reserve is using weth instead of eth
-                // convert eth to weth and send to weth's token wallet
                 weth.deposit{value: msg.value}();
                 IERC20(weth).safeTransfer(srcTokenWallet, msg.value);
             }
-        } else {
-            srcToken.safeTransferFrom(msg.sender, srcTokenWallet, srcAmount);
-        }
-
-        address destTokenWallet = getTokenWallet(destToken);
-        // send dest tokens
-        if (destToken == ETH_TOKEN_ADDRESS) {
-            if (destTokenWallet != address(this)) {
-                // transfer weth from weth's token wallet to this address
-                // then unwrap weth to eth to this contract address
-                IERC20(weth).safeTransferFrom(destTokenWallet, address(this), destAmount);
-                weth.withdraw(destAmount);
-            }
-            // transfer eth to dest address
-            (bool success, ) = destAddress.call{value: destAmount}("");
-            require(success, "transfer eth from reserve to destAddress failed");
-        } else {
+            // transfer dest token from tokenWallet to destAddress
             if (destTokenWallet == address(this)) {
                 destToken.safeTransfer(destAddress, destAmount);
             } else {
                 destToken.safeTransferFrom(destTokenWallet, destAddress, destAmount);
             }
+        } else {
+            // add to imbalance
+            conversionRatesContract.recordImbalance(srcToken, -1 * int256(srcAmount), 0, block.number);
+            // collect src token from sender
+            srcToken.safeTransferFrom(msg.sender, srcTokenWallet, srcAmount);
+            // transfer eth from reserve to destAddress
+            // if reserve is using weth, then reserve needs to collect weth from tokenWallet, convert it to eth
+            if (destTokenWallet != address(this)) {
+                IERC20(weth).safeTransferFrom(destTokenWallet, address(this), destAmount);
+                weth.withdraw(destAmount);
+            }
+            // transfer eth to destAddress
+            (bool success, ) = destAddress.call{value: destAmount}("");
+            require(success, "transfer eth from reserve to destAddress failed");
         }
 
         emit TradeExecute(msg.sender, srcToken, srcAmount, destToken, destAmount, destAddress);

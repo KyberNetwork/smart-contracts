@@ -1,6 +1,6 @@
 const ConversionRates = artifacts.require("MockEnhancedStepFunctions.sol");
 const TestToken = artifacts.require("TestToken.sol");
-const WethToken = artifacts.require("WethToken.sol");
+const WethToken = artifacts.require("Weth9");
 const Reserve = artifacts.require("KyberFprReserveV2");
 const MockSanityRates = artifacts.require("MockSanityRates");
 const NoPayableFallback = artifacts.require("NoPayableFallback");
@@ -11,8 +11,7 @@ const BN = web3.utils.BN;
 
 //global variables
 //////////////////
-const {precisionUnits, ethDecimals, ethAddress, zeroAddress,
-    zeroBN, MAX_ALLOWANCE} = require("../../helper.js");
+const {precisionUnits, ethDecimals, ethAddress, zeroAddress, zeroBN, MAX_ALLOWANCE} = require("../../helper.js");
 const {expectEvent, expectRevert} = require('@openzeppelin/test-helpers');
 
 //balances
@@ -32,11 +31,9 @@ let withdrawAddress;
 let weth;
 let convRatesInst;
 let reserveInst;
-let sanityRate;
 
 //block data
 let currentBlock;
-let validRateDurationInBlocks = 1000;
 let maxGasPrice = new BN(150).mul(new BN(10).pow(new BN(9))); // 150 * 10^9
 
 //tokens data
@@ -48,8 +45,6 @@ let tokenAdd = [];
 
 // imbalance data
 let minimalRecordResolution = new BN(2);
-let maxPerBlockImbalance = 40000;
-let maxTotalImbalance = maxPerBlockImbalance * 12;
 
 // all price steps in bps (basic price steps).
 // 100 bps means rate change will be: price * (100 + 10000) / 10000 == raise rate in 1%
@@ -216,7 +211,10 @@ contract('KyberFprReserveV2', function(accounts) {
             let recordImbal = expectedDestAmount.div(minimalRecordResolution).mul(minimalRecordResolution);
             reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal);
 
-            return expectedDestAmount;
+            return {
+                expectedDestAmount: expectedDestAmount,
+                gasUsed: tx.receipt.gasUsed
+            }
         } else {
             // check reserve has received token
             reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].add(srcAmount);
@@ -241,7 +239,11 @@ contract('KyberFprReserveV2', function(accounts) {
 
             let recordImbal = new BN(divSolidity(srcAmount.mul(new BN(-1)), minimalRecordResolution)).mul(minimalRecordResolution);
             reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal);
-            return expectedDestAmount;
+
+            return {
+                expectedDestAmount: expectedDestAmount,
+                gasUsed: tx.receipt.gasUsed
+            }
         }
     };
 
@@ -321,10 +323,12 @@ contract('KyberFprReserveV2', function(accounts) {
 
         it("Test a few buys with steps and check: correct balances change, rate is expected rate.", async function () {
             let tokenInd = 3;
+            let totalGasUsed = new BN(0);
+            let numberTxs = 15;
 
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < numberTxs; i++) {
                 let amountWei = new BN(Helper.getRandomInt(10, 400));
-                await tradeAndVerifyData(
+                let data = await tradeAndVerifyData(
                     reserveInst,
                     true, // is buy
                     tokenInd,
@@ -335,7 +339,9 @@ contract('KyberFprReserveV2', function(accounts) {
                     false, // not using weth
                     true // validate
                 );
+                totalGasUsed.iadd(new BN(data.gasUsed));
             };
+            console.log(`        Average gas used for ${numberTxs} buys with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
         it("Test a small sell and check: balances changed, rate is expected rate.", async function () {
@@ -363,14 +369,16 @@ contract('KyberFprReserveV2', function(accounts) {
         it("Test a few sells with steps and check: correct balances change, rate is expected rate.", async function () {
             let tokenInd = 3;
             let token = tokens[tokenInd];
+            let totalGasUsed = new BN(0);
+            let numberTxs = 15;
 
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < numberTxs; i++) {
                 let amountTwei = new BN(Helper.getRandomInt(1000, 10000));
                 // transfer and approve token to network
                 await token.transfer(network, amountTwei);
                 await token.approve(reserveInst.address, amountTwei, {from: network});
 
-                await tradeAndVerifyData(
+                let data = await tradeAndVerifyData(
                     reserveInst,
                     false, // is buy
                     tokenInd,
@@ -381,7 +389,9 @@ contract('KyberFprReserveV2', function(accounts) {
                     false, // not using weth
                     true // validate
                 );
+                totalGasUsed.iadd(new BN(data.gasUsed));
             };
+            console.log(`        Average gas used for ${numberTxs} sells with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
         it("Test verify trade success when validation disabled.", async function () {
@@ -572,10 +582,12 @@ contract('KyberFprReserveV2', function(accounts) {
 
         it("Test a few buys with steps and check: correct balances change, rate is expected rate", async function () {
             let tokenInd = 1;
+            let totalGasUsed = new BN(0);
+            let numberTxs = 15;
 
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < numberTxs; i++) {
                 let amountWei = new BN(Helper.getRandomInt(100, 1500));
-                await tradeAndVerifyData(
+                let data = await tradeAndVerifyData(
                     reserveInst,
                     true, // is buy
                     tokenInd,
@@ -586,7 +598,9 @@ contract('KyberFprReserveV2', function(accounts) {
                     false, // not using weth
                     true // validate
                 );
+                totalGasUsed.iadd(new BN(data.gasUsed));
             };
+            console.log(`        Average gas used for ${numberTxs} buys with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
         it("Test a small sell and check: balances changed, rate is expected rate.", async function () {
@@ -614,14 +628,16 @@ contract('KyberFprReserveV2', function(accounts) {
         it("Test a few sells with steps and check: correct balances change, rate is expected rate.", async function () {
             let tokenInd = 2;
             let token = tokens[tokenInd];
+            let totalGasUsed = new BN(0);
+            let numberTxs = 15;
 
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < numberTxs; i++) {
                 let amountTwei = new BN(Helper.getRandomInt(500, 5000));
                 // transfer and approve token to network
                 await token.transfer(network, amountTwei);
                 await token.approve(reserveInst.address, amountTwei, {from: network});
 
-                await tradeAndVerifyData(
+                let data = await tradeAndVerifyData(
                     reserveInst,
                     false, // sell trade
                     tokenInd,
@@ -632,7 +648,9 @@ contract('KyberFprReserveV2', function(accounts) {
                     false, // not using weth
                     true // validate
                 );
+                totalGasUsed.iadd(new BN(data.gasUsed));
             };
+            console.log(`        Average gas used for ${numberTxs} sells with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
         it("Test verify trade success when validation disabled.", async function () {
@@ -874,10 +892,12 @@ contract('KyberFprReserveV2', function(accounts) {
 
         it("Test a few buys with steps and check: correct balances change, rate is expected rate", async function () {
             let tokenInd = 1;
+            let totalGasUsed = new BN(0);
+            let numberTxs = 15;
 
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < numberTxs; i++) {
                 let amountWei = new BN(Helper.getRandomInt(100, 1500));
-                await tradeAndVerifyData(
+                let data = await tradeAndVerifyData(
                     reserveInst,
                     true, // is buy
                     tokenInd,
@@ -888,7 +908,9 @@ contract('KyberFprReserveV2', function(accounts) {
                     true, // using weth
                     true // validate
                 );
+                totalGasUsed.iadd(new BN(data.gasUsed));
             };
+            console.log(`        Average gas used for ${numberTxs} buys with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
         it("Test a small sell and check: balances changed, rate is expected rate.", async function () {
@@ -916,14 +938,16 @@ contract('KyberFprReserveV2', function(accounts) {
         it("Test a few sells with steps and check: correct balances change, rate is expected rate.", async function () {
             let tokenInd = 2;
             let token = tokens[tokenInd];
+            let totalGasUsed = new BN(0);
+            let numberTxs = 15;
 
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < numberTxs; i++) {
                 let amountTwei = new BN(Helper.getRandomInt(500, 5000));
                 // transfer and approve token to network
                 await token.transfer(network, amountTwei);
                 await token.approve(reserveInst.address, amountTwei, {from: network});
 
-                await tradeAndVerifyData(
+                let data = await tradeAndVerifyData(
                     reserveInst,
                     false, // sell trade
                     tokenInd,
@@ -934,7 +958,9 @@ contract('KyberFprReserveV2', function(accounts) {
                     true, // using weth
                     true // validate
                 );
+                totalGasUsed.iadd(new BN(data.gasUsed));
             };
+            console.log(`        Average gas used for ${numberTxs} sells with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
         it("Test verify trade success when validation disabled.", async function () {
@@ -1896,11 +1922,9 @@ contract('KyberFprReserveV2', function(accounts) {
 
         it("Test revert dest amount is 0", async() => {
             let tokenInd = 3;
-            let amountTwei = new BN(1000);
-            let conversionRate = 0;
+            let amountTwei = new BN(1);
+            let conversionRate = new BN(100000);
 
-            // validate = false -> no validate again
-            // conversion rate = 0 -> dest amount = 0
             await expectRevert(
                 reserveInst.trade(tokenAdd[tokenInd], amountTwei, ethAddress,
                     user1, conversionRate, false,
@@ -1910,6 +1934,156 @@ contract('KyberFprReserveV2', function(accounts) {
                     }
                 ),
                 "dest amount is 0"
+            );
+        });
+
+        it("Test revert conversion rate reverts in getRate", async() => {
+            let tokenInd = 3;
+            let amount = new BN(100);
+            let e2tRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amount, currentBlock);
+            Helper.assertGreater(e2tRate, 0);
+            let t2eRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
+            Helper.assertGreater(t2eRate, 0);
+
+            // set conversion rate to a normal address
+            await reserveInst.setContracts(network, accounts[0], weth.address, zeroAddress, {from: admin});
+
+            // test e2t trade
+            await expectRevert.unspecified(
+                reserveInst.trade(ethAddress, amount, tokenAdd[tokenInd],
+                    user1, e2tRate, false,
+                    {
+                        from: network,
+                        value: amount
+                    }
+                )
+            );
+
+            // test t2e trade
+            // transfer enough src token
+            await tokens[tokenInd].transfer(network, amount);
+            // make not enough allowance
+            await tokens[tokenInd].approve(reserveInst.address, 0, {from: network});
+            await tokens[tokenInd].approve(reserveInst.address, amount, {from: network});
+
+            // set to random contract
+            let contract = await NoPayableFallback.new();
+            await reserveInst.setContracts(network, contract.address, weth.address, zeroAddress, {from: admin});
+
+            await expectRevert.unspecified(
+                reserveInst.trade(tokenAdd[tokenInd], amount, ethAddress,
+                    user1, t2eRate, false,
+                    {
+                        from: network,
+                        value: 0
+                    }
+                )
+            );
+
+            await tokens[tokenInd].transfer(accounts[0], amount, {from: network});
+            await tokens[tokenInd].approve(reserveInst.address, 0, {from: network});
+
+            await reserveInst.setContracts(network, convRatesInst.address, weth.address, zeroAddress, {from: admin});
+        });
+
+        it("Test revert rate is higher than conversionRate's rate", async() => {
+            let tokenInd = 3;
+            let amount = new BN(100);
+            let e2tRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amount, currentBlock);
+            Helper.assertGreater(e2tRate, 0);
+            let t2eRate = await reserveInst.getConversionRate(tokenAdd[tokenInd], ethAddress, amount, currentBlock);
+            Helper.assertGreater(t2eRate, 0);
+
+            // test e2t trade
+            await expectRevert(
+                reserveInst.trade(ethAddress, amount, tokenAdd[tokenInd],
+                    user1, e2tRate.add(new BN(1)), false,
+                    {
+                        from: network,
+                        value: amount
+                    }
+                ),
+                "rate is lower than conversion rate"
+            );
+
+            // test t2e trade
+            await expectRevert.unspecified(
+                reserveInst.trade(tokenAdd[tokenInd], amount, ethAddress,
+                    user1, t2eRate.add(new BN(1)), false,
+                    {
+                        from: network,
+                        value: 0
+                    }
+                ),
+                "rate is lower than conversion rate"
+            );
+        });
+
+        it("Test revert when sanityRate reverts", async() => {
+            let tokenInd = 3;
+            let amount = new BN(100);
+            let e2tRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amount, currentBlock);
+            Helper.assertGreater(e2tRate, 0);
+
+            let contract = await NoPayableFallback.new();
+            await reserveInst.setContracts(
+                network, convRatesInst.address, weth.address, contract.address, {from: admin}
+            );
+
+            // test e2t trade reverted
+            await expectRevert.unspecified(
+                reserveInst.trade(ethAddress, amount, tokenAdd[tokenInd],
+                    user1, e2tRate, false,
+                    {
+                        from: network,
+                        value: amount
+                    }
+                )
+            );
+
+            await reserveInst.setContracts(
+                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
+            );
+        });
+
+        it("Test revert rate is higher than sanity rate", async() => {
+            let tokenInd = 3;
+            let amount = new BN(100);
+            let e2tRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[tokenInd], amount, currentBlock);
+            Helper.assertGreater(e2tRate, 0);
+
+            let sanityRate = await MockSanityRates.new();
+            await reserveInst.setContracts(
+                network, convRatesInst.address, weth.address, sanityRate.address, {from: admin}
+            );
+
+            await sanityRate.setSanityRateValue(e2tRate.sub(new BN(1)));
+
+            // test e2t trade reverted
+            await expectRevert(
+                reserveInst.trade(ethAddress, amount, tokenAdd[tokenInd],
+                    user1, e2tRate, false,
+                    {
+                        from: network,
+                        value: amount
+                    }
+                ),
+                "rate should not be greater than sanity rate"
+            );
+
+            // set lower sanity rate
+            await sanityRate.setSanityRateValue(e2tRate);
+            // verify trade is successful
+            await reserveInst.trade(ethAddress, amount, tokenAdd[tokenInd],
+                user1, e2tRate, false,
+                {
+                    from: network,
+                    value: amount
+                }
+            )
+
+            await reserveInst.setContracts(
+                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
             );
         });
     });
