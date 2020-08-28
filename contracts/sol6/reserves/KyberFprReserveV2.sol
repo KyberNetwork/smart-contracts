@@ -26,7 +26,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     }
 
     address public kyberNetwork;
-    ConfigData configData;
+    ConfigData internal configData;
 
     IConversionRates public conversionRatesContract;
     IKyberSanity public sanityRatesContract;
@@ -314,8 +314,13 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
 
         if (srcToken == ETH_TOKEN_ADDRESS) {
             // add to imbalance
-            conversionRatesContract.recordImbalance(destToken, int256(destAmount), 0, block.number);
-            // if reserve is using weth, convert eth to weth and transfer weth to weth's tokenWallet
+            conversionRatesContract.recordImbalance(
+                destToken,
+                int256(destAmount),
+                0,
+                block.number
+            );
+            // if reserve is using weth, convert eth to weth and transfer weth to its' tokenWallet
             if (srcTokenWallet != address(this)) {
                 weth.deposit{value: msg.value}();
                 IERC20(weth).safeTransfer(srcTokenWallet, msg.value);
@@ -328,11 +333,16 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
             }
         } else {
             // add to imbalance
-            conversionRatesContract.recordImbalance(srcToken, -1 * int256(srcAmount), 0, block.number);
+            conversionRatesContract.recordImbalance(
+                srcToken,
+                -1 * int256(srcAmount),
+                0,
+                block.number
+            );
             // collect src token from sender
             srcToken.safeTransferFrom(msg.sender, srcTokenWallet, srcAmount);
-            // transfer eth from reserve to destAddress
-            // if reserve is using weth, then reserve needs to collect weth from tokenWallet, convert it to eth
+            // if reserve is using weth, reserve needs to collect weth from tokenWallet,
+            // then convert it to eth
             if (destTokenWallet != address(this)) {
                 IERC20(weth).safeTransferFrom(destTokenWallet, address(this), destAmount);
                 weth.withdraw(destAmount);
