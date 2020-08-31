@@ -4,7 +4,8 @@ import "../KyberNetwork.sol";
 
 
 /*
- * @title Kyber Network main contract, takes some fee but returns actual dest amount as if fee wasn't taken
+ * @title Kyber Network main contract, takes some fee but returns actual dest amount 
+ *      as if fee wasn't taken.
  */
 contract MaliciousKyberNetwork2 is KyberNetwork {
     uint256 public myFeeWei = 10;
@@ -13,6 +14,9 @@ contract MaliciousKyberNetwork2 is KyberNetwork {
         public
         KyberNetwork(_admin, _kyberStorage)
     {}
+
+// overwrite function to reduce bytecode size
+    function removeKyberProxy(address kyberProxy) external virtual override {}
 
     function setMyFeeWei(uint256 fee) public {
         myFeeWei = fee;
@@ -51,7 +55,4 @@ contract MaliciousKyberNetwork2 is KyberNetwork {
 
         return;
     }
-
-    // overwrite function to reduce bytecode size
-    function removeKyberProxy(address kyberProxy) external virtual override {}
 }
