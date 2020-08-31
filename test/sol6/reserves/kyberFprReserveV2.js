@@ -1,10 +1,9 @@
-const ConversionRates = artifacts.require("MockEnhancedStepFunctions.sol");
-const TestToken = artifacts.require("TestToken.sol");
+const MockConversionRates = artifacts.require("MockConversionRates");
+const TestToken = artifacts.require("TestToken");
 const WethToken = artifacts.require("WethToken");
 const Reserve = artifacts.require("KyberFprReserveV2");
 const MockSanityRates = artifacts.require("MockSanityRates");
 const NoPayableFallback = artifacts.require("NoPayableFallback");
-const SanityRatesGasPrice = artifacts.require("SanityRatesGasPrice");
 
 const Helper = require("../../helper.js");
 const reserveSetup = require("../../reserveSetup.js");
@@ -43,9 +42,6 @@ let numTokens = 5;
 let tokens = [];
 let tokenDecimals = [];
 let tokenAdd = [];
-
-// imbalance data
-let minimalRecordResolution = new BN(2);
 
 // all price steps in bps (basic price steps).
 // 100 bps means rate change will be: price * (100 + 10000) / 10000 == raise rate in 1%
@@ -98,17 +94,15 @@ contract('KyberFprReserveV2', function(accounts) {
         }
     });
 
-    const setupConversionRatesContract = async function(needToken) {
-        let setupData = await reserveSetup.setupConversionRate(tokens, admin, operator, alerter, needToken);
-        convRatesInst = setupData.convRatesInst;
-        baseBuyRate = setupData.baseBuyRate;
-        compactBuyArr = setupData.compactBuyArr;
-        baseSellRate = setupData.baseSellRate;
-        compactSellArr = setupData.compactSellArr;
-        imbalanceBuyStepX = setupData.imbalanceBuyStepX;
-        imbalanceBuyStepY = setupData.imbalanceBuyStepY;
-        imbalanceSellStepX = setupData.imbalanceSellStepX;
-        imbalanceSellStepY = setupData.imbalanceSellStepY;
+    const setupMockConversionRatesContract = async function(needToken) {
+        convRatesInst = await MockConversionRates.new();
+        if (needToken) {
+            for(let i = 0; i < numTokens; i++) {
+                let tokensPerEther = precisionUnits.mul(new BN((i + 1) * 3));
+                let ethersPerToken = precisionUnits.div(new BN((i + 1) * 3));
+                await convRatesInst.setBaseRates(tokenAdd[i], tokensPerEther, ethersPerToken);
+            }
+        }
     }
 
     const tradeAndVerifyData = async function(
@@ -126,44 +120,17 @@ contract('KyberFprReserveV2', function(accounts) {
         let token = tokens[tokenInd];
         let srcAddress = isBuy ? ethAddress : tokenAdd[tokenInd];
         let destAddress = isBuy ? tokenAdd[tokenInd] : ethAddress;
-        let conversionRate = await reserveInst.getConversionRate(
-            srcAddress,
-            destAddress,
-            srcAmount,
-            currentBlock
-        );
-        let expectedRate;
-        let numberSteps;
-        if (isBuy) {
-            expectedRate = baseBuyRate[tokenInd];
-            let extraBps = compactBuyArr[tokenInd] * 10;
-            expectedRate = Helper.addBps(expectedRate, extraBps);
-            let destQty = Helper.calcDstQty(srcAmount, ethDecimals, tokenDecimals[tokenInd], expectedRate);
-            let data = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].toNumber(), destQty.toNumber());
-            extraBps = data.bps;
-            numberSteps = data.steps;
-            expectedRate = Helper.addBps(expectedRate, extraBps);
-        } else {
-            expectedRate = baseSellRate[tokenInd];
-            let extraBps = compactSellArr[tokenInd] * 10;
-            expectedRate = Helper.addBps(expectedRate, extraBps);
-            let data = getExtraBpsForImbalanceSellQuantity(reserveTokenImbalance[tokenInd].toNumber(), srcAmount.toNumber());
-            extraBps = data.bps;
-            numberSteps = data.steps;
-            expectedRate = Helper.addBps(expectedRate, extraBps);
-        }
-
-        // check correct rate calculated
-        Helper.assertEqual(conversionRate, expectedRate, "unexpected rate.");
+        let conversionRate = await reserveInst.getConversionRate(srcAddress, destAddress, srcAmount, currentBlock);
+        Helper.assertGreater(conversionRate, 0, "rate should be positive");
+        Helper.assertEqual(
+            await convRatesInst.getRate(tokenAdd[tokenInd], currentBlock, isBuy, srcAmount),
+            conversionRate,
+            "rate doesn't match conversion rate data"
+        )
 
         //perform trade
         let tx = await reserveInst.trade(
-            srcAddress,
-            srcAmount,
-            destAddress,
-            recipient,
-            conversionRate,
-            isValidate,
+            srcAddress, srcAmount, destAddress, recipient, conversionRate, isValidate,
             {
                 from: network,
                 value: isBuy ? srcAmount : 0
@@ -209,15 +176,6 @@ contract('KyberFprReserveV2', function(accounts) {
             reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].sub(expectedDestAmount);
             let destTokenBal = await token.balanceOf(destTokenWallet);
             Helper.assertEqual(destTokenBal, reserveTokenBalance[tokenInd], "bad reserve dest token");
-
-            let recordImbal = expectedDestAmount.div(minimalRecordResolution).mul(minimalRecordResolution);
-            reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal);
-
-            return {
-                expectedDestAmount: expectedDestAmount,
-                gasUsed: tx.receipt.gasUsed,
-                numberSteps: numberSteps
-            }
         } else {
             // check reserve has received token
             reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].add(srcAmount);
@@ -238,15 +196,6 @@ contract('KyberFprReserveV2', function(accounts) {
                 expectedReserveBalanceWeth = expectedReserveBalanceWeth.sub(expectedDestAmount);
                 let wethBalance = await weth.balanceOf(destTokenWallet);
                 Helper.assertEqual(wethBalance, expectedReserveBalanceWeth, "bad reserve weth balance");
-            }
-
-            let recordImbal = new BN(divSolidity(srcAmount.mul(new BN(-1)), minimalRecordResolution)).mul(minimalRecordResolution);
-            reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(recordImbal);
-
-            return {
-                expectedDestAmount: expectedDestAmount,
-                gasUsed: tx.receipt.gasUsed,
-                numberSteps: numberSteps
             }
         }
     };
@@ -290,7 +239,7 @@ contract('KyberFprReserveV2', function(accounts) {
     describe("#Test using eth + tokens in reserve", async() => {
         before("set up contracts", async() => {
             //init conversion rate
-            await setupConversionRatesContract(true);
+            await setupMockConversionRatesContract(true);
             await generalSetupReserveContract(false, false);
         });
 
@@ -308,31 +257,13 @@ contract('KyberFprReserveV2', function(accounts) {
             await collectFundsAfterTests(reserveInst.address);
         });
 
-        it("Test a small buy (no steps) and check: balances changed, rate is expected rate.", async function () {
+        it("Test a few buys check: correct balances change, rate is expected rate.", async function () {
             let tokenInd = 3;
-            let amountWei = new BN(20);
-
-            await tradeAndVerifyData(
-                reserveInst,
-                true, // is buy
-                tokenInd,
-                amountWei,
-                user1, // recipient
-                reserveInst.address, // wallet to hold src token
-                reserveInst.address, // wallet to hold dest token
-                false, // not using weth
-                true // validate
-            );
-        });
-
-        it("Test a few buys with steps and check: correct balances change, rate is expected rate.", async function () {
-            let tokenInd = 3;
-            let totalGasUsed = new BN(0);
             let numberTxs = 15;
 
             for (let i = 0; i < numberTxs; i++) {
                 let amountWei = new BN(Helper.getRandomInt(10, 400));
-                let data = await tradeAndVerifyData(
+                await tradeAndVerifyData(
                     reserveInst,
                     true, // is buy
                     tokenInd,
@@ -343,37 +274,12 @@ contract('KyberFprReserveV2', function(accounts) {
                     false, // not using weth
                     true // validate
                 );
-                totalGasUsed.iadd(new BN(data.gasUsed));
             };
-            console.log(`        Average gas used for ${numberTxs} buys with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
-        it("Test a small sell and check: balances changed, rate is expected rate.", async function () {
+        it("Test a few sells and check: correct balances change, rate is expected rate.", async function () {
             let tokenInd = 3;
             let token = tokens[tokenInd];
-            let amountTwei = new BN(25);
-
-            // transfer and approve token to network
-            await token.transfer(network, amountTwei);
-            await token.approve(reserveInst.address, amountTwei, {from: network});
-
-            await tradeAndVerifyData(
-                reserveInst,
-                false, // sell trade
-                tokenInd,
-                amountTwei,
-                user1, // recipient
-                reserveInst.address, // wallet to hold src token
-                reserveInst.address, // wallet to hold dest token
-                false, // not using weth
-                true // validate
-            );
-        });
-
-        it("Test a few sells with steps and check: correct balances change, rate is expected rate.", async function () {
-            let tokenInd = 3;
-            let token = tokens[tokenInd];
-            let totalGasUsed = new BN(0);
             let numberTxs = 15;
 
             for (let i = 0; i < numberTxs; i++) {
@@ -382,7 +288,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 await token.transfer(network, amountTwei);
                 await token.approve(reserveInst.address, amountTwei, {from: network});
 
-                let data = await tradeAndVerifyData(
+                await tradeAndVerifyData(
                     reserveInst,
                     false, // is buy
                     tokenInd,
@@ -393,9 +299,7 @@ contract('KyberFprReserveV2', function(accounts) {
                     false, // not using weth
                     true // validate
                 );
-                totalGasUsed.iadd(new BN(data.gasUsed));
             };
-            console.log(`        Average gas used for ${numberTxs} sells with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
         it("Test verify trade success when validation disabled.", async function () {
@@ -543,7 +447,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test eth in reserve, tokens in another wallet", async() => {
         before("setup contracts", async() => {
-            await setupConversionRatesContract(true);
+            await setupMockConversionRatesContract(true);
             await generalSetupReserveContract(true, false);
 
             // approve
@@ -567,31 +471,13 @@ contract('KyberFprReserveV2', function(accounts) {
             await collectFundsAfterTests(walletForToken);
         });
 
-        it("Test a small buy (no steps) and check: balances changed, rate is expected rate.", async function () {
+        it("Test a few buys and check: correct balances change, rate is expected rate", async function () {
             let tokenInd = 1;
-            let amountWei = new BN(20);
-
-            await tradeAndVerifyData(
-                reserveInst,
-                true, // is buy
-                tokenInd,
-                amountWei,
-                user1, // recipient
-                reserveInst.address, // wallet to hold src token
-                walletForToken, // wallet to hold dest token
-                false, // not using weth
-                true // validate
-            );
-        });
-
-        it("Test a few buys with steps and check: correct balances change, rate is expected rate", async function () {
-            let tokenInd = 1;
-            let totalGasUsed = new BN(0);
             let numberTxs = 15;
 
             for (let i = 0; i < numberTxs; i++) {
                 let amountWei = new BN(Helper.getRandomInt(100, 1500));
-                let data = await tradeAndVerifyData(
+                await tradeAndVerifyData(
                     reserveInst,
                     true, // is buy
                     tokenInd,
@@ -602,37 +488,12 @@ contract('KyberFprReserveV2', function(accounts) {
                     false, // not using weth
                     true // validate
                 );
-                totalGasUsed.iadd(new BN(data.gasUsed));
             };
-            console.log(`        Average gas used for ${numberTxs} buys with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
-        it("Test a small sell and check: balances changed, rate is expected rate.", async function () {
-            let tokenInd = 1;
-            let token = tokens[tokenInd];
-            let amountTwei = new BN(300);
-
-            // transfer and approve token to network
-            await token.transfer(network, amountTwei);
-            await token.approve(reserveInst.address, amountTwei, {from: network});
-
-            await tradeAndVerifyData(
-                reserveInst,
-                false, // sell trade
-                tokenInd,
-                amountTwei,
-                user1, // recipient
-                walletForToken, // wallet to hold src token
-                reserveInst.address, // wallet to hold dest token
-                false, // not using weth
-                true // validate
-            );
-        });
-
-        it("Test a few sells with steps and check: correct balances change, rate is expected rate.", async function () {
+        it("Test a few sells and check: correct balances change, rate is expected rate.", async function () {
             let tokenInd = 2;
             let token = tokens[tokenInd];
-            let totalGasUsed = new BN(0);
             let numberTxs = 15;
 
             for (let i = 0; i < numberTxs; i++) {
@@ -641,7 +502,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 await token.transfer(network, amountTwei);
                 await token.approve(reserveInst.address, amountTwei, {from: network});
 
-                let data = await tradeAndVerifyData(
+                await tradeAndVerifyData(
                     reserveInst,
                     false, // sell trade
                     tokenInd,
@@ -652,9 +513,7 @@ contract('KyberFprReserveV2', function(accounts) {
                     false, // not using weth
                     true // validate
                 );
-                totalGasUsed.iadd(new BN(data.gasUsed));
             };
-            console.log(`        Average gas used for ${numberTxs} sells with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
         it("Test verify trade success when validation disabled.", async function () {
@@ -850,7 +709,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test using weth", async() => {
         before("setup contracts", async() => {
-            await setupConversionRatesContract(true);
+            await setupMockConversionRatesContract(true);
             // using wallet for token, wallet for weth
             await generalSetupReserveContract(true, true);
 
@@ -877,31 +736,13 @@ contract('KyberFprReserveV2', function(accounts) {
             await collectFundsAfterTests(walletForToken);
         });
 
-        it("Test a small buy (no steps) and check: balances changed, rate is expected rate.", async function () {
+        it("Test a few buys and check: correct balances change, rate is expected rate", async function () {
             let tokenInd = 1;
-            let amountWei = new BN(20);
-
-            await tradeAndVerifyData(
-                reserveInst,
-                true, // is buy
-                tokenInd,
-                amountWei,
-                user1, // recipient
-                walletForToken, // wallet to hold src token
-                walletForToken, // wallet to hold dest token
-                true, // using weth
-                true // validate
-            );
-        });
-
-        it("Test a few buys with steps and check: correct balances change, rate is expected rate", async function () {
-            let tokenInd = 1;
-            let totalGasUsed = new BN(0);
             let numberTxs = 15;
 
             for (let i = 0; i < numberTxs; i++) {
                 let amountWei = new BN(Helper.getRandomInt(100, 1500));
-                let data = await tradeAndVerifyData(
+                await tradeAndVerifyData(
                     reserveInst,
                     true, // is buy
                     tokenInd,
@@ -912,37 +753,12 @@ contract('KyberFprReserveV2', function(accounts) {
                     true, // using weth
                     true // validate
                 );
-                totalGasUsed.iadd(new BN(data.gasUsed));
             };
-            console.log(`        Average gas used for ${numberTxs} buys with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
-        it("Test a small sell and check: balances changed, rate is expected rate.", async function () {
-            let tokenInd = 1;
-            let token = tokens[tokenInd];
-            let amountTwei = new BN(300);
-
-            // transfer and approve token to network
-            await token.transfer(network, amountTwei);
-            await token.approve(reserveInst.address, amountTwei, {from: network});
-
-            await tradeAndVerifyData(
-                reserveInst,
-                false, // sell trade
-                tokenInd,
-                amountTwei,
-                user1, // recipient
-                walletForToken, // wallet to hold src token
-                walletForToken, // wallet to hold dest token
-                true, // using weth
-                true // validate
-            );
-        });
-
-        it("Test a few sells with steps and check: correct balances change, rate is expected rate.", async function () {
+        it("Test a few sells check: correct balances change, rate is expected rate.", async function () {
             let tokenInd = 2;
             let token = tokens[tokenInd];
-            let totalGasUsed = new BN(0);
             let numberTxs = 15;
 
             for (let i = 0; i < numberTxs; i++) {
@@ -951,7 +767,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 await token.transfer(network, amountTwei);
                 await token.approve(reserveInst.address, amountTwei, {from: network});
 
-                let data = await tradeAndVerifyData(
+                await tradeAndVerifyData(
                     reserveInst,
                     false, // sell trade
                     tokenInd,
@@ -962,9 +778,7 @@ contract('KyberFprReserveV2', function(accounts) {
                     true, // using weth
                     true // validate
                 );
-                totalGasUsed.iadd(new BN(data.gasUsed));
             };
-            console.log(`        Average gas used for ${numberTxs} sells with steps: ${totalGasUsed.div(new BN(numberTxs)).toString(10)}`)
         });
 
         it("Test verify trade success when validation disabled.", async function () {
@@ -1333,7 +1147,7 @@ contract('KyberFprReserveV2', function(accounts) {
     describe("#Test getConversionRate", async() => {
         before("set up contracts", async() => {
             //init conversion rate
-            await setupConversionRatesContract(true);
+            await setupMockConversionRatesContract(true);
             //init reserve, not using weth, not using wallet token
             await generalSetupReserveContract(false, false);
         });
@@ -1397,13 +1211,9 @@ contract('KyberFprReserveV2', function(accounts) {
         });
 
         it("Test getConversionRate rate is 0", async() => {
-            let buyRates = [];
-            let sellRates = [];
             for(let i = 0; i < numTokens; i++) {
-                buyRates.push(zeroBN);
-                sellRates.push(zeroBN);
+                await convRatesInst.setBaseRates(tokenAdd[i], 0, 0);
             }
-            await convRatesInst.setBaseRate(tokenAdd, buyRates, sellRates, [], [], currentBlock, [], {from: operator});
 
             let amount = new BN(100);
             let conversionRate = await reserveInst.getConversionRate(ethAddress, tokenAdd[2], amount, currentBlock);
@@ -1411,7 +1221,11 @@ contract('KyberFprReserveV2', function(accounts) {
             conversionRate = await reserveInst.getConversionRate(tokenAdd[1], ethAddress, amount, currentBlock);
             Helper.assertEqual(0, conversionRate, "rate should be 0");
 
-            await convRatesInst.setBaseRate(tokenAdd, baseBuyRate, baseSellRate, [], [], currentBlock, [], {from: operator});
+            for(let i = 0; i < numTokens; i++) {
+                let tokensPerEther = precisionUnits.mul(new BN((i + 1) * 3));
+                let ethersPerToken = precisionUnits.div(new BN((i + 1) * 3));
+                await convRatesInst.setBaseRates(tokenAdd[i], tokensPerEther, ethersPerToken);
+            }
             await checkRateShouldBePositive();
         });
 
@@ -1706,7 +1520,7 @@ contract('KyberFprReserveV2', function(accounts) {
     describe("#Test doTrade revert invalid params", async() => {
         before("set up contracts", async() => {
             //init conversion rate
-            await setupConversionRatesContract(true);
+            await setupMockConversionRatesContract(true);
             //init reserve
             await generalSetupReserveContract(false, false);
         });
@@ -2094,7 +1908,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test constructor", async() => {
         before("setup conversion rate", async() => {
-            await setupConversionRatesContract(false);
+            await setupMockConversionRatesContract(false);
         });
 
         it("Test revert network 0", async() => {
@@ -2146,7 +1960,7 @@ contract('KyberFprReserveV2', function(accounts) {
     describe("#Test enable/disable trade", async() => {
         let reserve;
         before("setup reserve", async() => {
-            await setupConversionRatesContract(false);
+            await setupMockConversionRatesContract(false);
             reserve = await Reserve.new(
                 network,
                 convRatesInst.address,
@@ -2218,7 +2032,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test max gas price", async() => {
         before("setup reserve", async() => {
-            await setupConversionRatesContract(false);
+            await setupMockConversionRatesContract(false);
             reserve = await Reserve.new(
                 network,
                 convRatesInst.address,
@@ -2272,7 +2086,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test set token wallet", async() => {
         before("setup reserve", async() => {
-            await setupConversionRatesContract(false);
+            await setupMockConversionRatesContract(false);
             reserve = await Reserve.new(
                 network,
                 convRatesInst.address,
@@ -2317,7 +2131,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test setContracts", async() => {
         before("setup reserve", async() => {
-            await setupConversionRatesContract(false);
+            await setupMockConversionRatesContract(false);
             reserve = await Reserve.new(
                 network,
                 convRatesInst.address,
@@ -2430,7 +2244,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test getBalance & getDestQty", async() => {
         before("setup reserve", async() => {
-            await setupConversionRatesContract(false);
+            await setupMockConversionRatesContract(false);
             reserve = await Reserve.new(
                 network,
                 convRatesInst.address,
@@ -2554,7 +2368,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test getTokenWallet", async() => {
         before("setup reserve", async() => {
-            await setupConversionRatesContract(false);
+            await setupMockConversionRatesContract(false);
             reserve = await Reserve.new(
                 network,
                 convRatesInst.address,
@@ -2597,7 +2411,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
     describe("#Test withdrawal", async() => {
         before("setup reserve", async() => {
-            await setupConversionRatesContract(false);
+            await setupMockConversionRatesContract(false);
             reserve = await Reserve.new(
                 network,
                 convRatesInst.address,
@@ -2942,17 +2756,104 @@ contract('KyberFprReserveV2', function(accounts) {
         });
 
         describe("#Test gas consumption", async() => {
+            const setupConversionRatesContractWithSteps = async function() {
+                let setupData = await reserveSetup.setupConversionRate(tokens, admin, operator, alerter, true);
+                convRatesInst = setupData.convRatesInst;
+                baseBuyRate = setupData.baseBuyRate;
+                compactBuyArr = setupData.compactBuyArr;
+                baseSellRate = setupData.baseSellRate;
+                compactSellArr = setupData.compactSellArr;
+                imbalanceBuyStepX = setupData.imbalanceBuyStepX;
+                imbalanceBuyStepY = setupData.imbalanceBuyStepY;
+                imbalanceSellStepX = setupData.imbalanceSellStepX;
+                imbalanceSellStepY = setupData.imbalanceSellStepY;
+            }
+
+            const tradeAndVerifyDataWithSteps = async function(
+                reserveInst, isBuy, tokenInd,
+                srcAmount, recipient, isValidate
+            ) {
+                let srcAddress = isBuy ? ethAddress : tokenAdd[tokenInd];
+                let destAddress = isBuy ? tokenAdd[tokenInd] : ethAddress;
+                let conversionRate = await reserveInst.getConversionRate(srcAddress, destAddress, srcAmount, currentBlock);
+                let expectedRate;
+                let numberSteps;
+                if (isBuy) {
+                    expectedRate = baseBuyRate[tokenInd];
+                    let extraBps = compactBuyArr[tokenInd] * 10;
+                    expectedRate = Helper.addBps(expectedRate, extraBps);
+                    let destQty = Helper.calcDstQty(srcAmount, ethDecimals, tokenDecimals[tokenInd], expectedRate);
+                    let data = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].toNumber(), destQty.toNumber());
+                    extraBps = data.bps;
+                    numberSteps = data.steps;
+                    expectedRate = Helper.addBps(expectedRate, extraBps);
+                } else {
+                    expectedRate = baseSellRate[tokenInd];
+                    let extraBps = compactSellArr[tokenInd] * 10;
+                    expectedRate = Helper.addBps(expectedRate, extraBps);
+                    let data = getExtraBpsForImbalanceSellQuantity(reserveTokenImbalance[tokenInd].toNumber(), srcAmount.toNumber());
+                    extraBps = data.bps;
+                    numberSteps = data.steps;
+                    expectedRate = Helper.addBps(expectedRate, extraBps);
+                }
+
+                // check correct rate calculated
+                Helper.assertEqual(conversionRate, expectedRate, "unexpected rate.");
+
+                //perform trade
+                let tx = await reserveInst.trade(
+                    srcAddress, srcAmount, destAddress, recipient, conversionRate, isValidate,
+                    {
+                        from: network,
+                        value: isBuy ? srcAmount : 0
+                    }
+                );
+                let expectedDestAmount;
+                if (isBuy) {
+                    expectedDestAmount = Helper.calcDstQty(srcAmount, ethDecimals, tokenDecimals[tokenInd], conversionRate);
+                } else {
+                    expectedDestAmount = Helper.calcDstQty(srcAmount, tokenDecimals[tokenInd], ethDecimals, conversionRate);
+                }
+                // update balance and imbalance
+                if (isBuy) {
+                    // update reserve eth or weth balance
+                    if (!isUsingWeth) {
+                        // eth is transferred to reserve
+                        expectedReserveBalanceWei = expectedReserveBalanceWei.add(srcAmount);
+                    } else {
+                        // weth is transferred to weth token wallet
+                        expectedReserveBalanceWeth = expectedReserveBalanceWeth.add(srcAmount);
+                    }
+                    // update token balance
+                    reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].sub(expectedDestAmount);
+                    reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(expectedDestAmount);
+                } else {
+                    // reserve has received token
+                    reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].add(srcAmount);
+                    if (!isUsingWeth) {
+                        // reserve transfered back eth
+                        expectedReserveBalanceWei = expectedReserveBalanceWei.sub(expectedDestAmount);
+                    } else {
+                        // weth is transferred to weth token wallet
+                        expectedReserveBalanceWeth = expectedReserveBalanceWeth.sub(expectedDestAmount);
+                    }
+                    reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].sub(srcAmount);
+                }
+                return {
+                    expectedDestAmount: expectedDestAmount,
+                    gasUsed: tx.receipt.gasUsed,
+                    numberSteps: numberSteps
+                }
+            };
+
             const makeSimpleTrades = async function(tokenInd, isUsingTokenWallet, isUsingWeth) {
                 let amountWei = new BN(100);
-                await tradeAndVerifyData(
+                await tradeAndVerifyDataWithSteps(
                     reserveInst,
                     true,
                     tokenInd,
                     amountWei,
                     user1,
-                    isUsingWeth ? walletForToken : reserveInst.address,
-                    isUsingTokenWallet ? walletForToken : reserveInst.address,
-                    isUsingWeth,
                     false
                 );
 
@@ -2962,19 +2863,16 @@ contract('KyberFprReserveV2', function(accounts) {
                 await tokens[tokenInd].approve(reserveInst.address, 0, {from: network});
                 await tokens[tokenInd].approve(reserveInst.address, amountToSell, {from: network});
 
-                await tradeAndVerifyData(
+                await tradeAndVerifyDataWithSteps(
                     reserveInst,
                     false,
                     tokenInd,
                     amountToSell,
                     user1,
-                    isUsingTokenWallet ? walletForToken : reserveInst.address,
-                    isUsingWeth ? walletForToken : reserveInst.address,
-                    isUsingWeth,
                     false
                 );
-                // imbalance should be 0
             }
+
             let testSuites = [
                 "#Test eth and token in reserve",
                 "#Test eth in reserve, token in wallet",
@@ -2987,7 +2885,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 describe(`${testSuites[t]}`, async() => {
                     it("Test few buys with steps", async() => {
                         //init conversion rate
-                        await setupConversionRatesContract(true);
+                        await setupConversionRatesContractWithSteps();
                         await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
 
                         if (isUsingWeth[t]) {
@@ -3016,15 +2914,12 @@ contract('KyberFprReserveV2', function(accounts) {
                         }
                         for(let i = 0; i <= 10; i++) {
                             let amountWei = new BN(1000);
-                            let tx = await tradeAndVerifyData(
+                            let tx = await tradeAndVerifyDataWithSteps(
                                 reserveInst,
                                 true,
                                 tokenInd,
                                 amountWei,
                                 user1,
-                                isUsingWeth[t] ? walletForToken : reserveInst.address,
-                                isUsingWallet[t] ? walletForToken : reserveInst.address,
-                                isUsingWeth[t],
                                 false
                             );
                             numberTxsPerStep[tx.numberSteps]++;
@@ -3040,7 +2935,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
                     it("Test few sells with steps", async() => {
                         //init conversion rate
-                        await setupConversionRatesContract(true);
+                        await setupConversionRatesContractWithSteps();
                         await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
 
                         if (isUsingWeth[t]) {
@@ -3073,15 +2968,12 @@ contract('KyberFprReserveV2', function(accounts) {
                             await token.transfer(network, amountTwei);
                             await token.approve(reserveInst.address, 0, {from: network});
                             await token.approve(reserveInst.address, amountTwei, {from: network});
-                            let tx = await tradeAndVerifyData(
+                            let tx = await tradeAndVerifyDataWithSteps(
                                 reserveInst,
                                 false,
                                 tokenInd,
                                 amountTwei,
                                 user1,
-                                isUsingWallet[t] ? walletForToken : reserveInst.address,
-                                isUsingWeth[t] ? walletForToken : reserveInst.address,
-                                isUsingWeth[t],
                                 false
                             );
                             numberTxsPerStep[tx.numberSteps]++;
