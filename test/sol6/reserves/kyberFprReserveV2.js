@@ -4,6 +4,7 @@ const WethToken = artifacts.require("WethToken");
 const Reserve = artifacts.require("KyberFprReserveV2");
 const MockSanityRates = artifacts.require("MockSanityRates");
 const NoPayableFallback = artifacts.require("NoPayableFallback");
+const SanityRatesGasPrice = artifacts.require("SanityRatesGasPrice");
 
 const Helper = require("../../helper.js");
 const reserveSetup = require("../../reserveSetup.js");
@@ -70,11 +71,7 @@ let imbalanceBuyStepY = [ 1300, 130, 43, 0, 0, -110, -160, -1600];
 let imbalanceSellStepX = [-85000, -28000, -10000, 0, 10000, 28000, 45000];
 let imbalanceSellStepY = [-1500, -320, -75, 0, 0, 110, 350, 650];
 
-
 //compact data.
-let sells = [];
-let buys = [];
-let indices = [];
 let compactBuyArr = [];
 let compactSellArr = [];
 
@@ -136,18 +133,23 @@ contract('KyberFprReserveV2', function(accounts) {
             currentBlock
         );
         let expectedRate;
+        let numberSteps;
         if (isBuy) {
             expectedRate = baseBuyRate[tokenInd];
             let extraBps = compactBuyArr[tokenInd] * 10;
             expectedRate = Helper.addBps(expectedRate, extraBps);
             let destQty = Helper.calcDstQty(srcAmount, ethDecimals, tokenDecimals[tokenInd], expectedRate);
-            extraBps = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].toNumber(), destQty.toNumber());
+            let data = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].toNumber(), destQty.toNumber());
+            extraBps = data.bps;
+            numberSteps = data.steps;
             expectedRate = Helper.addBps(expectedRate, extraBps);
         } else {
             expectedRate = baseSellRate[tokenInd];
             let extraBps = compactSellArr[tokenInd] * 10;
             expectedRate = Helper.addBps(expectedRate, extraBps);
-            extraBps = getExtraBpsForImbalanceSellQuantity(reserveTokenImbalance[tokenInd].toNumber(), srcAmount.toNumber());
+            let data = getExtraBpsForImbalanceSellQuantity(reserveTokenImbalance[tokenInd].toNumber(), srcAmount.toNumber());
+            extraBps = data.bps;
+            numberSteps = data.steps;
             expectedRate = Helper.addBps(expectedRate, extraBps);
         }
 
@@ -213,7 +215,8 @@ contract('KyberFprReserveV2', function(accounts) {
 
             return {
                 expectedDestAmount: expectedDestAmount,
-                gasUsed: tx.receipt.gasUsed
+                gasUsed: tx.receipt.gasUsed,
+                numberSteps: numberSteps
             }
         } else {
             // check reserve has received token
@@ -242,7 +245,8 @@ contract('KyberFprReserveV2', function(accounts) {
 
             return {
                 expectedDestAmount: expectedDestAmount,
-                gasUsed: tx.receipt.gasUsed
+                gasUsed: tx.receipt.gasUsed,
+                numberSteps: numberSteps
             }
         }
     };
@@ -2936,6 +2940,163 @@ contract('KyberFprReserveV2', function(accounts) {
                 }
             });
         });
+
+        describe("#Test gas consumption", async() => {
+            const makeSimpleTrades = async function(tokenInd, isUsingTokenWallet, isUsingWeth) {
+                let amountWei = new BN(100);
+                await tradeAndVerifyData(
+                    reserveInst,
+                    true,
+                    tokenInd,
+                    amountWei,
+                    user1,
+                    isUsingWeth ? walletForToken : reserveInst.address,
+                    isUsingTokenWallet ? walletForToken : reserveInst.address,
+                    isUsingWeth,
+                    false
+                );
+
+                let amountToSell = await convRatesInst.getInitImbalance(tokenAdd[tokenInd]);
+
+                await tokens[tokenInd].transfer(network, amountToSell);
+                await tokens[tokenInd].approve(reserveInst.address, 0, {from: network});
+                await tokens[tokenInd].approve(reserveInst.address, amountToSell, {from: network});
+
+                await tradeAndVerifyData(
+                    reserveInst,
+                    false,
+                    tokenInd,
+                    amountToSell,
+                    user1,
+                    isUsingTokenWallet ? walletForToken : reserveInst.address,
+                    isUsingWeth ? walletForToken : reserveInst.address,
+                    isUsingWeth,
+                    false
+                );
+                // imbalance should be 0
+            }
+            let testSuites = [
+                "#Test eth and token in reserve",
+                "#Test eth in reserve, token in wallet",
+                "#Test using weth"
+            ]
+            let isUsingWeth = [false, false, true];
+            let isUsingWallet = [false, true, true];
+
+            for(let t = 0; t < testSuites.length; t++) {
+                describe(`${testSuites[t]}`, async() => {
+                    it("Test few buys with steps", async() => {
+                        //init conversion rate
+                        await setupConversionRatesContract(true);
+                        await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
+
+                        if (isUsingWeth[t]) {
+                            await reserveInst.setTokenWallet(weth.address, walletForToken, {from: admin});
+                            await weth.approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
+                        }
+
+                        if (isUsingWallet[t]) {
+                            // approve
+                            for(let i = 0; i < numTokens; i++) {
+                                await reserveInst.setTokenWallet(tokenAdd[i], walletForToken, {from: admin});
+                                await reserveInst.approveWithdrawAddress(tokenAdd[i], withdrawAddress, true, {from: admin});
+                                await tokens[i].approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
+                            }
+                        }
+
+                        let tokenInd = 2;
+                        // make a simple buy and sell to init some data first
+                        await makeSimpleTrades(tokenInd, isUsingWallet[t], isUsingWeth[t]);
+
+                        let gasUsedPerStep = [];
+                        let numberTxsPerStep = [];
+                        for(let i = 0; i <= 20; i++) {
+                            gasUsedPerStep.push(new BN(0));
+                            numberTxsPerStep.push(0);
+                        }
+                        for(let i = 0; i <= 10; i++) {
+                            let amountWei = new BN(1000);
+                            let tx = await tradeAndVerifyData(
+                                reserveInst,
+                                true,
+                                tokenInd,
+                                amountWei,
+                                user1,
+                                isUsingWeth[t] ? walletForToken : reserveInst.address,
+                                isUsingWallet[t] ? walletForToken : reserveInst.address,
+                                isUsingWeth[t],
+                                false
+                            );
+                            numberTxsPerStep[tx.numberSteps]++;
+                            gasUsedPerStep[tx.numberSteps].iadd(new BN(tx.gasUsed));
+                        }
+
+                        for(let i = 0; i <= 20; i++) {
+                            if (numberTxsPerStep[i] > 0) {
+                                console.log(`             Average gas used for buy with ${i} steps: ${divSolidity(gasUsedPerStep[i], new BN(numberTxsPerStep[i]))}`)
+                            }
+                        }
+                    });
+
+                    it("Test few sells with steps", async() => {
+                        //init conversion rate
+                        await setupConversionRatesContract(true);
+                        await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
+
+                        if (isUsingWeth[t]) {
+                            await reserveInst.setTokenWallet(weth.address, walletForToken, {from: admin});
+                            await weth.approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
+                        }
+
+                        if (isUsingWallet[t]) {
+                            // approve
+                            for(let i = 0; i < numTokens; i++) {
+                                await reserveInst.setTokenWallet(tokenAdd[i], walletForToken, {from: admin});
+                                await reserveInst.approveWithdrawAddress(tokenAdd[i], withdrawAddress, true, {from: admin});
+                                await tokens[i].approve(reserveInst.address, MAX_ALLOWANCE, {from: walletForToken});
+                            }
+                        }
+
+                        let tokenInd = 3;
+                        let token = tokens[tokenInd];
+                        // make a simple buy and sell to init some data first
+                        await makeSimpleTrades(tokenInd, isUsingWallet[t], isUsingWeth[t]);
+
+                        let gasUsedPerStep = [];
+                        let numberTxsPerStep = [];
+                        for(let i = 0; i <= 20; i++) {
+                            gasUsedPerStep.push(new BN(0));
+                            numberTxsPerStep.push(0);
+                        }
+                        for(let i = 0; i <= 10; i++) {
+                            let amountTwei = new BN(6000);
+                            await token.transfer(network, amountTwei);
+                            await token.approve(reserveInst.address, 0, {from: network});
+                            await token.approve(reserveInst.address, amountTwei, {from: network});
+                            let tx = await tradeAndVerifyData(
+                                reserveInst,
+                                false,
+                                tokenInd,
+                                amountTwei,
+                                user1,
+                                isUsingWallet[t] ? walletForToken : reserveInst.address,
+                                isUsingWeth[t] ? walletForToken : reserveInst.address,
+                                isUsingWeth[t],
+                                false
+                            );
+                            numberTxsPerStep[tx.numberSteps]++;
+                            gasUsedPerStep[tx.numberSteps].iadd(new BN(tx.gasUsed));
+                        }
+
+                        for(let i = 0; i <= 20; i++) {
+                            if (numberTxsPerStep[i] > 0) {
+                                console.log(`             Average gas used for buy with ${i} steps: ${divSolidity(gasUsedPerStep[i], new BN(numberTxsPerStep[i]))}`)
+                            }
+                        }
+                    });
+                });
+            }
+        });
     });
 });
 
@@ -2947,8 +3108,14 @@ function getExtraBpsForImbalanceSellQuantity(imbalance, qty) {
     return getExtraBpsForQuantity(imbalance - qty, imbalance, imbalanceSellStepX, imbalanceSellStepY);
 };
 
+// Return extra bps and number of steps it accesses
 function getExtraBpsForQuantity(from, to, stepX, stepY) {
-    if (stepY.length == 0 || (from == to)) { return 0; }
+    if (stepY.length == 0 || (from == to)) {
+        return {
+            bps: 0,
+            steps: 0
+        }
+    }
     let len = stepX.length;
 
     let change = 0;
@@ -2957,27 +3124,37 @@ function getExtraBpsForQuantity(from, to, stepX, stepY) {
 
     for(let i = 0; i < len; i++) {
         if (stepX[i] <= fromVal) { continue; }
-        if (stepY[i] == -10000) { return -10000; }
+        if (stepY[i] == -10000) {
+            return {
+                bps: -10000,
+                steps: i + 1
+            }
+        }
         if (stepX[i] >= to) {
             change += (to - fromVal) * stepY[i];
-            return divSolidity(change, qty);
+            return {
+                bps: divSolidity(change, qty),
+                steps: i + 1
+            }
         } else {
             change += (stepX[i] - fromVal) * stepY[i];
             fromVal = stepX[i];
         }
     }
     if (fromVal < to) {
-        if (stepY[len] == -10000) { return -10000; }
+        if (stepY[len] == -10000) {
+            return {
+                bps: -10000,
+                steps: len + 1
+            }
+        }
         change += (to - fromVal) * stepY[len];
     }
-    return divSolidity(change, qty);
+    return {
+        bps: divSolidity(change, qty),
+        steps: len + 1
+    }
 }
-
-function compareRates (receivedRate, expectedRate) {
-    expectedRate = expectedRate - (expectedRate % 10);
-    receivedRate = receivedRate - (receivedRate % 10);
-    Helper.assertEqual(expectedRate, receivedRate, "different rates");
-};
 
 function divSolidity(a, b) {
     let c = a / b;
