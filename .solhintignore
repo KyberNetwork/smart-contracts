@@ -1,7 +1,162 @@
-contracts/sol4
-contracts/sol5
-contracts/sol6/Dao
-contracts/sol6/mock
-contracts/sol6/utils
-contracts/sol6/wrappers
-contracts/sol6/*.sol
+# SOLIDITY 4 #
+
+## main
+contracts/sol4/ConversionRatesInterface.sol
+contracts/sol4/ERC20Interface.sol
+contracts/sol4/FeeBurnerInterface.sol
+contracts/sol4/KyberNetworkInterface.sol
+contracts/sol4/KyberNetworkProxyInterface.sol
+contracts/sol4/KyberProxyV1.sol
+contracts/sol4/KyberReserveInterface.sol
+contracts/sol4/Migrations.sol
+contracts/sol4/PermissionGroups.sol
+contracts/sol4/SanityRates.sol
+contracts/sol4/SanityRatesInterface.sol
+contracts/sol4/SimpleNetworkInterface.sol
+contracts/sol4/Utils.sol
+contracts/sol4/Utils2.sol
+contracts/sol4/Utils3.sol
+contracts/sol4/Withdrawable.sol
+
+## mock
+contracts/sol4/mock/dgx/DummyDGX.sol
+contracts/sol4/mock/dgx/DummyDGXStorage.sol
+contracts/sol4/mock/dgx/libs/DemurrageStructs.sol
+contracts/sol4/mock/dgx/libs/MathUtils.sol
+contracts/sol4/mock/dgx/libs/TransferStructs.sol
+contracts/sol4/mock/dgx/libs/Types.sol
+contracts/sol4/mock/dgx/TokenReceiver.sol
+contracts/sol4/mock/MockCentralBank.sol
+contracts/sol4/mock/MockConversionRate.sol
+contracts/sol4/mock/MockDepositAddress.sol
+contracts/sol4/mock/MockDepositAddressEther.sol
+contracts/sol4/mock/MockDepositAddressToken.sol
+contracts/sol4/mock/MockEnhancedStepFunctions.sol
+contracts/sol4/mock/MockERC20.sol
+contracts/sol4/mock/MockExchange.sol
+contracts/sol4/mock/MockImbalanceRecorder.sol
+contracts/sol4/mock/MockPermission.sol
+contracts/sol4/mock/MockUtils.sol
+contracts/sol4/mock/MockUtils2.sol
+contracts/sol4/mock/MockUtils3.sol
+contracts/sol4/mock/MockWithdrawable.sol
+contracts/sol4/mock/StrictValidatingReserve.sol
+contracts/sol4/mock/TempBank.sol
+contracts/sol4/mock/TestToken.sol
+contracts/sol4/mock/TestTokenFailing.sol
+contracts/sol4/mock/TestTokenTransferFailing.sol
+contracts/sol4/mock/TokenNoDecimals.sol
+contracts/sol4/mock/TokenReverseSend.sol
+
+## previousVersions
+contracts/sol4/previousVersions/KyberReserveV1.sol
+
+## reserves
+contracts/sol4/reserves/aprConversionRate/LiquidityConversionRates.sol
+contracts/sol4/reserves/aprConversionRate/LiquidityFormula.sol
+contracts/sol4/reserves/bridgeReserves/dutchX/KyberDutchXReserve.sol
+contracts/sol4/reserves/bridgeReserves/dutchX/mock/MockDutchX.sol
+contracts/sol4/reserves/bridgeReserves/dutchX/mock/WETH9.sol
+contracts/sol4/reserves/bridgeReserves/uniswap/forTesting/KyberTestingUniswapReserve.sol
+contracts/sol4/reserves/bridgeReserves/uniswap/forTesting/MockUniswapFactory.sol
+contracts/sol4/reserves/bridgeReserves/uniswap/KyberUniswapReserve.sol
+contracts/sol4/reserves/fprConversionRate/ConversionRateEnhancedSteps.sol
+contracts/sol4/reserves/fprConversionRate/ConversionRates.sol
+contracts/sol4/reserves/KyberReserve.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/mock/MockMedianizer.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/mock/MockOrderbookReserve.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/mock/MockOrderIdManager.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/mock/TestBytes32.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/OrderbookReserve.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/OrderbookReserveInterface.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/OrderIdManager.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/OrderList.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/OrderListFactory.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/OrderListFactoryInterface.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/OrderListInterface.sol
+contracts/sol4/reserves/orderBookReserve/permissionless/PermissionlessOrderbookReserveLister.sol
+contracts/sol4/reserves/VolumeImbalanceRecorder.sol
+
+## weth
+contracts/sol4/weth/KyberWethReserve.sol
+contracts/sol4/weth/mockContracts/MockWeth.sol
+
+## wrappers
+contracts/sol4/wrappers/SetStepFunctionWrapper.sol
+contracts/sol4/wrappers/WrapConversionRate.sol
+contracts/sol4/wrappers/Wrapper.sol
+contracts/sol4/wrappers/WrapperBase.sol
+contracts/sol4/wrappers/WrapReadTokenData.sol
+
+# SOLIDITY 5 #
+
+## main
+contracts/sol5/IERC20.sol
+contracts/sol5/IKyberReserve.sol
+
+## bridges
+contracts/sol5/bridges/bancor/KyberBancorReserve.sol
+contracts/sol5/bridges/bancor/mock/IBancorNetwork.sol
+contracts/sol5/bridges/bancor/mock/MockBancorNetwork.sol
+contracts/sol5/bridges/eth2dai/Eth2DaiReserve.sol
+contracts/sol5/bridges/eth2dai/mock/IOtc.sol
+contracts/sol5/bridges/eth2dai/mock/MockOtcOrderbook.sol
+contracts/sol5/bridges/eth2dai/mock/WethToken.sol
+
+## mock
+contracts/sol5/mock/MockPermissionGroups2.sol
+contracts/sol5/mock/MockUtils4.sol
+contracts/sol5/mock/MockWithdrawable2.sol
+contracts/sol5/mock/Token.sol
+
+## utils
+contracts/sol5/utils/PermissionGroups2.sol
+contracts/sol5/utils/Utils4.sol
+contracts/sol5/utils/Withdrawable2.sol
+
+## SOLIDITY 6 ##
+
+## main
+contracts/sol6/KyberNetwork.sol
+contracts/sol6/IKyberFeeHandler.sol
+contracts/sol6/KyberMatchingEngine.sol
+contracts/sol6/KyberStorage.sol
+contracts/sol6/KyberNetworkProxy.sol
+
+## dao
+contracts/sol6/Dao/emergency/EmergencyFeeHandler.sol
+contracts/sol6/Dao/IKyberStaking.sol
+contracts/sol6/Dao/KyberDao.sol
+contracts/sol6/Dao/KyberFeeHandler.sol
+contracts/sol6/Dao/KyberStaking.sol
+contracts/sol6/Dao/mock/KyberFeeHandlerWrapper.sol
+contracts/sol6/Dao/mock/KyberTokenFeeHandler.sol
+contracts/sol6/Dao/mock/MockChainLinkSanityRate.sol
+contracts/sol6/Dao/mock/MockMaliciousKyberDaoReentrancy.sol
+contracts/sol6/Dao/emergency/EmergencyFeeHandler.sol
+
+## mock
+contracts/sol6/mock/GasHelper.sol
+contracts/sol6/mock/GenerousKyberNetwork.sol
+contracts/sol6/mock/GenerousKyberNetwork2.sol
+contracts/sol6/mock/KyberNetworkNoMaxDest.sol
+contracts/sol6/mock/MaliciousKyberNetwork.sol
+contracts/sol6/mock/MaliciousMatchingEngine.sol
+contracts/sol6/mock/MaliciousReserve2.sol
+contracts/sol6/mock/MaliciousStorage.sol
+contracts/sol6/mock/MockHintHandler.sol
+contracts/sol6/mock/MockKyberDao.sol
+contracts/sol6/mock/ReentrancyFeeClaimer.sol
+contracts/sol6/mock/ReentrantReserve.sol
+contracts/sol6/mock/SimpleKyberProxy.sol
+contracts/sol6/mock/TestTokenNotReturn.sol
+contracts/sol6/mock/Token.sol
+
+## utils
+contracts/sol6/utils/Utils5.sol
+contracts/sol6/utils/zeppelin/Address.sol
+contracts/sol6/utils/zeppelin/SafeERC20.sol
+contracts/sol6/utils/zeppelin/SafeMath.sol
+
+## wrappers
+contracts/sol6/wrappers/KyberRateHelper.sol

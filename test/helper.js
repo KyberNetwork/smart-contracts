@@ -197,7 +197,7 @@ function assertApproximate(val1, val2, errorStr) {
 
 module.exports.assertEqualArray = assertEqualArray;
 function assertEqualArray(arr1, arr2, errorStr) {
-  assert(arr1.equals(arr2), errorStr);
+  assert(arr1.equals(arr2), `${errorStr} actual=${arr1} expected=${arr2}`);
 };
 
 // Warn if overriding existing method
@@ -217,13 +217,15 @@ Array.prototype.equals = function (array) {
     for (var i = 0, l=this.length; i < l; i++) {
         // Check if we have nested arrays
         if (this[i] instanceof Array && array[i] instanceof Array) {
-            // recurse into the nested arrays
-            if (!this[i].equals(array[i]))
-                return false;       
-        }           
-        else if (this[i] != array[i]) { 
-            // Warning - two different object instances will never be equal: {x:20} != {x:20}
-            return false;   
+          // recurse into the nested arrays
+          if (!this[i].equals(array[i]))
+            return false;       
+        } else if (web3.utils.isBN(this[i]) && web3.utils.isBN(array[i])) {
+          if (!this[i].eq(array[i]))
+            return false;
+        } else if (this[i] != array[i]) { 
+          // Warning - two different object instances will never be equal: {x:20} != {x:20}
+          return false;   
         }           
     }       
     return true;

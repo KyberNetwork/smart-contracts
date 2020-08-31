@@ -1241,6 +1241,43 @@ contract('ConversionRateEnhancedSteps', function(accounts) {
         contractBps = await convRatesInst.mockExecuteStepFunction(token, 0, 31);
         Helper.assertEqual(contractBps, bps, "bad bps");
     });
+
+    it("should verify add bps reverts for illegal values", async function () {
+        let minLegalBps = -100 * 100;
+        let maxLegalBps = new BN(100 * 100);
+        let legalRate = new BN(10).pow(new BN(25));
+        let illegalRate = legalRate.add(new BN(1));
+        let illegalBpsMinSide = minLegalBps - 1*1;
+        let illegalBpsMaxSide = maxLegalBps.add(new BN(1));
+
+        await convRatesInst.mockAddBps(legalRate, minLegalBps);
+        await convRatesInst.mockAddBps(legalRate, maxLegalBps);
+
+        //see fail with illegal rate
+        try {
+            await convRatesInst.mockAddBps(illegalRate, minLegalBps);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see fail with illegal bps (min side)
+        try {
+            await convRatesInst.mockAddBps(legalRate, illegalBpsMinSide);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+        //see fail with illegal bps (max side)
+        try {
+            await convRatesInst.mockAddBps(legalRate, illegalBpsMaxSide);
+            assert(false, "throw was expected in line above.")
+        } catch(e){
+            assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
+        }
+
+    });
 });
 
 function convertRateToPricingRate (baseRate) {

@@ -12,6 +12,7 @@ import "./ConversionRates.sol";
 
 contract ConversionRateEnhancedSteps is ConversionRates {
 
+    uint  constant internal MAX_RATE = (PRECISION * 10 ** 7); // up to 10M tokens per ETH
     uint constant internal MAX_STEPS_IN_FUNCTION = 16;
     int constant internal MAX_IMBALANCE = 2 ** 255 - 1;
     uint constant internal POW_2_128 = 2 ** 128;
@@ -241,6 +242,15 @@ contract ConversionRateEnhancedSteps is ConversionRates {
         return getImbalance(token, rateUpdateBlock, usedBlock);
     }
 
+    function addBps(uint rate, int bps) internal pure returns(uint) {
+        require(rate <= MAX_RATE);
+        require(bps >= MIN_BPS_ADJUSTMENT);
+        require(bps <= MAX_BPS_ADJUSTMENT);
+
+        uint maxBps = 100 * 100;
+        return (rate * uint(int(maxBps) + bps)) / maxBps;
+    }
+
     function executeStepFunction(StepFunction storage f, int from, int to) internal view returns(int) {
 
         uint len = f.x.length;
@@ -266,6 +276,7 @@ contract ConversionRateEnhancedSteps is ConversionRates {
                 change += (stepXValue - fromVal) * stepYValue;
                 fromVal = stepXValue;
             }
+            // max change < MAX_QTY * BPS * 16 = (10 ** 28) * 10000 * 16 = 1.6e33
         }
 
         return change / (to - from);
