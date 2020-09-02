@@ -9,7 +9,7 @@
     "avoid-throw": "error",
     "avoid-tx-origin": "off",
     "check-send-result": "error",
-    "compiler-version": ["error", "0.6.6"],
+    "compiler-version": ["off", "0.6.6"],
     "const-name-snakecase": "error",
     "func-name-mixedcase": "error",
     "func-order": "error",

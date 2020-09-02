@@ -7,17 +7,21 @@ import "../reserves/KyberReserveHighRate.sol";
 /// Update MAX_RATE to higher value and should have maximum code reuse
 contract MockKyberReserveHighRate is KyberReserveHighRate {
 
-    function MockKyberReserveHighRate(address _kyberNetwork, ConversionRatesInterface _ratesContract,
-        address _admin) public KyberReserveHighRate(_kyberNetwork, _ratesContract, _admin)
-        { }
+    function MockKyberReserveHighRate(
+        address _kyberNetwork, 
+        ConversionRatesInterface _ratesContract,
+        address _admin
+        ) 
+        public KyberReserveHighRate(_kyberNetwork, _ratesContract, _admin)
+        { /* empty block */ }
 
-    function MockCalcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate)
+    function mockCalcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate)
         public pure returns(uint)
     {
         return calcDstQty(srcQty, srcDecimals, dstDecimals, rate);
     }
 
-    function MockCalcSrcQty(uint dstQty, uint srcDecimals, uint dstDecimals, uint rate)
+    function mockCalcSrcQty(uint dstQty, uint srcDecimals, uint dstDecimals, uint rate)
         public pure returns(uint) 
     {
         return calcSrcQty(dstQty, srcDecimals, dstDecimals, rate);

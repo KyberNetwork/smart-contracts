@@ -11,15 +11,15 @@ contract MaliciousReserve is KyberReserveInterface, Withdrawable, Utils {
     mapping(address => uint256) public buyTokenRates;
     mapping(address => uint256) public sellTokenRates;
 
+    function MaliciousReserve() public {}
+
     function() public payable {}
 
-    KyberNetworkProxyInterface proxy;
+    KyberNetworkProxyInterface public proxy;
     address public scammer;
     ERC20 public scamToken;
 
     uint public numRecursive = 1;
-
-    function MaliciousReserve() public {}
 
     function setRate(
         ERC20 token,
@@ -84,7 +84,8 @@ contract MaliciousReserve is KyberReserveInterface, Withdrawable, Utils {
         bytes memory hint;
 
         ERC20 srcToken = ERC20(ETH_TOKEN_ADDRESS);
-        proxy.tradeWithHint.value(callValue)(srcToken, callValue, scamToken, scammer, (2 ** 255), 0, 0, hint);
+        proxy.tradeWithHint.value(callValue)(srcToken, callValue, scamToken, scammer, 
+            (2 ** 255), 0, 0, hint);
     }
 
     function setDestAddress(address _scammer) public {

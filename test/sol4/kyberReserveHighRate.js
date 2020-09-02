@@ -246,12 +246,12 @@ contract('KyberReserveHighRate', function(accounts) {
 
         const expectedDstQty = Helper.calcDstQty(srcQty, decimals1, decimals2, rate);
 
-        const rxDestQty = await reserveInst.MockCalcDstQty(srcQty, decimals1, decimals2, rate);
+        const rxDestQty = await reserveInst.mockCalcDstQty(srcQty, decimals1, decimals2, rate);
         Helper.assertEqual(expectedDstQty, rxDestQty);
 
         rate = MAX_RATE.add(new BN(1));
         try {
-            await reserveInst.MockCalcDstQty(srcQty, decimals1, decimals2, rate);
+            await reserveInst.mockCalcDstQty(srcQty, decimals1, decimals2, rate);
             assert(false,  "shouldn't reach this line. expected line above to throw.")
         } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -267,12 +267,12 @@ contract('KyberReserveHighRate', function(accounts) {
 
         const expectedSrcQty = Helper.calcSrcQty(dstQty, decimals1, decimals2, rate);
 
-        const rxSrcQty = await reserveInst.MockCalcSrcQty(dstQty, decimals1, decimals2, rate);
+        const rxSrcQty = await reserveInst.mockCalcSrcQty(dstQty, decimals1, decimals2, rate);
         Helper.assertEqual(expectedSrcQty, rxSrcQty);
 
         rate = MAX_RATE.add(new BN(1));
         try {
-            await reserveInst.MockCalcSrcQty(dstQty, decimals1, decimals2, rate);
+            await reserveInst.mockCalcSrcQty(dstQty, decimals1, decimals2, rate);
             assert(false,  "shouldn't reach this line. expected line above to throw.")
         } catch(e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -287,7 +287,7 @@ contract('KyberReserveHighRate', function(accounts) {
 
         const expectedDstQty = Helper.calcDstQty(srcQty, decimals1, decimals2, rate);
 
-        const rxDestQty = await reserveInst.MockCalcDstQty(srcQty, decimals1, decimals2, rate);
+        const rxDestQty = await reserveInst.mockCalcDstQty(srcQty, decimals1, decimals2, rate);
         Helper.assertEqual(expectedDstQty, rxDestQty);
     });
 
@@ -300,7 +300,7 @@ contract('KyberReserveHighRate', function(accounts) {
 
         const expectedSrcQty = Helper.calcSrcQty(dstQty, decimals1, decimals2, rate);
 
-        const rxSrcQty = await reserveInst.MockCalcSrcQty(dstQty, decimals1, decimals2, rate);
+        const rxSrcQty = await reserveInst.mockCalcSrcQty(dstQty, decimals1, decimals2, rate);
         Helper.assertEqual(expectedSrcQty, rxSrcQty);
     });
 
