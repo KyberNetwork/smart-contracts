@@ -19,6 +19,7 @@ let expectedReserveBalanceWei = new BN(0);
 let expectedReserveBalanceWeth = new BN(0);
 let reserveTokenBalance = [];
 let reserveTokenImbalance = [];
+let minimalRecordResolution;
 
 //permission groups
 let admin;
@@ -43,31 +44,17 @@ let tokens = [];
 let tokenDecimals = [];
 let tokenAdd = [];
 
-// all price steps in bps (basic price steps).
-// 100 bps means rate change will be: price * (100 + 10000) / 10000 == raise rate in 1%
-// higher rate is better for user. will get more dst quantity for his tokens.
-// all x values represent token imbalance. y values represent equivalent steps in bps.
-// buyImbalance represents coin shortage. higher buy imbalance = more tokens were bought.
-// generally. speaking, if imbalance is higher we want to have:
-//      - smaller buy bps (negative) to lower rate when buying token with ether.
-//      - bigger sell bps to have higher rate when buying ether with token.
-////////////////////
-
 //base buy and sell rates (prices)
 let baseBuyRate = [];
 let baseSellRate = [];
 
+//imbalance buy and sell steps, check values in reserveSetup file
+let imbalanceBuyStepX = [];
+let imbalanceBuyStepY = [];
+let imbalanceSellStepX = [];
+let imbalanceSellStepY = [];
 
-//imbalance buy steps
-let imbalanceBuyStepX = [-85000, -28000, -15000, 0, 15000, 28000, 45000];
-let imbalanceBuyStepY = [ 1300, 130, 43, 0, 0, -110, -160, -1600];
-
-
-//sell imbalance step
-let imbalanceSellStepX = [-85000, -28000, -10000, 0, 10000, 28000, 45000];
-let imbalanceSellStepY = [-1500, -320, -75, 0, 0, 110, 350, 650];
-
-//compact data.
+//compact datam  check values in reserveSetup file
 let compactBuyArr = [];
 let compactSellArr = [];
 
@@ -1408,9 +1395,7 @@ contract('KyberFprReserveV2', function(accounts) {
         it("Test getConversionRate returns 0 when conversionRate reverts", async() => {
             // set conversion rate to a random contract
             let contract = await NoPayableFallback.new();
-            await reserveInst.setContracts(
-                network, contract.address, weth.address, zeroAddress, {from: admin}
-            );
+            await reserveInst.setConversionRate(contract.address, {from: admin});
 
             // test buy rate
             let amount = new BN(100);
@@ -1422,16 +1407,12 @@ contract('KyberFprReserveV2', function(accounts) {
             Helper.assertEqual(0, rate, "rate should be 0");
 
             // set back contracts
-            await reserveInst.setContracts(
-                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
-            );
+            await reserveInst.setConversionRate(convRatesInst.address, {from: admin});
         });
 
         it("Test getConversionRate reverts when conversionRate is a normal address", async() => {
             // set conversion rate to normal address
-            await reserveInst.setContracts(
-                network, accounts[0], weth.address, zeroAddress, {from: admin}
-            );
+            await reserveInst.setConversionRate(accounts[0], {from: admin});
 
             // test buy rate
             let amount = new BN(100);
@@ -1445,16 +1426,12 @@ contract('KyberFprReserveV2', function(accounts) {
             );
 
             // set back contracts
-            await reserveInst.setContracts(
-                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
-            );
+            await reserveInst.setConversionRate(convRatesInst.address, {from: admin});
         });
 
         it("Test getConversionRate reverts when sanity contract reverts", async() => {
             // set conversion rate to normal address
-            await reserveInst.setContracts(
-                network, convRatesInst.address, weth.address, accounts[0], {from: admin}
-            );
+            await reserveInst.setSanityRate(accounts[0], {from: admin});
 
             // test buy rate
             let amount = new BN(100);
@@ -1468,17 +1445,13 @@ contract('KyberFprReserveV2', function(accounts) {
             );
 
             // set back contracts
-            await reserveInst.setContracts(
-                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
-            );
+            await reserveInst.setSanityRate(zeroAddress, {from: admin});
         });
 
         it("Test getConversionRate returns 0 when higher than sanity rate", async() => {
             let sanityRate = await MockSanityRates.new();
             // set contracts
-            await reserveInst.setContracts(
-                network, convRatesInst.address, weth.address, sanityRate.address, {from: admin}
-            );
+            await reserveInst.setSanityRate(sanityRate.address, {from: admin});
             // test buy
             let amount = new BN(100);
             let rate = await convRatesInst.getRate(tokenAdd[0], currentBlock, true, amount);
@@ -1511,9 +1484,7 @@ contract('KyberFprReserveV2', function(accounts) {
             Helper.assertEqual(conversionRate, rate);
 
             // set back contracts
-            await reserveInst.setContracts(
-                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
-            );
+            await reserveInst.setSanityRate(zeroAddress, {from: admin});
         });
     });
 
@@ -1764,7 +1735,7 @@ contract('KyberFprReserveV2', function(accounts) {
             Helper.assertGreater(t2eRate, 0);
 
             // set conversion rate to a normal address
-            await reserveInst.setContracts(network, accounts[0], weth.address, zeroAddress, {from: admin});
+            await reserveInst.setConversionRate(accounts[0], {from: admin});
 
             // test e2t trade
             await expectRevert.unspecified(
@@ -1786,7 +1757,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
             // set to random contract
             let contract = await NoPayableFallback.new();
-            await reserveInst.setContracts(network, contract.address, weth.address, zeroAddress, {from: admin});
+            await reserveInst.setConversionRate(contract.address, {from: admin});
 
             await expectRevert.unspecified(
                 reserveInst.trade(tokenAdd[tokenInd], amount, ethAddress,
@@ -1801,7 +1772,7 @@ contract('KyberFprReserveV2', function(accounts) {
             await tokens[tokenInd].transfer(accounts[0], amount, {from: network});
             await tokens[tokenInd].approve(reserveInst.address, 0, {from: network});
 
-            await reserveInst.setContracts(network, convRatesInst.address, weth.address, zeroAddress, {from: admin});
+            await reserveInst.setConversionRate(convRatesInst.address, {from: admin});
         });
 
         it("Test revert rate is higher than conversionRate's rate", async() => {
@@ -1844,9 +1815,7 @@ contract('KyberFprReserveV2', function(accounts) {
             Helper.assertGreater(e2tRate, 0);
 
             let contract = await NoPayableFallback.new();
-            await reserveInst.setContracts(
-                network, convRatesInst.address, weth.address, contract.address, {from: admin}
-            );
+            await reserveInst.setSanityRate(contract.address, {from: admin});
 
             // test e2t trade reverted
             await expectRevert.unspecified(
@@ -1859,9 +1828,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 )
             );
 
-            await reserveInst.setContracts(
-                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
-            );
+            await reserveInst.setSanityRate(zeroAddress, {from: admin});
         });
 
         it("Test revert rate is higher than sanity rate", async() => {
@@ -1871,9 +1838,7 @@ contract('KyberFprReserveV2', function(accounts) {
             Helper.assertGreater(e2tRate, 0);
 
             let sanityRate = await MockSanityRates.new();
-            await reserveInst.setContracts(
-                network, convRatesInst.address, weth.address, sanityRate.address, {from: admin}
-            );
+            await reserveInst.setSanityRate(sanityRate.address, {from: admin});
 
             await sanityRate.setSanityRateValue(e2tRate.sub(new BN(1)));
 
@@ -1900,9 +1865,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 }
             )
 
-            await reserveInst.setContracts(
-                network, convRatesInst.address, weth.address, zeroAddress, {from: admin}
-            );
+            await reserveInst.setSanityRate(zeroAddress, {from: admin});
         });
     });
 
@@ -2129,7 +2092,7 @@ contract('KyberFprReserveV2', function(accounts) {
         });
     });
 
-    describe("#Test setContracts", async() => {
+    describe("#Test set contracts", async() => {
         before("setup reserve", async() => {
             await setupMockConversionRatesContract(false);
             reserve = await Reserve.new(
@@ -2143,102 +2106,96 @@ contract('KyberFprReserveV2', function(accounts) {
             await reserve.addOperator(operator, {from: admin});
         });
 
-        it("Test setContracts reverts not admin", async() => {
+        it("Test set contract functions revert not admin", async() => {
             await expectRevert(
-                reserve.setContracts(
-                    network,
-                    convRatesInst.address,
-                    weth.address,
-                    zeroAddress,
-                    {from: operator}
-                ),
+                reserve.setKyberNetwork(network, {from: operator}),
+                "only admin"
+            )
+            await expectRevert(
+                reserve.setConversionRate(convRatesInst.address, {from: operator}),
+                "only admin"
+            )
+            await expectRevert(
+                reserve.setWeth(weth.address, {from: operator}),
+                "only admin"
+            )
+            await expectRevert(
+                reserve.setSanityRate(zeroAddress, {from: operator}),
                 "only admin"
             )
         });
 
-        it("Test setContracts reverts params are invalid", async() => {
+        it("Test set contract functions revert params are invalid", async() => {
             await expectRevert(
-                reserve.setContracts(
-                    zeroAddress,
-                    convRatesInst.address,
-                    weth.address,
-                    zeroAddress,
-                    {from: admin}
-                ),
+                reserve.setKyberNetwork(zeroAddress),
                 "kyberNetwork 0"
             );
             await expectRevert(
-                reserve.setContracts(
-                    network,
-                    zeroAddress,
-                    weth.address,
-                    zeroAddress,
-                    {from: admin}
-                ),
+                reserve.setConversionRate(zeroAddress, {from: admin}),
                 "conversionRates 0"
             );
             await expectRevert(
-                reserve.setContracts(
-                    network,
-                    convRatesInst.address,
-                    zeroAddress,
-                    zeroAddress,
-                    {from: admin}
-                ),
+                reserve.setWeth(zeroAddress, {from: admin}),
                 "weth 0"
             );
             // can set with sanity rate zero
-            await reserve.setContracts(
-                network,
-                convRatesInst.address,
-                weth.address,
-                zeroAddress,
-                {from: admin}
-            );
+            await reserve.setSanityRate(zeroAddress, {from: admin});
         });
 
-        it("Test setContracts is successful, data changes, event emits", async() => {
-            let tx = await reserve.setContracts(
-                network,
-                convRatesInst.address,
-                weth.address,
-                zeroAddress,
-                {from: admin}
-            );
-            expectEvent(tx, "SetContractAddresses", {
+        it("Test set kyberNetwork successful, data changes, event emits", async() => {
+            let tx = await reserve.setKyberNetwork(network, {from: admin});
+            expectEvent(tx, "SetKyberNetworkAddress", {
                 network: network,
-                rate: convRatesInst.address,
-                weth: weth.address,
-                sanity: zeroAddress
             });
             Helper.assertEqual(network, await reserve.kyberNetwork());
-            Helper.assertEqual(convRatesInst.address, await reserve.conversionRatesContract());
-            Helper.assertEqual(weth.address, await reserve.weth());
-            Helper.assertEqual(zeroAddress, await reserve.sanityRatesContract());
-            tx = await reserve.setContracts(
-                accounts[0],
-                accounts[1],
-                accounts[2],
-                accounts[3],
-                {from: admin}
-            );
-            expectEvent(tx, "SetContractAddresses", {
+            tx = await reserve.setKyberNetwork(accounts[0], {from: admin});
+            expectEvent(tx, "SetKyberNetworkAddress", {
                 network: accounts[0],
-                rate: accounts[1],
-                weth: accounts[2],
-                sanity: accounts[3]
             });
             Helper.assertEqual(accounts[0], await reserve.kyberNetwork());
-            Helper.assertEqual(accounts[1], await reserve.conversionRatesContract());
-            Helper.assertEqual(accounts[2], await reserve.weth());
-            Helper.assertEqual(accounts[3], await reserve.sanityRatesContract());
-            await reserve.setContracts(
-                network,
-                convRatesInst.address,
-                weth.address,
-                zeroAddress,
-                {from: admin}
-            );
+            await reserve.setKyberNetwork(network, {from: admin});
+        });
+
+        it("Test set conversion rate successful, data changes, event emits", async() => {
+            let tx = await reserve.setConversionRate(convRatesInst.address, {from: admin});
+            expectEvent(tx, "SetConversionRateAddress", {
+                rate: convRatesInst.address,
+            });
+            Helper.assertEqual(convRatesInst.address, await reserve.conversionRatesContract());
+            tx = await reserve.setConversionRate(accounts[0], {from: admin});
+            expectEvent(tx, "SetConversionRateAddress", {
+                rate: accounts[0],
+            });
+            Helper.assertEqual(accounts[0], await reserve.conversionRatesContract());
+            await reserve.setConversionRate(convRatesInst.address, {from: admin});
+        });
+
+        it("Test set weth successful, data changes, event emits", async() => {
+            let tx = await reserve.setWeth(weth.address, {from: admin});
+            expectEvent(tx, "SetWethAddress", {
+                weth: weth.address,
+            });
+            Helper.assertEqual(weth.address, await reserve.weth());
+            tx = await reserve.setWeth(accounts[0], {from: admin});
+            expectEvent(tx, "SetWethAddress", {
+                weth: accounts[0],
+            });
+            Helper.assertEqual(accounts[0], await reserve.weth());
+            await reserve.setWeth(weth.address, {from: admin});
+        });
+
+        it("Test set sanity rate successful, data changes, event emits", async() => {
+            let tx = await reserve.setSanityRate(zeroAddress, {from: admin});
+            expectEvent(tx, "SetSanityRateAddress", {
+                sanity: zeroAddress,
+            });
+            Helper.assertEqual(zeroAddress, await reserve.sanityRatesContract());
+            tx = await reserve.setSanityRate(accounts[0], {from: admin});
+            expectEvent(tx, "SetSanityRateAddress", {
+                sanity: accounts[0],
+            });
+            Helper.assertEqual(accounts[0], await reserve.sanityRatesContract());
+            await reserve.setSanityRate(zeroAddress, {from: admin});
         });
     });
 
@@ -2756,8 +2713,8 @@ contract('KyberFprReserveV2', function(accounts) {
         });
 
         describe("#Test gas consumption", async() => {
-            const setupConversionRatesContractWithSteps = async function() {
-                let setupData = await reserveSetup.setupConversionRate(tokens, admin, operator, alerter, true);
+            const setupConversionRateV2sContractWithSteps = async function() {
+                let setupData = await reserveSetup.setupConversionRateV2(tokens, admin, operator, alerter, true);
                 convRatesInst = setupData.convRatesInst;
                 baseBuyRate = setupData.baseBuyRate;
                 compactBuyArr = setupData.compactBuyArr;
@@ -2767,6 +2724,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 imbalanceBuyStepY = setupData.imbalanceBuyStepY;
                 imbalanceSellStepX = setupData.imbalanceSellStepX;
                 imbalanceSellStepY = setupData.imbalanceSellStepY;
+                minimalRecordResolution = setupData.minimalRecordResolution;
             }
 
             const tradeAndVerifyDataWithSteps = async function(
@@ -2783,7 +2741,12 @@ contract('KyberFprReserveV2', function(accounts) {
                     let extraBps = compactBuyArr[tokenInd] * 10;
                     expectedRate = Helper.addBps(expectedRate, extraBps);
                     let destQty = Helper.calcDstQty(srcAmount, ethDecimals, tokenDecimals[tokenInd], expectedRate);
-                    let data = getExtraBpsForImbalanceBuyQuantity(reserveTokenImbalance[tokenInd].toNumber(), destQty.toNumber());
+                    let data = reserveSetup.getExtraBpsForImbalanceBuyQuantityV2(
+                        reserveTokenImbalance[tokenInd].toNumber(),
+                        destQty.toNumber(),
+                        imbalanceBuyStepX,
+                        imbalanceBuyStepY
+                    );
                     extraBps = data.bps;
                     numberSteps = data.steps;
                     expectedRate = Helper.addBps(expectedRate, extraBps);
@@ -2791,7 +2754,12 @@ contract('KyberFprReserveV2', function(accounts) {
                     expectedRate = baseSellRate[tokenInd];
                     let extraBps = compactSellArr[tokenInd] * 10;
                     expectedRate = Helper.addBps(expectedRate, extraBps);
-                    let data = getExtraBpsForImbalanceSellQuantity(reserveTokenImbalance[tokenInd].toNumber(), srcAmount.toNumber());
+                    let data = reserveSetup.getExtraBpsForImbalanceSellQuantityV2(
+                        reserveTokenImbalance[tokenInd].toNumber(),
+                        srcAmount.toNumber(),
+                        imbalanceSellStepX,
+                        imbalanceSellStepY
+                    );
                     extraBps = data.bps;
                     numberSteps = data.steps;
                     expectedRate = Helper.addBps(expectedRate, extraBps);
@@ -2826,7 +2794,9 @@ contract('KyberFprReserveV2', function(accounts) {
                     }
                     // update token balance
                     reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].sub(expectedDestAmount);
-                    reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(expectedDestAmount);
+                    // if amount is 11, resolution is 2, it will record 5, and later multiple back with 2
+                    let imbalance = expectedDestAmount.div(minimalRecordResolution).mul(minimalRecordResolution);
+                    reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].add(imbalance);
                 } else {
                     // reserve has received token
                     reserveTokenBalance[tokenInd] = reserveTokenBalance[tokenInd].add(srcAmount);
@@ -2837,7 +2807,9 @@ contract('KyberFprReserveV2', function(accounts) {
                         // weth is transferred to weth token wallet
                         expectedReserveBalanceWeth = expectedReserveBalanceWeth.sub(expectedDestAmount);
                     }
-                    reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].sub(srcAmount);
+                    // if amount is 11, resolution is 2, it will record 5, and later multiple back with 2
+                    let imbalance = srcAmount.div(minimalRecordResolution).mul(minimalRecordResolution);
+                    reserveTokenImbalance[tokenInd] = reserveTokenImbalance[tokenInd].sub(imbalance);
                 }
                 return {
                     expectedDestAmount: expectedDestAmount,
@@ -2885,7 +2857,7 @@ contract('KyberFprReserveV2', function(accounts) {
                 describe(`${testSuites[t]}`, async() => {
                     it("Test few buys with steps", async() => {
                         //init conversion rate
-                        await setupConversionRatesContractWithSteps();
+                        await setupConversionRateV2sContractWithSteps();
                         await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
 
                         if (isUsingWeth[t]) {
@@ -2928,14 +2900,14 @@ contract('KyberFprReserveV2', function(accounts) {
 
                         for(let i = 0; i <= 20; i++) {
                             if (numberTxsPerStep[i] > 0) {
-                                console.log(`             Average gas used for buy with ${i} steps: ${divSolidity(gasUsedPerStep[i], new BN(numberTxsPerStep[i]))}`)
+                                console.log(`             Average gas used for buy with ${i} steps: ${Math.floor(1.0 * gasUsedPerStep[i]/numberTxsPerStep[i])}`)
                             }
                         }
                     });
 
                     it("Test few sells with steps", async() => {
                         //init conversion rate
-                        await setupConversionRatesContractWithSteps();
+                        await setupConversionRateV2sContractWithSteps();
                         await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
 
                         if (isUsingWeth[t]) {
@@ -2982,7 +2954,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
                         for(let i = 0; i <= 20; i++) {
                             if (numberTxsPerStep[i] > 0) {
-                                console.log(`             Average gas used for buy with ${i} steps: ${divSolidity(gasUsedPerStep[i], new BN(numberTxsPerStep[i]))}`)
+                                console.log(`             Average gas used for buy with ${i} steps: ${Math.floor(1.0 * gasUsedPerStep[i]/numberTxsPerStep[i])}`)
                             }
                         }
                     });
@@ -2992,67 +2964,7 @@ contract('KyberFprReserveV2', function(accounts) {
     });
 });
 
-function getExtraBpsForImbalanceBuyQuantity(imbalance, qty) {
-    return getExtraBpsForQuantity(imbalance, imbalance + qty, imbalanceBuyStepX, imbalanceBuyStepY);
-};
 
-function getExtraBpsForImbalanceSellQuantity(imbalance, qty) {
-    return getExtraBpsForQuantity(imbalance - qty, imbalance, imbalanceSellStepX, imbalanceSellStepY);
-};
-
-// Return extra bps and number of steps it accesses
-function getExtraBpsForQuantity(from, to, stepX, stepY) {
-    if (stepY.length == 0 || (from == to)) {
-        return {
-            bps: 0,
-            steps: 0
-        }
-    }
-    let len = stepX.length;
-
-    let change = 0;
-    let fromVal = from;
-    let qty = to - from;
-
-    for(let i = 0; i < len; i++) {
-        if (stepX[i] <= fromVal) { continue; }
-        if (stepY[i] == -10000) {
-            return {
-                bps: -10000,
-                steps: i + 1
-            }
-        }
-        if (stepX[i] >= to) {
-            change += (to - fromVal) * stepY[i];
-            return {
-                bps: divSolidity(change, qty),
-                steps: i + 1
-            }
-        } else {
-            change += (stepX[i] - fromVal) * stepY[i];
-            fromVal = stepX[i];
-        }
-    }
-    if (fromVal < to) {
-        if (stepY[len] == -10000) {
-            return {
-                bps: -10000,
-                steps: len + 1
-            }
-        }
-        change += (to - fromVal) * stepY[len];
-    }
-    return {
-        bps: divSolidity(change, qty),
-        steps: len + 1
-    }
-}
-
-function divSolidity(a, b) {
-    let c = a / b;
-    if (c < 0) { return Math.ceil(c); }
-    return Math.floor(c);
-}
 
 // returns 1 token of decimals d
 function tokenUnits(d) {

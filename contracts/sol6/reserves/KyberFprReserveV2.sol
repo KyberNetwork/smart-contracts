@@ -46,12 +46,10 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     event WithdrawAddressApproved(IERC20 indexed token, address indexed addr, bool approve);
     event NewTokenWallet(IERC20 indexed token, address indexed wallet);
     event WithdrawFunds(IERC20 indexed token, uint256 amount, address indexed destination);
-    event SetContractAddresses(
-        address indexed network,
-        IConversionRates indexed rate,
-        IWeth weth,
-        IKyberSanity sanity
-    );
+    event SetKyberNetworkAddress(address indexed network);
+    event SetConversionRateAddress(IConversionRates indexed rate);
+    event SetWethAddress(IWeth indexed weth);
+    event SetSanityRateAddress(IKyberSanity indexed sanity);
 
     constructor(
         address _kyberNetwork,
@@ -79,9 +77,8 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         IERC20 destToken,
         address payable destAddress,
         uint256 conversionRate,
-        bool validate
+        bool /* validate */
     ) external override payable returns (bool) {
-        validate;
         require(configData.tradeEnabled, "trade not enable");
         require(msg.sender == kyberNetwork, "wrong sender");
         require(tx.gasprice <= uint256(configData.maxGasPriceWei), "gas price too high");
@@ -117,6 +114,8 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     }
 
     /// @dev allow set tokenWallet[token] back to 0x0 address
+    /// @dev in case of using weth from external wallet, must call set token wallet for weth
+    ///      tokenWallet for weth must be different from this reserve address
     function setTokenWallet(IERC20 token, address wallet) external onlyAdmin {
         tokenWallet[address(token)] = wallet;
         setDecimals(token);
@@ -153,27 +152,29 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         emit WithdrawFunds(token, amount, destination);
     }
 
-    function setContracts(
-        address _kyberNetwork,
-        IConversionRates _conversionRates,
-        IWeth _weth,
-        IKyberSanity _sanityRates
-    ) external onlyAdmin {
-        require(_kyberNetwork != address(0), "kyberNetwork 0");
-        require(_conversionRates != IConversionRates(0), "conversionRates 0");
-        require(_weth != IWeth(0), "weth 0");
+    function setKyberNetwork(address _newNetwork) external onlyAdmin {
+        require(_newNetwork != address(0), "kyberNetwork 0");
+        kyberNetwork = _newNetwork;
+        emit SetKyberNetworkAddress(_newNetwork);
+    }
 
-        kyberNetwork = _kyberNetwork;
-        conversionRatesContract = _conversionRates;
-        weth = _weth;
-        sanityRatesContract = _sanityRates;
+    function setConversionRate(IConversionRates _newConversionRate) external onlyAdmin {
+        require(_newConversionRate != IConversionRates(0), "conversionRates 0");
+        conversionRatesContract = _newConversionRate;
+        emit SetConversionRateAddress(_newConversionRate);
+    }
 
-        emit SetContractAddresses(
-            kyberNetwork,
-            conversionRatesContract,
-            weth,
-            sanityRatesContract
-        );
+    /// @dev weth is unlikely to be changed, but added this function to keep the flexibilty
+    function setWeth(IWeth _newWeth) external onlyAdmin {
+        require(_newWeth != IWeth(0), "weth 0");
+        weth = _newWeth;
+        emit SetWethAddress(_newWeth);
+    }
+
+    /// @dev sanity rate can be set to 0x0 address to disable sanity rate check
+    function setSanityRate(IKyberSanity _newSanity) external onlyAdmin {
+        sanityRatesContract = _newSanity;
+        emit SetSanityRateAddress(_newSanity);
     }
 
     function getConversionRate(

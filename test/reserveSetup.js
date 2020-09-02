@@ -1,4 +1,5 @@
-const ConversionRates = artifacts.require("MockEnhancedStepFunctions.sol");
+const ConversionRatesV2 = artifacts.require("MockEnhancedStepFunctions.sol");
+const ConversionRatesV1 = artifacts.require("MockConversionRate.sol");
 const KyberFprReserveV2 = artifacts.require("KyberFprReserveV2");
 
 const Helper = require("./helper.js");
@@ -11,26 +12,14 @@ const {precisionUnits, ethAddress, zeroAddress,
 
 //block data
 let validRateDurationInBlocks = 1000;
-let maxGasPrice = new BN(150).mul(new BN(10).pow(new BN(9))); // 150 * 10^9
 
 // imbalance data
 let minimalRecordResolution = new BN(2);
 let maxPerBlockImbalance = 40000;
 let maxTotalImbalance = maxPerBlockImbalance * 12;
 
-
-//imbalance buy steps
-let imbalanceBuyStepX = [-85000, -28000, -15000, 0, 15000, 28000, 45000];
-let imbalanceBuyStepY = [ 1300, 130, 43, 0, 0, -110, -160, -1600];
-
-
-//sell imbalance step
-let imbalanceSellStepX = [-85000, -28000, -10000, 0, 10000, 28000, 45000];
-let imbalanceSellStepY = [-1500, -320, -75, 0, 0, 110, 350, 650];
-
-
-module.exports.setupConversionRate = async function(tokens, admin, operator, alerter, needListingToken) {
-    let convRatesInst = await ConversionRates.new(admin);
+module.exports.setupConversionRateV1 = async function(tokens, admin, operator, alerter, needListingToken) {
+    let convRatesInst = await ConversionRatesV1.new(admin);
 
     //set pricing general parameters
     await convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -39,6 +28,112 @@ module.exports.setupConversionRate = async function(tokens, admin, operator, ale
     let baseSellRate = [];
     let compactBuyArr = [];
     let compactSellArr = [];
+
+    if (needListingToken) {
+        //create and add token addresses...
+        for (let i = 0; i < tokens.length; ++i) {
+            let token = tokens[i];
+            await convRatesInst.addToken(token.address);
+            await convRatesInst.setTokenControlInfo(token.address, minimalRecordResolution, maxPerBlockImbalance, maxTotalImbalance);
+            await convRatesInst.enableTokenTrade(token.address);
+        }
+
+        await convRatesInst.addOperator(operator);
+        await convRatesInst.addAlerter(alerter);
+
+        // init rates
+        // buy is ether to token rate. sale is token to ether rate. so sell == 1 / buy. assuming we have no spread.
+        let tokensPerEther;
+        let ethersPerToken;
+
+        let tokenAdd = [];
+        for (i = 0; i < tokens.length; ++i) {
+            tokensPerEther = precisionUnits.mul(new BN((i + 1) * 3));
+            ethersPerToken = precisionUnits.div(new BN((i + 1) * 3));
+            baseBuyRate.push(tokensPerEther);
+            baseSellRate.push(ethersPerToken);
+            tokenAdd.push(tokens[i].address);
+        }
+        Helper.assertEqual(baseBuyRate.length, tokens.length);
+        Helper.assertEqual(baseSellRate.length, tokens.length);
+
+        let buys = [];
+        let sells = [];
+        let indices = [];
+
+        let currentBlock = await Helper.getCurrentBlock();
+        await convRatesInst.setBaseRate(tokenAdd, baseBuyRate, baseSellRate, buys, sells, currentBlock, indices, {from: operator});
+
+        //set compact data
+        compactBuyArr = [0, 0, 0, 0, 0, 06, 07, 08, 09, 1, 0, 11, 12, 13, 14];
+        let compactBuyHex = Helper.bytesToHex(compactBuyArr);
+        buys.push(compactBuyHex);
+
+        compactSellArr = [0, 0, 0, 0, 0, 26, 27, 28, 29, 30, 31, 32, 33, 34];
+        let compactSellHex = Helper.bytesToHex(compactSellArr);
+        sells.push(compactSellHex);
+
+        indices[0] = 0;
+
+        Helper.assertEqual(indices.length, sells.length, "bad sells array size");
+        Helper.assertEqual(indices.length, buys.length, "bad buys array size");
+
+        await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
+
+        let qtyBuyStepX = [0, 5000, 10000, 16000, 28000, 32000, 45000];
+        let qtyBuyStepY = [ 0, 10, 20, 32, 44, 56, 101];
+        let qtySellStepX = [0, 5000, 11000, 18000, 30000, 36000, 48000];
+        let qtySellStepY = [ 0, 12, 22, 33, 45, 58, 110];
+        //imbalance buy steps
+        let imbalanceBuyStepX = [-85000, -28000, -15000, 0, 15000, 28000, 45000];
+        let imbalanceBuyStepY = [ 1300, 130, 43, 0, 0, -110, -160];
+
+        //sell imbalance step
+        let imbalanceSellStepX = [-85000, -28000, -10000, 0, 10000, 28000, 45000];
+        let imbalanceSellStepY = [-1500, -320, -75, 0, 0, 110, 350];
+
+        for (let i = 0; i < tokens.length; ++i) {
+            await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+        }
+    }
+
+    return {
+        convRatesInst: convRatesInst,
+        baseBuyRate: baseBuyRate,
+        compactBuyArr: compactBuyArr,
+        baseSellRate: baseSellRate,
+        compactSellArr: compactSellArr,
+        imbalanceBuyStepX: imbalanceBuyStepX,
+        imbalanceBuyStepY: imbalanceBuyStepY,
+        imbalanceSellStepX: imbalanceSellStepX,
+        imbalanceSellStepY: imbalanceSellStepY,
+        qtyBuyStepX: qtyBuyStepX,
+        qtyBuyStepY: qtyBuyStepY,
+        qtySellStepX: qtySellStepX,
+        qtySellStepY: qtySellStepY,
+        minimalRecordResolution: minimalRecordResolution
+    }
+};
+
+module.exports.setupConversionRateV2 = async function(tokens, admin, operator, alerter, needListingToken) {
+    let convRatesInst = await ConversionRatesV2.new(admin);
+
+    //set pricing general parameters
+    await convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
+
+    let baseBuyRate = [];
+    let baseSellRate = [];
+    let compactBuyArr = [];
+    let compactSellArr = [];
+    //imbalance buy steps
+    let imbalanceBuyStepX = [0, 5000, 15000, 21000, 28000, 33000, 45000];
+    let imbalanceBuyStepY = [0, -110, -160, -250, -440, -1000, -1600, -2000];
+
+
+    //sell imbalance step
+    let imbalanceSellStepX = [-48000, -39000, -25000, -19000, -14000, -10000, 0];
+    let imbalanceSellStepY = [-2100, -1500, -1200, -440, -320, -200, -75, 0];
 
     if (needListingToken) {
         //create and add token addresses...
@@ -107,6 +202,7 @@ module.exports.setupConversionRate = async function(tokens, admin, operator, ale
         imbalanceBuyStepY: imbalanceBuyStepY,
         imbalanceSellStepX: imbalanceSellStepX,
         imbalanceSellStepY: imbalanceSellStepY,
+        minimalRecordResolution: minimalRecordResolution
     }
 };
 
@@ -117,7 +213,6 @@ module.exports.setupFprReserveV2 = async function(
 ) {
     // init reserves and balances
     let reserveInst = await KyberFprReserveV2.new(network, convRatesInst.address, weth.address, maxGasPrice, admin);
-    await reserveInst.setContracts(network, convRatesInst.address, weth.address, zeroAddress);
 
     await reserveInst.addOperator(operator);
     await reserveInst.addAlerter(alerter);
@@ -193,3 +288,126 @@ module.exports.setupFprReserveV2 = async function(
         tokenImbalances: tokenImbalances
     }
 }
+
+module.exports.getExtraBpsForImbalanceBuyQuantityV2 = function(imbalance, qty, imbalanceBuyStepX, imbalanceBuyStepY) {
+    return getExtraBpsForQuantityV2(imbalance, imbalance + qty, imbalanceBuyStepX, imbalanceBuyStepY);
+};
+
+module.exports.getExtraBpsForImbalanceSellQuantityV2 = function(imbalance, qty, imbalanceSellStepX, imbalanceSellStepY) {
+    return getExtraBpsForQuantityV2(imbalance - qty, imbalance, imbalanceSellStepX, imbalanceSellStepY);
+};
+
+// Return extra bps and number of steps it accesses
+function getExtraBpsForQuantityV2(from, to, stepX, stepY) {
+    if (stepY.length == 0 || (from == to)) {
+        return {
+            bps: 0,
+            steps: 0
+        }
+    }
+    let len = stepX.length;
+
+    let change = 0;
+    let fromVal = from;
+    let qty = to - from;
+
+    for(let i = 0; i < len; i++) {
+        if (stepX[i] <= fromVal) { continue; }
+        if (stepY[i] == -10000) {
+            return {
+                bps: -10000,
+                steps: i + 1
+            }
+        }
+        if (stepX[i] >= to) {
+            change += (to - fromVal) * stepY[i];
+            return {
+                bps: divSolidity(change, qty),
+                steps: i + 1
+            }
+        } else {
+            change += (stepX[i] - fromVal) * stepY[i];
+            fromVal = stepX[i];
+        }
+    }
+    if (fromVal < to) {
+        if (stepY[len] == -10000) {
+            return {
+                bps: -10000,
+                steps: len + 1
+            }
+        }
+        change += (to - fromVal) * stepY[len];
+    }
+    return {
+        bps: divSolidity(change, qty),
+        steps: len + 1
+    }
+}
+
+function divSolidity(a, b) {
+    let c = a / b;
+    if (c < 0) { return Math.ceil(c); }
+    return Math.floor(c);
+}
+
+// old conversion rate
+function getExtraBpsForBuyQuantityV1(qty) {
+    for (let i = 0; i < qtyBuyStepX.length; i++) {
+        if (qty <= qtyBuyStepX[i]) {
+            return {
+                bps: qtyBuyStepY[i],
+                steps: i + 1
+            }
+        }
+    }
+    return {
+        bps: qtyBuyStepY[qtyBuyStepY.length - 1],
+        steps: qtyBuyStepX.length + 1
+    }
+};
+
+function getExtraBpsForSellQuantityV1(qty) {
+    for (let i = 0; i < qtySellStepX.length; i++) {
+        if (qty <= qtySellStepX[i]) {
+            return {
+                bps: qtySellStepY[i],
+                steps: i + 1
+            }
+        }
+    }
+    return {
+        bps: qtySellStepY[qtySellStepY.length - 1],
+        steps: qtySellStepX + 1
+    }
+};
+
+function getExtraBpsForImbalanceBuyQuantityV1(qty) {
+    for (let i = 0; i < imbalanceBuyStepX.length; i++) {
+        if (qty <= imbalanceBuyStepX[i]) {
+            return {
+                bps: imbalanceBuyStepY[i],
+                steps: i + 1
+            }
+        }
+    }
+    return {
+        bps: (imbalanceBuyStepY[imbalanceBuyStepY.length - 1]),
+        steps: imbalanceBuyStepY.length + 1
+    }
+};
+
+function getExtraBpsForImbalanceSellQuantityV1(qty) {
+    for (let i = 0; i < imbalanceSellStepX.length; i++) {
+        if (qty <= imbalanceSellStepX[i]) {
+            return {
+                bps: imbalanceSellStepY[i],
+                steps: i + 1
+            }
+        }
+    }
+    return {
+        bps: (imbalanceSellStepY[imbalanceSellStepY.length - 1]),
+        steps: imbalanceSellStepY.length + 1
+    }
+};
