@@ -6,6 +6,9 @@ set -euxo pipefail
 readonly test_part=${TEST_PART:-}
 
 case "$test_part" in
+All)
+    npx buidler test --no-compile
+    ;;
 Sol6)
     npx buidler test --no-compile --config buidlerConfigSol6.js
     ;;

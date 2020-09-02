@@ -452,19 +452,19 @@ module.exports.buildHint = function(tradeType) {
               return ((a.id < b.id) ? -1 : ((a.id === b.id) ? 0 : 1));
           }).forEach(function (v, i) {
               sortedReserveIds[i] = v.id;
-              if (v.split) sortedSplits[i] = v.split.toString();
+              if (v.split) sortedSplits[i] = v.split;
           });
       
           return web3.eth.abi.encodeParameters(
               ['uint8', 'bytes32[]', 'uint[]'],
-              [tradeType, sortedReserveIds, sortedSplits],
+              [tradeType, sortedReserveIds, sortedSplits]
           );
       }
   } else {
       return (tradeType, reserveIds, splits) => {
           return web3.eth.abi.encodeParameters(
               ['uint8', 'bytes32[]', 'uint[]'],
-              [tradeType, reserveIds, splits],
+              [tradeType, reserveIds, splits]
           );
       }
   }
@@ -485,7 +485,7 @@ module.exports.buildHintT2T = function(
 
   return web3.eth.abi.encodeParameters(
       ['bytes', 'bytes'],
-      [t2eHint, e2tHint],
+      [t2eHint, e2tHint]
   );
 }
 

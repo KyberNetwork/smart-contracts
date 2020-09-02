@@ -14,7 +14,7 @@ env:
 jobs:
   include:
     - env:
-        - TEST_PART: Sol6
+        - TEST_PART: All
     - env:
         - TEST_PART: Coverage
 
@@ -23,6 +23,8 @@ install:
 
 before_script:
   - npx solhint "contracts/sol6/**/*.sol"
+  - npx solhint "contracts/sol5/**/*.sol"
+  - npx solhint "contracts/sol4/**/*.sol"
 
 script:
   - ./cmp.sh
