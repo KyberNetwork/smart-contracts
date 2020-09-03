@@ -32,4 +32,17 @@ contract MockConversionRate is ConversionRates {
     function mockIsTokenTradeEnabled(address token) public view returns (bool) {
         return tokenData[token].enabled;
     }
+
+    function getInitImbalance(ERC20 token) public view returns(int totalImbalance) {
+        // check if trade is enabled
+        if (!tokenData[token].enabled) return 0;
+        if (tokenControlInfo[token].minimalRecordResolution == 0) return 0; // token control info not set
+
+        // get rate update block
+        bytes32 compactData = tokenRatesCompactData[tokenData[token].compactDataArrayIndex];
+
+        uint updateRateBlock = getLast4Bytes(compactData);
+        // check imbalance
+        (totalImbalance, ) = getImbalance(token, updateRateBlock, block.number);
+    }
 }

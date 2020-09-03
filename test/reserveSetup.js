@@ -29,6 +29,15 @@ module.exports.setupConversionRateV1 = async function(tokens, admin, operator, a
     let compactBuyArr = [];
     let compactSellArr = [];
 
+    let qtyBuyStepX = [0, 5000, 10000, 16000, 28000, 32000, 45000];
+    let qtyBuyStepY = [ 0, 10, 20, 32, 44, 56, 101];
+    let qtySellStepX = [0, 5000, 11000, 18000, 30000, 36000, 48000];
+    let qtySellStepY = [ 0, 12, 22, 33, 45, 58, 110];
+    let imbalanceBuyStepX = [0, 5000, 15000, 21000, 28000, 33000, 45000];
+    let imbalanceBuyStepY = [0, -110, -160, -250, -440, -1000, -1600];
+    let imbalanceSellStepX = [-48000, -39000, -25000, -19000, -14000, -10000, 0];
+    let imbalanceSellStepY = [-1500, -1200, -440, -320, -200, -75, 0];
+
     if (needListingToken) {
         //create and add token addresses...
         for (let i = 0; i < tokens.length; ++i) {
@@ -80,21 +89,9 @@ module.exports.setupConversionRateV1 = async function(tokens, admin, operator, a
 
         await convRatesInst.setCompactData(buys, sells, currentBlock, indices, {from: operator});
 
-        let qtyBuyStepX = [0, 5000, 10000, 16000, 28000, 32000, 45000];
-        let qtyBuyStepY = [ 0, 10, 20, 32, 44, 56, 101];
-        let qtySellStepX = [0, 5000, 11000, 18000, 30000, 36000, 48000];
-        let qtySellStepY = [ 0, 12, 22, 33, 45, 58, 110];
-        //imbalance buy steps
-        let imbalanceBuyStepX = [-85000, -28000, -15000, 0, 15000, 28000, 45000];
-        let imbalanceBuyStepY = [ 1300, 130, 43, 0, 0, -110, -160];
-
-        //sell imbalance step
-        let imbalanceSellStepX = [-85000, -28000, -10000, 0, 10000, 28000, 45000];
-        let imbalanceSellStepY = [-1500, -320, -75, 0, 0, 110, 350];
-
         for (let i = 0; i < tokens.length; ++i) {
-            await convRatesInst.setQtyStepFunction(tokens[i], qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
-            await convRatesInst.setImbalanceStepFunction(tokens[i], imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
+            await convRatesInst.setQtyStepFunction(tokens[i].address, qtyBuyStepX, qtyBuyStepY, qtySellStepX, qtySellStepY, {from:operator});
+            await convRatesInst.setImbalanceStepFunction(tokens[i].address, imbalanceBuyStepX, imbalanceBuyStepY, imbalanceSellStepX, imbalanceSellStepY, {from:operator});
         }
     }
 
@@ -129,7 +126,6 @@ module.exports.setupConversionRateV2 = async function(tokens, admin, operator, a
     //imbalance buy steps
     let imbalanceBuyStepX = [0, 5000, 15000, 21000, 28000, 33000, 45000];
     let imbalanceBuyStepY = [0, -110, -160, -250, -440, -1000, -1600, -2000];
-
 
     //sell imbalance step
     let imbalanceSellStepX = [-48000, -39000, -25000, -19000, -14000, -10000, 0];
@@ -289,11 +285,11 @@ module.exports.setupFprReserveV2 = async function(
     }
 }
 
-module.exports.getExtraBpsForImbalanceBuyQuantityV2 = function(imbalance, qty, imbalanceBuyStepX, imbalanceBuyStepY) {
+module.exports.getExtraBpsForImbalanceBuyV2 = function(imbalance, qty, imbalanceBuyStepX, imbalanceBuyStepY) {
     return getExtraBpsForQuantityV2(imbalance, imbalance + qty, imbalanceBuyStepX, imbalanceBuyStepY);
 };
 
-module.exports.getExtraBpsForImbalanceSellQuantityV2 = function(imbalance, qty, imbalanceSellStepX, imbalanceSellStepY) {
+module.exports.getExtraBpsForImbalanceSellV2 = function(imbalance, qty, imbalanceSellStepX, imbalanceSellStepY) {
     return getExtraBpsForQuantityV2(imbalance - qty, imbalance, imbalanceSellStepX, imbalanceSellStepY);
 };
 
@@ -352,7 +348,7 @@ function divSolidity(a, b) {
 }
 
 // old conversion rate
-function getExtraBpsForBuyQuantityV1(qty) {
+module.exports.getExtraBpsForBuyQuantityV1 = function(qty, qtyBuyStepX, qtyBuyStepY) {
     for (let i = 0; i < qtyBuyStepX.length; i++) {
         if (qty <= qtyBuyStepX[i]) {
             return {
@@ -363,11 +359,11 @@ function getExtraBpsForBuyQuantityV1(qty) {
     }
     return {
         bps: qtyBuyStepY[qtyBuyStepY.length - 1],
-        steps: qtyBuyStepX.length + 1
+        steps: qtyBuyStepX.length
     }
 };
 
-function getExtraBpsForSellQuantityV1(qty) {
+module.exports.getExtraBpsForSellQuantityV1 = function(qty, qtySellStepX, qtySellStepY) {
     for (let i = 0; i < qtySellStepX.length; i++) {
         if (qty <= qtySellStepX[i]) {
             return {
@@ -378,11 +374,11 @@ function getExtraBpsForSellQuantityV1(qty) {
     }
     return {
         bps: qtySellStepY[qtySellStepY.length - 1],
-        steps: qtySellStepX + 1
+        steps: qtySellStepX
     }
 };
 
-function getExtraBpsForImbalanceBuyQuantityV1(qty) {
+module.exports.getExtraBpsForImbalanceBuyQuantityV1 = function(qty, imbalanceBuyStepX, imbalanceBuyStepY) {
     for (let i = 0; i < imbalanceBuyStepX.length; i++) {
         if (qty <= imbalanceBuyStepX[i]) {
             return {
@@ -393,11 +389,11 @@ function getExtraBpsForImbalanceBuyQuantityV1(qty) {
     }
     return {
         bps: (imbalanceBuyStepY[imbalanceBuyStepY.length - 1]),
-        steps: imbalanceBuyStepY.length + 1
+        steps: imbalanceBuyStepY.length
     }
 };
 
-function getExtraBpsForImbalanceSellQuantityV1(qty) {
+module.exports.getExtraBpsForImbalanceSellQuantityV1 = function(qty, imbalanceSellStepX, imbalanceSellStepY) {
     for (let i = 0; i < imbalanceSellStepX.length; i++) {
         if (qty <= imbalanceSellStepX[i]) {
             return {
@@ -408,6 +404,6 @@ function getExtraBpsForImbalanceSellQuantityV1(qty) {
     }
     return {
         bps: (imbalanceSellStepY[imbalanceSellStepY.length - 1]),
-        steps: imbalanceSellStepY.length + 1
+        steps: imbalanceSellStepY.length
     }
 };
