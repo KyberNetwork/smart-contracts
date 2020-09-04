@@ -90,7 +90,14 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         require(configData.tradeEnabled, "trade not enable");
         require(tx.gasprice <= uint256(configData.maxGasPriceWei), "gas price too high");
 
-        doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, configData.doRateValidation);
+        doTrade(
+            srcToken,
+            srcAmount,
+            destToken,
+            destAddress,
+            conversionRate,
+            configData.doRateValidation
+        );
 
         return true;
     }
