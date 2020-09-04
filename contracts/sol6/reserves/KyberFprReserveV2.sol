@@ -22,6 +22,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
 
     struct ConfigData {
         bool tradeEnabled;
+        bool doRateValidation; // whether to do rate validation in trade func
         uint128 maxGasPriceWei;
     }
 
@@ -43,6 +44,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     );
     event TradeEnabled(bool enable);
     event MaxGasPriceUpdated(uint128 newMaxGasPrice);
+    event DoRateValidationUpdated(bool doRateValidation);
     event WithdrawAddressApproved(IERC20 indexed token, address indexed addr, bool approve);
     event NewTokenWallet(IERC20 indexed token, address indexed wallet);
     event WithdrawFunds(IERC20 indexed token, uint256 amount, address indexed destination);
@@ -56,6 +58,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         IConversionRates _ratesContract,
         IWeth _weth,
         uint128 _maxGasPriceWei,
+        bool _doRateValidation,
         address _admin
     ) public Withdrawable3(_admin) {
         require(_kyberNetwork != address(0), "kyberNetwork 0");
@@ -64,7 +67,11 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         kyberNetwork = _kyberNetwork;
         conversionRatesContract = _ratesContract;
         weth = _weth;
-        configData = ConfigData({tradeEnabled: true, maxGasPriceWei: _maxGasPriceWei});
+        configData = ConfigData({
+            tradeEnabled: true,
+            maxGasPriceWei: _maxGasPriceWei,
+            doRateValidation: _doRateValidation
+        });
     }
 
     receive() external payable {
@@ -79,11 +86,11 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         uint256 conversionRate,
         bool /* validate */
     ) external override payable returns (bool) {
-        require(configData.tradeEnabled, "trade not enable");
         require(msg.sender == kyberNetwork, "wrong sender");
+        require(configData.tradeEnabled, "trade not enable");
         require(tx.gasprice <= uint256(configData.maxGasPriceWei), "gas price too high");
 
-        doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate);
+        doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, configData.doRateValidation);
 
         return true;
     }
@@ -101,6 +108,11 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     function setMaxGasPrice(uint128 newMaxGasPrice) external onlyOperator {
         configData.maxGasPriceWei = newMaxGasPrice;
         emit MaxGasPriceUpdated(newMaxGasPrice);
+    }
+
+    function setDoRateValidation(bool _doRateValidation) external onlyAdmin {
+        configData.doRateValidation = _doRateValidation;
+        emit DoRateValidationUpdated(_doRateValidation);
     }
 
     function approveWithdrawAddress(
@@ -234,6 +246,10 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         return configData.maxGasPriceWei;
     }
 
+    function doRateValidation() external view returns (bool) {
+        return configData.doRateValidation;
+    }
+
     /// @dev return available balance of a token that reserve can use
     ///      if using weth, call getBalance(eth) will return weth balance
     ///      if using wallet for token, will return min of balance and allowance
@@ -280,31 +296,38 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     /// @param srcAmount Amount of src token
     /// @param destToken Destination token
     /// @param destAddress Destination address to send tokens to
+    /// @param doRateValidation do rate validation or not
     function doTrade(
         IERC20 srcToken,
         uint256 srcAmount,
         IERC20 destToken,
         address payable destAddress,
-        uint256 conversionRate
+        uint256 conversionRate,
+        bool doRateValidation
     ) internal {
         require(conversionRate > 0, "rate is 0");
 
-        uint256 rate;
-
-        if (srcToken == ETH_TOKEN_ADDRESS) {
+        bool isBuy = srcToken == ETH_TOKEN_ADDRESS;
+        if (isBuy) {
             require(msg.value == srcAmount, "wrong msg value");
-            rate = conversionRatesContract.getRate(destToken, block.number, true, srcAmount);
         } else {
             require(msg.value == 0, "bad msg value");
-            rate = conversionRatesContract.getRate(srcToken, block.number, false, srcAmount);
         }
 
-        // re-validate conversion rate
-        require(rate >= conversionRate, "rate is lower than conversion rate");
-        if (sanityRatesContract != IKyberSanity(0)) {
-            // sanity rate check
-            uint256 sanityRate = sanityRatesContract.getSanityRate(srcToken, destToken);
-            require(rate <= sanityRate, "rate should not be greater than sanity rate" );
+        if (doRateValidation) {
+            uint256 rate = conversionRatesContract.getRate(
+                isBuy ? destToken : srcToken,
+                block.number,
+                isBuy,
+                srcAmount
+            );
+            // re-validate conversion rate
+            require(rate >= conversionRate, "rate is lower than conversion rate");
+            if (sanityRatesContract != IKyberSanity(0)) {
+                // sanity rate check
+                uint256 sanityRate = sanityRatesContract.getSanityRate(srcToken, destToken);
+                require(rate <= sanityRate, "rate should not be greater than sanity rate" );
+            }
         }
 
         uint256 destAmount = calcDestAmount(srcToken, destToken, srcAmount, conversionRate);
@@ -313,7 +336,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         address srcTokenWallet = getTokenWallet(srcToken);
         address destTokenWallet = getTokenWallet(destToken);
 
-        if (srcToken == ETH_TOKEN_ADDRESS) {
+        if (isBuy) {
             // add to imbalance
             conversionRatesContract.recordImbalance(
                 destToken,

@@ -205,10 +205,10 @@ module.exports.setupConversionRateV2 = async function(tokens, admin, operator, a
 module.exports.setupFprReserveV2 = async function(
     convRatesInst, tokens, weth, network, maxGasPrice,
     accounts, admin, operator, alerter,
-    withdrawAddress, tokenWallet, isUsingWeth
+    withdrawAddress, tokenWallet, isUsingWeth, doRateValidation
 ) {
     // init reserves and balances
-    let reserveInst = await KyberFprReserveV2.new(network, convRatesInst.address, weth.address, maxGasPrice, admin);
+    let reserveInst = await KyberFprReserveV2.new(network, convRatesInst.address, weth.address, maxGasPrice, doRateValidation, admin);
 
     await reserveInst.addOperator(operator);
     await reserveInst.addAlerter(alerter);
