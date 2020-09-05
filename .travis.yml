@@ -29,6 +29,8 @@ before_script:
 script:
   - ./cmp.sh
   - .travis/test-part.sh
+
+after_success:
   - .travis/report.sh
 
 deploy:
