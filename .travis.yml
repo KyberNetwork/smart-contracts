@@ -45,7 +45,7 @@ deploy:
     skip_cleanup: true
     on:
       all_branches: true
-      condition: $TEST_PART = Sol6
+      condition: $TEST_PART = All
   - provider: s3
     access_key_id: $AWS_ACCESS_KEY_ID
     secret_access_key: $AWS_SECRET_ACCESS_KEY
