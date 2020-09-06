@@ -1791,7 +1791,7 @@ contract('KyberFprReserveV2', function(accounts) {
 						value: amount
 					}
 				),
-				"rate is lower than conversion rate"
+				"reserve rate lower then network requested rate"
 			);
 
 			// test t2e trade
@@ -1803,7 +1803,7 @@ contract('KyberFprReserveV2', function(accounts) {
 						value: 0
 					}
 				),
-				"rate is lower than conversion rate"
+				"reserve rate lower then network requested rate"
 			);
 		});
 
@@ -3143,7 +3143,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
             for(let i = 0; i <= 10; i++) {
               if (numberTxsPerStep[i] > 0) {
-                console.log(`         Average gas used for buy with ${i} steps: ${Math.floor(1.0 * gasUsedPerStep[i]/numberTxsPerStep[i])}`)
+                console.log(`         Average gas used for sell with ${i} steps: ${Math.floor(1.0 * gasUsedPerStep[i]/numberTxsPerStep[i])}`)
               }
             }
           });
@@ -3404,7 +3404,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
             for(let i = 0; i <= 10; i++) {
               if (numberTxsPerStep[i] > 0) {
-                console.log(`         Average gas used for buy with ${i} steps: ${Math.floor(1.0 * gasUsedPerStep[i]/numberTxsPerStep[i])}`)
+                console.log(`         Average gas used for sell with ${i} steps: ${Math.floor(1.0 * gasUsedPerStep[i]/numberTxsPerStep[i])}`)
               }
             }
           });
