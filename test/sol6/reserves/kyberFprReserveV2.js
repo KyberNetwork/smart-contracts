@@ -3098,6 +3098,7 @@ contract('KyberFprReserveV2', function(accounts) {
             //init conversion rate
             await setupConversionRateV2sContractWithSteps();
             await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
+            await reserveInst.setDoRateValidation(isDoRateValidation[r], {from: admin});
 
             if (isUsingWeth[t]) {
               await reserveInst.setTokenWallet(weth.address, walletForToken, {from: admin});
@@ -3359,6 +3360,7 @@ contract('KyberFprReserveV2', function(accounts) {
             //init conversion rate
             await setupConversionRateV2sContractWithStepsV1();
             await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
+            await reserveInst.setDoRateValidation(isDoRateValidation[r], {from: admin});
 
             if (isUsingWeth[t]) {
               await reserveInst.setTokenWallet(weth.address, walletForToken, {from: admin});
