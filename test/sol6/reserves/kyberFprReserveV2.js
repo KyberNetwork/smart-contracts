@@ -4,7 +4,6 @@ const WethToken = artifacts.require("WethToken");
 const Reserve = artifacts.require("KyberFprReserveV2");
 const MockSanityRates = artifacts.require("MockSanityRates");
 const NoPayableFallback = artifacts.require("NoPayableFallback");
-const SanityRatesGasPrice = artifacts.require("SanityRatesGasPrice");
 
 const Helper = require("../../helper.js");
 const reserveSetup = require("../../reserveSetup.js");
@@ -2898,9 +2897,9 @@ contract('KyberFprReserveV2', function(accounts) {
     });
   });
 
-  describe("#Test gas consumption, conversion rate v2", async() => {
-    const setupConversionRateV2sContractWithSteps = async function() {
-      let setupData = await reserveSetup.setupConversionRateV2(tokens, admin, operator, alerter, true);
+  describe("#Test gas consumption, enhanced conversion rate", async() => {
+    const setupEnhancedConversionRatesContractWithSteps = async function() {
+      let setupData = await reserveSetup.setupEnhancedConversionRate(tokens, admin, operator, alerter, true);
       convRatesInst = setupData.convRatesInst;
       baseBuyRate = setupData.baseBuyRate;
       compactBuyArr = setupData.compactBuyArr;
@@ -3034,7 +3033,7 @@ contract('KyberFprReserveV2', function(accounts) {
     let testSuites = [
       "#Test eth and token in reserve",
       "#Test eth in reserve, token in wallet",
-      "#Test using weth"
+      "#Test using weth, token in wallet"
     ]
     let isUsingWeth = [false, false, true];
     let isUsingWallet = [false, true, true];
@@ -3045,7 +3044,7 @@ contract('KyberFprReserveV2', function(accounts) {
         describe(`${testSuites[t]}, rate validation: ${isDoRateValidation[r]}`, async() => {
           it("Test few buys with steps", async() => {
             //init conversion rate
-            await setupConversionRateV2sContractWithSteps();
+            await setupEnhancedConversionRatesContractWithSteps();
             await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
             await reserveInst.setDoRateValidation(isDoRateValidation[r], {from: admin});
 
@@ -3096,7 +3095,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
           it("Test few sells with steps", async() => {
             //init conversion rate
-            await setupConversionRateV2sContractWithSteps();
+            await setupEnhancedConversionRatesContractWithSteps();
             await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
             await reserveInst.setDoRateValidation(isDoRateValidation[r], {from: admin});
 
@@ -3154,7 +3153,7 @@ contract('KyberFprReserveV2', function(accounts) {
   });
 
   describe("#Test gas consumption, conversion rate v1", async() => {
-    const setupConversionRateV2sContractWithStepsV1 = async function() {
+    const setupEnhancedConversionRatesContractWithStepsV1 = async function() {
       let setupData = await reserveSetup.setupConversionRateV1(tokens, admin, operator, alerter, true);
       convRatesInst = setupData.convRatesInst;
       baseBuyRate = setupData.baseBuyRate;
@@ -3296,7 +3295,7 @@ contract('KyberFprReserveV2', function(accounts) {
     let testSuites = [
       "#Test eth and token in reserve",
       "#Test eth in reserve, token in wallet",
-      "#Test using weth"
+      "#Test using weth, token in wallet"
     ]
     let isUsingWeth = [false, false, true];
     let isUsingWallet = [false, true, true];
@@ -3307,7 +3306,7 @@ contract('KyberFprReserveV2', function(accounts) {
         describe(`${testSuites[t]}, rate validation: ${isDoRateValidation[r]}`, async() => {
           it("Test few buys with steps", async() => {
             //init conversion rate
-            await setupConversionRateV2sContractWithStepsV1();
+            await setupEnhancedConversionRatesContractWithStepsV1();
             await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
             await reserveInst.setDoRateValidation(isDoRateValidation[r], {from: admin});
 
@@ -3358,7 +3357,7 @@ contract('KyberFprReserveV2', function(accounts) {
 
           it("Test few sells with steps", async() => {
             //init conversion rate
-            await setupConversionRateV2sContractWithStepsV1();
+            await setupEnhancedConversionRatesContractWithStepsV1();
             await generalSetupReserveContract(isUsingWallet[t], isUsingWeth[t]);
             await reserveInst.setDoRateValidation(isDoRateValidation[r], {from: admin});
 

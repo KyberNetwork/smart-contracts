@@ -1,5 +1,5 @@
-const ConversionRatesV2 = artifacts.require("MockEnhancedStepFunctions.sol");
-const ConversionRatesV1 = artifacts.require("MockConversionRate.sol");
+const EnhancedConversionRates = artifacts.require("MockEnhancedStepFunctions.sol");
+const ConversionRates = artifacts.require("MockConversionRate.sol");
 const KyberFprReserveV2 = artifacts.require("KyberFprReserveV2");
 
 const Helper = require("./helper.js");
@@ -18,7 +18,7 @@ let maxPerBlockImbalance = 40000;
 let maxTotalImbalance = maxPerBlockImbalance * 12;
 
 module.exports.setupConversionRateV1 = async function(tokens, admin, operator, alerter, needListingToken) {
-  let convRatesInst = await ConversionRatesV1.new(admin);
+  let convRatesInst = await ConversionRates.new(admin);
 
     //set pricing general parameters
   await convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
@@ -112,8 +112,8 @@ module.exports.setupConversionRateV1 = async function(tokens, admin, operator, a
   }
 };
 
-module.exports.setupConversionRateV2 = async function(tokens, admin, operator, alerter, needListingToken) {
-  let convRatesInst = await ConversionRatesV2.new(admin);
+module.exports.setupEnhancedConversionRate = async function(tokens, admin, operator, alerter, needListingToken) {
+  let convRatesInst = await EnhancedConversionRates.new(admin);
 
   //set pricing general parameters
   await convRatesInst.setValidRateDurationInBlocks(validRateDurationInBlocks);
