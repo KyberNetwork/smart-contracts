@@ -43,3 +43,5 @@ jspm_packages
 .DS_Store
 
 report
+
+.env
