@@ -10,13 +10,15 @@ interface IFeeHandler is IKyberFeeHandler {
 
 contract MultipleEpochRewardsClaimer {
     IKyberDao public kyberDao;
+    uint256 public maxEpochs;
 
-    constructor(IKyberDao _kyberDao) public {
+    constructor(IKyberDao _kyberDao, uint256 _maxEpochs) public {
         kyberDao = _kyberDao;
+        maxEpochs = _maxEpochs;
     }
 
-    function claimAll(IFeeHandler feeHandler, uint256[] calldata unclaimedEpochs) external {
-        for (uint256 i = 0; i < unclaimedEpochs.length; i++) {
+    function claimMultipleRewards(IFeeHandler feeHandler, uint256[] calldata unclaimedEpochs) external {
+        for (uint256 i = 0; i < maxEpochs; i++) {
             feeHandler.claimStakerReward(msg.sender, unclaimedEpochs[i]);
         }
     }
