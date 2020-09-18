@@ -10,6 +10,7 @@ const MultipleEpochRewardsClaimer = artifacts.require("MultipleEpochRewardsClaim
 const Token = artifacts.require("Token.sol");
 const Proxy = artifacts.require("SimpleKyberProxy.sol");
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, zeroBN} = require("../helper.js");
+const { assert } = require("chai");
 
 const blockTime = 16; // each block is mined after 16s
 const KNC_DECIMALS = 18;
@@ -53,18 +54,6 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
         rebateWallets.push(accounts[1]);
         rebateBpsPerWallet = [BPS];
 
-        epoch = new BN(0);
-        expiryTimestamp = new BN(5);
-        mockKyberDao = await MockKyberDao.new(
-            rewardInBPS,
-            rebateInBPS,
-            epoch,
-            expiryTimestamp
-        );
-
-        stakerPercentageInPrecision = precisionUnits.mul(rewardInBPS).div(BPS);
-        await mockKyberDao.setStakerPercentageInPrecision(stakerPercentageInPrecision);
-
         proxy = await Proxy.new();
         kyberNetwork = accounts[7];
 
@@ -81,26 +70,36 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
         // setup sanity rate for ethFeeHandler
         sanityRate = await BurnKncSanityRate.new();
         await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
-
-        // setup feeHandler
-        feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
-        await feeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter})
-        await feeHandler.setBurnConfigParams(sanityRate.address, ethWeiToBurn, {from: daoOperator});
-        await feeHandler.getBRR();
-
-        // setup rewardsClaimer
-        rewardsClaimer = await MultipleEpochRewardsClaimer.new(mockKyberDao.address);
     });
 
     describe("test getUnclaimedEpochs function", async() => {
         let initialEpoch;
         let currentEpoch;
         let numEpochs = 3;
-        // beforeEach("send feeHandler fees for numEpochs", async() => {
-        //     initialEpoch = (await mockKyberDao.epoch()).toNumber();
-        //     await sendFeesToAllFeeHandlers(mockKyberDao, [feeHandler], numEpochs);
-        //     currentEpoch = (await mockKyberDao.epoch()).toNumber();
-        // });
+
+        beforeEach("setup dao, feehandler and rewardsClaimer", async() => {
+            // setup mockKyberDao
+            epoch = new BN(0);
+            expiryTimestamp = new BN(5);
+            mockKyberDao = await MockKyberDao.new(
+                rewardInBPS,
+                rebateInBPS,
+                epoch,
+                expiryTimestamp
+            );
+    
+            stakerPercentageInPrecision = precisionUnits.mul(rewardInBPS).div(BPS);
+            await mockKyberDao.setStakerPercentageInPrecision(stakerPercentageInPrecision);
+    
+            // setup feeHandler
+            feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+            await feeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter})
+            await feeHandler.setBurnConfigParams(sanityRate.address, ethWeiToBurn, {from: daoOperator});
+            await feeHandler.getBRR();
+    
+            // setup rewardsClaimer
+            rewardsClaimer = await MultipleEpochRewardsClaimer.new(mockKyberDao.address);
+        });
 
         it("should return empty array if initial epoch is 0", async() => {
             result = await rewardsClaimer.getUnclaimedEpochs(feeHandler.address, staker);
@@ -113,18 +112,96 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
             await sendFeesToFeeHandler(mockKyberDao, feeHandler, numEpochs);
             currentEpoch = (await mockKyberDao.epoch()).toNumber();
     
-            result = await rewardsClaimer.getUnclaimedEpochs(feeHandler.address, zeroAddress);
+            result = await rewardsClaimer.getUnclaimedEpochs(feeHandler.address, staker);
             Helper.assertEqual(result.length, zeroBN, "result not empty");
             await mockKyberDao.setStakerPercentageInPrecision(stakerPercentageInPrecision);
         });
 
         it("should return all unclaimed epochs for staker", async() => {
+            let numEpochs = 15;
             initialEpoch = (await mockKyberDao.epoch()).toNumber();
             await sendFeesToFeeHandler(mockKyberDao, feeHandler, numEpochs);
             currentEpoch = (await mockKyberDao.epoch()).toNumber();
     
             result = await rewardsClaimer.getUnclaimedEpochs(feeHandler.address, zeroAddress);
-            Helper.assertGreater(result.length, zeroBN, "result is empty");
+            Helper.assertEqual(result.length, numEpochs, "result.length != numEpochs");
+        });
+
+        it("should return unclaimed epochs if staker claimed for some epochs", async() => {
+            let numEpochs = 5;
+            initialEpoch = (await mockKyberDao.epoch()).toNumber();
+            await sendFeesToFeeHandler(mockKyberDao, feeHandler, numEpochs);
+            currentEpoch = (await mockKyberDao.epoch()).toNumber();
+
+            // claim epochs 2 and 3
+            await feeHandler.claimStakerReward(staker, 2);
+            await feeHandler.claimStakerReward(staker, 3);
+            result = await rewardsClaimer.getUnclaimedEpochs(feeHandler.address, staker);
+            Helper.assertEqualArray(result, [0,1,4], "result != expected unclaimed epochs");
+        });
+    });
+
+    describe("test claimMultipleRewards", async() => {
+        let initialEpoch;
+        let currentEpoch;
+        let numEpochs = 3;
+
+        before("setup dao, feehandler and rewardsClaimer", async() => {
+            // setup mockKyberDao
+            epoch = new BN(0);
+            expiryTimestamp = new BN(5);
+            mockKyberDao = await MockKyberDao.new(
+                rewardInBPS,
+                rebateInBPS,
+                epoch,
+                expiryTimestamp
+            );
+    
+            stakerPercentageInPrecision = precisionUnits.mul(rewardInBPS).div(BPS);
+            await mockKyberDao.setStakerPercentageInPrecision(stakerPercentageInPrecision);
+    
+            // setup feeHandler
+            feeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+            await feeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter})
+            await feeHandler.setBurnConfigParams(sanityRate.address, ethWeiToBurn, {from: daoOperator});
+            await feeHandler.getBRR();
+    
+            // setup rewardsClaimer
+            rewardsClaimer = await MultipleEpochRewardsClaimer.new(mockKyberDao.address);
+        });
+
+        beforeEach("send fees for numEpochs", async() => {
+            initialEpoch = (await mockKyberDao.epoch()).toNumber();
+            await sendFeesToFeeHandler(mockKyberDao, feeHandler, numEpochs);
+            currentEpoch = (await mockKyberDao.epoch()).toNumber();
+        });
+
+        it("should not do anything if empty array is passed", async() => {
+            let stakerBalance = await Helper.getBalancePromise(staker);
+            await rewardsClaimer.claimMultipleRewards(feeHandler.address, [], {from: staker});
+            Helper.assertLesser(await Helper.getBalancePromise(staker), stakerBalance, "staker balance changed");
+        });
+
+        it("should claim for 1 epoch", async() => {
+            let stakerBalance = await Helper.getBalancePromise(staker);
+            await rewardsClaimer.claimMultipleRewards(feeHandler.address, [initialEpoch], {from: staker});
+            Helper.assertGreater(await Helper.getBalancePromise(staker), stakerBalance, "staker balance did not increase");
+            assert.isTrue(await feeHandler.hasClaimedReward(staker, initialEpoch));
+        });
+
+        it("should claim for multiple epochs", async() => {
+            let stakerBalance = await Helper.getBalancePromise(staker);
+            await rewardsClaimer.claimMultipleRewards(feeHandler.address, [initialEpoch, currentEpoch - 2, currentEpoch - 1], {from: staker});
+            Helper.assertGreater(await Helper.getBalancePromise(staker), stakerBalance, "staker balance did not increase");
+            assert.isTrue(await feeHandler.hasClaimedReward(staker, initialEpoch));
+            assert.isTrue(await feeHandler.hasClaimedReward(staker, currentEpoch - 2));
+            assert.isTrue(await feeHandler.hasClaimedReward(staker, currentEpoch - 1));
+        });
+
+        it("should revert for invalid feeHandler address", async() => {
+            await expectRevert.unspecified(
+                rewardsClaimer.claimMultipleRewards(staker, [initialEpoch], {from: staker})
+            );
         });
     });
 });

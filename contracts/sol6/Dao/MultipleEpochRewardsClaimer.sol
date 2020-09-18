@@ -1,24 +1,22 @@
 pragma solidity 0.6.6;
 
 import "../IKyberDao.sol";
-import "../IKyberFeeHandler.sol";
-
-interface IFeeHandler is IKyberFeeHandler {
-    function hasClaimedReward(address, uint256) external view returns (bool);
-}
+import "./IMultipleEpochRewardsClaimer.sol";
 
 
-contract MultipleEpochRewardsClaimer {
-    IKyberDao public kyberDao;
-    uint256 public maxEpochs;
+contract MultipleEpochRewardsClaimer is IMultipleEpochRewardsClaimer {
+    IKyberDao public immutable kyberDao;
 
-    constructor(IKyberDao _kyberDao, uint256 _maxEpochs) public {
+    constructor(IKyberDao _kyberDao) public {
         kyberDao = _kyberDao;
-        maxEpochs = _maxEpochs;
     }
 
-    function claimMultipleRewards(IFeeHandler feeHandler, uint256[] calldata unclaimedEpochs) external {
-        for (uint256 i = 0; i < maxEpochs; i++) {
+    /// @dev unclaimedEpochs is asusumed to be of reasonable length
+    function claimMultipleRewards(
+        IFeeHandler feeHandler,
+        uint256[] calldata unclaimedEpochs
+    ) external override {
+        for (uint256 i = 0; i < unclaimedEpochs.length; i++) {
             feeHandler.claimStakerReward(msg.sender, unclaimedEpochs[i]);
         }
     }
@@ -26,6 +24,7 @@ contract MultipleEpochRewardsClaimer {
     function getUnclaimedEpochs(IFeeHandler feeHandler, address staker)
         external
         view
+        override
         returns (uint256[] memory unclaimedEpochs)
     {
         uint256 currentEpoch = kyberDao.getCurrentEpochNumber();
