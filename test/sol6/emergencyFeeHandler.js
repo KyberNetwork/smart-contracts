@@ -3,7 +3,7 @@ const MockEmergencyFeeHandler = artifacts.require('MockEmergencyFeeHandler.sol')
 const KyberNetwork = artifacts.require('KyberNetwork.sol');
 const KyberStorage = artifacts.require('KyberStorage.sol');
 const MatchingEngine = artifacts.require('KyberMatchingEngine.sol');
-const TestToken = artifacts.require('Token.sol');
+const TestToken = artifacts.require('contracts/sol6/mock/Token.sol:Token');
 const NoPayableFallback = artifacts.require('NoPayableFallback.sol');
 
 const Helper = require('../helper.js');

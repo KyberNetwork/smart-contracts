@@ -1,4 +1,4 @@
-const TestToken = artifacts.require("Token.sol");
+const TestToken = artifacts.require("contracts/sol6/mock/Token.sol:Token");
 const WethToken = artifacts.require("WethToken.sol");
 const MockOtcOrderbook = artifacts.require("MockOtcOrderbook.sol");
 const Eth2DaiReserve = artifacts.require("Eth2DaiReserve.sol");

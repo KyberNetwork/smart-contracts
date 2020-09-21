@@ -1,4 +1,4 @@
-const TestToken = artifacts.require("Token.sol");
+const TestToken = artifacts.require("contracts/sol6/mock/Token.sol:Token");
 const MockKyberDao = artifacts.require("MockKyberDaoTestHandleWithdrawal.sol");
 const MockKyberDaoWithdrawFailed = artifacts.require("MockKyberDaoWithdrawFailed.sol");
 const StakingContract = artifacts.require("MockKyberStaking.sol");

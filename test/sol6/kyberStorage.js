@@ -1,4 +1,4 @@
-const TestToken = artifacts.require("Token.sol");
+const TestToken = artifacts.require("contracts/sol6/mock/Token.sol:Token");
 const MockReserve = artifacts.require("MockReserve.sol");
 const KyberHistory = artifacts.require("KyberHistory.sol");
 const KyberStorage = artifacts.require("KyberStorage.sol");
