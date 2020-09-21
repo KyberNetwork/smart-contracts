@@ -138,13 +138,27 @@ module.exports = {
     }
   },
 
-  solc: {
-    version: "0.6.6",
-    optimizer: require("./solcOptimiserSettings.js")
+  solidity: {
+    compilers: [{
+      version: "0.4.18",
+      settings: {
+        optimizer: require("./solcOptimiserSettings.js")
+      }
+    }, {
+      version: "0.5.11",
+      settings: {
+        optimizer: require("./solcOptimiserSettings.js")
+      }
+    }, {
+      version: "0.6.6",
+      settings: {
+        optimizer: require("./solcOptimiserSettings.js")
+      }
+    }]
   },
 
   paths: {
-    sources: "./contracts/sol6",
+    sources: "./contracts",
     tests: "./test/",
   },
 
