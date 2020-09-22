@@ -7,6 +7,8 @@ while getopts "f:" arg; do
   esac
 done
 
+export NODE_OPTIONS=--max-old-space-size=4096
+
 if [ -n "$FILE" ]; then
   npx buidler test --no-compile $FILE
 else
