@@ -1,4 +1,4 @@
-const TestToken = artifacts.require("contracts/sol6/mock/Token.sol:Token");
+const TestToken = artifacts.require("Token");
 const TestTokenNotReturn = artifacts.require("TestTokenNotReturn.sol");
 const MockDao = artifacts.require("MockKyberDao.sol");
 const KyberNetwork = artifacts.require("KyberNetwork.sol");

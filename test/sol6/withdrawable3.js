@@ -1,5 +1,5 @@
 const MockWithdrawable = artifacts.require('MockWithdrawable3.sol');
-const TestToken = artifacts.require('contracts/sol6/mock/Token.sol:Token');
+const TestToken = artifacts.require('Token');
 
 const Helper = require('../helper.js');
 const BN = web3.utils.BN;
