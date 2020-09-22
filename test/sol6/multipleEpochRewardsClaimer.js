@@ -17,6 +17,7 @@ const KNC_DECIMALS = 18;
 const BURN_BLOCK_INTERVAL = 3;
 
 let proxy;
+let admin;
 let staker;
 let daoSetter;
 let daoOperator;
@@ -49,6 +50,7 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
         staker = accounts[8];
         daoSetter = accounts[1];
         daoOperator = accounts[2];
+        admin = accounts[3];
 
         platformWallet = accounts[1];
         rebateWallets.push(accounts[1]);
@@ -98,7 +100,7 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
             await feeHandler.getBRR();
     
             // setup rewardsClaimer
-            rewardsClaimer = await MultipleEpochRewardsClaimer.new(mockKyberDao.address);
+            rewardsClaimer = await MultipleEpochRewardsClaimer.new(mockKyberDao.address, admin);
         });
 
         it("should return empty array if initial epoch is 0", async() => {
@@ -167,7 +169,7 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
             await feeHandler.getBRR();
     
             // setup rewardsClaimer
-            rewardsClaimer = await MultipleEpochRewardsClaimer.new(mockKyberDao.address);
+            rewardsClaimer = await MultipleEpochRewardsClaimer.new(mockKyberDao.address, admin);
         });
 
         beforeEach("send fees for numEpochs", async() => {
@@ -196,6 +198,23 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
             assert.isTrue(await feeHandler.hasClaimedReward(staker, initialEpoch));
             assert.isTrue(await feeHandler.hasClaimedReward(staker, currentEpoch - 2));
             assert.isTrue(await feeHandler.hasClaimedReward(staker, currentEpoch - 1));
+        });
+
+        it("should be able to claim for 12 epochs", async() => {
+            let stakerBalance = await Helper.getBalancePromise(staker);
+            let numEpochs = 12;
+            initialEpoch = (await mockKyberDao.epoch()).toNumber();
+            await sendFeesToFeeHandler(mockKyberDao, feeHandler, numEpochs);
+            let claimArray = [];
+            for (let i = initialEpoch; i < initialEpoch + 12; i++) {
+                claimArray.push(i);
+            }
+            await rewardsClaimer.claimMultipleRewards(feeHandler.address, claimArray, {from: staker});
+            Helper.assertGreater(await Helper.getBalancePromise(staker), stakerBalance, "staker balance did not increase");
+            for (let i = initialEpoch; i < initialEpoch + 12; i++) {
+                assert.isTrue(await feeHandler.hasClaimedReward(staker, i));
+            }
+            Helper.assertGreater(await Helper.getBalancePromise(staker), stakerBalance, "staker balance did not increase");
         });
 
         it("should revert for invalid feeHandler address", async() => {
