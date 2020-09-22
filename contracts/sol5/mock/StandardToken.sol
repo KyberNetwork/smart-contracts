@@ -105,7 +105,7 @@ contract ERC20 is ERC20Basic {
 contract BasicToken is ERC20Basic {
     using SafeMath for uint256;
 
-    mapping(address => uint256) balances;
+    mapping(address => uint256) public balances;
 
     /*
      * Fix for the ERC20 short address attack
@@ -140,7 +140,7 @@ contract BasicToken is ERC20Basic {
  * https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
 contract StandardToken is BasicToken, ERC20 {
-    mapping(address => mapping(address => uint256)) allowed;
+    mapping(address => mapping(address => uint256)) public allowed;
 
     function transferFrom(
         address _from,
@@ -149,7 +149,8 @@ contract StandardToken is BasicToken, ERC20 {
     ) public returns (bool) {
         uint256 _allowance = allowed[_from][msg.sender];
 
-        // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
+        // Check is not needed because sub(_allowance, _value) will
+        // already revert if this condition is not met
         require(_value <= _allowance, "transfer more then allowed");
 
         balances[_to] = balances[_to].add(_value);
