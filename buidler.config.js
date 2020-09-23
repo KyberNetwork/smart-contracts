@@ -163,6 +163,6 @@ module.exports = {
   },
 
   mocha: {
-    enableTimeouts: false
+    timeout: 0
   }
 };
