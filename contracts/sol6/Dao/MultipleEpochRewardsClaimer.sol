@@ -13,7 +13,7 @@ contract MultipleEpochRewardsClaimer is IMultipleEpochRewardsClaimer, Withdrawab
     }
 
     /// @dev unclaimedEpochs is asusumed to be of reasonable length
-    /// otherwise txns might run of gas
+    /// otherwise txns might run out of gas
     function claimMultipleRewards(
         IFeeHandler feeHandler,
         uint256[] calldata unclaimedEpochs

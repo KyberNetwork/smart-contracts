@@ -1,5 +1,4 @@
 const Helper = require("../helper.js");
-const nwHelper = require("./networkHelper");
 const BN = web3.utils.BN;
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
