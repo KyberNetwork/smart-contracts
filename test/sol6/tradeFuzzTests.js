@@ -1,4 +1,4 @@
-const TestToken = artifacts.require("Token");
+const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const MockDao = artifacts.require("MockKyberDao.sol");
 const MockGasHelper = artifacts.require("MockGasHelper.sol");

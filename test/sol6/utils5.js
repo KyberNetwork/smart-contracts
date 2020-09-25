@@ -1,6 +1,6 @@
 const MockUtils5 = artifacts.require("MockUtils5.sol")
 const Helper = require("../helper.js");
-const TestToken = artifacts.require("Token");
+const TestToken = artifacts.require("Token.sol");
 const TokenNoDecimal = artifacts.require("TokenNoDecimal.sol");
 const { expectRevert } = require('@openzeppelin/test-helpers');
 const BN = web3.utils.BN;

@@ -1,4 +1,4 @@
-let TestToken = artifacts.require("Token");
+let TestToken = artifacts.require("Token.sol");
 let MockBancorNetwork = artifacts.require("MockBancorNetwork.sol");
 let KyberBancorReserve = artifacts.require("KyberBancorReserve.sol");
 

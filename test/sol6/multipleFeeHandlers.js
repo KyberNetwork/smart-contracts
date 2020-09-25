@@ -8,7 +8,7 @@ const FeeHandler = artifacts.require("KyberFeeHandler.sol");
 const BurnKncSanityRate = artifacts.require("MockChainLinkSanityRate.sol");
 const FeeTokenHandler = artifacts.require("KyberTokenFeeHandler.sol");
 const FeeWrapper = artifacts.require("KyberFeeHandlerWrapper.sol");
-const Token = artifacts.require("Token");
+const Token = artifacts.require("Token.sol");
 const Proxy = artifacts.require("SimpleKyberProxy.sol");
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, zeroBN, MAX_RATE} = require("../helper.js");
 
