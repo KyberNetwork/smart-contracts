@@ -91,7 +91,7 @@ contract KyberUniswapCurveReserve is IKyberReserve, Withdrawable3, Utils5 {
 
     event BridgeTokensSet(IERC20 indexed token, IERC20[] bridgeTokens);
 
-    event ApprovedAllowanceForCurve(address curve, IERC20[] tokens, bool isReset);
+    event ApprovedAllowances(address curve, IERC20[] tokens, bool isReset);
 
     event EtherReceival(address indexed sender, uint256 amount);
 
@@ -180,12 +180,18 @@ contract KyberUniswapCurveReserve is IKyberReserve, Withdrawable3, Utils5 {
         }
     }
 
+    /// @dev list a token to reserve
+    /// assume token will be in a Curve pool
+    /// bridgeTokens are list of tokens that are in the same Curve pool
+    /// may need to call approveAllowances for these bridgeTokens
     function listToken(
         IERC20 token,
         ICurveDefi _curve,
         int128 _index,
-        IERC20[] calldata _bridgeTokens
-    ) external onlyOperator
+        IERC20[] calldata _bridgeTokens, // tokens in the same Curve pool
+        int128[] calldata _bridgeTokenIndices // index in Curve pool
+    )
+        external onlyOperator
     {
         require(token != IERC20(0), "token 0");
         require(!tokenListed[token], "token is listed");
@@ -199,6 +205,15 @@ contract KyberUniswapCurveReserve is IKyberReserve, Withdrawable3, Utils5 {
                 token.safeApprove(address(_curve), MAX_ALLOWANCE);
             }
             tokenIndex[token] = _index;
+            require(_bridgeTokens.length == _bridgeTokenIndices.length, "lengths mismatch");
+            for(uint256 i = 0; i < _bridgeTokens.length; i++) {
+                curveDefiAddress[_bridgeTokens[i]] = _curve;
+                require(
+                    _curve.coins(_bridgeTokenIndices[i]) == address(_bridgeTokens[i]),
+                    "bridge index is not matched"
+                );
+                tokenIndex[_bridgeTokens[i]] = _bridgeTokenIndices[i];
+            }
             bridgeTokens[token] = _bridgeTokens;
         }
 
@@ -225,8 +240,8 @@ contract KyberUniswapCurveReserve is IKyberReserve, Withdrawable3, Utils5 {
     }
 
     // in some cases we need to approve allowances for bridge tokens
-    function approveAllowanceForCurve(
-        address curve,
+    function approveAllowances(
+        address spender,
         IERC20[] calldata tokens,
         bool isReset
     )
@@ -234,20 +249,9 @@ contract KyberUniswapCurveReserve is IKyberReserve, Withdrawable3, Utils5 {
     {
         uint256 allowance = isReset ? 0 : MAX_ALLOWANCE;
         for(uint256 i = 0; i < tokens.length; i++) {
-            tokens[i].safeApprove(curve, allowance);
+            tokens[i].safeApprove(spender, allowance);
         }
-        emit ApprovedAllowanceForCurve(curve, tokens, isReset);
-    }
-
-    /// a trade will be with Uniswap (eth - bridge_token) and Curve (bridge_token - token)
-    function setBridgeTokens(
-        IERC20 token,
-        IERC20[] calldata _bridgeTokens
-    )
-        external onlyOperator
-    {
-        bridgeTokens[token] = _bridgeTokens;
-        emit BridgeTokensSet(token, _bridgeTokens);
+        emit ApprovedAllowances(spender, tokens, isReset);
     }
 
     function enableTrade() external onlyAdmin returns (bool) {
@@ -287,7 +291,7 @@ contract KyberUniswapCurveReserve is IKyberReserve, Withdrawable3, Utils5 {
     }
 
     function getTradeInformation(IERC20 src, IERC20 dest, uint256 srcQty)
-        internal view
+        public view
         returns(IERC20 bridgeToken, bool useCurve, uint256 destAmount)
     {
         if (src == ETH_TOKEN_ADDRESS) {
