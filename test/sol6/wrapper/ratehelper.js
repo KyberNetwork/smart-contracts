@@ -1,6 +1,6 @@
 const MockDao = artifacts.require('MockKyberDao.sol');
 const KyberRateHelper = artifacts.require('KyberRateHelper.sol');
-const TestToken = artifacts.require('Token');
+const TestToken = artifacts.require('Token.sol');
 const MockReserve = artifacts.require('MockReserve.sol');
 const KyberNetwork = artifacts.require('KyberNetwork.sol');
 
