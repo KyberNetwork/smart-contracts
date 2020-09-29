@@ -1,4 +1,4 @@
-const TestToken = artifacts.require("Token");
+const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const ReentrantReserve = artifacts.require("ReentrantReserve.sol");
 const ReserveNoReturnVal = artifacts.require("ReserveNoReturnVal.sol");
