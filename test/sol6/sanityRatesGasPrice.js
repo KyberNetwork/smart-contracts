@@ -1,5 +1,5 @@
 const SanityRates = artifacts.require('SanityRatesGasPrice.sol');
-const TestToken = artifacts.require('Token');
+const TestToken = artifacts.require('Token.sol');
 const {expectEvent, expectRevert} = require('@openzeppelin/test-helpers');
 const Helper = require('../helper.js');
 const nwHelper = require("./networkHelper.js");
