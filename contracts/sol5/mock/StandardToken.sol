@@ -105,7 +105,7 @@ contract ERC20 is ERC20Basic {
 contract BasicToken is ERC20Basic {
     using SafeMath for uint256;
 
-    mapping(address => uint256) balances;
+    mapping(address => uint256) public balances;
 
     /*
      * Fix for the ERC20 short address attack
@@ -140,7 +140,7 @@ contract BasicToken is ERC20Basic {
  * https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
  */
 contract StandardToken is BasicToken, ERC20 {
-    mapping(address => mapping(address => uint256)) allowed;
+    mapping(address => mapping(address => uint256)) public allowed;
 
     function transferFrom(
         address _from,
@@ -149,7 +149,8 @@ contract StandardToken is BasicToken, ERC20 {
     ) public returns (bool) {
         uint256 _allowance = allowed[_from][msg.sender];
 
-        // Check is not needed because sub(_allowance, _value) will already revert if this condition is not met
+        // Check is not needed because sub(_allowance, _value) will
+        // already revert if this condition is not met
         require(_value <= _allowance, "transfer more then allowed");
 
         balances[_to] = balances[_to].add(_value);
@@ -167,50 +168,5 @@ contract StandardToken is BasicToken, ERC20 {
 
     function allowance(address _owner, address _spender) public view returns (uint256 remaining) {
         return allowed[_owner][_spender];
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-/*
- * SimpleToken
- *
- * Very simple ERC20 Token example, where all tokens are pre-assigned
- * to the creator. Note they can later distribute these tokens
- * as they wish using `transfer` and other `StandardToken` functions.
- */
-contract Token is StandardToken {
-    string public name = "Test";
-    string public symbol = "TST";
-    uint256 public decimals = 18;
-    uint256 public INITIAL_SUPPLY = 10**(50 + 18);
-
-    event Burn(address indexed _burner, uint256 _value);
-
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        uint256 _decimals
-    ) public {
-        totalSupply = INITIAL_SUPPLY;
-        balances[msg.sender] = INITIAL_SUPPLY;
-        name = _name;
-        symbol = _symbol;
-        decimals = _decimals;
-    }
-
-    function burn(uint256 _value) public returns (bool) {
-        balances[msg.sender] = balances[msg.sender].sub(_value);
-        totalSupply = totalSupply.sub(_value);
-        emit Burn(msg.sender, _value);
-        emit Transfer(msg.sender, address(0x0), _value);
-        return true;
-    }
-
-    // save some gas by making only one contract call
-    function burnFrom(address _from, uint256 _value) public returns (bool) {
-        transferFrom(_from, msg.sender, _value);
-        return burn(_value);
     }
 }

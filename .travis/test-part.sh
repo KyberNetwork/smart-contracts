@@ -5,6 +5,8 @@ set -euxo pipefail
 
 readonly test_part=${TEST_PART:-}
 
+export NODE_OPTIONS=--max-old-space-size=4096
+
 case "$test_part" in
 All)
     npx buidler test --no-compile

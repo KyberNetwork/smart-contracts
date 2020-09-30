@@ -723,7 +723,7 @@ contract('KyberFeeHandler', function(accounts) {
                 {from: kyberNetwork, value: sendVal});
 
                 await feeHandler.setTotalPayoutBalance(zeroBN);
-                await expectRevert.unspecified(
+                await expectRevert.assertion(
                     feeHandler.claimReserveRebate(rebateWallets[0])
                 );
             });
@@ -1067,7 +1067,7 @@ contract('KyberFeeHandler', function(accounts) {
 
                 // can not claim one more, total percentage > 100%
                 // total payout balance < this last staker percentage
-                await expectRevert.unspecified(
+                await expectRevert.assertion(
                     feeHandler.claimStakerReward(accounts[4], currentEpoch)
                 )
             });
@@ -1249,7 +1249,7 @@ contract('KyberFeeHandler', function(accounts) {
                 {from: kyberNetwork, value: sendVal});
 
                 await feeHandler.setTotalPayoutBalance(zeroBN);
-                await expectRevert.unspecified(
+                await expectRevert.assertion(
                     feeHandler.claimPlatformFee(platformWallet)
                 );
             });
@@ -1387,7 +1387,7 @@ contract('KyberFeeHandler', function(accounts) {
                 feeHandlerBalance = await Helper.getBalancePromise(feeHandler.address);
                 await feeHandler.withdrawEther(feeHandlerBalance.sub(burnPerCall.add(new BN(1))), user);
 
-                await expectRevert.unspecified(
+                await expectRevert.assertion(
                     feeHandler.burnKnc()
                 );
             });

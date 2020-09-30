@@ -1,19 +1,17 @@
 #!/bin/sh
 ALL=false
 
-while getopts "f:a" arg; do
+while getopts "f:" arg; do
   case $arg in
-    a) ALL=true;;
     f) FILE=$OPTARG;;
   esac
 done
 
+export NODE_OPTIONS=--max-old-space-size=4096
+
 if [ -n "$FILE" ]; then
   npx buidler test --no-compile $FILE
-elif [ "$ALL" = true ]; then
-  echo "Running all tests..."
-  npx buidler test --no-compile
 else
-  echo "Running sol6 tests..." 
-  npx buidler test --config ./buidlerConfigSol6.js --no-compile 
+  echo "Running all tests..."
+  npx buidler test --no-compile --show-stack-traces
 fi

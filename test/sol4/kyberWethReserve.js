@@ -1,6 +1,6 @@
 const BN = web3.utils.BN;
 
-const MockWeth = artifacts.require("./wethContracts/mockContracts/WETH9.sol");
+const MockWeth = artifacts.require("contracts/sol4/weth/mockContracts/MockWeth.sol:WETH9");
 const KyberWethReserve = artifacts.require("./wethContracts/KyberWethReserve");
 const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 

@@ -1,21 +1,20 @@
 'use strict';
+const bre = require('@nomiclabs/buidler')
+const { Artifacts } = require('@nomiclabs/buidler/plugins')
 const fs = require('fs');
-const util = require('util');
 const got = require('got');
 const yargs = require('yargs');
 
-let path = 'artifacts';
-
-const readdir = util.promisify(fs.readdir);
+const artifacts = new Artifacts(bre.config.paths.artifacts)
 
 let argv = yargs.default('branch', 'Katalyst').alias('b', 'branch').argv;
 
 async function generateCodeSizeReport() {
   let result = {};
-  let fileNames = await readdir(path);
+  let fileNames = await artifacts.getArtifacts();
   for (let i = 0; i < fileNames.length; i++) {
     let fileName = fileNames[i];
-    let rawData = fs.readFileSync(path + '/' + fileName);
+    let rawData = fs.readFileSync(fileName);
     let contractData = JSON.parse(rawData);
     let codeSize = contractData.deployedBytecode.length / 2 - 1;
     if (codeSize > 0) {
