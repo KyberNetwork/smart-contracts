@@ -3,7 +3,7 @@ const UniswapV2Router02Output = require('@uniswap/v2-periphery/build/UniswapV2Ro
 const MockUniswapRounter = artifacts.require('MockUniswapRouter.sol');
 const KyberUniswapV2Reserve = artifacts.require('KyberUniswapV2Reserve.sol');
 const WETH9 = artifacts.require('contracts/sol4/weth/mockContracts/MockWeth.sol:WETH9');
-const TestToken = artifacts.require('Tokens.sol');
+const TestToken = artifacts.require('Token.sol');
 
 const truffleContract = require('@truffle/contract');
 const provider = web3.currentProvider;
