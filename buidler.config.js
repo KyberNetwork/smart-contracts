@@ -14,8 +14,8 @@ module.exports = {
       accounts: [
         // 20 accounts with 10^14 ETH each 
         // Addresses:
-        //   0xc783df8a850f42e7f7e57013759c285caa701eb6
-        //   0xead9c93b79ae7c1591b1fb5323bd777e86e150d4
+        //   0xf7F35E336F095f816ce49d52a78b702265eE4Cb2
+        //   0x62f74672A39eeFfB45Ac7257D7A6CC80344b6dA5
         //   0xe5904695748fe4a84b40b3fc79de2277660bd1d3
         //   0x92561f28ec438ee9831d00d1d59fbdc981b762b2
         //   0x2ffd013aaa7b5a7da93336c2251075202b33fb2b
@@ -36,13 +36,13 @@ module.exports = {
         //   0x26c43a1d431a4e5ee86cd55ed7ef9edf3641e901
         {
           privateKey:
-            "0xc5e8f61d1ab959b397eecc0a37a6517b8e67a0e7cf1f4bce5591f3ed80199122",
-          balance: "100000000000000000000000000000000"
+            "0xd9631e13a35131d2a1ca84991fda081b0960473c31f2dcd2dd6c62b8545ffffe",
+          balance: "10000"
         },
         {
           privateKey:
-            "0xd49743deccbccc5dc7baa8e69e5be03298da8688a15dd202e20f15d5e0e9a9fb",
-          balance: "100000000000000000000000000000000"
+            "0xf41d22c03473259596eb3fc3116334f69a4f6442423045a76340794718d3a2ee",
+          balance: "10000"
         },
         {
           privateKey:
