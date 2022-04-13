@@ -1,7 +1,7 @@
 pragma solidity 0.6.6;
 
-import "../IKyberReserve.sol";
-import "../IKyberFeeHandler.sol";
+import "../INimbleReserve.sol";
+import "../INimbleFeeHandler.sol";
 
 // does not do anything, only return true
 contract MaliciousStorage {
@@ -17,7 +17,7 @@ contract MaliciousStorage {
         reserveAddressesLength = _addresses;
     }
 
-    function setContracts(IKyberFeeHandler _feeHandler, address _matchingEngine)
+    function setContracts(INimbleFeeHandler _feeHandler, address _matchingEngine)
         external
         pure
     {
@@ -25,7 +25,7 @@ contract MaliciousStorage {
         _matchingEngine;
     }
 
-    function addKyberProxy(address networkProxy, uint256 max_approved_proxies)
+    function addNimbleProxy(address networkProxy, uint256 max_approved_proxies)
         external
         pure
     {
@@ -33,7 +33,7 @@ contract MaliciousStorage {
         max_approved_proxies;
     }
 
-    function removeKyberProxy(address networkProxy) external pure {
+    function removeNimbleProxy(address networkProxy) external pure {
         networkProxy;
     }
 
@@ -44,13 +44,13 @@ contract MaliciousStorage {
             bool isValid,
             bool[] memory feeAccountedArr,
             bool[] memory entitledRebateArr,
-            IKyberReserve[] memory reserveAddresses
+            INimbleReserve[] memory reserveAddresses
             )
     {
         isValid = true;
         reserveIds;
         feeAccountedArr = new bool[](feeArrayLength);
         entitledRebateArr = new bool[](entitledRebateLength);
-        reserveAddresses = new IKyberReserve[](reserveAddressesLength);
+        reserveAddresses = new INimbleReserve[](reserveAddressesLength);
     }
 }

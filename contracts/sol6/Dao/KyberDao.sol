@@ -2,9 +2,9 @@ pragma solidity 0.6.6;
 
 import "./EpochUtils.sol";
 import "./DaoOperator.sol";
-import "./KyberStaking.sol";
+import "./NimbleStaking.sol";
 import "../IERC20.sol";
-import "../IKyberDao.sol";
+import "../INimbleDao.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../utils/Utils5.sol";
 
@@ -15,7 +15,7 @@ import "../utils/Utils5.sol";
  *      BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
  *      General campaign: options are from 1 to num_options
  */
-contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator {
+contract NimbleDao is INimbleDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator {
     // max number of campaigns for each epoch
     uint256 public   constant MAX_EPOCH_CAMPAIGNS = 10;
     // max number of options for each campaign
@@ -54,7 +54,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     uint256 public minCampaignDurationInSeconds = 4 days;
     IERC20 public immutable kncToken;
-    IKyberStaking public immutable staking;
+    INimbleStaking public immutable staking;
 
     // use to generate increasing campaign ID
     uint256 public numberCampaigns = 0;
@@ -119,11 +119,11 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         });
 
         // deploy staking contract 
-        staking = new KyberStaking({
+        staking = new NimbleStaking({
             _kncToken: _knc,
             _epochPeriod: _epochPeriod,
             _startTimestamp: _startTimestamp,
-            _kyberDao: IKyberDao(this)
+            _NimbleDao: INimbleDao(this)
         });
     }
 
@@ -337,7 +337,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     /**
      * @dev get latest network fee data + expiry timestamp
-     *    conclude network fee campaign if needed and caching latest result in KyberDao
+     *    conclude network fee campaign if needed and caching latest result in NimbleDao
      */
     function getLatestNetworkFeeDataWithCache()
         external
@@ -351,7 +351,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     /**
      * @dev return latest burn/reward/rebate data, also affecting epoch + expiry timestamp
-     *      conclude brr campaign if needed and caching latest result in KyberDao
+     *      conclude brr campaign if needed and caching latest result in NimbleDao
      */
     function getLatestBRRDataWithCache()
         external
@@ -734,7 +734,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     /**
      * @dev  return staker's reward percentage in precision for an epoch
      *       return 0 if staker has no votes or stakes
-     *       called by 2 functions in KyberDao
+     *       called by 2 functions in NimbleDao
      */
     function getRewardPercentageInPrecision(address staker, uint256 epoch)
         internal

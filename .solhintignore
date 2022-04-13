@@ -4,10 +4,10 @@
 contracts/sol4/ConversionRatesInterface.sol
 contracts/sol4/ERC20Interface.sol
 contracts/sol4/FeeBurnerInterface.sol
-contracts/sol4/KyberNetworkInterface.sol
-contracts/sol4/KyberNetworkProxyInterface.sol
-contracts/sol4/KyberProxyV1.sol
-contracts/sol4/KyberReserveInterface.sol
+contracts/sol4/NimbleNetworkInterface.sol
+contracts/sol4/NimbleNetworkProxyInterface.sol
+contracts/sol4/NimbleProxyV1.sol
+contracts/sol4/NimbleReserveInterface.sol
 contracts/sol4/Migrations.sol
 contracts/sol4/PermissionGroups.sol
 contracts/sol4/SanityRates.sol
@@ -49,20 +49,20 @@ contracts/sol4/mock/TokenNoDecimals.sol
 contracts/sol4/mock/TokenReverseSend.sol
 
 ## previousVersions
-contracts/sol4/previousVersions/KyberReserveV1.sol
+contracts/sol4/previousVersions/NimbleReserveV1.sol
 
 ## reserves
 contracts/sol4/reserves/aprConversionRate/LiquidityConversionRates.sol
 contracts/sol4/reserves/aprConversionRate/LiquidityFormula.sol
-contracts/sol4/reserves/bridgeReserves/dutchX/KyberDutchXReserve.sol
+contracts/sol4/reserves/bridgeReserves/dutchX/NimbleDutchXReserve.sol
 contracts/sol4/reserves/bridgeReserves/dutchX/mock/MockDutchX.sol
 contracts/sol4/reserves/bridgeReserves/dutchX/mock/WETH9.sol
-contracts/sol4/reserves/bridgeReserves/uniswap/forTesting/KyberTestingUniswapReserve.sol
+contracts/sol4/reserves/bridgeReserves/uniswap/forTesting/NimbleTestingUniswapReserve.sol
 contracts/sol4/reserves/bridgeReserves/uniswap/forTesting/MockUniswapFactory.sol
-contracts/sol4/reserves/bridgeReserves/uniswap/KyberUniswapReserve.sol
+contracts/sol4/reserves/bridgeReserves/uniswap/NimbleUniswapReserve.sol
 contracts/sol4/reserves/fprConversionRate/ConversionRateEnhancedSteps.sol
 contracts/sol4/reserves/fprConversionRate/ConversionRates.sol
-contracts/sol4/reserves/KyberReserve.sol
+contracts/sol4/reserves/NimbleReserve.sol
 contracts/sol4/reserves/orderBookReserve/permissionless/mock/MockMedianizer.sol
 contracts/sol4/reserves/orderBookReserve/permissionless/mock/MockOrderbookReserve.sol
 contracts/sol4/reserves/orderBookReserve/permissionless/mock/MockOrderIdManager.sol
@@ -78,7 +78,7 @@ contracts/sol4/reserves/orderBookReserve/permissionless/PermissionlessOrderbookR
 contracts/sol4/reserves/VolumeImbalanceRecorder.sol
 
 ## weth
-contracts/sol4/weth/KyberWethReserve.sol
+contracts/sol4/weth/NimbleWethReserve.sol
 contracts/sol4/weth/mockContracts/MockWeth.sol
 
 ## wrappers
@@ -92,10 +92,10 @@ contracts/sol4/wrappers/WrapReadTokenData.sol
 
 ## main
 contracts/sol5/IERC20.sol
-contracts/sol5/IKyberReserve.sol
+contracts/sol5/INimbleReserve.sol
 
 ## bridges
-contracts/sol5/bridges/bancor/KyberBancorReserve.sol
+contracts/sol5/bridges/bancor/NimbleBancorReserve.sol
 contracts/sol5/bridges/bancor/mock/IBancorNetwork.sol
 contracts/sol5/bridges/bancor/mock/MockBancorNetwork.sol
 contracts/sol5/bridges/eth2dai/Eth2DaiReserve.sol
@@ -117,38 +117,38 @@ contracts/sol5/utils/Withdrawable2.sol
 ## SOLIDITY 6 ##
 
 ## main
-contracts/sol6/KyberNetwork.sol
-contracts/sol6/IKyberFeeHandler.sol
-contracts/sol6/KyberMatchingEngine.sol
-contracts/sol6/KyberStorage.sol
-contracts/sol6/KyberNetworkProxy.sol
+contracts/sol6/NimbleNetwork.sol
+contracts/sol6/INimbleFeeHandler.sol
+contracts/sol6/NimbleMatchingEngine.sol
+contracts/sol6/NimbleStorage.sol
+contracts/sol6/NimbleNetworkProxy.sol
 
 ## dao
 contracts/sol6/Dao/emergency/EmergencyFeeHandler.sol
-contracts/sol6/Dao/IKyberStaking.sol
-contracts/sol6/Dao/KyberDao.sol
-contracts/sol6/Dao/KyberFeeHandler.sol
-contracts/sol6/Dao/KyberStaking.sol
-contracts/sol6/Dao/mock/KyberFeeHandlerWrapper.sol
-contracts/sol6/Dao/mock/KyberTokenFeeHandler.sol
+contracts/sol6/Dao/INimbleStaking.sol
+contracts/sol6/Dao/NimbleDao.sol
+contracts/sol6/Dao/NimbleFeeHandler.sol
+contracts/sol6/Dao/NimbleStaking.sol
+contracts/sol6/Dao/mock/NimbleFeeHandlerWrapper.sol
+contracts/sol6/Dao/mock/NimbleTokenFeeHandler.sol
 contracts/sol6/Dao/mock/MockChainLinkSanityRate.sol
-contracts/sol6/Dao/mock/MockMaliciousKyberDaoReentrancy.sol
+contracts/sol6/Dao/mock/MockMaliciousNimbleDaoReentrancy.sol
 contracts/sol6/Dao/emergency/EmergencyFeeHandler.sol
 
 ## mock
 contracts/sol6/mock/GasHelper.sol
-contracts/sol6/mock/GenerousKyberNetwork.sol
-contracts/sol6/mock/GenerousKyberNetwork2.sol
-contracts/sol6/mock/KyberNetworkNoMaxDest.sol
-contracts/sol6/mock/MaliciousKyberNetwork.sol
+contracts/sol6/mock/GenerousNimbleNetwork.sol
+contracts/sol6/mock/GenerousNimbleNetwork2.sol
+contracts/sol6/mock/NimbleNetworkNoMaxDest.sol
+contracts/sol6/mock/MaliciousNimbleNetwork.sol
 contracts/sol6/mock/MaliciousMatchingEngine.sol
 contracts/sol6/mock/MaliciousReserve2.sol
 contracts/sol6/mock/MaliciousStorage.sol
 contracts/sol6/mock/MockHintHandler.sol
-contracts/sol6/mock/MockKyberDao.sol
+contracts/sol6/mock/MockNimbleDao.sol
 contracts/sol6/mock/ReentrancyFeeClaimer.sol
 contracts/sol6/mock/ReentrantReserve.sol
-contracts/sol6/mock/SimpleKyberProxy.sol
+contracts/sol6/mock/SimpleNimbleProxy.sol
 contracts/sol6/mock/TestTokenNotReturn.sol
 contracts/sol6/mock/Token.sol
 
@@ -159,4 +159,4 @@ contracts/sol6/utils/zeppelin/SafeERC20.sol
 contracts/sol6/utils/zeppelin/SafeMath.sol
 
 ## wrappers
-contracts/sol6/wrappers/KyberRateHelper.sol
+contracts/sol6/wrappers/NimbleRateHelper.sol

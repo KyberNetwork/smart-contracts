@@ -170,7 +170,7 @@ function parseInput( jsonInput ) {
       walletDataArray.push(new Wallet(wallet));
     });
 
-    networkPermissions = jsonInput.permission["KyberNetwork"];
+    networkPermissions = jsonInput.permission["NimbleNetwork"];
     feeBurnerPermissions = jsonInput.permission["FeeBurner"];
     wrapFeeBurnerPermissions = jsonInput.permission["WrapFeeBurner"];
     expectedRatePermissions = jsonInput.permission["ExpectedRate"];
@@ -291,8 +291,8 @@ async function waitForEth() {
 }
 
 async function deployAllContacts(output) {
-  console.log("deploying kyber network");
-  [networkAddress,networkContract] = await deployContract(output, "KyberNetwork.sol:KyberNetwork", [sender]);
+  console.log("deploying Nimble network");
+  [networkAddress,networkContract] = await deployContract(output, "NimbleNetwork.sol:NimbleNetwork", [sender]);
   console.log("network", networkAddress);
 
   console.log("deploying fee burner");
@@ -336,7 +336,7 @@ async function initialiseContractInstances(output) {
   permissionlessOrderbookReserveListerAddress = "";
   wrapFeeBurnerAddress = "";
 
-  networkContract = new web3.eth.Contract(JSON.parse(output.contracts["KyberNetwork.sol:KyberNetwork"].interface), networkAddress);
+  networkContract = new web3.eth.Contract(JSON.parse(output.contracts["NimbleNetwork.sol:NimbleNetwork"].interface), networkAddress);
   feeBurnerContract = new web3.eth.Contract(JSON.parse(output.contracts["FeeBurner.sol:FeeBurner"].interface), feeBurnerAddress);
   expectedRateContract = new web3.eth.Contract(JSON.parse(output.contracts["ExpectedRate.sol:ExpectedRate"].interface), expectedRateAddress);
   factoryContract = new web3.eth.Contract(JSON.parse(output.contracts["OrderListFactory.sol:OrderListFactory"].interface), factoryAddress);
@@ -350,7 +350,7 @@ async function initialiseContractInstances(output) {
 async function setNetworkAddresses() {
   // set proxy of network
   console.log("set proxy of network");
-  await sendTx(networkContract.methods.setKyberProxy(proxyAddress));
+  await sendTx(networkContract.methods.setNimbleProxy(proxyAddress));
 
   // set whitelist
   console.log("set whitelist address");

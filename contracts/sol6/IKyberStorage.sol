@@ -1,20 +1,20 @@
 pragma solidity 0.6.6;
 
-import "./IKyberNetworkProxy.sol";
-import "./IKyberReserve.sol";
+import "./INimbleNetworkProxy.sol";
+import "./INimbleReserve.sol";
 
 
-interface IKyberStorage {
+interface INimbleStorage {
     enum ReserveType {NONE, FPR, APR, BRIDGE, UTILITY, CUSTOM, ORDERBOOK, LAST}
 
-    function addKyberProxy(address kyberProxy, uint256 maxApprovedProxies)
+    function addNimbleProxy(address NimbleProxy, uint256 maxApprovedProxies)
         external;
 
-    function removeKyberProxy(address kyberProxy) external;
+    function removeNimbleProxy(address NimbleProxy) external;
 
-    function setContracts(address _kyberFeeHandler, address _kyberMatchingEngine) external;
+    function setContracts(address _NimbleFeeHandler, address _NimbleMatchingEngine) external;
 
-    function setKyberDaoContract(address _kyberDao) external;
+    function setNimbleDaoContract(address _NimbleDao) external;
 
     function getReserveId(address reserve) external view returns (bytes32 reserveId);
 
@@ -53,7 +53,7 @@ interface IKyberStorage {
         view
         returns (address[] memory rebateWallets);
 
-    function getKyberProxies() external view returns (IKyberNetworkProxy[] memory);
+    function getNimbleProxies() external view returns (INimbleNetworkProxy[] memory);
 
     function getReserveDetailsByAddress(address reserve)
         external
@@ -94,7 +94,7 @@ interface IKyberStorage {
             bool areAllReservesListed,
             bool[] memory feeAccountedArr,
             bool[] memory entitledRebateArr,
-            IKyberReserve[] memory reserveAddresses);
+            INimbleReserve[] memory reserveAddresses);
 
-    function isKyberProxyAdded() external view returns (bool);
+    function isNimbleProxyAdded() external view returns (bool);
 }

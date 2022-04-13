@@ -24,7 +24,7 @@
     "ORDERBOOK": true
   },
   "permission": {
-    "KyberDao": {
+    "NimbleDao": {
       "DaoOperator": "0x9EFe12db89D3b0c562c323edeFda01FFB6c2FF3a"
     },
     "FeeHandler": {
@@ -76,7 +76,7 @@
       "address": "0x732fBA98dca813C3A630b53a8bFc1d6e87B1db65"
     },
     "KNC": {
-      "name": "Kyber Network Crystal",
+      "name": "Nimble Network Crystal",
       "decimals": "18",
       "address": "0x6FA355a7b6bD2D6bD8b927C489221BFBb6f1D7B2"
     },

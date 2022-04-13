@@ -1,40 +1,40 @@
 pragma solidity 0.6.6;
 
 import "./utils/WithdrawableNoModifiers.sol";
-import "./IKyberMatchingEngine.sol";
-import "./IKyberNetwork.sol";
-import "./KyberHintHandler.sol";
-import "./IKyberStorage.sol";
+import "./INimbleMatchingEngine.sol";
+import "./INimbleNetwork.sol";
+import "./NimbleHintHandler.sol";
+import "./INimbleStorage.sol";
 
 
 /**
- *   @title kyberMatchingEngine contract
+ *   @title NimbleMatchingEngine contract
  *   During getExpectedRate flow and trade flow this contract is called for:
  *       - parsing hint and returning reserve list (function getTradingReserves)
  *       - matching best reserves to trade with (function doMatch)
  */
-contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, WithdrawableNoModifiers {
+contract NimbleMatchingEngine is NimbleHintHandler, INimbleMatchingEngine, WithdrawableNoModifiers {
     struct BestReserveInfo {
         uint256 index;
         uint256 destAmount;
         uint256 numRelevantReserves;
     }
-    IKyberNetwork public kyberNetwork;
-    IKyberStorage public kyberStorage;
+    INimbleNetwork public NimbleNetwork;
+    INimbleStorage public NimbleStorage;
 
     uint256 negligibleRateDiffBps = 5; // 1 bps is 0.01%
 
-    event KyberStorageUpdated(IKyberStorage newKyberStorage);
-    event KyberNetworkUpdated(IKyberNetwork newKyberNetwork);
+    event NimbleStorageUpdated(INimbleStorage newNimbleStorage);
+    event NimbleNetworkUpdated(INimbleNetwork newNimbleNetwork);
 
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /* empty body */
     }
 
-    function setKyberStorage(IKyberStorage _kyberStorage) external virtual override {
+    function setNimbleStorage(INimbleStorage _NimbleStorage) external virtual override {
         onlyAdmin();
-        emit KyberStorageUpdated(_kyberStorage);
-        kyberStorage = _kyberStorage;
+        emit NimbleStorageUpdated(_NimbleStorage);
+        NimbleStorage = _NimbleStorage;
     }
 
     function setNegligibleRateDiffBps(uint256 _negligibleRateDiffBps)
@@ -47,11 +47,11 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         negligibleRateDiffBps = _negligibleRateDiffBps;
     }
 
-    function setNetworkContract(IKyberNetwork _kyberNetwork) external {
+    function setNetworkContract(INimbleNetwork _NimbleNetwork) external {
         onlyAdmin();
-        require(_kyberNetwork != IKyberNetwork(0), "kyberNetwork 0");
-        emit KyberNetworkUpdated(_kyberNetwork);
-        kyberNetwork = _kyberNetwork;
+        require(_NimbleNetwork != INimbleNetwork(0), "NimbleNetwork 0");
+        emit NimbleNetworkUpdated(_NimbleNetwork);
+        NimbleNetwork = _NimbleNetwork;
     }
 
     /// @dev Returns trading reserves info for a trade
@@ -80,8 +80,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         HintErrors error;
         if (hint.length == 0 || hint.length == 4) {
             reserveIds = (dest == ETH_TOKEN_ADDRESS)
-                ? kyberStorage.getReserveIdsPerTokenSrc(src)
-                : kyberStorage.getReserveIdsPerTokenDest(dest);
+                ? NimbleStorage.getReserveIdsPerTokenSrc(src)
+                : NimbleStorage.getReserveIdsPerTokenDest(dest);
 
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
             processWithRate = ProcessWithRate.Required;
@@ -111,8 +111,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
             splitValuesBps = populateSplitValuesBps(reserveIds.length);
         } else if (tradeType == TradeType.BestOfAll || tradeType == TradeType.MaskOut) {
             bytes32[] memory allReserves = (dest == ETH_TOKEN_ADDRESS)
-                ? kyberStorage.getReserveIdsPerTokenSrc(src)
-                : kyberStorage.getReserveIdsPerTokenDest(dest);
+                ? NimbleStorage.getReserveIdsPerTokenSrc(src)
+                : NimbleStorage.getReserveIdsPerTokenDest(dest);
 
             // if bestOfAll, reserveIds = allReserves
             // if mask out, apply masking out logic
@@ -134,8 +134,8 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
 
     /// @dev Returns the indexes of the best rate from the rates array
     ///     for token -> eth or eth -> token side of trade
-    /// @param src Source token (not needed in this kyberMatchingEngine version)
-    /// @param dest Destination token (not needed in this kyberMatchingEngine version)
+    /// @param src Source token (not needed in this NimbleMatchingEngine version)
+    /// @param dest Destination token (not needed in this NimbleMatchingEngine version)
     /// @param srcAmounts Array of srcAmounts after deducting fees.
     /// @param feesAccountedDestBps Fees charged in BPS, to be deducted from calculated destAmount
     /// @param rates Rates queried from reserves
@@ -207,7 +207,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     function getReserveAddress(bytes32 reserveId) internal view override returns (address reserveAddress) {
-        (reserveAddress, , , ,) = kyberStorage.getReserveDetailsById(reserveId);
+        (reserveAddress, , , ,) = NimbleStorage.getReserveDetailsById(reserveId);
     }
 
     function areAllReservesListed(
@@ -215,7 +215,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
         IERC20 src,
         IERC20 dest
     ) internal override view returns (bool allReservesListed) {
-        (allReservesListed, , ,) = kyberStorage.getReservesData(reserveIds, src, dest);
+        (allReservesListed, , ,) = NimbleStorage.getReservesData(reserveIds, src, dest);
     }
 
     /// @notice Logic for masking out reserves
@@ -251,7 +251,7 @@ contract KyberMatchingEngine is KyberHintHandler, IKyberMatchingEngine, Withdraw
     }
 
     function onlyNetwork() internal view {
-        require(msg.sender == address(kyberNetwork), "only kyberNetwork");
+        require(msg.sender == address(NimbleNetwork), "only NimbleNetwork");
     }
 
     function populateSplitValuesBps(uint256 length)

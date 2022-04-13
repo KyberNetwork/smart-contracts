@@ -1,7 +1,7 @@
 const TestToken = artifacts.require("./TestToken.sol");
-const Reserve = artifacts.require("./KyberReserve.sol");
-const Network = artifacts.require("./KyberNetwork.sol");
-const NetworkProxy = artifacts.require("./KyberNetworkProxy.sol");
+const Reserve = artifacts.require("./NimbleReserve.sol");
+const Network = artifacts.require("./NimbleNetwork.sol");
+const NetworkProxy = artifacts.require("./NimbleNetworkProxy.sol");
 const ConversionRates = artifacts.require("./ConversionRates.sol");
 const Bank   = artifacts.require("./MockCentralBank.sol");
 const Whitelist  = artifacts.require("./WhiteList.sol");
@@ -14,7 +14,7 @@ const BigNumber = require('bignumber.js');
 var tokenSymbol = [];//["OMG", "DGD", "CVC", "FUN", "MCO", "GNT", "ADX", "PAY",
                    //"BAT", "KNC", "EOS", "LINK"];
 var tokenName = [];//[ "OmiseGO", "Digix", "Civic", "FunFair", "Monaco", "Golem",
-//"Adex", "TenX", "BasicAttention", "KyberNetwork", "Eos", "ChainLink" ];
+//"Adex", "TenX", "BasicAttention", "NimbleNetwork", "Eos", "ChainLink" ];
 
 var internalUseTokens = []
 var listedTokens = []
@@ -28,7 +28,7 @@ var reserveInitialEth;
 var tokenInstance = [];
 var kncInstance;
 var kgtInstance;
-const kgtName = "Kyber genesis token";
+const kgtName = "Nimble genesis token";
 const kgtSymbol = "KGT";
 const kgtDec = 0;
 
@@ -663,7 +663,7 @@ contract('Deployment', function(accounts) {
   it("set network proxy params", function() {
     this.timeout(31000000);
     // set contracts and enable network
-    return networkProxy.setKyberNetworkContract(network.address);
+    return networkProxy.setNimbleNetworkContract(network.address);
   });
 
   it("set network params", function() {
@@ -675,7 +675,7 @@ contract('Deployment', function(accounts) {
     }).then(function(){
         return network.setFeeBurner(feeBurner.address);
     }).then(function(){
-        return network.setKyberProxy(networkProxy.address);
+        return network.setNimbleProxy(networkProxy.address);
     }).then(function(){
         return network.setParams(50*10**9, 15); //50 gwei, 15 negligible diff
     }).then( function() {
@@ -774,7 +774,7 @@ contract('Deployment', function(accounts) {
 
 
 it("make some optimizations", function() {
-  // send 1 twei to kyber network
+  // send 1 twei to Nimble network
   return tokenInstance[1].transfer(network.address,0).then(function(){
     // send 1 wei of knc to fee burner
     return tokenInstance[1].transfer("0x001adbc838ede392b5b054a47f8b8c28f2fa9f3c",1);

@@ -1,7 +1,7 @@
 const ConversionRates = artifacts.require("./ConversionRates.sol");
 const EnhancedStepFunctions = artifacts.require("./mockContract/MockEnhancedStepFunctions.sol");
 const TestToken = artifacts.require("./mockContracts/TestToken.sol");
-const Reserve = artifacts.require("./KyberReserve");
+const Reserve = artifacts.require("./NimbleReserve");
 const SanityRates = artifacts.require("./SanityRates");
 
 const Helper = require("../helper.js");
@@ -95,7 +95,7 @@ let indices = [];
 let compactBuyArr = [];
 let compactSellArr = [];
 
-contract('KyberReserve', function(accounts) {
+contract('NimbleReserve', function(accounts) {
     it("should init globals. init ConversionRates Inst, init tokens and add to pricing inst. set basic data per token.", async function () {
         // set account addresses
         admin = accounts[0];

@@ -1,22 +1,22 @@
 pragma solidity 0.6.6;
 
-import "../IKyberMatchingEngine.sol";
-import "./IKyberRateHelper.sol";
-import "../IKyberDao.sol";
-import "../IKyberStorage.sol";
-import "../IKyberReserve.sol";
+import "../INimbleMatchingEngine.sol";
+import "./INimbleRateHelper.sol";
+import "../INimbleDao.sol";
+import "../INimbleStorage.sol";
+import "../INimbleReserve.sol";
 import "../utils/Utils5.sol";
 import "../utils/WithdrawableNoModifiers.sol";
 
 
-contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
+contract NimbleRateHelper is INimbleRateHelper, WithdrawableNoModifiers, Utils5 {
     uint256 public constant DEFAULT_SPREAD_QUERY_AMOUNT_WEI = 10 ether;
     uint256 public constant DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI = 0.01 ether;
     uint256 public constant DEFAULT_SLIPPAGE_QUERY_AMOUNT_WEI = 10 ether;
     uint256 public constant DEFAULT_RATE_QUERY_AMOUNT_WEI = 1 ether;
 
-    IKyberDao public kyberDao;
-    IKyberStorage public kyberStorage;
+    INimbleDao public NimbleDao;
+    INimbleStorage public NimbleStorage;
     //reserves are queried directly
     bytes32[] public reserveIds;
 
@@ -24,26 +24,26 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         /* empty body */
     }
 
-    event KyberDaoContractSet(IKyberDao kyberDao);
-    event KyberStorageSet(IKyberStorage kyberStorage);
-    event AddKyberReserve(bytes32 reserveId, bool add);
+    event NimbleDaoContractSet(INimbleDao NimbleDao);
+    event NimbleStorageSet(INimbleStorage NimbleStorage);
+    event AddNimbleReserve(bytes32 reserveId, bool add);
 
     function setContracts(
-        IKyberDao _kyberDao,
-        IKyberStorage _kyberStorage
+        INimbleDao _NimbleDao,
+        INimbleStorage _NimbleStorage
     ) public {
         onlyAdmin();
-        require(_kyberDao != IKyberDao(0), "kyberDao 0");
-        require(_kyberStorage != IKyberStorage(0), "kyberStorage 0");
+        require(_NimbleDao != INimbleDao(0), "NimbleDao 0");
+        require(_NimbleStorage != INimbleStorage(0), "NimbleStorage 0");
 
-        if (kyberDao != _kyberDao) {
-            kyberDao = _kyberDao;
-            emit KyberDaoContractSet(_kyberDao);
+        if (NimbleDao != _NimbleDao) {
+            NimbleDao = _NimbleDao;
+            emit NimbleDaoContractSet(_NimbleDao);
         }
 
-        if (kyberStorage != _kyberStorage) {
-            kyberStorage = _kyberStorage;
-            emit KyberStorageSet(_kyberStorage);
+        if (NimbleStorage != _NimbleStorage) {
+            NimbleStorage = _NimbleStorage;
+            emit NimbleStorageSet(_NimbleStorage);
         }
     }
 
@@ -52,7 +52,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         require(reserveId != bytes32(0), "reserve 0");
         reserveIds.push(reserveId);
 
-        emit AddKyberReserve(reserveId, true);
+        emit AddNimbleReserve(reserveId, true);
     }
 
     function removeReserve(bytes32 reserveId) public {
@@ -62,7 +62,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
                 reserveIds[i] = reserveIds[reserveIds.length - 1];
                 reserveIds.pop();
 
-                emit AddKyberReserve(reserveId, false);
+                emit AddNimbleReserve(reserveId, false);
                 break;
             }
         }
@@ -101,7 +101,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             uint256[] memory sellRates
         )
     {
-        (uint256 networkFeeBps, ) = kyberDao.getLatestNetworkFeeData();
+        (uint256 networkFeeBps, ) = NimbleDao.getLatestNetworkFeeData();
         uint256 buyAmountWei = optionalAmountWei > 0 ? optionalAmountWei : DEFAULT_RATE_QUERY_AMOUNT_WEI;
 
         (buyReserves, buyRates) = getBuyInfo(token, buyAmountWei, networkFeeBps);
@@ -129,7 +129,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             uint256[] memory sellRates
         )
     {
-        (uint256 networkFeeBps, ) = kyberDao.getLatestNetworkFeeData();
+        (uint256 networkFeeBps, ) = NimbleDao.getLatestNetworkFeeData();
         uint256 buyAmountWei = optionalAmountWei > 0 ? optionalAmountWei : DEFAULT_RATE_QUERY_AMOUNT_WEI;
         reserves = reserveIds;
         buyRates = getBuyRate(token, buyAmountWei, networkFeeBps, reserves);
@@ -164,7 +164,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
             uint256[] memory sellRates
         )
     {
-        (uint256 feeBps, ) = kyberDao.getLatestNetworkFeeData();
+        (uint256 feeBps, ) = NimbleDao.getLatestNetworkFeeData();
         return getRatesForTokenWithCustomFee(token, optionalBuyAmountWei, optionalSellAmountTwei, feeBps);
     }
 
@@ -206,7 +206,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 buyAmountWei,
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory buyReserves, uint256[] memory buyRates) {
-        buyReserves = kyberStorage.getReserveIdsPerTokenDest(token);
+        buyReserves = NimbleStorage.getReserveIdsPerTokenDest(token);
         buyRates = getBuyRate(token, buyAmountWei, networkFeeBps, buyReserves);
     }
 
@@ -216,15 +216,15 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 networkFeeBps,
         bytes32[] memory buyReserves
     ) internal view returns (uint256[] memory buyRates) {
-        bool[] memory isFeeAccountedFlags = kyberStorage.getFeeAccountedData(buyReserves);
-        address[] memory buyReserveAddresses = kyberStorage.getReserveAddressesFromIds(
+        bool[] memory isFeeAccountedFlags = NimbleStorage.getFeeAccountedData(buyReserves);
+        address[] memory buyReserveAddresses = NimbleStorage.getReserveAddressesFromIds(
             buyReserves
         );
         buyRates = new uint256[](buyReserves.length);
         uint256 buyAmountWithFee = buyAmountWei - ((buyAmountWei * networkFeeBps) / BPS);
         for (uint256 i = 0; i < buyReserves.length; i++) {
             if (networkFeeBps == 0 || !isFeeAccountedFlags[i]) {
-                buyRates[i] = IKyberReserve(buyReserveAddresses[i]).getConversionRate(
+                buyRates[i] = INimbleReserve(buyReserveAddresses[i]).getConversionRate(
                     ETH_TOKEN_ADDRESS,
                     token,
                     buyAmountWei,
@@ -232,7 +232,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
                 );
                 continue;
             }
-            buyRates[i] = IKyberReserve(buyReserveAddresses[i]).getConversionRate(
+            buyRates[i] = INimbleReserve(buyReserveAddresses[i]).getConversionRate(
                 ETH_TOKEN_ADDRESS,
                 token,
                 buyAmountWithFee,
@@ -254,7 +254,7 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 sellAmountTwei,
         uint256 networkFeeBps
     ) internal view returns (bytes32[] memory sellReserves, uint256[] memory sellRates) {
-        sellReserves = kyberStorage.getReserveIdsPerTokenSrc(token);
+        sellReserves = NimbleStorage.getReserveIdsPerTokenSrc(token);
         sellRates = getSellRate(token, sellAmountTwei, networkFeeBps, sellReserves);
     }
 
@@ -264,13 +264,13 @@ contract KyberRateHelper is IKyberRateHelper, WithdrawableNoModifiers, Utils5 {
         uint256 networkFeeBps,
         bytes32[] memory sellReserves
     ) internal view returns (uint256[] memory sellRates) {
-        bool[] memory isFeeAccountedFlags = kyberStorage.getFeeAccountedData(sellReserves);
-        address[] memory sellReserveAddresses = kyberStorage.getReserveAddressesFromIds(
+        bool[] memory isFeeAccountedFlags = NimbleStorage.getFeeAccountedData(sellReserves);
+        address[] memory sellReserveAddresses = NimbleStorage.getReserveAddressesFromIds(
             sellReserves
         );
         sellRates = new uint256[](sellReserves.length);
         for (uint256 i = 0; i < sellReserves.length; i++) {
-            sellRates[i] = IKyberReserve(sellReserveAddresses[i]).getConversionRate(
+            sellRates[i] = INimbleReserve(sellReserveAddresses[i]).getConversionRate(
                 token,
                 ETH_TOKEN_ADDRESS,
                 sellAmountTwei,

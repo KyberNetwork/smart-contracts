@@ -1,8 +1,8 @@
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
-const KyberHistory = artifacts.require("KyberHistory.sol");
-const KyberStorage = artifacts.require("KyberStorage.sol");
-const KyberNetwork = artifacts.require("KyberNetwork.sol");
+const NimbleHistory = artifacts.require("NimbleHistory.sol");
+const NimbleStorage = artifacts.require("NimbleStorage.sol");
+const NimbleNetwork = artifacts.require("NimbleNetwork.sol");
 const MockStorage = artifacts.require("MockStorage.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -21,11 +21,11 @@ let txResult;
 let admin;
 let operator;
 let network;
-let kyberNetworkHistory;
-let kyberFeeHandlerHistory;
-let kyberDaoHistory;
-let kyberMatchingEngineHistory;
-let kyberStorage;
+let NimbleNetworkHistory;
+let NimbleFeeHandlerHistory;
+let NimbleDaoHistory;
+let NimbleMatchingEngineHistory;
+let NimbleStorage;
 let user;
 let feeHandlerAddr;
 let matchingEngineAddr;
@@ -40,87 +40,87 @@ let numReserves;
 ////////////
 let token;
 
-contract('KyberStorage', function(accounts) {
+contract('NimbleStorage', function(accounts) {
 
     before("one time global init", async() => {
         //init accounts
         user = accounts[0];
         admin = accounts[1];
         operator = accounts[2];
-        kyberDaoAddr = accounts[4];
+        NimbleDaoAddr = accounts[4];
         feeHandlerAddr = accounts[6];
         matchingEngineAddr = accounts[7];
     });
 
     describe("test init reverts with null historical address", async() => {
         before("deploy historical contracts", async() => {
-            kyberNetworkHistory = await KyberHistory.new(admin);
-            kyberFeeHandlerHistory = await KyberHistory.new(admin);
-            kyberDaoHistory = await KyberHistory.new(admin);
-            kyberMatchingEngineHistory = await KyberHistory.new(admin);
+            NimbleNetworkHistory = await NimbleHistory.new(admin);
+            NimbleFeeHandlerHistory = await NimbleHistory.new(admin);
+            NimbleDaoHistory = await NimbleHistory.new(admin);
+            NimbleMatchingEngineHistory = await NimbleHistory.new(admin);
         });
 
-        it("should revert for null kyberNetworkHistory address", async() => {
+        it("should revert for null NimbleNetworkHistory address", async() => {
             await expectRevert(
-                KyberStorage.new(
+                NimbleStorage.new(
                     admin,
                     zeroAddress,
-                    kyberFeeHandlerHistory.address,
-                    kyberDaoHistory.address,
-                    kyberMatchingEngineHistory.address
+                    NimbleFeeHandlerHistory.address,
+                    NimbleDaoHistory.address,
+                    NimbleMatchingEngineHistory.address
                 ),
-                "kyberNetworkHistory 0"
+                "NimbleNetworkHistory 0"
             );
         });
 
-        it("should revert for null kyberFeeHandlerHistory address", async() => {
+        it("should revert for null NimbleFeeHandlerHistory address", async() => {
             await expectRevert(
-                KyberStorage.new(
+                NimbleStorage.new(
                     admin,
-                    kyberNetworkHistory.address,
+                    NimbleNetworkHistory.address,
                     zeroAddress,
-                    kyberDaoHistory.address,
-                    kyberMatchingEngineHistory.address
+                    NimbleDaoHistory.address,
+                    NimbleMatchingEngineHistory.address
                 ),
-                "kyberFeeHandlerHistory 0"
+                "NimbleFeeHandlerHistory 0"
             );
         });
 
-        it("should revert for null kyberDaoHistory address", async() => {
+        it("should revert for null NimbleDaoHistory address", async() => {
             await expectRevert(
-                KyberStorage.new(
+                NimbleStorage.new(
                     admin,
-                    kyberNetworkHistory.address,
-                    kyberFeeHandlerHistory.address,
+                    NimbleNetworkHistory.address,
+                    NimbleFeeHandlerHistory.address,
                     zeroAddress,
-                    kyberMatchingEngineHistory.address
+                    NimbleMatchingEngineHistory.address
                 ),
-                "kyberDaoHistory 0"
+                "NimbleDaoHistory 0"
             );
         });
 
-        it("should revert for null kyberMatchingEngineHistory address", async() => {
+        it("should revert for null NimbleMatchingEngineHistory address", async() => {
             await expectRevert(
-                KyberStorage.new(
+                NimbleStorage.new(
                     admin,
-                    kyberNetworkHistory.address,
-                    kyberFeeHandlerHistory.address,
-                    kyberDaoHistory.address,
+                    NimbleNetworkHistory.address,
+                    NimbleFeeHandlerHistory.address,
+                    NimbleDaoHistory.address,
                     zeroAddress
                 ),
-                "kyberMatchingEngineHistory 0"
+                "NimbleMatchingEngineHistory 0"
             );
         });
     });
 
     describe("test onlyAdmin and onlyOperator permissions", async() => {
-        before("deploy KyberStorage instance, 1 mock reserve and 1 mock token", async() => {
-            kyberStorage = await nwHelper.setupStorage(admin);
-            network = await KyberNetwork.new(admin, kyberStorage.address);
-            await kyberStorage.addOperator(operator, {from: admin});
-            await kyberStorage.setNetworkContract(network.address, { from: admin});
-            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-            await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+        before("deploy NimbleStorage instance, 1 mock reserve and 1 mock token", async() => {
+            NimbleStorage = await nwHelper.setupStorage(admin);
+            network = await NimbleNetwork.new(admin, NimbleStorage.address);
+            await NimbleStorage.addOperator(operator, {from: admin});
+            await NimbleStorage.setNetworkContract(network.address, { from: admin});
+            await NimbleStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await NimbleStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             token = await TestToken.new("test", "tst", 18);
 
             //init 1 mock reserve
@@ -134,143 +134,143 @@ contract('KyberStorage', function(accounts) {
 
         it("should not have unauthorized personnel set network contract", async() => {
             await expectRevert(
-                kyberStorage.setNetworkContract(network.address, {from: user}),
+                NimbleStorage.setNetworkContract(network.address, {from: user}),
                 "only admin"
             );
 
             await expectRevert(
-                kyberStorage.setNetworkContract(network.address, {from: operator}),
+                NimbleStorage.setNetworkContract(network.address, {from: operator}),
                 "only admin"
             );
         });
 
         it("should have admin set network contract", async() => {
-            await kyberStorage.setNetworkContract(network.address, {from: admin});
-            let result = await kyberStorage.kyberNetwork();
+            await NimbleStorage.setNetworkContract(network.address, {from: admin});
+            let result = await NimbleStorage.NimbleNetwork();
             Helper.assertEqual(network.address, result, "network not set by admin");
         });
 
         it("should not have unauthorized personnel add reserve", async() => {
             await expectRevert(
-                kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: user}),
+                NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: user}),
                 "only operator"
             );
 
             await expectRevert(
-                kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: admin}),
+                NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: admin}),
                 "only operator"
             );
         });
 
         it("should have operator add reserve", async() => {
-            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
-            let reserveId = await kyberStorage.getReserveId(reserve.address);
+            await NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+            let reserveId = await NimbleStorage.getReserveId(reserve.address);
 
-            let reserveAddress = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+            let reserveAddress = await NimbleStorage.getReserveAddressesByReserveId(reserve.reserveId);
             Helper.assertEqual(reserve.reserveId, reserveId, "wrong address to ID");
             Helper.assertEqual(reserve.address, reserveAddress[0], "wrong ID to address");
         });
 
         it("should not have unauthorized personnel set rebate wallet", async() => {
             await expectRevert(
-                kyberStorage.setRebateWallet(reserve.reserveId, accounts[2], {from: user}),
+                NimbleStorage.setRebateWallet(reserve.reserveId, accounts[2], {from: user}),
                 "only operator"
             );
 
             await expectRevert(
-                kyberStorage.setRebateWallet(reserve.reserveId, accounts[2], {from: admin}),
+                NimbleStorage.setRebateWallet(reserve.reserveId, accounts[2], {from: admin}),
                 "only operator"
             );
         });
 
         it("should not have unauthorized personnel list token pair for reserve", async() => {
             await expectRevert(
-                kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: user}),
+                NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: user}),
                 "only operator"
             );
 
             await expectRevert(
-                kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: admin}),
+                NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: admin}),
                 "only operator"
             );
         });
 
         it("should have operator list pair for reserve", async() => {
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
-            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            let result = await NimbleStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "reserve should have supported token");
-            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
+            result = await NimbleStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "reserve should have supported token");
         });
 
         it("should not have unauthorized personnel remove reserve", async() => {
             await expectRevert(
-                kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: user}),
+                NimbleStorage.removeReserve(reserve.reserveId, zeroBN, {from: user}),
                 "only operator"
             );
 
             await expectRevert(
-                kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: admin}),
+                NimbleStorage.removeReserve(reserve.reserveId, zeroBN, {from: admin}),
                 "only operator"
             );
         });
 
         it("should have operator removes reserve", async() => {
-            await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
+            await NimbleStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
         });
 
         it("should not have unauthorized personnel set contracts", async() => {
             await expectRevert(
-                kyberStorage.setKyberDaoContract(kyberDaoAddr, { from: operator}), "only kyberNetwork"
+                NimbleStorage.setNimbleDaoContract(NimbleDaoAddr, { from: operator}), "only NimbleNetwork"
             );
 
             await expectRevert(
-                kyberStorage.setKyberDaoContract(kyberDaoAddr, { from: admin}), "only kyberNetwork"
+                NimbleStorage.setNimbleDaoContract(NimbleDaoAddr, { from: admin}), "only NimbleNetwork"
             );
 
             await expectRevert(
-                kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: operator}), "only kyberNetwork"
+                NimbleStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: operator}), "only NimbleNetwork"
             );
 
             await expectRevert(
-                kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: admin}), "only kyberNetwork"
+                NimbleStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: admin}), "only NimbleNetwork"
             );
         });
 
         it("should have network set contracts", async() => {
-            let oldNetwork = await kyberStorage.kyberNetwork();
+            let oldNetwork = await NimbleStorage.NimbleNetwork();
             network = accounts[3];
-            await kyberStorage.setNetworkContract(network, { from: admin});
-            await kyberStorage.setKyberDaoContract(kyberDaoAddr, { from: network});
-            await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
-            let result = await kyberStorage.getContracts();
-            Helper.assertEqualArray(result.kyberDaoAddresses, [kyberDaoAddr], "unexpected dao history");
-            Helper.assertEqualArray(result.kyberMatchingEngineAddresses, [matchingEngineAddr], "unexpected match engine history");
-            Helper.assertEqualArray(result.kyberFeeHandlerAddresses, [feeHandlerAddr], "unexpected fee handler history");
-            Helper.assertEqualArray(result.kyberNetworkAddresses, [network, oldNetwork], "unexpected network history");
+            await NimbleStorage.setNetworkContract(network, { from: admin});
+            await NimbleStorage.setNimbleDaoContract(NimbleDaoAddr, { from: network});
+            await NimbleStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
+            let result = await NimbleStorage.getContracts();
+            Helper.assertEqualArray(result.NimbleDaoAddresses, [NimbleDaoAddr], "unexpected dao history");
+            Helper.assertEqualArray(result.NimbleMatchingEngineAddresses, [matchingEngineAddr], "unexpected match engine history");
+            Helper.assertEqualArray(result.NimbleFeeHandlerAddresses, [feeHandlerAddr], "unexpected fee handler history");
+            Helper.assertEqualArray(result.NimbleNetworkAddresses, [network, oldNetwork], "unexpected network history");
         });
     });
 
     describe("test contract event", async() => {
-        before("deploy and setup kyberStorage instance", async() => {
-            kyberStorage = await nwHelper.setupStorage(admin);
-            network = await KyberNetwork.new(admin, kyberStorage.address);
-            await kyberStorage.addOperator(operator, {from: admin});
-            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-            await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+        before("deploy and setup NimbleStorage instance", async() => {
+            NimbleStorage = await nwHelper.setupStorage(admin);
+            network = await NimbleNetwork.new(admin, NimbleStorage.address);
+            await NimbleStorage.addOperator(operator, {from: admin});
+            await NimbleStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await NimbleStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
         });
 
         it("shoud test set network event", async() => {
-            txResult = await kyberStorage.setNetworkContract(network.address, {from: admin});
-            expectEvent(txResult, "KyberNetworkUpdated", {
-                newKyberNetwork: network.address
+            txResult = await NimbleStorage.setNetworkContract(network.address, {from: admin});
+            expectEvent(txResult, "NimbleNetworkUpdated", {
+                newNimbleNetwork: network.address
             });
         });
 
         it("Add reserve", async() => {
             let anyWallet = accounts[0];
             let mockReserve = await MockReserve.new();
-            let txResult = await kyberStorage.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
+            let txResult = await NimbleStorage.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
             expectEvent(txResult, 'AddReserveToStorage', {
                 reserve: mockReserve.address,
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
@@ -281,7 +281,7 @@ contract('KyberStorage', function(accounts) {
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
                 rebateWallet: anyWallet
             });
-            await kyberStorage.removeReserve(
+            await NimbleStorage.removeReserve(
                 nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
                 0,
                 {from: operator}
@@ -292,8 +292,8 @@ contract('KyberStorage', function(accounts) {
             let anyWallet = accounts[0];
             let mockReserve = await MockReserve.new();
             let mockReserveID = nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase();
-            await kyberStorage.addReserve(mockReserve.address, mockReserveID, ReserveType.FPR, anyWallet, {from: operator});
-            let txResult = await kyberStorage.removeReserve(
+            await NimbleStorage.addReserve(mockReserve.address, mockReserveID, ReserveType.FPR, anyWallet, {from: operator});
+            let txResult = await NimbleStorage.removeReserve(
                 mockReserveID,
                 0,
                 {from: operator}
@@ -307,18 +307,18 @@ contract('KyberStorage', function(accounts) {
         it("Set rebate wallet for reserve", async() => {
             let anyWallet = accounts[0];
             let mockReserve = await MockReserve.new();
-            let txResult = await kyberStorage.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
+            let txResult = await NimbleStorage.addReserve(mockReserve.address, nwHelper.genReserveID(MOCK_ID, mockReserve.address), ReserveType.FPR, anyWallet, {from: operator});
             expectEvent(txResult, 'ReserveRebateWalletSet', {
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
                 rebateWallet: anyWallet
             });
             anyWallet = accounts[2];
-            txResult = await kyberStorage.setRebateWallet(nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(), anyWallet, {from: operator});
+            txResult = await NimbleStorage.setRebateWallet(nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(), anyWallet, {from: operator});
             expectEvent(txResult, 'ReserveRebateWalletSet', {
                 reserveId: nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
                 rebateWallet: anyWallet
             });
-            await kyberStorage.removeReserve(
+            await NimbleStorage.removeReserve(
                 nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase(),
                 0,
                 {from: operator}
@@ -330,12 +330,12 @@ contract('KyberStorage', function(accounts) {
             let anotherMockReserve = await MockReserve.new();
             let mockReserveId = nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address).toLowerCase();
             let token = await TestToken.new("test token", "tst", 18);
-            await kyberStorage.addReserve(anotherMockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
+            await NimbleStorage.addReserve(anotherMockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
 
-            let reserveData = await kyberStorage.getReservesData([mockReserveId], ethAddress, token.address);
+            let reserveData = await NimbleStorage.getReservesData([mockReserveId], ethAddress, token.address);
             assert(!reserveData.areAllReservesListed, "reserve should not be listed when getReservesData");
 
-            let txResult = await kyberStorage.listPairForReserve(mockReserveId, token.address, true, false, true, {from: operator});
+            let txResult = await NimbleStorage.listPairForReserve(mockReserveId, token.address, true, false, true, {from: operator});
             expectEvent(txResult, 'ListReservePairs', {
                 reserveId: mockReserveId,
                 reserve: anotherMockReserve.address,
@@ -344,7 +344,7 @@ contract('KyberStorage', function(accounts) {
                 add: true
             });
             // check reserve is listed when getReservesData
-            reserveData = await kyberStorage.getReservesData([mockReserveId], ethAddress, token.address);
+            reserveData = await NimbleStorage.getReservesData([mockReserveId], ethAddress, token.address);
             assert(reserveData.areAllReservesListed, "reserve should be listed when getReservesData");
         });
 
@@ -353,12 +353,12 @@ contract('KyberStorage', function(accounts) {
             let anotherMockReserve = await MockReserve.new();
             let mockReserveId = nwHelper.genReserveID(MOCK_ID, anotherMockReserve.address).toLowerCase();
             let token = await TestToken.new("test token", "tst", 18);
-            await kyberStorage.addReserve(anotherMockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
+            await NimbleStorage.addReserve(anotherMockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
 
-            let reserveData = await kyberStorage.getReservesData([mockReserveId], token.address, ethAddress);
+            let reserveData = await NimbleStorage.getReservesData([mockReserveId], token.address, ethAddress);
             assert(!reserveData.areAllReservesListed, "reserve should not be listed when getReservesData");
 
-            let txResult = await kyberStorage.listPairForReserve(mockReserveId, token.address, false, true, true, {from: operator});
+            let txResult = await NimbleStorage.listPairForReserve(mockReserveId, token.address, false, true, true, {from: operator});
             expectEvent(txResult, 'ListReservePairs', {
                 reserveId: mockReserveId,
                 reserve: anotherMockReserve.address,
@@ -367,69 +367,69 @@ contract('KyberStorage', function(accounts) {
                 add: true
             });
 
-            reserveData = await kyberStorage.getReservesData([mockReserveId], token.address, ethAddress);
+            reserveData = await NimbleStorage.getReservesData([mockReserveId], token.address, ethAddress);
             assert(reserveData.areAllReservesListed, "reserve should be listed when getReservesData");
         });
     });
 
     describe("test setting contracts and params", async() => {
-        before("deploy and setup kyberStorage instance", async() => {
-            kyberStorage = await nwHelper.setupStorage(admin);
+        before("deploy and setup NimbleStorage instance", async() => {
+            NimbleStorage = await nwHelper.setupStorage(admin);
             network = accounts[3];
-            await kyberStorage.setNetworkContract(network, {from: admin});
-            await kyberStorage.addOperator(operator, {from: admin});
+            await NimbleStorage.setNetworkContract(network, {from: admin});
+            await NimbleStorage.addOperator(operator, {from: admin});
         });
 
         it("should revert setting zero address for network", async() => {
             await expectRevert(
-                kyberStorage.setNetworkContract(zeroAddress, {from: admin}),
-                "kyberNetwork 0");
+                NimbleStorage.setNetworkContract(zeroAddress, {from: admin}),
+                "NimbleNetwork 0");
         });
 
         it("set empty fee handler contract", async function(){
             await expectRevert(
-                kyberStorage.setContracts(zeroAddress, matchingEngineAddr, {from: network}),
-                "kyberFeeHandler 0"
+                NimbleStorage.setContracts(zeroAddress, matchingEngineAddr, {from: network}),
+                "NimbleFeeHandler 0"
             );
         });
 
         it("set empty matching engine contract", async function(){
             await expectRevert(
-                kyberStorage.setContracts(feeHandlerAddr, zeroAddress, {from: network}),
-                "kyberMatchingEngine 0"
+                NimbleStorage.setContracts(feeHandlerAddr, zeroAddress, {from: network}),
+                "NimbleMatchingEngine 0"
             );
         });
 
         it("set and get contracts history", async() =>{
-            await kyberStorage.setKyberDaoContract(kyberDaoAddr, { from: network});
-            await kyberStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
+            await NimbleStorage.setNimbleDaoContract(NimbleDaoAddr, { from: network});
+            await NimbleStorage.setContracts(feeHandlerAddr, matchingEngineAddr, { from: network });
             
             // get and set second dao, matchingEngine, feeHandler and network contracts
-            let kyberDaoAddr2 = accounts[7];
+            let NimbleDaoAddr2 = accounts[7];
             let feeHandlerAddr2 = accounts[8];
             let matchingEngineAddr2 = accounts[9];
             let networkAddr2 = accounts[10];
 
-            await kyberStorage.setKyberDaoContract(kyberDaoAddr2, { from: network});
-            await kyberStorage.setContracts(feeHandlerAddr2, matchingEngineAddr2, { from: network });
-            await kyberStorage.setNetworkContract(networkAddr2, { from: admin});
+            await NimbleStorage.setNimbleDaoContract(NimbleDaoAddr2, { from: network});
+            await NimbleStorage.setContracts(feeHandlerAddr2, matchingEngineAddr2, { from: network });
+            await NimbleStorage.setNetworkContract(networkAddr2, { from: admin});
 
-            let result= await kyberStorage.getContracts();
-            Helper.assertEqualArray(result.kyberDaoAddresses, [kyberDaoAddr2, kyberDaoAddr], "unexpected dao history");
-            Helper.assertEqualArray(result.kyberMatchingEngineAddresses, [matchingEngineAddr2, matchingEngineAddr], "unexpected match engine history");
-            Helper.assertEqualArray(result.kyberFeeHandlerAddresses, [feeHandlerAddr2, feeHandlerAddr], "unexpected fee handler history");
-            Helper.assertEqualArray(result.kyberNetworkAddresses, [networkAddr2, network], "unexpected network history");
+            let result= await NimbleStorage.getContracts();
+            Helper.assertEqualArray(result.NimbleDaoAddresses, [NimbleDaoAddr2, NimbleDaoAddr], "unexpected dao history");
+            Helper.assertEqualArray(result.NimbleMatchingEngineAddresses, [matchingEngineAddr2, matchingEngineAddr], "unexpected match engine history");
+            Helper.assertEqualArray(result.NimbleFeeHandlerAddresses, [feeHandlerAddr2, feeHandlerAddr], "unexpected fee handler history");
+            Helper.assertEqualArray(result.NimbleNetworkAddresses, [networkAddr2, network], "unexpected network history");
 
             // reset network contract
-            await kyberStorage.setNetworkContract(network, { from: admin});
+            await NimbleStorage.setNetworkContract(network, { from: admin});
         });
 
         it("should enable setting an empty dao contract", async function(){
-            await kyberStorage.setKyberDaoContract(zeroAddress, {from: network});
+            await NimbleStorage.setNimbleDaoContract(zeroAddress, {from: network});
 
-            let rxContracts = await kyberStorage.getContracts();
+            let rxContracts = await NimbleStorage.getContracts();
 
-            assert.equal(rxContracts.kyberDaoAddresses[0], zeroAddress);
+            assert.equal(rxContracts.NimbleDaoAddresses[0], zeroAddress);
         });
     });
 
@@ -441,58 +441,58 @@ contract('KyberStorage', function(accounts) {
         let tempStorage;
 
         beforeEach("create storage", async() => {
-            kyberStorage= await nwHelper.setupStorage(admin);
-            await kyberStorage.setNetworkContract(network, {from: admin});
+            NimbleStorage= await nwHelper.setupStorage(admin);
+            await NimbleStorage.setNetworkContract(network, {from: admin});
         });
 
         it("test can add max two proxies", async() => {
-            await kyberStorage.addKyberProxy(proxy1, maxProxies, {from: network});
-            await kyberStorage.addKyberProxy(proxy2, maxProxies, {from: network});
+            await NimbleStorage.addNimbleProxy(proxy1, maxProxies, {from: network});
+            await NimbleStorage.addNimbleProxy(proxy2, maxProxies, {from: network});
 
-            assert(await kyberStorage.isKyberProxyAdded(), "proxy is not added");
+            assert(await NimbleStorage.isNimbleProxyAdded(), "proxy is not added");
 
             await expectRevert(
-                kyberStorage.addKyberProxy(proxy3, maxProxies, {from: network}),
-                "max kyberProxies limit reached"
+                NimbleStorage.addNimbleProxy(proxy3, maxProxies, {from: network}),
+                "max NimbleProxies limit reached"
             );
 
-            proxies = await kyberStorage.getKyberProxies();
+            proxies = await NimbleStorage.getNimbleProxies();
             Helper.assertEqualArray(proxies, [proxy1, proxy2], "unexpected proxies");
         });
 
         it("test remove proxy revert if not added", async() => {
-            await kyberStorage.addKyberProxy(proxy2, maxProxies, {from: network});
+            await NimbleStorage.addNimbleProxy(proxy2, maxProxies, {from: network});
             await expectRevert(
-                kyberStorage.removeKyberProxy(proxy1, {from: network}),
-                "kyberProxy not found"
+                NimbleStorage.removeNimbleProxy(proxy1, {from: network}),
+                "NimbleProxy not found"
             );
-            await kyberStorage.addKyberProxy(proxy1, maxProxies, {from: network});
-            await kyberStorage.removeKyberProxy(proxy1, {from: network});
+            await NimbleStorage.addNimbleProxy(proxy1, maxProxies, {from: network});
+            await NimbleStorage.removeNimbleProxy(proxy1, {from: network});
         });
 
         it("test only admin can add proxies", async() => {
             await expectRevert(
-                kyberStorage.addKyberProxy(proxy1, new BN(100), {from: accounts[0]}),
-                "only kyberNetwork"
+                NimbleStorage.addNimbleProxy(proxy1, new BN(100), {from: accounts[0]}),
+                "only NimbleNetwork"
             );
         });
 
         it("test can't add proxy zero address", async() => {
             await expectRevert(
-                kyberStorage.addKyberProxy(zeroAddress, maxProxies, {from: network}),
-                "kyberProxy 0"
+                NimbleStorage.addNimbleProxy(zeroAddress, maxProxies, {from: network}),
+                "NimbleProxy 0"
             );
         });
     });
 
     describe("test adding reserves", async() => {
-        before("deploy and setup kyberStorage instance & 1 mock reserve", async() => {
-            kyberStorage = await nwHelper.setupStorage(admin);
-            network = await KyberNetwork.new(admin, kyberStorage.address);
-            await kyberStorage.addOperator(operator, {from: admin});
-            await kyberStorage.setNetworkContract(network.address, {from: admin});
-            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-            await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+        before("deploy and setup NimbleStorage instance & 1 mock reserve", async() => {
+            NimbleStorage = await nwHelper.setupStorage(admin);
+            network = await NimbleNetwork.new(admin, NimbleStorage.address);
+            await NimbleStorage.addOperator(operator, {from: admin});
+            await NimbleStorage.setNetworkContract(network.address, {from: admin});
+            await NimbleStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await NimbleStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             let result = await nwHelper.setupReserves(network, [], 1,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
             numReserves = result.numAddedReserves * 1;
@@ -505,14 +505,14 @@ contract('KyberStorage', function(accounts) {
         describe("test cases where reserve has never been added", async() => {
             it("should revert for zero reserve id", async() => {
                 await expectRevert(
-                    kyberStorage.addReserve(reserve.address, nwHelper.ZERO_RESERVE_ID, reserve.onChainType, reserve.rebateWallet, {from: operator}),
+                    NimbleStorage.addReserve(reserve.address, nwHelper.ZERO_RESERVE_ID, reserve.onChainType, reserve.rebateWallet, {from: operator}),
                     "reserveId = 0"
                 );
             });
 
             it("should return no reserve data if reserve id does not exist", async() => {
                 let reserveId = "0xaa00000026d1e94963c8b382ad00000000000000000000000000000000000000";
-                let reserveData = await kyberStorage.getReserveDetailsById(reserveId);
+                let reserveData = await NimbleStorage.getReserveDetailsById(reserveId);
     
                 Helper.assertEqual(reserveData.reserveAddress, "0x0000000000000000000000000000000000000000", "reserve address not 0x0");
                 Helper.assertEqual(reserveData.rebateWallet, "0x0000000000000000000000000000000000000000", "rebate wallet not 0x0");
@@ -520,13 +520,13 @@ contract('KyberStorage', function(accounts) {
                 Helper.assertEqual(reserveData.isFeeAccountedFlag, false, "isFeeAccountedFlag not false");
                 Helper.assertEqual(reserveData.isEntitledRebateFlag, false, "isEntitledRebateFlag not false");
 
-                let result = await kyberStorage.getListedTokensByReserveId(reserveId);
+                let result = await NimbleStorage.getListedTokensByReserveId(reserveId);
                 Helper.assertEqual(result.srcTokens.length, zeroBN, "src tokens not empty");
                 Helper.assertEqual(result.destTokens.length, zeroBN, "dest tokens not empty");
             });
 
             it("should return no reserve data if reserve address does not exist", async() => {
-                let reserveData = await kyberStorage.getReserveDetailsByAddress(admin);
+                let reserveData = await NimbleStorage.getReserveDetailsByAddress(admin);
     
                 Helper.assertEqual(reserveData.reserveId, nwHelper.ZERO_RESERVE_ID, "reserve ID not 0x0");
                 Helper.assertEqual(reserveData.rebateWallet, "0x0000000000000000000000000000000000000000", "rebate wallet not 0x0");
@@ -537,37 +537,37 @@ contract('KyberStorage', function(accounts) {
 
             it("should successfully add a reserve", async() => {
                 // before adding reserve
-                let reserves = await kyberStorage.getReserves();
+                let reserves = await NimbleStorage.getReserves();
                 Helper.assertEqual(reserves.length, zeroBN, "reserve arrays not equal");
-                reserves = await kyberStorage.getReservesPerType(ReserveType.FPR);
+                reserves = await NimbleStorage.getReservesPerType(ReserveType.FPR);
                 Helper.assertEqual(reserves.length, zeroBN, "reserve arrays not equal");
 
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                await NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
 
                 // after adding
-                reserves = await kyberStorage.getReserves();
+                reserves = await NimbleStorage.getReserves();
                 Helper.assertEqualArray(reserves, [reserve.address], "reserve arrays not equal");
-                reserves = await kyberStorage.getReservesPerType(reserve.onChainType);
+                reserves = await NimbleStorage.getReservesPerType(reserve.onChainType);
                 Helper.assertEqualArray(reserves, [reserve.reserveId], "reserve arrays not equal");
 
-                let reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                let reserveAddresses = await NimbleStorage.getReserveAddressesByReserveId(reserve.reserveId);
                 Helper.assertEqualArray(reserveAddresses, [reserve.address], "reserve arrays not equal");
 
                 // reset
-                await kyberStorage.removeReserve(reserve.reserveId, 0, {from: operator});
-                reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                await NimbleStorage.removeReserve(reserve.reserveId, 0, {from: operator});
+                reserveAddresses = await NimbleStorage.getReserveAddressesByReserveId(reserve.reserveId);
                 Helper.assertEqualArray(reserveAddresses, [zeroAddress, reserve.address], "reserve arrays not equal");
             });
         });
 
         describe("test cases for an already added reserve", async() => {
             before("add reserve", async() => {
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                await NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             });
 
             it("should revert for adding an existing reserve", async() => {
                 await expectRevert(
-                    kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator}),
+                    NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator}),
                     "reserve has id"
                 );
             });
@@ -575,34 +575,34 @@ contract('KyberStorage', function(accounts) {
             it("should revert for a new reserve with an already taken reserve id", async() => {
                 let newReserve = await MockReserve.new();
                 await expectRevert(
-                    kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator}),
+                    NimbleStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator}),
                     "reserveId taken"
                 );
             });
 
             it("should be able to re-add a reserve after its removal", async() => {
-                await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
-                let reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                await NimbleStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
+                let reserveAddresses = await NimbleStorage.getReserveAddressesByReserveId(reserve.reserveId);
                 Helper.assertEqualArray(reserveAddresses, [zeroAddress, reserve.address, reserve.address], "reserve arrays not equal");
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
-                reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                await NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                reserveAddresses = await NimbleStorage.getReserveAddressesByReserveId(reserve.reserveId);
                 Helper.assertEqualArray(reserveAddresses, [reserve.address, reserve.address ,reserve.address], "reserve arrays not equal");
             });
 
             it("should be able to add a new reserve address for an existing id after removing an old one", async() => {
                 let newReserve = await MockReserve.new();
-                await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
-                let reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                await NimbleStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
+                let reserveAddresses = await NimbleStorage.getReserveAddressesByReserveId(reserve.reserveId);
                 Helper.assertEqualArray(reserveAddresses, [zeroAddress, reserve.address, reserve.address ,reserve.address], "reserve arrays not equal");
-                await kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
-                reserveAddresses = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                await NimbleStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                reserveAddresses = await NimbleStorage.getReserveAddressesByReserveId(reserve.reserveId);
                 Helper.assertEqualArray(reserveAddresses, [newReserve.address, reserve.address, reserve.address ,reserve.address], "reserve arrays not equal");
-                let reserves = await kyberStorage.getReserveAddressesByReserveId(reserve.reserveId);
+                let reserves = await NimbleStorage.getReserveAddressesByReserveId(reserve.reserveId);
                 let actualNewReserveAddress = reserves[0];
                 let actualOldReserveAddress = reserves[1];
-                let reserveData = await kyberStorage.getReserveDetailsById(reserve.reserveId);
+                let reserveData = await NimbleStorage.getReserveDetailsById(reserve.reserveId);
                 assert(reserveData.reserveAddress == newReserve.address, "new reserve address not equal to expected");
-                let reserveIds = await kyberStorage.getReservesPerType(reserve.onChainType);
+                let reserveIds = await NimbleStorage.getReservesPerType(reserve.onChainType);
                 assert(reserveIds[0], reserve.reserveId, "reserveId not found in reservesPerType");
 
                 Helper.assertEqual(newReserve.address, actualNewReserveAddress, "new reserve address not equal to expected");
@@ -621,62 +621,62 @@ contract('KyberStorage', function(accounts) {
             });
 
             it("test correct rebate wallet after add reserve", async() => {
-                await kyberStorage.addReserve(mockReserve.address, mockReserveId, ReserveType.FPR, mockRebateWallet, {from: operator});
-                let reserveData = await kyberStorage.getReserveDetailsById(mockReserveId);
+                await NimbleStorage.addReserve(mockReserve.address, mockReserveId, ReserveType.FPR, mockRebateWallet, {from: operator});
+                let reserveData = await NimbleStorage.getReserveDetailsById(mockReserveId);
                 Helper.assertEqual(mockRebateWallet, reserveData.rebateWallet);
-                let rebateWallets = await kyberStorage.getRebateWalletsFromIds([mockReserveId]);
+                let rebateWallets = await NimbleStorage.getRebateWalletsFromIds([mockReserveId]);
                 Helper.assertEqual(1, rebateWallets.length);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[0]);
             })
 
             it("test correct rebate wallet after set new", async() => {
                 let newRebateWallet = accounts[2];
-                await kyberStorage.setRebateWallet(mockReserveId, newRebateWallet, {from: operator});
-                let reserveData = await kyberStorage.getReserveDetailsById(mockReserveId);
+                await NimbleStorage.setRebateWallet(mockReserveId, newRebateWallet, {from: operator});
+                let reserveData = await NimbleStorage.getReserveDetailsById(mockReserveId);
                 Helper.assertEqual(newRebateWallet, reserveData.rebateWallet);
-                let rebateWallets = await kyberStorage.getRebateWalletsFromIds([mockReserveId]);
+                let rebateWallets = await NimbleStorage.getRebateWalletsFromIds([mockReserveId]);
                 Helper.assertEqual(1, rebateWallets.length);
                 Helper.assertEqual(newRebateWallet, rebateWallets[0]);
                 // reset rebate wallet
-                await kyberStorage.setRebateWallet(mockReserveId, mockRebateWallet, {from: operator});
-                reserveData = await kyberStorage.getReserveDetailsById(mockReserveId);
+                await NimbleStorage.setRebateWallet(mockReserveId, mockRebateWallet, {from: operator});
+                reserveData = await NimbleStorage.getReserveDetailsById(mockReserveId);
                 Helper.assertEqual(mockRebateWallet, reserveData.rebateWallet);
             });
 
             it("test rebate wallet == reserve address", async() => {
                 let newReserve = await MockReserve.new();
                 let newReserveId = nwHelper.genReserveID(MOCK_ID, newReserve.address);
-                await kyberStorage.addReserve(newReserve.address, newReserveId, ReserveType.FPR, newReserve.address, {from: operator});
-                let reserveData = await kyberStorage.getReserveDetailsById(newReserveId);
+                await NimbleStorage.addReserve(newReserve.address, newReserveId, ReserveType.FPR, newReserve.address, {from: operator});
+                let reserveData = await NimbleStorage.getReserveDetailsById(newReserveId);
                 Helper.assertEqual(newReserve.address, reserveData.rebateWallet);
-                let rebateWallets = await kyberStorage.getRebateWalletsFromIds([newReserveId]);
+                let rebateWallets = await NimbleStorage.getRebateWalletsFromIds([newReserveId]);
                 Helper.assertEqual(1, rebateWallets.length);
                 Helper.assertEqual(newReserve.address, rebateWallets[0]);
                 // reset the same rebate wallet
-                await kyberStorage.setRebateWallet(newReserveId, newReserve.address, {from: operator});
-                reserveData = await kyberStorage.getReserveDetailsById(newReserveId);
+                await NimbleStorage.setRebateWallet(newReserveId, newReserve.address, {from: operator});
+                reserveData = await NimbleStorage.getReserveDetailsById(newReserveId);
                 Helper.assertEqual(newReserve.address, reserveData.rebateWallet);
             });
 
             it("test get rebate wallets", async() => {
                 // get empty list
-                rebateWallets = await kyberStorage.getRebateWalletsFromIds([]);
+                rebateWallets = await NimbleStorage.getRebateWalletsFromIds([]);
                 Helper.assertEqual(0, rebateWallets.length);
                 // get with 1 id
-                rebateWallets = await kyberStorage.getRebateWalletsFromIds([mockReserveId]);
+                rebateWallets = await NimbleStorage.getRebateWalletsFromIds([mockReserveId]);
                 Helper.assertEqual(1, rebateWallets.length);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[0]);
                 // get with 2 ids
                 let newReserve = await MockReserve.new();
                 let newRebateWallet = accounts[1];
                 let newReserveId = nwHelper.genReserveID(MOCK_ID, newReserve.address);
-                await kyberStorage.addReserve(newReserve.address, newReserveId, ReserveType.FPR, newRebateWallet, {from: operator});
-                rebateWallets = await kyberStorage.getRebateWalletsFromIds([mockReserveId, newReserveId]);
+                await NimbleStorage.addReserve(newReserve.address, newReserveId, ReserveType.FPR, newRebateWallet, {from: operator});
+                rebateWallets = await NimbleStorage.getRebateWalletsFromIds([mockReserveId, newReserveId]);
                 Helper.assertEqual(2, rebateWallets.length);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[0]);
                 Helper.assertEqual(newRebateWallet, rebateWallets[1]);
                 // get with same ids
-                rebateWallets = await kyberStorage.getRebateWalletsFromIds([mockReserveId, mockReserveId]);
+                rebateWallets = await NimbleStorage.getRebateWalletsFromIds([mockReserveId, mockReserveId]);
                 Helper.assertEqual(2, rebateWallets.length);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[0]);
                 Helper.assertEqual(mockRebateWallet, rebateWallets[1]);
@@ -684,7 +684,7 @@ contract('KyberStorage', function(accounts) {
 
             it("test should revert reserve id is 0", async() => {
                 await expectRevert(
-                    kyberStorage.setRebateWallet(nwHelper.ZERO_RESERVE_ID, accounts[0], {from: operator}),
+                    NimbleStorage.setRebateWallet(nwHelper.ZERO_RESERVE_ID, accounts[0], {from: operator}),
                     "reserveId = 0"
                 );
             });
@@ -692,7 +692,7 @@ contract('KyberStorage', function(accounts) {
             it("test should revert rebate wallet is 0", async() => {
                 let newReserveId = nwHelper.genReserveID(MOCK_ID, accounts[0]).toLowerCase();
                 await expectRevert(
-                    kyberStorage.setRebateWallet(newReserveId, zeroAddress, {from: operator}),
+                    NimbleStorage.setRebateWallet(newReserveId, zeroAddress, {from: operator}),
                     "rebate wallet is 0"
                 );
             });
@@ -700,7 +700,7 @@ contract('KyberStorage', function(accounts) {
             it("test should revert reserve id not found", async() => {
                 let newReserveId = nwHelper.genReserveID(MOCK_ID, accounts[0]).toLowerCase();
                 await expectRevert(
-                    kyberStorage.setRebateWallet(newReserveId, accounts[0], {from: operator}),
+                    NimbleStorage.setRebateWallet(newReserveId, accounts[0], {from: operator}),
                     "reserveId not found"
                 );
             });
@@ -709,11 +709,11 @@ contract('KyberStorage', function(accounts) {
                 let newReserve = await MockReserve.new();
                 let newReserveId = nwHelper.genReserveID(MOCK_ID, newReserve.address).toLowerCase();
                 // add reserve
-                await kyberStorage.addReserve(newReserve.address, newReserveId, ReserveType.FPR, accounts[0], {from: operator});
+                await NimbleStorage.addReserve(newReserve.address, newReserveId, ReserveType.FPR, accounts[0], {from: operator});
                 // remove reserve
-                await kyberStorage.removeReserve(newReserveId, 0, {from: operator});
+                await NimbleStorage.removeReserve(newReserveId, 0, {from: operator});
                 await expectRevert(
-                    kyberStorage.setRebateWallet(newReserveId, accounts[0], {from: operator}),
+                    NimbleStorage.setRebateWallet(newReserveId, accounts[0], {from: operator}),
                     "no reserve associated"
                 );
             });
@@ -722,12 +722,12 @@ contract('KyberStorage', function(accounts) {
         
         it("test get reserve method", async() => {
             // setup storage and reserve
-            let kyberStorage = await nwHelper.setupStorage(admin);
-            let network = await KyberNetwork.new(admin, kyberStorage.address);
-            await kyberStorage.addOperator(operator, {from: admin});
-            await kyberStorage.setNetworkContract(network.address, {from: admin});
-            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, true, false, true, {from: admin});
-            await kyberStorage.setEntitledRebatePerReserveType(true, true, true, true, false, true, {from: admin});
+            let NimbleStorage = await nwHelper.setupStorage(admin);
+            let network = await NimbleNetwork.new(admin, NimbleStorage.address);
+            await NimbleStorage.addOperator(operator, {from: admin});
+            await NimbleStorage.setNetworkContract(network.address, {from: admin});
+            await NimbleStorage.setFeeAccountedPerReserveType(true, true, true, true, false, true, {from: admin});
+            await NimbleStorage.setEntitledRebatePerReserveType(true, true, true, true, false, true, {from: admin});
             let reserveTypes = Object.values(ReserveType);
             // ignore ReserveType.NONE
             reserveTypes = reserveTypes.slice(1,);
@@ -750,28 +750,28 @@ contract('KyberStorage', function(accounts) {
                     reserveRebateData.push(resType != ReserveType.CUSTOM);
                     reserveRebateWalletData.push(reserve.address);
                     reserveIdsPerType[resType].push(reserveId);
-                    await kyberStorage.addReserve(reserve.address, reserveId, resType, reserve.address, {from: operator});
-                    assert(await kyberStorage.getReserveId(reserve.address) == reserveId, "unexpected reserveId");
-                    let reserveData = await kyberStorage.getReserveDetailsById(reserveId);
+                    await NimbleStorage.addReserve(reserve.address, reserveId, resType, reserve.address, {from: operator});
+                    assert(await NimbleStorage.getReserveId(reserve.address) == reserveId, "unexpected reserveId");
+                    let reserveData = await NimbleStorage.getReserveDetailsById(reserveId);
                     assert(reserveData.reserveAddress == reserve.address, "unexpected reserve address");
                     assert(reserveData.rebateWallet == reserve.address, "unexpected rebate address");
                     assert(reserveData.resType == resType, "unexpected reserve on chain type");
                     assert(reserveData.isFeeAccountedFlag == (resType != ReserveType.CUSTOM), "unexpected fee accounted flag");
                     assert(reserveData.isEntitledRebateFlag == (resType != ReserveType.CUSTOM), "unexpected entitled rebate flag");
                     // list ethToToken
-                    await kyberStorage.listPairForReserve(reserveId, token.address, true, false, true, {from: operator});
+                    await NimbleStorage.listPairForReserve(reserveId, token.address, true, false, true, {from: operator});
                 }
             }
 
-            Helper.assertEqualArray(await kyberStorage.getReserves(), reserveAddresses, "unexpected reserve addresses");
+            Helper.assertEqualArray(await NimbleStorage.getReserves(), reserveAddresses, "unexpected reserve addresses");
             for (const resType of reserveTypes) {
-                Helper.assertEqualArray(await kyberStorage.getReservesPerType(resType), reserveIdsPerType[resType], "unexpected reserveId");
+                Helper.assertEqualArray(await NimbleStorage.getReservesPerType(resType), reserveIdsPerType[resType], "unexpected reserveId");
             }
-            Helper.assertEqualArray(await kyberStorage.getReserveIdsFromAddresses(reserveAddresses), reserveIds);
-            Helper.assertEqualArray(await kyberStorage.getReserveAddressesFromIds(reserveIds), reserveAddresses);
-            Helper.assertEqualArray(await kyberStorage.getFeeAccountedData(reserveIds), reserveFeeData);
-            Helper.assertEqualArray(await kyberStorage.getEntitledRebateData(reserveIds), reserveRebateData);
-            let feesRebatesAndAddresses = await kyberStorage.getReservesData(reserveIds, ethAddress, token.address);
+            Helper.assertEqualArray(await NimbleStorage.getReserveIdsFromAddresses(reserveAddresses), reserveIds);
+            Helper.assertEqualArray(await NimbleStorage.getReserveAddressesFromIds(reserveIds), reserveAddresses);
+            Helper.assertEqualArray(await NimbleStorage.getFeeAccountedData(reserveIds), reserveFeeData);
+            Helper.assertEqualArray(await NimbleStorage.getEntitledRebateData(reserveIds), reserveRebateData);
+            let feesRebatesAndAddresses = await NimbleStorage.getReservesData(reserveIds, ethAddress, token.address);
             assert(feesRebatesAndAddresses.areAllReservesListed, "reserveIds is invalid for eth to token")
             Helper.assertEqualArray(feesRebatesAndAddresses.feeAccountedArr, reserveFeeData);
             Helper.assertEqualArray(feesRebatesAndAddresses.entitledRebateArr, reserveRebateData);
@@ -780,19 +780,19 @@ contract('KyberStorage', function(accounts) {
     });
 
     describe("test listing token pair and removing reserve", async() => {
-        before("deploy and setup kyberStorage instance & add 2 mock reserves, & 1 mock token", async() => {
-            kyberStorage = await nwHelper.setupStorage(admin);
-            network = await KyberNetwork.new(admin, kyberStorage.address);
-            await kyberStorage.addOperator(operator, {from: admin});
-            await kyberStorage.setNetworkContract(network.address, {from: admin});
-            await kyberStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
-            await kyberStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
+        before("deploy and setup NimbleStorage instance & add 2 mock reserves, & 1 mock token", async() => {
+            NimbleStorage = await nwHelper.setupStorage(admin);
+            network = await NimbleNetwork.new(admin, NimbleStorage.address);
+            await NimbleStorage.addOperator(operator, {from: admin});
+            await NimbleStorage.setNetworkContract(network.address, {from: admin});
+            await NimbleStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
+            await NimbleStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
             //init 2 mock reserve
             let result = await nwHelper.setupReserves(network, [], 2,0,0,0, accounts, admin, operator);
             reserveInstances = result.reserveInstances;
             numReserves = result.numAddedReserves * 1;
             for (const reserve of Object.values(reserveInstances)) {
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                await NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             }
 
             //create token
@@ -801,21 +801,21 @@ contract('KyberStorage', function(accounts) {
 
         afterEach("delist token pair on both sides", async() => {
             for (const reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
+                await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
             }
         });
 
         it("should revert when listing token for non-reserve", async() => {
             let mockReserveId = nwHelper.genReserveID(MOCK_ID, user);
             await expectRevert(
-                kyberStorage.listPairForReserve(mockReserveId, token.address, true, true, true, {from: operator}),
+                NimbleStorage.listPairForReserve(mockReserveId, token.address, true, true, true, {from: operator}),
                 "reserveId not found"
            );
         });
 
         it("should revert when removing non-reserve", async() => {
             await expectRevert(
-                kyberStorage.removeReserve(nwHelper.genReserveID(MOCK_ID, user).toLowerCase(), zeroBN, {from : operator}),
+                NimbleStorage.removeReserve(nwHelper.genReserveID(MOCK_ID, user).toLowerCase(), zeroBN, {from : operator}),
                 "reserveId not found"
            );
         });
@@ -824,31 +824,31 @@ contract('KyberStorage', function(accounts) {
             let anyWallet = accounts[0];
             let mockReserve = await MockReserve.new();
             let mockReserveId = nwHelper.genReserveID(MOCK_ID, mockReserve.address);
-            await kyberStorage.addReserve(mockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
-            await kyberStorage.removeReserve(mockReserveId, 0, {from : operator}),
+            await NimbleStorage.addReserve(mockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
+            await NimbleStorage.removeReserve(mockReserveId, 0, {from : operator}),
             await expectRevert(
-                kyberStorage.removeReserve(mockReserveId, 0, {from : operator}),
+                NimbleStorage.removeReserve(mockReserveId, 0, {from : operator}),
                 "reserve not found"
            );
         });
 
         it("should revert if reserveId is 0 when removing reserve", async() => {
-            kyberNetworkHistory = await KyberHistory.new(admin);
-            kyberFeeHandlerHistory = await KyberHistory.new(admin);
-            kyberDaoHistory = await KyberHistory.new(admin);
-            kyberMatchingEngineHistory = await KyberHistory.new(admin);
+            NimbleNetworkHistory = await NimbleHistory.new(admin);
+            NimbleFeeHandlerHistory = await NimbleHistory.new(admin);
+            NimbleDaoHistory = await NimbleHistory.new(admin);
+            NimbleMatchingEngineHistory = await NimbleHistory.new(admin);
             let mockStorage = await MockStorage.new(
                 admin,
-                kyberNetworkHistory.address,
-                kyberFeeHandlerHistory.address,
-                kyberDaoHistory.address,
-                kyberMatchingEngineHistory.address,
+                NimbleNetworkHistory.address,
+                NimbleFeeHandlerHistory.address,
+                NimbleDaoHistory.address,
+                NimbleMatchingEngineHistory.address,
                 );
-            await kyberNetworkHistory.setStorageContract(mockStorage.address, {from: admin});
-            await kyberFeeHandlerHistory.setStorageContract(mockStorage.address, {from: admin});
-            await kyberDaoHistory.setStorageContract(mockStorage.address, {from: admin});
-            await kyberMatchingEngineHistory.setStorageContract(mockStorage.address, {from: admin});
-            let mockNetwork = await KyberNetwork.new(admin, mockStorage.address);
+            await NimbleNetworkHistory.setStorageContract(mockStorage.address, {from: admin});
+            await NimbleFeeHandlerHistory.setStorageContract(mockStorage.address, {from: admin});
+            await NimbleDaoHistory.setStorageContract(mockStorage.address, {from: admin});
+            await NimbleMatchingEngineHistory.setStorageContract(mockStorage.address, {from: admin});
+            let mockNetwork = await NimbleNetwork.new(admin, mockStorage.address);
             await mockStorage.addOperator(operator, {from: admin});
             await mockStorage.setNetworkContract(mockNetwork.address, {from: admin});
             await mockStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
@@ -865,204 +865,204 @@ contract('KyberStorage', function(accounts) {
         });
 
         it("should have reserveId reset to zero after removal", async() => {
-            await kyberStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
-            let reserveId = await kyberStorage.getReserveId(reserve.address);
+            await NimbleStorage.removeReserve(reserve.reserveId, zeroBN, {from: operator});
+            let reserveId = await NimbleStorage.getReserveId(reserve.address);
             Helper.assertEqual(reserveId, nwHelper.ZERO_RESERVE_ID, "reserve id was not reset to zero");
 
             //reset
-            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+            await NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
         });
 
         it("should list reserves and test get reserve addresses", async() => {
             let reserveAddresses = [];
             for (let reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+                await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
                 reserveAddresses.push(reserve.address);
             }
             // only 1 index
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result.length, 1, "T2E should be listed");
             Helper.assertEqual(result[0], reserveAddresses[0], "T2E should be listed");
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 1, 1);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 1, 1);
             Helper.assertEqual(result.length, 1, "T2E should be listed");
             Helper.assertEqual(result[0], reserveAddresses[1], "T2E should be listed");
             // 2 indices
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 1);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 1);
             Helper.assertEqual(result.length, 2, "T2E should be listed");
             Helper.assertEqual(result[0], reserveAddresses[0], "T2E should be listed");
             Helper.assertEqual(result[1], reserveAddresses[1], "T2E should be listed");
             // end index is big
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 3);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 3);
             Helper.assertEqual(result.length, 2, "T2E should be listed");
             Helper.assertEqual(result[0], reserveAddresses[0], "T2E should be listed");
             Helper.assertEqual(result[1], reserveAddresses[1], "T2E should be listed");
             // start + end indices are big
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 3, 4);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 3, 4);
             Helper.assertEqual(result.length, zeroBN);
             // start index > end index
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 1, 0);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 1, 0);
             Helper.assertEqual(result.length, zeroBN);
             // delist for both side
             for (let reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
+                await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
             }
         });
 
         it("should list E2T side with 2 reserve", async() => {
             let reserveIds = [];
             for (let reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, false, true, {from: operator});
+                await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, false, true, {from: operator});
                 reserveIds.push(reserve.reserveId);
             }
-            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
+            let result = await NimbleStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 1);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 1);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
 
-            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
+            result = await NimbleStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqualArray(result, reserveIds, "E2T should be listed");
 
             for (let reserve of Object.values(reserveInstances)) {
-                result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+                result = await NimbleStorage.getListedTokensByReserveId(reserve.reserveId);
                 Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
                 Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
             };
 
             // delist for both side
             for (let reserve of Object.values(reserveInstances)) {
-                await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
+                await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
             }
         });
 
         it("should list E2T side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, false, true, {from: operator});
-            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, false, true, {from: operator});
+            let result = await NimbleStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 1);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 1);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
 
-            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
+            result = await NimbleStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
 
-            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            result = await NimbleStorage.getListedTokensByReserveId(reserve.reserveId);
             Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
             Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
 
-            result = await kyberStorage.getReservesData([reserve.reserveId], token.address, ethAddress);
+            result = await NimbleStorage.getReservesData([reserve.reserveId], token.address, ethAddress);
             assert(!result.areAllReservesListed, "getReservesData for T2E should not be valid");
-            result = await kyberStorage.getReservesData([reserve.reserveId], ethAddress, token.address);
+            result = await NimbleStorage.getReservesData([reserve.reserveId], ethAddress, token.address);
             assert(result.areAllReservesListed, "getReservesData for E2T should be valid");
         });
 
         it("should list T2E side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, false, true, true, {from: operator});
-            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, false, true, true, {from: operator});
+            let result = await NimbleStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result[0], reserve.address, "T2E should be listed");
 
-            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
+            result = await NimbleStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
 
-            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            result = await NimbleStorage.getListedTokensByReserveId(reserve.reserveId);
             Helper.assertEqual(result.srcTokens[0], token.address, "T2E should be listed");
             Helper.assertEqual(result.destTokens.length, zeroBN, "E2T should not be listed");
 
-            result = await kyberStorage.getReservesData([reserve.reserveId], token.address, ethAddress);
+            result = await NimbleStorage.getReservesData([reserve.reserveId], token.address, ethAddress);
             assert(result.areAllReservesListed, "getReservesData for T2E should be valid");
-            result = await kyberStorage.getReservesData([reserve.reserveId], ethAddress, token.address);
+            result = await NimbleStorage.getReservesData([reserve.reserveId], ethAddress, token.address);
             assert(!result.areAllReservesListed, "getReservesData for E2T should not be valid");
         });
 
         it("should list both T2E and E2T", async() => {
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
-            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            let result = await NimbleStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result[0], reserve.address, "T2E should be listed");
 
-            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
+            result = await NimbleStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
 
-            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            result = await NimbleStorage.getListedTokensByReserveId(reserve.reserveId);
             Helper.assertEqual(result.srcTokens[0], token.address, "T2E should be listed");
             Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
 
-            result = await kyberStorage.getReservesData([reserve.reserveId], ethAddress, token.address);
+            result = await NimbleStorage.getReservesData([reserve.reserveId], ethAddress, token.address);
             assert(result.areAllReservesListed, "getReservesData for E2T should be valid");
-            result = await kyberStorage.getReservesData([reserve.reserveId], token.address, ethAddress);
+            result = await NimbleStorage.getReservesData([reserve.reserveId], token.address, ethAddress);
             assert(result.areAllReservesListed, "getReservesData for T2E should be valid");
         });
 
         it("should delist T2E side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, false, true, false, {from: operator});
-            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, false, true, false, {from: operator});
+            let result = await NimbleStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
 
-            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
+            result = await NimbleStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
 
-            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            result = await NimbleStorage.getListedTokensByReserveId(reserve.reserveId);
             Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
             Helper.assertEqual(result.destTokens[0], token.address, "E2T should be listed");
 
-            result = await kyberStorage.getReservesData([reserve.reserveId], token.address, ethAddress);
+            result = await NimbleStorage.getReservesData([reserve.reserveId], token.address, ethAddress);
             assert(!result.areAllReservesListed, "getReservesData for T2E should not be valid");
-            result = await kyberStorage.getReservesData([reserve.reserveId], ethAddress, token.address);
+            result = await NimbleStorage.getReservesData([reserve.reserveId], ethAddress, token.address);
             assert(result.areAllReservesListed, "getReservesData for E2T should be valid");
         });
 
         it("should delist E2T side only", async() => {
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, false, false, {from: operator});
-            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, false, false, {from: operator});
+            let result = await NimbleStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result[0], reserve.address, "T2E should be listed");
 
-            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
+            result = await NimbleStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
 
-            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            result = await NimbleStorage.getListedTokensByReserveId(reserve.reserveId);
             Helper.assertEqual(result.srcTokens[0], token.address, "T2E should be listed");
             Helper.assertEqual(result.destTokens.length, zeroBN, "E2T should not be listed");
 
-            result = await kyberStorage.getReservesData([reserve.reserveId], token.address, ethAddress);
+            result = await NimbleStorage.getReservesData([reserve.reserveId], token.address, ethAddress);
             assert(result.areAllReservesListed, "getReservesData for T2E should be valid");
-            result = await kyberStorage.getReservesData([reserve.reserveId], ethAddress, token.address);
+            result = await NimbleStorage.getReservesData([reserve.reserveId], ethAddress, token.address);
             assert(!result.areAllReservesListed, "getReservesData for E2T should not be valid");
         });
 
         it("should delist both T2E and E2T", async() => {
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
-            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, false, {from: operator});
+            let result = await NimbleStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result[0], zeroBN, "T2E should not be listed");
 
-            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
+            result = await NimbleStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
 
-            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            result = await NimbleStorage.getListedTokensByReserveId(reserve.reserveId);
             Helper.assertEqual(result.srcTokens.length, zeroBN, "T2E should not be listed");
             Helper.assertEqual(result.destTokens.length, zeroBN, "E2T should not be listed");
         });
 
         it("should revert for listing twice (approving)", async() => {
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator});
             await expectRevert.unspecified(
-                kyberStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator})
+                NimbleStorage.listPairForReserve(reserve.reserveId, token.address, true, true, true, {from: operator})
             )
-            let result = await kyberStorage.getReserveIdsPerTokenSrc(token.address);
+            let result = await NimbleStorage.getReserveIdsPerTokenSrc(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
-            result = await kyberStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
+            result = await NimbleStorage.getReserveAddressesPerTokenSrc(token.address, 0, 0);
             Helper.assertEqual(result[0], reserve.address, "T2E should be listed");
 
-            result = await kyberStorage.getReserveIdsPerTokenDest(token.address);
+            result = await NimbleStorage.getReserveIdsPerTokenDest(token.address);
             Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
         });
 
@@ -1070,10 +1070,10 @@ contract('KyberStorage', function(accounts) {
             let anyWallet = accounts[0];
             let mockReserve = await MockReserve.new();
             let mockReserveId = nwHelper.genReserveID(MOCK_ID, mockReserve.address).toLowerCase();
-            await kyberStorage.addReserve(mockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
-            await kyberStorage.removeReserve(mockReserveId, 0, {from : operator}),
+            await NimbleStorage.addReserve(mockReserve.address, mockReserveId, ReserveType.FPR, anyWallet, {from: operator});
+            await NimbleStorage.removeReserve(mockReserveId, 0, {from : operator}),
             await expectRevert(
-                kyberStorage.listPairForReserve(mockReserveId, token.address, true, true, true, {from: operator}),
+                NimbleStorage.listPairForReserve(mockReserveId, token.address, true, true, true, {from: operator}),
                 "reserve = 0"
            );
         });
@@ -1087,44 +1087,44 @@ contract('KyberStorage', function(accounts) {
             let allTokenAddresses = [token.address, token2.address, token3.address];
             let result;
 
-            await kyberStorage.listPairForReserve(reserve.reserveId, token.address, false, true, true, {from: operator});
-            await kyberStorage.listPairForReserve(reserve.reserveId, token2.address, true, true, true, {from: operator});
-            await kyberStorage.listPairForReserve(reserve.reserveId, token3.address, true, false, true, {from: operator});
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token.address, false, true, true, {from: operator});
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token2.address, true, true, true, {from: operator});
+            await NimbleStorage.listPairForReserve(reserve.reserveId, token3.address, true, false, true, {from: operator});
 
             for (let tokenAdd of Object.values(srcTokenAddresses)) {
-                result = await kyberStorage.getReserveIdsPerTokenSrc(tokenAdd);
+                result = await NimbleStorage.getReserveIdsPerTokenSrc(tokenAdd);
                 Helper.assertEqual(result[0], reserve.reserveId, "T2E should be listed");
             }
 
             for (let tokenAdd of Object.values(destTokenAddresses)) {
-                result = await kyberStorage.getReserveIdsPerTokenDest(tokenAdd);
+                result = await NimbleStorage.getReserveIdsPerTokenDest(tokenAdd);
                 Helper.assertEqual(result[0], reserve.reserveId, "E2T should be listed");
             }
 
-            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            result = await NimbleStorage.getListedTokensByReserveId(reserve.reserveId);
             Helper.assertEqualArray(result.srcTokens, srcTokenAddresses, "src tokens listed not the same");
             Helper.assertEqualArray(result.destTokens, destTokenAddresses, "dest tokens listed not the same");
 
-            await kyberStorage.removeReserve(reserve.reserveId, 0, {from: operator});
+            await NimbleStorage.removeReserve(reserve.reserveId, 0, {from: operator});
 
             for (let tokenAdd of Object.values(allTokenAddresses)) {
-                result = await kyberStorage.getReserveIdsPerTokenSrc(tokenAdd);
+                result = await NimbleStorage.getReserveIdsPerTokenSrc(tokenAdd);
                 Helper.assertEqual(result.length, zeroBN, "T2E should not be listed");
-                result = await kyberStorage.getReserveIdsPerTokenDest(tokenAdd);
+                result = await NimbleStorage.getReserveIdsPerTokenDest(tokenAdd);
                 Helper.assertEqual(result.length, zeroBN, "E2T should not be listed");
             }
-            result = await kyberStorage.getListedTokensByReserveId(reserve.reserveId);
+            result = await NimbleStorage.getListedTokensByReserveId(reserve.reserveId);
             Helper.assertEqual(result.srcTokens.length, zeroBN, "src tokens listed not the same");
             Helper.assertEqual(result.destTokens.length, zeroBN, "dest tokens listed not the same");
 
             // reset
-            await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+            await NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
         });
 
         it("should have reserveId and reserve address removed from reservesPerType and getReserves respectively", async() => {
             // remove all existing reserves
             for (const reserve of Object.values(reserveInstances)) {
-                await kyberStorage.removeReserve(reserve.reserveId, 0, {from : operator});
+                await NimbleStorage.removeReserve(reserve.reserveId, 0, {from : operator});
             }
 
             // add reserve for each type
@@ -1141,24 +1141,24 @@ contract('KyberStorage', function(accounts) {
                 mockReserves.push(mockReserve.address);
                 mockReserveId = nwHelper.genReserveID(MOCK_ID, mockReserve.address);
                 mockReserveIds.push(mockReserveId);
-                await kyberStorage.addReserve(mockReserve.address, mockReserveId, resType, anyWallet, {from: operator});
-                Helper.assertEqualArray(await kyberStorage.getReservesPerType(resType), [mockReserveId.toLowerCase()], "reserves per type not equal");
+                await NimbleStorage.addReserve(mockReserve.address, mockReserveId, resType, anyWallet, {from: operator});
+                Helper.assertEqualArray(await NimbleStorage.getReservesPerType(resType), [mockReserveId.toLowerCase()], "reserves per type not equal");
             }
 
-            let allReserves = await kyberStorage.getReserves();
+            let allReserves = await NimbleStorage.getReserves();
             Helper.assertEqualArray(allReserves, mockReserves, "all reserves not equal");
 
             // remove each reserve
             for (let i = reserveTypes.length - 1; i >= 0; i--) {
                 allReserves.pop();
-                await kyberStorage.removeReserve(mockReserveIds[i], 0, {from: operator});
-                Helper.assertEqualArray(await kyberStorage.getReserves(), allReserves, "reserves not equal");
-                Helper.assertEqual((await kyberStorage.getReservesPerType(reserveTypes[i])).length, zeroBN, "reserves per type not equal");
+                await NimbleStorage.removeReserve(mockReserveIds[i], 0, {from: operator});
+                Helper.assertEqualArray(await NimbleStorage.getReserves(), allReserves, "reserves not equal");
+                Helper.assertEqual((await NimbleStorage.getReservesPerType(reserveTypes[i])).length, zeroBN, "reserves per type not equal");
             }
 
             // reset
             for (const reserve of Object.values(reserveInstances)) {
-                await kyberStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
+                await NimbleStorage.addReserve(reserve.address, reserve.reserveId, reserve.onChainType, reserve.rebateWallet, {from: operator});
             }
         });
     });
@@ -1167,7 +1167,7 @@ contract('KyberStorage', function(accounts) {
     describe("test onlyAdmin and onlyOperator permissions", async() => {
         before("deploy storage instance, 1 mock reserve and 1 mock token", async() => {
             storage = await nwHelper.setupStorage(admin);
-            network = await KyberNetwork.new(admin, storage.address);
+            network = await NimbleNetwork.new(admin, storage.address);
             await storage.addOperator(operator, {from: admin});
             await storage.setNetworkContract(network.address, {from:admin});
             token = await TestToken.new("test", "tst", 18);
@@ -1252,7 +1252,7 @@ contract('KyberStorage', function(accounts) {
         let tempNetwork;
         before("deploy and setup matchingEngine instance & 1 mock reserve", async() => {
             tempStorage = await nwHelper.setupStorage(admin);
-            tempNetwork = await KyberNetwork.new(admin, tempStorage.address);
+            tempNetwork = await NimbleNetwork.new(admin, tempStorage.address);
             await tempStorage.addOperator(operator, {from: admin});
             await tempStorage.setNetworkContract(tempNetwork.address, {from: admin});
 
@@ -1290,7 +1290,7 @@ contract('KyberStorage', function(accounts) {
             it("should revert when rebate is 0", async() => {
                 let newReserve = await MockReserve.new();
                 await expectRevert(
-                    kyberStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, zeroAddress, {from: operator}),
+                    NimbleStorage.addReserve(newReserve.address, reserve.reserveId, reserve.onChainType, zeroAddress, {from: operator}),
                     "rebate wallet is 0"
                 );
             });
@@ -1327,7 +1327,7 @@ contract('KyberStorage', function(accounts) {
 
         before("setup matchingEngine instance reserve per each reserve type", async() => {
             storage = await nwHelper.setupStorage(admin);
-            network = await KyberNetwork.new(admin, storage.address);
+            network = await NimbleNetwork.new(admin, storage.address);
             await storage.addOperator(operator, {from: admin});
             await storage.setNetworkContract(network.address, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
@@ -1405,7 +1405,7 @@ contract('KyberStorage', function(accounts) {
 
         before("setup matchingEngine instance", async() => {
             storage = await nwHelper.setupStorage(admin);
-            network = await KyberNetwork.new(admin, storage.address);
+            network = await NimbleNetwork.new(admin, storage.address);
             await storage.setNetworkContract(network.address, {from: admin});
             await storage.addOperator(operator, {from: admin});
         });

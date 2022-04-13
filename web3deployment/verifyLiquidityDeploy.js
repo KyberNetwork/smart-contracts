@@ -7,7 +7,7 @@ const RLP = require('rlp');
 const BigNumber = require('bignumber.js');
 
 const mainnetUrls = ['https://mainnet.infura.io',
-                     'https://semi-node.kyber.network',
+                     'https://semi-node.Nimble.network',
                      'https://api.mycryptoapi.com/eth',
                      'https://api.myetherapi.com/eth',
                      'https://mew.giveth.io/'];
@@ -48,8 +48,8 @@ const input = {
   "SanityRatesInterface.sol" : fs.readFileSync(contractPath + 'SanityRatesInterface.sol', 'utf8'),
   "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-  "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
-  "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
+  "NimbleReserve.sol" : fs.readFileSync(contractPath + 'NimbleReserve.sol', 'utf8'),
+  "NimbleReserveInterface.sol" : fs.readFileSync(contractPath + 'NimbleReserveInterface.sol', 'utf8'),
 };
 
 let solcOutput;
@@ -103,7 +103,7 @@ async function readReserve(reserveAdd){
     if (needReadReserveABI == 1) {
         needReadReserveABI = 0;
         try {
-            let abi = solcOutput.contracts["KyberReserve.sol:KyberReserve"].interface;
+            let abi = solcOutput.contracts["NimbleReserve.sol:NimbleReserve"].interface;
             reserveABI = JSON.parse(abi);
         } catch (e) {
             myLog(0, 0, e);
@@ -113,7 +113,7 @@ async function readReserve(reserveAdd){
 
     let Reserve = await new web3.eth.Contract(reserveABI, reserveAdd);
 
-    let abi = solcOutput.contracts["KyberReserve.sol:KyberReserve"].interface;
+    let abi = solcOutput.contracts["NimbleReserve.sol:NimbleReserve"].interface;
     ExpectedRate = await new web3.eth.Contract(JSON.parse(abi), reserveAdd);
 
     myLog(0, 0, '');
@@ -124,7 +124,7 @@ async function readReserve(reserveAdd){
 
     //verify binary as expected.
     let blockCode = await web3.eth.getCode(reserveAdd);
-    let solcCode = '0x' + (solcOutput.contracts["KyberReserve.sol:KyberReserve"].runtimeBytecode);
+    let solcCode = '0x' + (solcOutput.contracts["NimbleReserve.sol:NimbleReserve"].runtimeBytecode);
 
     if (blockCode != solcCode){
 //        myLog(1, 0, "blockchain Code:");
@@ -381,8 +381,8 @@ async function readDeploymentJSON(filePath) {
 
 
     address = (json["network"]).toLowerCase();
-    addressesToNames[address] = "kyber-network";
-    kyberNetworkAdd = address;
+    addressesToNames[address] = "Nimble-network";
+    NimbleNetworkAdd = address;
 
     address = (json["reserve"]).toLowerCase();
     addressesToNames[address] = "reserve";
@@ -457,7 +457,7 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     tokenSymbolToAddress[symbol] = address;
     jsonTokenList.push(address);
     if (internalUse == true) {
-        jsonKyberTokenList.push(address);
+        jsonNimbleTokenList.push(address);
     }
     decimalsPerToken[address] = decimals;
 

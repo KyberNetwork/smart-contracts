@@ -3,33 +3,33 @@ pragma solidity 0.6.6;
 import "./utils/WithdrawableNoModifiers.sol";
 import "./utils/Utils5.sol";
 import "./utils/zeppelin/SafeERC20.sol";
-import "./IKyberNetwork.sol";
-import "./IKyberNetworkProxy.sol";
-import "./ISimpleKyberProxy.sol";
-import "./IKyberHint.sol";
+import "./INimbleNetwork.sol";
+import "./INimbleNetworkProxy.sol";
+import "./ISimpleNimbleProxy.sol";
+import "./INimbleHint.sol";
 
 
 /**
- *   @title kyberProxy for kyberNetwork contract
+ *   @title NimbleProxy for NimbleNetwork contract
  *   The contract provides the following functions:
  *   - Get rates
  *   - Trade execution
  *   - Simple T2E, E2T and T2T trade APIs
  *   - Has some checks in place to safeguard takers
  */
-contract KyberNetworkProxy is
-    IKyberNetworkProxy,
-    ISimpleKyberProxy,
+contract NimbleNetworkProxy is
+    INimbleNetworkProxy,
+    ISimpleNimbleProxy,
     WithdrawableNoModifiers,
     Utils5
 {
     using SafeERC20 for IERC20;
 
-    IKyberNetwork public kyberNetwork;
-    IKyberHint public kyberHintHandler; // kyberHintHhandler pointer for users.
+    INimbleNetwork public NimbleNetwork;
+    INimbleHint public NimbleHintHandler; // NimbleHintHhandler pointer for users.
 
-    event KyberNetworkSet(IKyberNetwork newKyberNetwork, IKyberNetwork previousKyberNetwork);
-    event KyberHintHandlerSet(IKyberHint kyberHintHandler);
+    event NimbleNetworkSet(INimbleNetwork newNimbleNetwork, INimbleNetwork previousNimbleNetwork);
+    event NimbleHintHandlerSet(INimbleHint NimbleHintHandler);
 
     constructor(address _admin) public WithdrawableNoModifiers(_admin) {
         /*empty body*/
@@ -224,20 +224,20 @@ contract KyberNetworkProxy is
             );
     }
 
-    function setKyberNetwork(IKyberNetwork _kyberNetwork) external {
+    function setNimbleNetwork(INimbleNetwork _NimbleNetwork) external {
         onlyAdmin();
-        require(_kyberNetwork != IKyberNetwork(0), "kyberNetwork 0");
-        emit KyberNetworkSet(_kyberNetwork, kyberNetwork);
+        require(_NimbleNetwork != INimbleNetwork(0), "NimbleNetwork 0");
+        emit NimbleNetworkSet(_NimbleNetwork, NimbleNetwork);
 
-        kyberNetwork = _kyberNetwork;
+        NimbleNetwork = _NimbleNetwork;
     }
 
-    function setHintHandler(IKyberHint _kyberHintHandler) external {
+    function setHintHandler(INimbleHint _NimbleHintHandler) external {
         onlyAdmin();
-        require(_kyberHintHandler != IKyberHint(0), "kyberHintHandler 0");
-        emit KyberHintHandlerSet(_kyberHintHandler);
+        require(_NimbleHintHandler != INimbleHint(0), "NimbleHintHandler 0");
+        emit NimbleHintHandlerSet(_NimbleHintHandler);
 
-        kyberHintHandler = _kyberHintHandler;
+        NimbleHintHandler = _NimbleHintHandler;
     }
 
     /// @notice Backward compatible function
@@ -255,7 +255,7 @@ contract KyberNetworkProxy is
         uint256 srcQty
     ) external view override returns (uint256 expectedRate, uint256 worstRate) {
         bytes memory hint;
-        (expectedRate, ) = kyberNetwork.getExpectedRateWithHintAndFee(
+        (expectedRate, ) = NimbleNetwork.getExpectedRateWithHintAndFee(
             src,
             dest,
             srcQty,
@@ -282,7 +282,7 @@ contract KyberNetworkProxy is
         uint256 platformFeeBps,
         bytes calldata hint
     ) external view override returns (uint256 expectedRate) {
-        (, expectedRate) = kyberNetwork.getExpectedRateWithHintAndFee(
+        (, expectedRate) = NimbleNetwork.getExpectedRateWithHintAndFee(
             src,
             dest,
             srcQty,
@@ -292,11 +292,11 @@ contract KyberNetworkProxy is
     }
 
     function maxGasPrice() external view returns (uint256) {
-        return kyberNetwork.maxGasPrice();
+        return NimbleNetwork.maxGasPrice();
     }
 
     function enabled() external view returns (bool) {
-        return kyberNetwork.enabled();
+        return NimbleNetwork.enabled();
     }
 
     /// helper structure for function doTrade
@@ -318,7 +318,7 @@ contract KyberNetworkProxy is
     ) internal returns (uint256) {
         UserBalance memory balanceBefore = prepareTrade(src, dest, srcAmount, destAddress);
 
-        uint256 reportedDestAmount = kyberNetwork.tradeWithHintAndFee{value: msg.value}(
+        uint256 reportedDestAmount = NimbleNetwork.tradeWithHintAndFee{value: msg.value}(
             msg.sender,
             src,
             srcAmount,
@@ -340,7 +340,7 @@ contract KyberNetworkProxy is
 
         require(
             tradeOutcome.userDeltaDestToken == reportedDestAmount,
-            "kyberNetwork returned wrong amount"
+            "NimbleNetwork returned wrong amount"
         );
         require(
             tradeOutcome.userDeltaDestToken <= maxDestAmount,
@@ -387,7 +387,7 @@ contract KyberNetworkProxy is
         if (src == ETH_TOKEN_ADDRESS) {
             balanceBefore.srcTok += msg.value;
         } else {
-            src.safeTransferFrom(msg.sender, address(kyberNetwork), srcAmount);
+            src.safeTransferFrom(msg.sender, address(NimbleNetwork), srcAmount);
         }
     }
 

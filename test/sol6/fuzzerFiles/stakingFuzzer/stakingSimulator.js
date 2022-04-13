@@ -26,29 +26,29 @@ let noActionRuns = 0;
 
 // use this for Dao simulator
 module.exports.genPerformStakingAction = async function(
-    kyberStaking, NUM_RUNS, currentLoopNum, kncToken, stakers, epochPeriod
+    NimbleStaking, NUM_RUNS, currentLoopNum, kncToken, stakers, epochPeriod
 ) {
     let operation = StakeGenerator.genNextOp(currentLoopNum, NUM_RUNS);
     switch(operation) {
         case DEPOSIT:
             result = await StakeGenerator.genDeposit(kncToken, stakers);
-            result.dAddress = await kyberStaking.getLatestRepresentative(result.staker);
+            result.dAddress = await NimbleStaking.getLatestRepresentative(result.staker);
             logger.debug(result.msg);
             logger.debug(`Deposit: staker ${result.staker}, amount: ${result.amount}`);
-            await executeDeposit(kyberStaking, result, epochPeriod);
+            await executeDeposit(NimbleStaking, result, epochPeriod);
             break;
         case DELEGATE:
             result = await StakeGenerator.genDelegate(stakers);
             logger.debug(result.msg);
             logger.debug(`Delegate: staker ${result.staker}, address: ${result.dAddress}`);
-            await executeDelegate(kyberStaking, result, epochPeriod);
+            await executeDelegate(NimbleStaking, result, epochPeriod);
             break;
         case WITHDRAW:
-            result = await StakeGenerator.genWithdraw(kyberStaking, stakers);
-            result.dAddress = await kyberStaking.getLatestRepresentative(result.staker);
+            result = await StakeGenerator.genWithdraw(NimbleStaking, stakers);
+            result.dAddress = await NimbleStaking.getLatestRepresentative(result.staker);
             logger.debug(result.msg);
             logger.debug(`Withdrawal: staker ${result.staker}, amount: ${result.amount}`);
-            await executeWithdraw(kyberStaking, result, epochPeriod);
+            await executeWithdraw(NimbleStaking, result, epochPeriod);
         case NO_ACTION:
             logger.debug("no action in epoch period...");
             await executeNoAction(epochPeriod);
@@ -60,7 +60,7 @@ module.exports.genPerformStakingAction = async function(
 }
 
 module.exports.doFuzzStakeTests = async function(
-    kyberStaking, NUM_RUNS, kncToken, stakers, epochPeriod
+    NimbleStaking, NUM_RUNS, kncToken, stakers, epochPeriod
 ) {
     let result;
     let validity;
@@ -74,10 +74,10 @@ module.exports.doFuzzStakeTests = async function(
         switch(operation) {
             case DEPOSIT:
                 result = await StakeGenerator.genDeposit(kncToken, stakers);
-                result.dAddress = await kyberStaking.getLatestRepresentative(result.staker);
+                result.dAddress = await NimbleStaking.getLatestRepresentative(result.staker);
                 logger.debug(result.msg);
                 logger.debug(`Deposit: staker ${result.staker}, amount: ${result.amount}`);
-                validity = await executeAndVerifyDepositInvariants(kyberStaking, result, epochPeriod);
+                validity = await executeAndVerifyDepositInvariants(NimbleStaking, result, epochPeriod);
                 depositRuns = logResult(validity, depositRuns);
                 break;
 
@@ -85,24 +85,24 @@ module.exports.doFuzzStakeTests = async function(
                 result = await StakeGenerator.genDelegate(stakers);
                 logger.debug(result.msg);
                 logger.debug(`Delegate: staker ${result.staker}, address: ${result.dAddress}`);
-                validity = await executeAndVerifyDelegateInvariants(kyberStaking, result, epochPeriod);
+                validity = await executeAndVerifyDelegateInvariants(NimbleStaking, result, epochPeriod);
                 delegateRuns = logResult(validity, delegateRuns);
                 break;
 
             case WITHDRAW:
-                result = await StakeGenerator.genWithdraw(kyberStaking, stakers);
-                result.dAddress = await kyberStaking.getLatestRepresentative(result.staker);
+                result = await StakeGenerator.genWithdraw(NimbleStaking, stakers);
+                result.dAddress = await NimbleStaking.getLatestRepresentative(result.staker);
                 logger.debug(result.msg);
                 logger.debug(`Withdrawal: staker ${result.staker}, amount: ${result.amount}`);
-                validity = await executeAndVerifyWithdrawInvariants(kyberStaking, result, epochPeriod);
+                validity = await executeAndVerifyWithdrawInvariants(NimbleStaking, result, epochPeriod);
                 withdrawRuns = logResult(validity, withdrawRuns);
                 break;
 
             case NO_ACTION:
                 result = await StakeGenerator.genNoAction(stakers);
-                result.dAddress = await kyberStaking.getLatestRepresentative(result.staker);
+                result.dAddress = await NimbleStaking.getLatestRepresentative(result.staker);
                 logger.debug("no action in epoch period...");
-                validity = await executeAndVerifyNoActionInvariants(kyberStaking, result, epochPeriod);
+                validity = await executeAndVerifyNoActionInvariants(NimbleStaking, result, epochPeriod);
                 noActionRuns = logResult(validity, noActionRuns);
                 break;
             default:
@@ -121,13 +121,13 @@ module.exports.doFuzzStakeTests = async function(
     logger.info(`No action runs: ${noActionRuns}`);
 }
 
-async function executeAndVerifyDepositInvariants(kyberStaking, result, epochPeriod) {
-    let initState = await getState(kyberStaking, result, null);
+async function executeAndVerifyDepositInvariants(NimbleStaking, result, epochPeriod) {
+    let initState = await getState(NimbleStaking, result, null);
     
     // do deposit
-    await executeDeposit(kyberStaking, result, epochPeriod);
+    await executeDeposit(NimbleStaking, result, epochPeriod);
 
-    let newState = await getState(kyberStaking, result, initState.oldRepAddress);
+    let newState = await getState(NimbleStaking, result, initState.oldRepAddress);
     let isValid = await verifyDepositChanges(initState, newState, result);
     return {
         isValid: isValid,
@@ -135,12 +135,12 @@ async function executeAndVerifyDepositInvariants(kyberStaking, result, epochPeri
     }
 }
 
-async function executeDeposit(kyberStaking, result, epochPeriod) {
+async function executeDeposit(NimbleStaking, result, epochPeriod) {
     let currentBlockTime = await Helper.getCurrentBlockTime();
     await Helper.setNextBlockTimestamp(currentBlockTime + Helper.getRandomInt(5, epochPeriod.toNumber() / 5));
     if (result.isValid) {
         try {
-            await kyberStaking.deposit(result.amount, {from: result.staker});
+            await NimbleStaking.deposit(result.amount, {from: result.staker});
         } catch(e) {
             logger.debug('Valid deposit, but failed');
             logger.debug(e);
@@ -149,25 +149,25 @@ async function executeDeposit(kyberStaking, result, epochPeriod) {
     } else {
         if (result.revertMsg != '') {
             await expectRevert(
-                kyberStaking.deposit(result.amount, {from: result.staker}),
+                NimbleStaking.deposit(result.amount, {from: result.staker}),
                 result.revertMsg
             );
         } else {
             await expectRevert.unspecified(
-                kyberStaking.deposit(result.amount, {from: result.staker})
+                NimbleStaking.deposit(result.amount, {from: result.staker})
             );
         }
     }
 }
 
-async function executeAndVerifyDelegateInvariants(kyberStaking, result, epochPeriod) {
-    let oldRepAddress = await kyberStaking.getLatestRepresentative(result.staker);
-    let initState = await getState(kyberStaking, result, oldRepAddress);
+async function executeAndVerifyDelegateInvariants(NimbleStaking, result, epochPeriod) {
+    let oldRepAddress = await NimbleStaking.getLatestRepresentative(result.staker);
+    let initState = await getState(NimbleStaking, result, oldRepAddress);
     
     // execute delegate
-    await executeDelegate(kyberStaking, result, epochPeriod);
+    await executeDelegate(NimbleStaking, result, epochPeriod);
 
-    let newState = await getState(kyberStaking, result, oldRepAddress);
+    let newState = await getState(NimbleStaking, result, oldRepAddress);
     let isValid = await verifyDelegateChanges(initState, newState, result);
     return {
         isValid: isValid,
@@ -175,28 +175,28 @@ async function executeAndVerifyDelegateInvariants(kyberStaking, result, epochPer
     }
 }
 
-async function executeDelegate(kyberStaking, result, epochPeriod) {
+async function executeDelegate(NimbleStaking, result, epochPeriod) {
     let currentBlockTime = await Helper.getCurrentBlockTime();
     await Helper.setNextBlockTimestamp(currentBlockTime + Helper.getRandomInt(5, epochPeriod.toNumber() / 5));
 
     // do delegate
     if (result.dAddress == zeroAddress) {
         await expectRevert(
-            kyberStaking.delegate(result.dAddress, {from: result.staker}),
+            NimbleStaking.delegate(result.dAddress, {from: result.staker}),
             "delegate: representative 0"
         );
     } else {
-        await kyberStaking.delegate(result.dAddress, {from: result.staker});
+        await NimbleStaking.delegate(result.dAddress, {from: result.staker});
     }
 }
 
-async function executeAndVerifyWithdrawInvariants(kyberStaking, result, epochPeriod) {
-    let oldRepAddress = await kyberStaking.getRepresentative(result.staker, await kyberStaking.getCurrentEpochNumber());
-    let initState = await getState(kyberStaking, result, oldRepAddress);
+async function executeAndVerifyWithdrawInvariants(NimbleStaking, result, epochPeriod) {
+    let oldRepAddress = await NimbleStaking.getRepresentative(result.staker, await NimbleStaking.getCurrentEpochNumber());
+    let initState = await getState(NimbleStaking, result, oldRepAddress);
 
-    await executeWithdraw(kyberStaking, result, epochPeriod);
+    await executeWithdraw(NimbleStaking, result, epochPeriod);
 
-    let newState = await getState(kyberStaking, result, initState.oldRepAddress);
+    let newState = await getState(NimbleStaking, result, initState.oldRepAddress);
     let isValid = await verifyWithdrawChanges(initState, newState, result);
     return {
         isValid: isValid,
@@ -204,30 +204,30 @@ async function executeAndVerifyWithdrawInvariants(kyberStaking, result, epochPer
     }
 }
 
-async function executeWithdraw(kyberStaking, result, epochPeriod) {
+async function executeWithdraw(NimbleStaking, result, epochPeriod) {
     let currentBlockTime = await Helper.getCurrentBlockTime();
     await Helper.setNextBlockTimestamp(currentBlockTime + Helper.getRandomInt(5, epochPeriod.toNumber() / 5));
     if (result.isValid) {
         try {
-            await kyberStaking.withdraw(result.amount, {from: result.staker});
+            await NimbleStaking.withdraw(result.amount, {from: result.staker});
         } catch(e) {
             logger.debug('Valid withdrawal, but failed');
             logger.debug(e);
         }
     } else {
         await expectRevert(
-            kyberStaking.withdraw(result.amount, {from: result.staker}),
+            NimbleStaking.withdraw(result.amount, {from: result.staker}),
             result.revertMsg
         );
     }
 }
 
-async function executeAndVerifyNoActionInvariants(kyberStaking, result, epochPeriod) {
-    let initState = await getState(kyberStaking, result, null);
+async function executeAndVerifyNoActionInvariants(NimbleStaking, result, epochPeriod) {
+    let initState = await getState(NimbleStaking, result, null);
 
     await executeNoAction(epochPeriod);
 
-    let newState = await getState(kyberStaking, result, initState.oldRepAddress);
+    let newState = await getState(NimbleStaking, result, initState.oldRepAddress);
     return {
         isValid: true,
         states: {'initState': initState, 'newState': newState}
@@ -242,38 +242,38 @@ async function executeNoAction(epochPeriod) {
     );
 }
 
-async function getState(kyberStaking, result, oldRepAddress) {
+async function getState(NimbleStaking, result, oldRepAddress) {
     let res = {
         'staker': {},
         'oldRep': {},
         'newRep': {}
     };
-    let currEpochNum = await kyberStaking.getCurrentEpochNumber();
+    let currEpochNum = await NimbleStaking.getCurrentEpochNumber();
     res.epochNum = currEpochNum;
     let nextEpochNum = currEpochNum.add(new BN(1));;
     
-    res.staker.dataCurEpoch = await getStakerDataForEpoch(kyberStaking, result.staker, currEpochNum);
+    res.staker.dataCurEpoch = await getStakerDataForEpoch(NimbleStaking, result.staker, currEpochNum);
     res.oldRepAddress = (oldRepAddress == undefined) ?
-        (await kyberStaking.getRepresentative(result.staker, currEpochNum)) :
+        (await NimbleStaking.getRepresentative(result.staker, currEpochNum)) :
         oldRepAddress;
     res.newRepAddress = result.dAddress;
 
-    res.oldRep.dataCurEpoch = await getStakerDataForEpoch(kyberStaking, res.oldRepAddress, currEpochNum);
-    res.newRep.dataCurEpoch = await getStakerDataForEpoch(kyberStaking, res.newRepAddress, currEpochNum);
+    res.oldRep.dataCurEpoch = await getStakerDataForEpoch(NimbleStaking, res.oldRepAddress, currEpochNum);
+    res.newRep.dataCurEpoch = await getStakerDataForEpoch(NimbleStaking, res.newRepAddress, currEpochNum);
 
-    res.staker.dataNextEpoch = await getStakerDataForEpoch(kyberStaking, result.staker, nextEpochNum);
-    res.oldRep.dataNextEpoch = await getStakerDataForEpoch(kyberStaking, res.oldRepAddress, nextEpochNum);
-    res.newRep.dataNextEpoch = await getStakerDataForEpoch(kyberStaking, res.newRepAddress, nextEpochNum);
+    res.staker.dataNextEpoch = await getStakerDataForEpoch(NimbleStaking, result.staker, nextEpochNum);
+    res.oldRep.dataNextEpoch = await getStakerDataForEpoch(NimbleStaking, res.oldRepAddress, nextEpochNum);
+    res.newRep.dataNextEpoch = await getStakerDataForEpoch(NimbleStaking, res.newRepAddress, nextEpochNum);
 
-    res.staker.latestData = await getLatestStakeData(kyberStaking, result.staker);
-    res.oldRep.latestData = await getLatestStakeData(kyberStaking, res.oldRepAddress);
-    res.newRep.latestData = await getLatestStakeData(kyberStaking, res.newRepAddress);
+    res.staker.latestData = await getLatestStakeData(NimbleStaking, result.staker);
+    res.oldRep.latestData = await getLatestStakeData(NimbleStaking, res.oldRepAddress);
+    res.newRep.latestData = await getLatestStakeData(NimbleStaking, res.newRepAddress);
 
     return res;
 }
 
-async function getStakerDataForEpoch(kyberStaking, staker, epochNum) {
-    let res = await kyberStaking.getStakerData(staker, epochNum);
+async function getStakerDataForEpoch(NimbleStaking, staker, epochNum) {
+    let res = await NimbleStaking.getStakerData(staker, epochNum);
     res.dStake = res.delegatedStake;
     res.dAddress = res.representative;
     delete res.delegatedStake;
@@ -281,15 +281,15 @@ async function getStakerDataForEpoch(kyberStaking, staker, epochNum) {
     return res;
 }
 
-async function getLatestStakeData(kyberStaking, address) {
+async function getLatestStakeData(NimbleStaking, address) {
     let res = {
         'stake': zeroBN,
         'dStake': zeroBN,
         'dAddress': zeroAddress
     }
-    res.stake = await kyberStaking.getLatestStakeBalance(address);
-    res.dStake = await kyberStaking.getLatestDelegatedStake(address);
-    res.dAddress = await kyberStaking.getLatestRepresentative(address);
+    res.stake = await NimbleStaking.getLatestStakeBalance(address);
+    res.dStake = await NimbleStaking.getLatestDelegatedStake(address);
+    res.dAddress = await NimbleStaking.getLatestRepresentative(address);
     return res;
 }
 

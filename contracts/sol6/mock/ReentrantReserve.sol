@@ -1,16 +1,16 @@
 pragma solidity 0.6.6;
 
-import "../IKyberReserve.sol";
+import "../INimbleReserve.sol";
 import "../utils/Utils5.sol";
 import "../utils/zeppelin/SafeERC20.sol";
-import "../IKyberNetwork.sol";
+import "../INimbleNetwork.sol";
 
 
-contract ReentrantReserve is IKyberReserve, Utils5 {
+contract ReentrantReserve is INimbleReserve, Utils5 {
     using SafeERC20 for IERC20;
 
     mapping(address => uint256) public buyTokenRates;
-    IKyberNetwork network;
+    INimbleNetwork network;
     address payable scammer;
     IERC20 public scamToken;
 
@@ -72,7 +72,7 @@ contract ReentrantReserve is IKyberReserve, Utils5 {
         scamToken = _token;
     }
 
-    function setNetwork(IKyberNetwork _network) public {
+    function setNetwork(INimbleNetwork _network) public {
         network = _network;
     }
 

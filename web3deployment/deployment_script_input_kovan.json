@@ -9,7 +9,7 @@
             "maxTotalImbalance" : "180000000000000000000"
         },
         "KNC": {
-            "name": "KyberNetwork",
+            "name": "NimbleNetwork",
             "decimals": 18,
             "address": "0xB2f3dD487708ca7794f633D9Df57Fdb9347a7afF",
             "minimalRecordResolution" : "1000000000000000",
@@ -51,11 +51,11 @@
             "EOS" :  "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547"}
     },
     "permission" : {
-        "KyberNetwork" : {
+        "NimbleNetwork" : {
             "admin" : "0x7985405a348baa90c92164b86b383c8f43ad2d96",
             "operator" : ["0x7985405a348baa90c92164b86b383c8f43ad2d96"],
             "alerter" : []},
-        "KyberReserve" : {
+        "NimbleReserve" : {
             "admin" : "0x7985405a348baa90c92164b86b383c8f43ad2d96",
             "operator" : ["0x7985405a348baa90c92164b86b383c8f43ad2d96"],
             "alerter" : []},

@@ -125,7 +125,7 @@ async function main() {
 
     let kncToken = {};
     kncToken.symbol = "KNC";
-    kncToken.name = "KyberNetwork";
+    kncToken.name = "NimbleNetwork";
     kncToken.decimals = 18;
     await deployToken(kncToken);
 

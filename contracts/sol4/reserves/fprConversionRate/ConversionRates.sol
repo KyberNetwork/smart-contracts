@@ -25,7 +25,7 @@ contract ConversionRates is ConversionRatesInterface, VolumeImbalanceRecorder, U
 
         // rate data. base and changes according to quantity and reserve balance.
         // generally speaking. Sell rate is 1 / buy rate i.e. the buy in the other direction.
-        uint baseBuyRate;  // in PRECISION units. see KyberConstants
+        uint baseBuyRate;  // in PRECISION units. see NimbleConstants
         uint baseSellRate; // PRECISION units. without (sell / buy) spread it is 1 / baseBuyRate
         StepFunction buyRateQtyStepFunction; // in bps. higher quantity - bigger the rate.
         StepFunction sellRateQtyStepFunction;// in bps. higher the qua

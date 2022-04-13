@@ -3,7 +3,7 @@ pragma solidity 0.6.6;
 import "./IERC20.sol";
 
 
-interface IKyberReserve {
+interface INimbleReserve {
     function trade(
         IERC20 srcToken,
         uint256 srcAmount,

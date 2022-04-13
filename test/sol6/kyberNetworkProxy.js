@@ -1,15 +1,15 @@
 const TestToken = artifacts.require("Token.sol");
 const TestTokenNotReturn = artifacts.require("TestTokenNotReturn.sol");
-const MockDao = artifacts.require("MockKyberDao.sol");
-const KyberNetwork = artifacts.require("KyberNetwork.sol");
-const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
-const FeeHandler = artifacts.require("KyberFeeHandler.sol");
-const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
-const KyberStorage = artifacts.require("KyberStorage.sol");
-const RateHelper = artifacts.require("KyberRateHelper.sol");
-const GenerousNetwork = artifacts.require("GenerousKyberNetwork.sol");
-const GenerousNetwork2 = artifacts.require("GenerousKyberNetwork2.sol");
-const MaliciousNetwork = artifacts.require("MaliciousKyberNetwork.sol");
+const MockDao = artifacts.require("MockNimbleDao.sol");
+const NimbleNetwork = artifacts.require("NimbleNetwork.sol");
+const NimbleNetworkProxy = artifacts.require("NimbleNetworkProxy.sol");
+const FeeHandler = artifacts.require("NimbleFeeHandler.sol");
+const MatchingEngine = artifacts.require("NimbleMatchingEngine.sol");
+const NimbleStorage = artifacts.require("NimbleStorage.sol");
+const RateHelper = artifacts.require("NimbleRateHelper.sol");
+const GenerousNetwork = artifacts.require("GenerousNimbleNetwork.sol");
+const GenerousNetwork2 = artifacts.require("GenerousNimbleNetwork2.sol");
+const MaliciousNetwork = artifacts.require("MaliciousNimbleNetwork.sol");
 const MockTrader = artifacts.require("MockTrader.sol");
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -38,7 +38,7 @@ let networkProxy;
 let network;
 let storage;
 let rateHelper;
-let kyberDao;
+let NimbleDao;
 let feeHandler;
 let matchingEngine;
 let operator;
@@ -46,7 +46,7 @@ let taker;
 let destAddress;
 let platformWallet;
 
-//KyberDao related data
+//NimbleDao related data
 let rewardInBPS = new BN(7000);
 let rebateInBPS = new BN(2000);
 let epoch = new BN(3);
@@ -77,7 +77,7 @@ let tokenDecimals = [];
 ///////////////////////////
 let gasReport = {};
 
-contract('KyberNetworkProxy', function(accounts) {
+contract('NimbleNetworkProxy', function(accounts) {
     before("one time global init", async() => {
         //init accounts
         operator = accounts[1];
@@ -88,32 +88,32 @@ contract('KyberNetworkProxy', function(accounts) {
         hintParser = accounts[6];
         destAddress = accounts[7];
 
-        //KyberDao related init.
+        //NimbleDao related init.
         expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
-        kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-        await kyberDao.setNetworkFeeBps(networkFeeBps);
+        NimbleDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+        await NimbleDao.setNetworkFeeBps(networkFeeBps);
 
         //deploy storage and network
         storage = await nwHelper.setupStorage(admin);
-        network = await KyberNetwork.new(admin, storage.address);
+        network = await NimbleNetwork.new(admin, storage.address);
         await storage.setNetworkContract(network.address, {from: admin});
         await storage.addOperator(operator, {from: admin});
 
         // init proxy
-        networkProxy = await KyberNetworkProxy.new(admin);
+        networkProxy = await NimbleNetworkProxy.new(admin);
 
         //init matchingEngine
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
-        await matchingEngine.setKyberStorage(storage.address, {from: admin});
+        await matchingEngine.setNimbleStorage(storage.address, {from: admin});
         await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
         await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(kyberDao.address, storage.address, {from: admin});
+        await rateHelper.setContracts(NimbleDao.address, storage.address, {from: admin});
 
         // setup proxy
-        await networkProxy.setKyberNetwork(network.address, {from: admin});
+        await networkProxy.setNimbleNetwork(network.address, {from: admin});
         await networkProxy.setHintHandler(matchingEngine.address, {from: admin});
 
         //init tokens
@@ -124,8 +124,8 @@ contract('KyberNetworkProxy', function(accounts) {
         }
 
         //init feeHandler
-        KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-        feeHandler = await FeeHandler.new(kyberDao.address, networkProxy.address, network.address, KNC.address, burnBlockInterval, kyberDao.address);
+        KNC = await TestToken.new("Nimble network crystal", "KNC", 18);
+        feeHandler = await FeeHandler.new(NimbleDao.address, networkProxy.address, network.address, KNC.address, burnBlockInterval, NimbleDao.address);
 
         // init and setup reserves
         let result = await nwHelper.setupReserves(network, tokens, 0, 5, 0, 0, accounts, admin, operator);
@@ -135,9 +135,9 @@ contract('KyberNetworkProxy', function(accounts) {
         //setup network
         ///////////////
         await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {from: admin});
-        await network.addKyberProxy(networkProxy.address, {from: admin});
+        await network.addNimbleProxy(networkProxy.address, {from: admin});
         await network.addOperator(operator, {from: admin});
-        await network.setKyberDaoContract(kyberDao.address, {from: admin});
+        await network.setNimbleDaoContract(NimbleDao.address, {from: admin});
 
         //add and list pair for reserve
         await nwHelper.addReservesToStorage(storage, reserveInstances, tokens, operator);
@@ -247,7 +247,7 @@ contract('KyberNetworkProxy', function(accounts) {
     });
 
     // making some trades to init data for contracts so the gas report will be more accurate
-    // e.g Network/FeeHandler will get and store networkFee/Brr data from KyberDao
+    // e.g Network/FeeHandler will get and store networkFee/Brr data from NimbleDao
     describe("test loop trades before gas report", async() => {
         for (let i = 0; i < numTokens; i++) {
             let fee = 10;
@@ -490,32 +490,32 @@ contract('KyberNetworkProxy', function(accounts) {
         let destDecimals;
 
         before("Setup contracts with tokens with no return values", async() => {
-            //KyberDao related init.
+            //NimbleDao related init.
             let expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
-            let mockKyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-            await mockKyberDao.setNetworkFeeBps(networkFeeBps);
+            let mockNimbleDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+            await mockNimbleDao.setNetworkFeeBps(networkFeeBps);
 
             //deploy storage and network
             tempStorage = await nwHelper.setupStorage(admin);
-            mockNetwork = await KyberNetwork.new(admin, tempStorage.address);
+            mockNetwork = await NimbleNetwork.new(admin, tempStorage.address);
             await tempStorage.setNetworkContract(mockNetwork.address, {from: admin});
             await tempStorage.addOperator(operator, {from: admin});
 
             // init proxy
-            mockProxy = await KyberNetworkProxy.new(admin);
+            mockProxy = await NimbleNetworkProxy.new(admin);
 
             //init matchingEngine
             mockMatchingEngine = await MatchingEngine.new(admin);
             await mockMatchingEngine.setNetworkContract(mockNetwork.address, {from: admin});
-            await mockMatchingEngine.setKyberStorage(tempStorage.address, {from: admin});
+            await mockMatchingEngine.setNimbleStorage(tempStorage.address, {from: admin});
             await tempStorage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await tempStorage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
             mockRateHelper = await RateHelper.new(admin);
-            await mockRateHelper.setContracts(mockKyberDao.address, tempStorage.address, {from: admin});
+            await mockRateHelper.setContracts(mockNimbleDao.address, tempStorage.address, {from: admin});
 
             // setup proxy
-            await mockProxy.setKyberNetwork(mockNetwork.address, {from: admin});
+            await mockProxy.setNimbleNetwork(mockNetwork.address, {from: admin});
             await mockProxy.setHintHandler(mockMatchingEngine.address, {from: admin});
 
             //init tokens
@@ -526,7 +526,7 @@ contract('KyberNetworkProxy', function(accounts) {
             }
 
             //init feeHandler
-            tempFeeHandler = await FeeHandler.new(mockKyberDao.address, mockProxy.address, mockNetwork.address, KNC.address, burnBlockInterval, mockKyberDao.address);
+            tempFeeHandler = await FeeHandler.new(mockNimbleDao.address, mockProxy.address, mockNetwork.address, KNC.address, burnBlockInterval, mockNimbleDao.address);
 
             // init and setup reserves
             let result = await nwHelper.setupReserves(mockNetwork, mockTokens, 5, 0, 0, 0, accounts, admin, operator);
@@ -536,10 +536,10 @@ contract('KyberNetworkProxy', function(accounts) {
             ///////////////
             await mockNetwork.setContracts(tempFeeHandler.address, mockMatchingEngine.address, zeroAddress, {from: admin});
 
-            await mockNetwork.addKyberProxy(mockProxy.address, {from: admin});
+            await mockNetwork.addNimbleProxy(mockProxy.address, {from: admin});
             await mockNetwork.addOperator(operator, {from: admin});
 
-            await mockNetwork.setKyberDaoContract(mockKyberDao.address, {from: admin});
+            await mockNetwork.setNimbleDaoContract(mockNimbleDao.address, {from: admin});
 
             //add and list pair for reserve
             await nwHelper.addReservesToStorage(tempStorage, mockReserveInstances, mockTokens, operator);
@@ -659,31 +659,31 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         it("test reading public values", async () => {
-            let networkAddr = await networkProxy.kyberNetwork();
+            let networkAddr = await networkProxy.NimbleNetwork();
             assert(networkAddr == network.address, "missmatch network address");
-            let hintHandlerAddr = await networkProxy.kyberHintHandler();
+            let hintHandlerAddr = await networkProxy.NimbleHintHandler();
             assert(hintHandlerAddr == matchingEngine.address, "missmatch hint handler address");
         });
     });
 
     describe("test events", async () => {
-        it("KyberHintHandlerSet", async () => {
+        it("NimbleHintHandlerSet", async () => {
             let newHintHandler = await MatchingEngine.new(admin);
             let txResult = await networkProxy.setHintHandler(newHintHandler.address, { from: admin });
-            await expectEvent(txResult, "KyberHintHandlerSet", {
-                kyberHintHandler: newHintHandler.address
+            await expectEvent(txResult, "NimbleHintHandlerSet", {
+                NimbleHintHandler: newHintHandler.address
             });
             await networkProxy.setHintHandler(matchingEngine.address, { from: admin });
         });
 
-        it("KyberNetworkSet", async () => {
+        it("NimbleNetworkSet", async () => {
             let tempStorage = await nwHelper.setupStorage(admin);
-            let newKyberNetwork = await KyberNetwork.new(admin, tempStorage.address);
-            let txResult = await networkProxy.setKyberNetwork(newKyberNetwork.address, { from: admin });
-            await expectEvent(txResult, "KyberNetworkSet", {
-                newKyberNetwork: newKyberNetwork.address, previousKyberNetwork: network.address,
+            let newNimbleNetwork = await NimbleNetwork.new(admin, tempStorage.address);
+            let txResult = await networkProxy.setNimbleNetwork(newNimbleNetwork.address, { from: admin });
+            await expectEvent(txResult, "NimbleNetworkSet", {
+                newNimbleNetwork: newNimbleNetwork.address, previousNimbleNetwork: network.address,
             })
-            await networkProxy.setKyberNetwork(network.address, { from: admin });
+            await networkProxy.setNimbleNetwork(network.address, { from: admin });
         });
 
         it("ExecuteTrade", async () => {
@@ -718,11 +718,11 @@ contract('KyberNetworkProxy', function(accounts) {
 
     describe("test reverting when using contract zero address", async () => {
         it("test set network to zero address", async () => {
-            await expectRevert(networkProxy.setKyberNetwork(zeroAddress, { from: admin }), "kyberNetwork 0");
+            await expectRevert(networkProxy.setNimbleNetwork(zeroAddress, { from: admin }), "NimbleNetwork 0");
         });
 
         it("test set hint handler to zero address", async () => {
-            await expectRevert(networkProxy.setHintHandler(zeroAddress, { from: admin }), "kyberHintHandler 0");
+            await expectRevert(networkProxy.setHintHandler(zeroAddress, { from: admin }), "NimbleHintHandler 0");
         });
     });
 
@@ -803,15 +803,15 @@ contract('KyberNetworkProxy', function(accounts) {
         let maliciousNetwork;
         before("init 'generous' network and 'malicious' network", async () => {
             // set up generousNetwork
-            [generousNetwork, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork, networkProxy.address, KNC.address, kyberDao.address, admin, operator);
+            [generousNetwork, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork, networkProxy.address, KNC.address, NimbleDao.address, admin, operator);
             let result = await nwHelper.setupReserves(generousNetwork, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToStorage(tempStorage, result.reserveInstances, tokens, operator);
             // set up maliciousNetwork
-            [maliciousNetwork, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork, networkProxy.address, KNC.address, kyberDao.address, admin, operator);
+            [maliciousNetwork, tempStorage] = await nwHelper.setupNetwork(MaliciousNetwork, networkProxy.address, KNC.address, NimbleDao.address, admin, operator);
             result = await nwHelper.setupReserves(maliciousNetwork, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToStorage(tempStorage, result.reserveInstances, tokens, operator);
             // set up generousNetwork2
-            [generousNetwork2, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork2, networkProxy.address, KNC.address, kyberDao.address, admin, operator);
+            [generousNetwork2, tempStorage] = await nwHelper.setupNetwork(GenerousNetwork2, networkProxy.address, KNC.address, NimbleDao.address, admin, operator);
             result = await nwHelper.setupReserves(generousNetwork2, tokens, 1, 1, 0, 0, accounts, admin, operator);
             await nwHelper.addReservesToStorage(tempStorage, result.reserveInstances, tokens, operator);
         });
@@ -883,7 +883,7 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         it("trade revert if actual dest amount is different from reported", async () => {
-            await networkProxy.setKyberNetwork(generousNetwork.address, { from: admin });
+            await networkProxy.setNimbleNetwork(generousNetwork.address, { from: admin });
             let srcToken = tokens[1];
             let dstToken = tokens[2]
             let amountTwei = 1515;
@@ -906,7 +906,7 @@ contract('KyberNetworkProxy', function(accounts) {
                     rate.expectedRate,
                     zeroAddress,
                     { from: taker }
-                ), "kyberNetwork returned wrong amount"
+                ), "NimbleNetwork returned wrong amount"
             );
             // change the amount and see trade success
             await networkProxy.trade(
@@ -922,7 +922,7 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         it("trade revert if src balance after is greater or equal to balance before", async () => {
-            await networkProxy.setKyberNetwork(generousNetwork.address, { from: admin });
+            await networkProxy.setNimbleNetwork(generousNetwork.address, { from: admin });
             let srcToken = tokens[1];
             let dstToken = tokens[2];
             let amountTwei = 1313;
@@ -962,7 +962,7 @@ contract('KyberNetworkProxy', function(accounts) {
 
 
         it("trade revert if dest balance after is smaller than dest balance before", async() =>{
-            await networkProxy.setKyberNetwork(maliciousNetwork.address, { from: admin });
+            await networkProxy.setNimbleNetwork(maliciousNetwork.address, { from: admin });
             let srcToken = tokens[1];
             let dstToken = tokens[2];
             let amountTwei = 1000;
@@ -992,7 +992,7 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         it("trade revert if amount return is greater than max dest amount", async () => {
-            await networkProxy.setKyberNetwork(generousNetwork2.address, { from: admin });
+            await networkProxy.setNimbleNetwork(generousNetwork2.address, { from: admin });
             let srcToken = tokens[1];
             let dstToken = tokens[2];
             let amountTwei = 1717;
@@ -1031,7 +1031,7 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         it("trade revert if actual rate < minRate", async () => {
-            await networkProxy.setKyberNetwork(maliciousNetwork.address, { from: admin });
+            await networkProxy.setNimbleNetwork(maliciousNetwork.address, { from: admin });
             await maliciousNetwork.setMyFeeWei(new BN(10));
             let srcToken = tokens[1]
             let amountTwei = 1000;
@@ -1055,7 +1055,7 @@ contract('KyberNetworkProxy', function(accounts) {
         });
 
         after("clean up & set reference back to network", async () => {
-            await networkProxy.setKyberNetwork(network.address, { from: admin });
+            await networkProxy.setNimbleNetwork(network.address, { from: admin });
         });
     });
     // test

@@ -1,18 +1,18 @@
 pragma solidity 0.4.18;
 
-import "../reserves/KyberReserveHighRate.sol";
+import "../reserves/NimbleReserveHighRate.sol";
 
-/// @title Kyber Reserve contract
-/// reuses KyberReserve.sol contract while overriding a few functions / values.
+/// @title Nimble Reserve contract
+/// reuses NimbleReserve.sol contract while overriding a few functions / values.
 /// Update MAX_RATE to higher value and should have maximum code reuse
-contract MockKyberReserveHighRate is KyberReserveHighRate {
+contract MockNimbleReserveHighRate is NimbleReserveHighRate {
 
-    function MockKyberReserveHighRate(
-        address _kyberNetwork, 
+    function MockNimbleReserveHighRate(
+        address _NimbleNetwork, 
         ConversionRatesInterface _ratesContract,
         address _admin
         ) 
-        public KyberReserveHighRate(_kyberNetwork, _ratesContract, _admin)
+        public NimbleReserveHighRate(_NimbleNetwork, _ratesContract, _admin)
         { /* empty block */ }
 
     function mockCalcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate)

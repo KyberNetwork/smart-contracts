@@ -1,22 +1,22 @@
 pragma solidity 0.6.6;
 
-import "../KyberNetwork.sol";
+import "../NimbleNetwork.sol";
 
 
 /*
- * @title Kyber Network main contract, takes some fee but returns actual dest amount 
+ * @title Nimble Network main contract, takes some fee but returns actual dest amount 
  *      as if fee wasn't taken.
  */
-contract MaliciousKyberNetwork2 is KyberNetwork {
+contract MaliciousNimbleNetwork2 is NimbleNetwork {
     uint256 public myFeeWei = 10;
 
-    constructor(address _admin, IKyberStorage _kyberStorage)
+    constructor(address _admin, INimbleStorage _NimbleStorage)
         public
-        KyberNetwork(_admin, _kyberStorage)
+        NimbleNetwork(_admin, _NimbleStorage)
     {}
 
 // overwrite function to reduce bytecode size
-    function removeKyberProxy(address kyberProxy) external virtual override {}
+    function removeNimbleProxy(address NimbleProxy) external virtual override {}
 
     function setMyFeeWei(uint256 fee) public {
         myFeeWei = fee;

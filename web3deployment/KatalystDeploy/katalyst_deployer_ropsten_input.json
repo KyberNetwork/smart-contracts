@@ -15,7 +15,7 @@
             "address": "0xad6d458402f60fd3bd25163575031acdce07538d"
         },
         "KNC": {
-            "name": "KyberNetwork",
+            "name": "NimbleNetwork",
             "decimals": 18,
             "address": "0x7b2810576aa1cce68f2b118cef1f36467c648f92"
         },
@@ -114,7 +114,7 @@
     "wallets": [],
 
     "permission" : {
-        "KyberDao": {
+        "NimbleDao": {
             "DaoOperator": "0xddf05698718ba8ed1c9aba198d38a825a64d69e2"
         },
         "FeeHandler": {

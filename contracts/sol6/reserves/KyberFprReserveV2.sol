@@ -3,18 +3,18 @@ pragma solidity 0.6.6;
 
 import "./IConversionRates.sol";
 import "./IWeth.sol";
-import "../IKyberSanity.sol";
-import "../IKyberReserve.sol";
+import "../INimbleSanity.sol";
+import "../INimbleReserve.sol";
 import "../IERC20.sol";
 import "../utils/Utils5.sol";
 import "../utils/Withdrawable3.sol";
 import "../utils/zeppelin/SafeERC20.sol";
 
-/// @title KyberFprReserve version 2
+/// @title NimbleFprReserve version 2
 /// Allow Reserve to work work with either weth or eth.
 /// for working with weth should specify external address to hold weth.
 /// Allow Reserve to set maxGasPriceWei to trade with
-contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
+contract NimbleFprReserveV2 is INimbleReserve, Utils5, Withdrawable3 {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -27,11 +27,11 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         uint128 maxGasPriceWei;
     }
 
-    address public kyberNetwork;
+    address public NimbleNetwork;
     ConfigData internal configData;
 
     IConversionRates public conversionRatesContract;
-    IKyberSanity public sanityRatesContract;
+    INimbleSanity public sanityRatesContract;
     IWeth public weth;
 
     event DepositToken(IERC20 indexed token, uint256 amount);
@@ -49,23 +49,23 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     event WithdrawAddressApproved(IERC20 indexed token, address indexed addr, bool approve);
     event NewTokenWallet(IERC20 indexed token, address indexed wallet);
     event WithdrawFunds(IERC20 indexed token, uint256 amount, address indexed destination);
-    event SetKyberNetworkAddress(address indexed network);
+    event SetNimbleNetworkAddress(address indexed network);
     event SetConversionRateAddress(IConversionRates indexed rate);
     event SetWethAddress(IWeth indexed weth);
-    event SetSanityRateAddress(IKyberSanity indexed sanity);
+    event SetSanityRateAddress(INimbleSanity indexed sanity);
 
     constructor(
-        address _kyberNetwork,
+        address _NimbleNetwork,
         IConversionRates _ratesContract,
         IWeth _weth,
         uint128 _maxGasPriceWei,
         bool _doRateValidation,
         address _admin
     ) public Withdrawable3(_admin) {
-        require(_kyberNetwork != address(0), "kyberNetwork 0");
+        require(_NimbleNetwork != address(0), "NimbleNetwork 0");
         require(_ratesContract != IConversionRates(0), "ratesContract 0");
         require(_weth != IWeth(0), "weth 0");
-        kyberNetwork = _kyberNetwork;
+        NimbleNetwork = _NimbleNetwork;
         conversionRatesContract = _ratesContract;
         weth = _weth;
         configData = ConfigData({
@@ -87,7 +87,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         uint256 conversionRate,
         bool /* validate */
     ) external override payable returns (bool) {
-        require(msg.sender == kyberNetwork, "wrong sender");
+        require(msg.sender == NimbleNetwork, "wrong sender");
         ConfigData memory data = configData;
         require(data.tradeEnabled, "trade not enable");
         require(tx.gasprice <= uint256(data.maxGasPriceWei), "gas price too high");
@@ -173,10 +173,10 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
         emit WithdrawFunds(token, amount, destination);
     }
 
-    function setKyberNetwork(address _newNetwork) external onlyAdmin {
-        require(_newNetwork != address(0), "kyberNetwork 0");
-        kyberNetwork = _newNetwork;
-        emit SetKyberNetworkAddress(_newNetwork);
+    function setNimbleNetwork(address _newNetwork) external onlyAdmin {
+        require(_newNetwork != address(0), "NimbleNetwork 0");
+        NimbleNetwork = _newNetwork;
+        emit SetNimbleNetworkAddress(_newNetwork);
     }
 
     function setConversionRate(IConversionRates _newConversionRate) external onlyAdmin {
@@ -193,7 +193,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
     }
 
     /// @dev sanity rate can be set to 0x0 address to disable sanity rate check
-    function setSanityRate(IKyberSanity _newSanity) external onlyAdmin {
+    function setSanityRate(INimbleSanity _newSanity) external onlyAdmin {
         sanityRatesContract = _newSanity;
         emit SetSanityRateAddress(_newSanity);
     }
@@ -232,7 +232,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
 
         if (getBalance(dest) < destQty) return 0;
 
-        if (sanityRatesContract != IKyberSanity(0)) {
+        if (sanityRatesContract != INimbleSanity(0)) {
             uint256 sanityRate = sanityRatesContract.getSanityRate(src, dest);
             if (rate > sanityRate) return 0;
         }
@@ -333,7 +333,7 @@ contract KyberFprReserveV2 is IKyberReserve, Utils5, Withdrawable3 {
             );
             // re-validate conversion rate
             require(rate >= conversionRate, "reserve rate lower then network requested rate");
-            if (sanityRatesContract != IKyberSanity(0)) {
+            if (sanityRatesContract != INimbleSanity(0)) {
                 // sanity rate check
                 uint256 sanityRate = sanityRatesContract.getSanityRate(srcToken, destToken);
                 require(rate <= sanityRate, "rate should not be greater than sanity rate" );

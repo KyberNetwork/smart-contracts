@@ -1,20 +1,20 @@
 pragma solidity 0.6.6;
 
-import "../KyberNetwork.sol";
+import "../NimbleNetwork.sol";
 
 
 /*
- * @title Kyber Network main contract, takes some fee and reports actual dest amount minus Fees.
+ * @title Nimble Network main contract, takes some fee and reports actual dest amount minus Fees.
  */
-contract GenerousKyberNetwork is KyberNetwork {
+contract GenerousNimbleNetwork is NimbleNetwork {
     event GenerousTrade(int256 which, int256 more, IERC20 token);
 
-    constructor(address _admin, IKyberStorage _kyberStorage)
+    constructor(address _admin, INimbleStorage _NimbleStorage)
         public
-        KyberNetwork(_admin, _kyberStorage)
+        NimbleNetwork(_admin, _NimbleStorage)
     {}
 
-    function removeKyberProxy(address networkProxy) external override {
+    function removeNimbleProxy(address networkProxy) external override {
         // reduce extra gas cost of deploying this contract
         networkProxy;
     }
@@ -104,7 +104,7 @@ contract GenerousKyberNetwork is KyberNetwork {
 
         handleFees(tData);
 
-        emit KyberTrade({
+        emit NimbleTrade({
             src: tData.input.src,
             dest: tData.input.dest,
             ethWeiValue: tData.tradeWei,

@@ -1,9 +1,9 @@
 pragma solidity 0.6.6;
 
-import "../KyberHintHandler.sol";
+import "../NimbleHintHandler.sol";
 
 
-contract MockHintHandler is KyberHintHandler {
+contract MockHintHandler is NimbleHintHandler {
     mapping(bytes32 => address[]) public reserveIdToAddresses;
     mapping(IERC20 => mapping(bytes32 => bool)) internal isListedReserveWithTokenSrc;
     mapping(IERC20 => mapping(bytes32 => bool)) internal isListedReserveWithTokenDest;

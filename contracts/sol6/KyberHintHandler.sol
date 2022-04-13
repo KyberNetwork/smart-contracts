@@ -1,11 +1,11 @@
 pragma solidity 0.6.6;
 
 import "./utils/Utils5.sol";
-import "./IKyberHint.sol";
+import "./INimbleHint.sol";
 
 
 /**
- *   @title kyberHintHandler contract
+ *   @title NimbleHintHandler contract
  *   The contract provides the following functionality:
  *       - building hints
  *       - parsing hints
@@ -19,7 +19,7 @@ import "./IKyberHint.sol";
  *           - If an error is found, return no data such that the trade flow
  *             returns 0 rate for bad hint values
  */
-abstract contract KyberHintHandler is IKyberHint, Utils5 {
+abstract contract NimbleHintHandler is INimbleHint, Utils5 {
     /// @notice Parses the hint for a token -> eth trade
     /// @param tokenSrc source token to trade
     /// @param hint The ABI encoded hint, built using the build*Hint functions
@@ -34,7 +34,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         returns (
             TradeType tokenToEthType,
             bytes32[] memory tokenToEthReserveIds,
-            IKyberReserve[] memory tokenToEthAddresses,
+            INimbleReserve[] memory tokenToEthAddresses,
             uint256[] memory tokenToEthSplits
         )
     {
@@ -47,7 +47,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
             checkTokenListedForReserve(tokenSrc, tokenToEthReserveIds, true);
         }
 
-        tokenToEthAddresses = new IKyberReserve[](tokenToEthReserveIds.length);
+        tokenToEthAddresses = new INimbleReserve[](tokenToEthReserveIds.length);
 
         for (uint256 i = 0; i < tokenToEthReserveIds.length; i++) {
             checkReserveIdsExists(tokenToEthReserveIds[i]);
@@ -57,7 +57,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
                 checkSplitReserveIdSeq(tokenToEthReserveIds[i], tokenToEthReserveIds[i - 1]);
             }
 
-            tokenToEthAddresses[i] = IKyberReserve(
+            tokenToEthAddresses[i] = INimbleReserve(
                 getReserveAddress(tokenToEthReserveIds[i])
             );
         }
@@ -77,7 +77,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         returns (
             TradeType ethToTokenType,
             bytes32[] memory ethToTokenReserveIds,
-            IKyberReserve[] memory ethToTokenAddresses,
+            INimbleReserve[] memory ethToTokenAddresses,
             uint256[] memory ethToTokenSplits
         )
     {
@@ -90,7 +90,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
             checkTokenListedForReserve(tokenDest, ethToTokenReserveIds, false);
         }
 
-        ethToTokenAddresses = new IKyberReserve[](ethToTokenReserveIds.length);
+        ethToTokenAddresses = new INimbleReserve[](ethToTokenReserveIds.length);
 
         for (uint256 i = 0; i < ethToTokenReserveIds.length; i++) {
             checkReserveIdsExists(ethToTokenReserveIds[i]);
@@ -100,7 +100,7 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
                 checkSplitReserveIdSeq(ethToTokenReserveIds[i], ethToTokenReserveIds[i - 1]);
             }
 
-            ethToTokenAddresses[i] = IKyberReserve(
+            ethToTokenAddresses[i] = INimbleReserve(
                 getReserveAddress(ethToTokenReserveIds[i])
             );
         }
@@ -125,11 +125,11 @@ abstract contract KyberHintHandler is IKyberHint, Utils5 {
         returns (
             TradeType tokenToEthType,
             bytes32[] memory tokenToEthReserveIds,
-            IKyberReserve[] memory tokenToEthAddresses,
+            INimbleReserve[] memory tokenToEthAddresses,
             uint256[] memory tokenToEthSplits,
             TradeType ethToTokenType,
             bytes32[] memory ethToTokenReserveIds,
-            IKyberReserve[] memory ethToTokenAddresses,
+            INimbleReserve[] memory ethToTokenAddresses,
             uint256[] memory ethToTokenSplits
         )
     {

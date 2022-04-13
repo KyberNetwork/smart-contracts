@@ -1,19 +1,19 @@
 pragma solidity 0.4.18;
 
-import '../reserves/KyberReserve.sol';
+import '../reserves/NimbleReserve.sol';
 
 import './TempBank.sol';
 
 
 /*
- * @title KyberReserve with check conversionRate before doTrade
+ * @title NimbleReserve with check conversionRate before doTrade
  */
-contract StrictValidatingReserve is KyberReserve {
+contract StrictValidatingReserve is NimbleReserve {
 	TempBank bank;
 
-	function StrictValidatingReserve(address _kyberNetwork, ConversionRatesInterface _ratesContract, address _admin)
+	function StrictValidatingReserve(address _NimbleNetwork, ConversionRatesInterface _ratesContract, address _admin)
 		public
-		KyberReserve(_kyberNetwork, _ratesContract, _admin)
+		NimbleReserve(_NimbleNetwork, _ratesContract, _admin)
 	{}
 
 	function setBank(TempBank _bank) public {
@@ -28,7 +28,7 @@ contract StrictValidatingReserve is KyberReserve {
 			bank.transfer(msg.value); // reduce the reserve balance before the call
 		uint256 expecedRate = getConversionRate(srcToken, destToken, srcAmount, block.number);
 		require(expecedRate >= conversionRate);
-		require(KyberReserve.doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
+		require(NimbleReserve.doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
 		if (bank != TempBank(0))
 			bank.withdraw(); // transfer ether back to reserve contract
 		return true;

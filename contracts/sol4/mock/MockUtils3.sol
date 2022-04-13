@@ -4,7 +4,7 @@ pragma solidity 0.4.18;
 import "../Utils3.sol";
 
 
-/// @title Kyber utils contract
+/// @title Nimble utils contract
 contract MockUtils3 is Utils3 {
 
     function mockCalcDestAmountWithDecimals(uint srcDecimals, uint destDecimals, uint srcAmount, uint rate)

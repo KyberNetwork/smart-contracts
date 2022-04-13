@@ -43,9 +43,9 @@ const input = {
 //    "SanityRatesInterface.sol" : fs.readFileSync(contractPath + 'SanityRatesInterface.sol', 'utf8'),
     "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
     "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
-    "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
+    "NimbleReserveInterface.sol" : fs.readFileSync(contractPath + 'NimbleReserveInterface.sol', 'utf8'),
     "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-//    "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
+//    "NimbleReserve.sol" : fs.readFileSync(contractPath + 'NimbleReserve.sol', 'utf8'),
     "WrapConversionRate.sol" : fs.readFileSync(contractPath + 'wrappers/WrapConversionRate.sol', 'utf8'),
     "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrappers/WrapperBase.sol', 'utf8'),
     "WrapReadTokenData.sol" : fs.readFileSync(contractPath + 'wrappers/WrapReadTokenData.sol', 'utf8'),
@@ -162,7 +162,7 @@ async function readConversionRate(conversionRateAddress) {
 //        myLog(1, 0, "blockchain Code:");
 //        myLog(0, 0, blockCode);
         myLog(0, 1, "Byte code from block chain doesn't match conversion rate. checking liquidity conversion rate.")
-//        await readLiquidityConversionRate(conversionRateAddress, reserveAddress, index, isKyberReserve);
+//        await readLiquidityConversionRate(conversionRateAddress, reserveAddress, index, isNimbleReserve);
 //        return;
     } else {
         myLog(0, 0, "Code on blockchain matches locally compiled code");
@@ -176,7 +176,7 @@ async function readConversionRate(conversionRateAddress) {
         await readConversionRateWrapper(jsonWrapConversionRate);
     }
 
-//    if(isKyberReserve) await printAdminAlertersOperators(Rate, "ConversionRates");
+//    if(isNimbleReserve) await printAdminAlertersOperators(Rate, "ConversionRates");
 
     let validRateDurationInBlocks = await Rate.methods.validRateDurationInBlocks().call();
     myLog(0, 0, ("validRateDurationInBlocks: " + validRateDurationInBlocks));

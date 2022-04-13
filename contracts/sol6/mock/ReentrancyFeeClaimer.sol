@@ -1,29 +1,29 @@
 pragma solidity 0.6.6;
 
-import "../IKyberNetworkProxy.sol";
+import "../INimbleNetworkProxy.sol";
 import "../utils/Utils5.sol";
-import "../IKyberFeeHandler.sol";
+import "../INimbleFeeHandler.sol";
 
 /// @dev contract to call trade when claimPlatformFee
 contract ReentrancyFeeClaimer is Utils5 {
-    IKyberNetworkProxy kyberProxy;
-    IKyberFeeHandler feeHandler;
+    INimbleNetworkProxy NimbleProxy;
+    INimbleFeeHandler feeHandler;
     IERC20 token;
     uint256 amount;
 
     bool isReentrancy = true;
 
     constructor(
-        IKyberNetworkProxy _kyberProxy,
-        IKyberFeeHandler _feeHandler,
+        INimbleNetworkProxy _NimbleProxy,
+        INimbleFeeHandler _feeHandler,
         IERC20 _token,
         uint256 _amount
     ) public {
-        kyberProxy = _kyberProxy;
+        NimbleProxy = _NimbleProxy;
         feeHandler = _feeHandler;
         token = _token;
         amount = _amount;
-        require(_token.approve(address(_kyberProxy), _amount));
+        require(_token.approve(address(_NimbleProxy), _amount));
     }
 
     function setReentrancy(bool _isReentrancy) external {
@@ -36,7 +36,7 @@ contract ReentrancyFeeClaimer is Utils5 {
         }
 
         bytes memory hint;
-        kyberProxy.tradeWithHintAndFee(
+        NimbleProxy.tradeWithHintAndFee(
             token,
             amount,
             ETH_TOKEN_ADDRESS,

@@ -107,7 +107,7 @@
   </tr>
 
 <tr>
-  <td class="file high" data-value="KyberNetwork.sol"><a href="KyberNetwork.sol.html">KyberNetwork.sol</a></td>
+  <td class="file high" data-value="NimbleNetwork.sol"><a href="NimbleNetwork.sol.html">NimbleNetwork.sol</a></td>
   <td data-value="100" class="pic high"><div class="chart"><div class="cover-fill cover-full" style="width: 100%;"></div><div class="cover-empty" style="width:0%;"></div></div></td>
   <td data-value="100" class="pct high">100%</td>
   <td data-value="114" class="abs high">114/114</td>
@@ -120,7 +120,7 @@
   </tr>
 
 <tr>
-  <td class="file high" data-value="KyberReserve.sol"><a href="KyberReserve.sol.html">KyberReserve.sol</a></td>
+  <td class="file high" data-value="NimbleReserve.sol"><a href="NimbleReserve.sol.html">NimbleReserve.sol</a></td>
   <td data-value="100" class="pic high"><div class="chart"><div class="cover-fill cover-full" style="width: 100%;"></div><div class="cover-empty" style="width:0%;"></div></div></td>
   <td data-value="100" class="pct high">100%</td>
   <td data-value="77" class="abs high">77/77</td>
@@ -133,7 +133,7 @@
   </tr>
 
 <tr>
-  <td class="file high" data-value="KyberReserveInterface.sol"><a href="KyberReserveInterface.sol.html">KyberReserveInterface.sol</a></td>
+  <td class="file high" data-value="NimbleReserveInterface.sol"><a href="NimbleReserveInterface.sol.html">NimbleReserveInterface.sol</a></td>
   <td data-value="100" class="pic high"><div class="chart"><div class="cover-fill cover-full" style="width: 100%;"></div><div class="cover-empty" style="width:0%;"></div></div></td>
   <td data-value="100" class="pct high">100%</td>
   <td data-value="0" class="abs high">0/0</td>

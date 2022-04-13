@@ -118,16 +118,16 @@ const input = {
     "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'VolumeImbalanceRecorder.sol', 'utf8'),
     "FeeBurner.sol" : fs.readFileSync(contractPath + 'FeeBurner.sol', 'utf8'),
     "WhiteListInterface.sol" : fs.readFileSync(contractPath + 'WhiteListInterface.sol', 'utf8'),
-    "KyberNetwork.sol" : fs.readFileSync(contractPath + 'KyberNetwork.sol', 'utf8'),
-    "KyberNetworkInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkInterface.sol', 'utf8'),
+    "NimbleNetwork.sol" : fs.readFileSync(contractPath + 'NimbleNetwork.sol', 'utf8'),
+    "NimbleNetworkInterface.sol" : fs.readFileSync(contractPath + 'NimbleNetworkInterface.sol', 'utf8'),
     "SimpleNetworkInterface.sol" : fs.readFileSync(contractPath + 'SimpleNetworkInterface.sol', 'utf8'),
-    "KyberNetworkProxyInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkProxyInterface.sol', 'utf8'),
-    "KyberNetworkProxy.sol" : fs.readFileSync(contractPath + 'KyberNetworkProxy.sol', 'utf8'),
+    "NimbleNetworkProxyInterface.sol" : fs.readFileSync(contractPath + 'NimbleNetworkProxyInterface.sol', 'utf8'),
+    "NimbleNetworkProxy.sol" : fs.readFileSync(contractPath + 'NimbleNetworkProxy.sol', 'utf8'),
     "WhiteList.sol" : fs.readFileSync(contractPath + 'WhiteList.sol', 'utf8'),
-    "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
+    "NimbleReserveInterface.sol" : fs.readFileSync(contractPath + 'NimbleReserveInterface.sol', 'utf8'),
     "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-    "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
-    "KyberReserveV1.sol" : fs.readFileSync(contractPath + 'previousContracts/KyberReserveV1.sol', 'utf8'),
+    "NimbleReserve.sol" : fs.readFileSync(contractPath + 'NimbleReserve.sol', 'utf8'),
+    "NimbleReserveV1.sol" : fs.readFileSync(contractPath + 'previousContracts/NimbleReserveV1.sol', 'utf8'),
     "Wrapper.sol" : fs.readFileSync(contractPath + 'mockContracts/Wrapper.sol', 'utf8')
 };
 
@@ -212,8 +212,8 @@ function parseInput( jsonInput ) {
         });
     });
 
-    networkPermissions = jsonInput.permission["KyberNetwork"];
-    reservePermissions = jsonInput.permission["KyberReserve"];
+    networkPermissions = jsonInput.permission["NimbleNetwork"];
+    reservePermissions = jsonInput.permission["NimbleReserve"];
     conversionRatesPermissions = jsonInput.permission["ConversionRates"];
     whitelistPermissions = jsonInput.permission["WhiteList"];
     feeBurnerPermissions = jsonInput.permission["FeeBurner"];
@@ -279,14 +279,14 @@ async function main() {
     }
 
 
-    console.log("deploying kyber network");
-    [proxyAddress, proxyContract] = await deployContract(output, "KyberNetworkProxy.sol:KyberNetworkProxy", [sender]);
-    console.log("deploying kyber network");
-    [internalNetworkAddress,internalNetworkContract] = await deployContract(output, "KyberNetwork.sol:KyberNetwork", [sender]);
+    console.log("deploying Nimble network");
+    [proxyAddress, proxyContract] = await deployContract(output, "NimbleNetworkProxy.sol:NimbleNetworkProxy", [sender]);
+    console.log("deploying Nimble network");
+    [internalNetworkAddress,internalNetworkContract] = await deployContract(output, "NimbleNetwork.sol:NimbleNetwork", [sender]);
     console.log("deploying conversion rates");
     [conversionRatesAddress,conversionRatesContract] = await deployContract(output, "ConversionRates.sol:ConversionRates", [sender]);
-    console.log("deploying kyber reserve");
-    [reserveAddress,reserveContract] = await deployContract(output, "KyberReserve.sol:KyberReserve", [internalNetworkAddress,conversionRatesAddress,sender]);
+    console.log("deploying Nimble reserve");
+    [reserveAddress,reserveContract] = await deployContract(output, "NimbleReserve.sol:NimbleReserve", [internalNetworkAddress,conversionRatesAddress,sender]);
     console.log("deploying fee burner");
     [feeBurnerAddress, feeBurnerContract] = await deployContract(output, "FeeBurner.sol:FeeBurner", [sender,"0xdd974D5C2e2928deA5F71b9825b8b646686BD200",internalNetworkAddress]);
     console.log("deploying whitelist");
@@ -307,7 +307,7 @@ async function main() {
 
     //set network in proxy
     console.log("set network in proxy");
-    await sendTx(proxyContract.methods.setKyberNetworkContract(internalNetworkAddress));
+    await sendTx(proxyContract.methods.setNimbleNetworkContract(internalNetworkAddress));
 
     setPermissions(proxyContract, networkPermissions);
 
@@ -374,7 +374,7 @@ async function main() {
     console.log("network set fee burner");
     await sendTx(internalNetworkContract.methods.setFeeBurner(feeBurnerAddress));
     console.log("network set proxy address");
-    await sendTx(internalNetworkContract.methods.setKyberProxy(proxyAddress));
+    await sendTx(internalNetworkContract.methods.setNimbleProxy(proxyAddress));
 
     console.log("network enable");
     await sendTx(internalNetworkContract.methods.setEnable(true));

@@ -4,12 +4,12 @@ const helper = require("../helper.js");
 const truffleAssert = require("truffle-assertions");
 
 const MockUniswapFactory = artifacts.require("MockUniswapFactory");
-const KyberUniswapReserve = artifacts.require("TestingKyberUniswapReserve");
+const NimbleUniswapReserve = artifacts.require("TestingNimbleUniswapReserve");
 const TestToken = artifacts.require("TestToken");
 
 const ethAddress = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const zeroAddress = '0x0000000000000000000000000000000000000000';
-const KYBER_MAX_QTY = new BN(10).pow(new BN(28)); // 10B tokens
+const Nimble_MAX_QTY = new BN(10).pow(new BN(28)); // 10B tokens
 const maxAllowance = new BN(2).pow(new BN(255));
 const zeroBN = new BN(0);
 
@@ -27,9 +27,9 @@ let operator;
 let alerter;
 let bank;
 let user;
-let kyberNetwork;
+let NimbleNetwork;
 
-contract("KyberUniswapReserve", async accounts => {
+contract("NimbleUniswapReserve", async accounts => {
     const deployToken = async (
         name = "Some Token",
         symbol = "KNC",
@@ -95,26 +95,26 @@ contract("KyberUniswapReserve", async accounts => {
         alerter = accounts[3];
         bank = accounts[4];
         user = accounts[5];
-        kyberNetwork = accounts[6];
+        NimbleNetwork = accounts[6];
 
         token = await deployToken();
 
         uniswapFactoryMock = await prepareUniswapFactory(token);
-        reserve = await KyberUniswapReserve.new(
+        reserve = await NimbleUniswapReserve.new(
             uniswapFactoryMock.address /* uniswap */,
             admin /* admin */,
-            kyberNetwork /* kyberNetwork */,
+            NimbleNetwork /* NimbleNetwork */,
             { from: admin }
         );
-        dbg(`KyberUniswapReserve deployed to address ${reserve.address}`);
+        dbg(`NimbleUniswapReserve deployed to address ${reserve.address}`);
 
         reserve.addOperator(operator, { from: admin });
 
-        // Fund KyberNetwork
-        await token.transfer(kyberNetwork, new BN(10).pow(new BN(18)).mul(new BN(100)), {
+        // Fund NimbleNetwork
+        await token.transfer(NimbleNetwork, new BN(10).pow(new BN(18)).mul(new BN(100)), {
             from: bank
         });
-        await token.approve(reserve.address, maxAllowance, { from: kyberNetwork });
+        await token.approve(reserve.address, maxAllowance, { from: NimbleNetwork });
 
         DEFAULT_FEE_BPS = await reserve.DEFAULT_FEE_BPS();
 
@@ -153,10 +153,10 @@ contract("KyberUniswapReserve", async accounts => {
     describe("constructor params", () => {
         it("UniswapFactory must not be 0", async () => {
             await truffleAssert.reverts(
-                KyberUniswapReserve.new(
+                NimbleUniswapReserve.new(
                     zeroAddress /* _uniswapFactory */,
                     admin,
-                    kyberNetwork,
+                    NimbleNetwork,
                     {
                         from: admin
                     }
@@ -166,21 +166,21 @@ contract("KyberUniswapReserve", async accounts => {
 
         it("admin must not be 0", async () => {
             await truffleAssert.reverts(
-                KyberUniswapReserve.new(
+                NimbleUniswapReserve.new(
                     uniswapFactoryMock.address,
                     zeroAddress /* _admin */,
-                    kyberNetwork,
+                    NimbleNetwork,
                     { from: admin }
                 )
             );
         });
 
-        it("kyberNetwork must not be 0", async () => {
+        it("NimbleNetwork must not be 0", async () => {
             await truffleAssert.reverts(
-                KyberUniswapReserve.new(
+                NimbleUniswapReserve.new(
                     uniswapFactoryMock.address,
                     admin /* _admin */,
-                    zeroAddress /* kyberNetwork */,
+                    zeroAddress /* NimbleNetwork */,
                     { from: admin }
                 )
             );
@@ -189,10 +189,10 @@ contract("KyberUniswapReserve", async accounts => {
         it("UniswapFactory is saved", async () => {
             const uniswapFactoryAddress =
                 "0x0000000000000000000000000000000000000001";
-            const newReserve = await KyberUniswapReserve.new(
+            const newReserve = await NimbleUniswapReserve.new(
                 uniswapFactoryAddress,
                 admin,
-                kyberNetwork,
+                NimbleNetwork,
                 { from: admin }
             );
 
@@ -202,10 +202,10 @@ contract("KyberUniswapReserve", async accounts => {
 
         it("admin is saved", async () => {
             const otherAdmin = "0x0000000000000000000000000000000000000001";
-            const newReserve = await KyberUniswapReserve.new(
+            const newReserve = await NimbleUniswapReserve.new(
                 uniswapFactoryMock.address,
                 otherAdmin,
-                kyberNetwork,
+                NimbleNetwork,
                 { from: admin }
             );
 
@@ -213,17 +213,17 @@ contract("KyberUniswapReserve", async accounts => {
             adminValue.should.be.eq(otherAdmin);
         });
 
-        it("kyberNetwork is saved", async () => {
-            const kyberNetwork = "0x0000000000000000000000000000000000000001";
-            const newReserve = await KyberUniswapReserve.new(
+        it("NimbleNetwork is saved", async () => {
+            const NimbleNetwork = "0x0000000000000000000000000000000000000001";
+            const newReserve = await NimbleUniswapReserve.new(
                 uniswapFactoryMock.address,
                 admin,
-                kyberNetwork,
+                NimbleNetwork,
                 { from: admin }
             );
 
-            const kyberNetworkAddress = await newReserve.kyberNetwork();
-            kyberNetworkAddress.should.be.eq(kyberNetwork);
+            const NimbleNetworkAddress = await newReserve.NimbleNetwork();
+            NimbleNetworkAddress.should.be.eq(NimbleNetwork);
         });
     });
 
@@ -306,7 +306,7 @@ contract("KyberUniswapReserve", async accounts => {
                 0 /* blockNumber */
             );
 
-            // kyber rates are destQty / srcQty
+            // Nimble rates are destQty / srcQty
             rate.should.be.bignumber.eq(new BN(10).pow(new BN(18)).mul(new BN(2)));
         });
 
@@ -453,7 +453,7 @@ contract("KyberUniswapReserve", async accounts => {
                 0 /* blockNumber */
             );
 
-            // kyber rates are destQty / srcQty
+            // Nimble rates are destQty / srcQty
             rate.should.be.bignumber.eq(
                 new BN(10)
                     .pow(new BN(18))
@@ -543,7 +543,7 @@ contract("KyberUniswapReserve", async accounts => {
                 0 /* blockNumber */
             );
 
-            // kyber rates are destQty / srcQty
+            // Nimble rates are destQty / srcQty
             rate.should.be.bignumber.eq(
                 applyInternalInventoryHintToRate(
                     new BN(10)
@@ -685,7 +685,7 @@ contract("KyberUniswapReserve", async accounts => {
     });
 
     describe("#trade", () => {
-        it("can be called from KyberNetwork", async () => {
+        it("can be called from NimbleNetwork", async () => {
             await reserve.setFee(0, { from: admin });
             await uniswapFactoryMock.setRateEthToToken(
                 1 /* eth */,
@@ -701,11 +701,11 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork, value: amount }
+                { from: NimbleNetwork, value: amount }
             );
         });
 
-        it("can not be called by user other than KyberNetwork", async () => {
+        it("can not be called by user other than NimbleNetwork", async () => {
             await reserve.setFee(0, { from: admin });
             await uniswapFactoryMock.setRateEthToToken(
                 1 /* eth */,
@@ -741,10 +741,10 @@ contract("KyberUniswapReserve", async accounts => {
                     ethAddress /* srcToken */,
                     amount /* srcAmount */,
                     ethAddress /* destToken */,
-                    kyberNetwork /* destAddress */,
+                    NimbleNetwork /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
-                    { from: kyberNetwork, value: amount }
+                    { from: NimbleNetwork, value: amount }
                 )
             );
         });
@@ -766,7 +766,7 @@ contract("KyberUniswapReserve", async accounts => {
                     user /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
-                    { from: kyberNetwork }
+                    { from: NimbleNetwork }
                 )
             );
         });
@@ -779,28 +779,28 @@ contract("KyberUniswapReserve", async accounts => {
             );
             const amount = new BN(web3.utils.toWei("1"));
             const conversionRate = new BN(10).pow(new BN(18));
-            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+            const tokenBalanceBefore = await token.balanceOf(NimbleNetwork);
 
             const traded = await reserve.trade.call(
                 ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token.address /* destToken */,
-                kyberNetwork /* destAddress */,
+                NimbleNetwork /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork, value: amount }
+                { from: NimbleNetwork, value: amount }
             );
             await reserve.trade(
                 ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token.address /* destToken */,
-                kyberNetwork /* destAddress */,
+                NimbleNetwork /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork, value: amount }
+                { from: NimbleNetwork, value: amount }
             );
 
-            const tokenBalanceAfter = await token.balanceOf(kyberNetwork);
+            const tokenBalanceAfter = await token.balanceOf(NimbleNetwork);
 
             traded.should.be.true;
             tokenBalanceAfter.should.be.bignumber.eq(
@@ -825,7 +825,7 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
+                { from: NimbleNetwork }
             );
             await reserve.trade(
                 token.address /* srcToken */,
@@ -834,7 +834,7 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
+                { from: NimbleNetwork }
             );
 
             const ethBalanceAfter = await helper.getBalancePromise(user);
@@ -853,28 +853,28 @@ contract("KyberUniswapReserve", async accounts => {
             );
             const amount = new BN(web3.utils.toWei("1"));
             const conversionRate = new BN(10).pow(new BN(18)).mul(new BN(9975)).div(new BN(10000));
-            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+            const tokenBalanceBefore = await token.balanceOf(NimbleNetwork);
 
             const traded = await reserve.trade.call(
                 ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token.address /* destToken */,
-                kyberNetwork /* destAddress */,
+                NimbleNetwork /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork, value: amount }
+                { from: NimbleNetwork, value: amount }
             );
             await reserve.trade(
                 ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token.address /* destToken */,
-                kyberNetwork /* destAddress */,
+                NimbleNetwork /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork, value: amount }
+                { from: NimbleNetwork, value: amount }
             );
 
-            const tokenBalanceAfter = await token.balanceOf(kyberNetwork);
+            const tokenBalanceAfter = await token.balanceOf(NimbleNetwork);
             const expectedBalance = tokenBalanceBefore.add(amount.mul(new BN(9975)).div(new BN(10000)));
 
             traded.should.be.true;
@@ -898,7 +898,7 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
+                { from: NimbleNetwork }
             );
             await reserve.trade(
                 token.address /* srcToken */,
@@ -907,7 +907,7 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
+                { from: NimbleNetwork }
             );
 
             const ethBalanceAfter = await helper.getBalancePromise(user);
@@ -929,28 +929,28 @@ contract("KyberUniswapReserve", async accounts => {
                 .pow(new BN(18))
                 .mul(new BN(2))
                 .mul(new BN(9975)).div(new BN(10000));
-            const tokenBalanceBefore = await token.balanceOf(kyberNetwork);
+            const tokenBalanceBefore = await token.balanceOf(NimbleNetwork);
 
             const traded = await reserve.trade.call(
                 ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token.address /* destToken */,
-                kyberNetwork /* destAddress */,
+                NimbleNetwork /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork, value: amount }
+                { from: NimbleNetwork, value: amount }
             );
             await reserve.trade(
                 ethAddress /* srcToken */,
                 amount /* srcAmount */,
                 token.address /* destToken */,
-                kyberNetwork /* destAddress */,
+                NimbleNetwork /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork, value: amount }
+                { from: NimbleNetwork, value: amount }
             );
 
-            const tokenBalanceAfter = await token.balanceOf(kyberNetwork);
+            const tokenBalanceAfter = await token.balanceOf(NimbleNetwork);
             const expectedBalance = tokenBalanceBefore.add(amount.mul(new BN(2)).mul(new BN(9975)).div(new BN(10000)));
 
             traded.should.be.true;
@@ -977,7 +977,7 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
+                { from: NimbleNetwork }
             );
             await reserve.trade(
                 token.address /* srcToken */,
@@ -986,7 +986,7 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
+                { from: NimbleNetwork }
             );
 
             const ethBalanceAfter = await helper.getBalancePromise(user);
@@ -1020,7 +1020,7 @@ contract("KyberUniswapReserve", async accounts => {
                     user /* destAddress */,
                     expectedConversionRate.add(new BN(1)) /* conversionRate */,
                     true /* validate */,
-                    { from: kyberNetwork }
+                    { from: NimbleNetwork }
                 )
             );
         });
@@ -1042,10 +1042,10 @@ contract("KyberUniswapReserve", async accounts => {
                     ethAddress /* srcToken */,
                     amount /* srcAmount */,
                     token.address /* destToken */,
-                    kyberNetwork /* destAddress */,
+                    NimbleNetwork /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
-                    { from: kyberNetwork, value: amount.sub(new BN(1)) }
+                    { from: NimbleNetwork, value: amount.sub(new BN(1)) }
                 )
             );
         });
@@ -1067,10 +1067,10 @@ contract("KyberUniswapReserve", async accounts => {
                     token.address /* srcToken */,
                     amount /* srcAmount */,
                     ethAddress /* destToken */,
-                    kyberNetwork /* destAddress */,
+                    NimbleNetwork /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
-                    { from: kyberNetwork, value: 1 }
+                    { from: NimbleNetwork, value: 1 }
                 )
             );
         });
@@ -1093,10 +1093,10 @@ contract("KyberUniswapReserve", async accounts => {
                     ethAddress /* srcToken */,
                     amount /* srcAmount */,
                     token.address /* destToken */,
-                    kyberNetwork /* destAddress */,
+                    NimbleNetwork /* destAddress */,
                     conversionRate /* conversionRate */,
                     true /* validate */,
-                    { from: kyberNetwork, value: amount }
+                    { from: NimbleNetwork, value: amount }
                 )
             );
         });
@@ -1120,12 +1120,12 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
+                { from: NimbleNetwork }
             );
 
             truffleAssert.eventEmitted(res, "TradeExecute", ev => {
                 return (
-                    ev.sender === kyberNetwork &&
+                    ev.sender === NimbleNetwork &&
                     ev.src === token.address &&
                     ev.srcAmount.eq(new BN(amount)) &&
                     ev.destToken === ethAddress &&
@@ -1202,7 +1202,7 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
+                { from: NimbleNetwork }
             );
             await reserve.trade(
                 token.address /* srcToken */,
@@ -1211,7 +1211,7 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
+                { from: NimbleNetwork }
             );
 
             const reserveEthAfter = await helper.getBalancePromise(
@@ -1297,7 +1297,7 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork, value: amount }
+                { from: NimbleNetwork, value: amount }
             );
             await reserve.trade(
                 ethAddress /* srcToken */,
@@ -1306,7 +1306,7 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork, value: amount }
+                { from: NimbleNetwork, value: amount }
             );
 
             const reserveEthAfter = await helper.getBalancePromise(
@@ -1377,12 +1377,12 @@ contract("KyberUniswapReserve", async accounts => {
                 user /* destAddress */,
                 conversionRate /* conversionRate */,
                 true /* validate */,
-                { from: kyberNetwork }
+                { from: NimbleNetwork }
             );
 
             truffleAssert.eventEmitted(res, "TradeExecute", ev => {
                 return (
-                    ev.sender === kyberNetwork &&
+                    ev.sender === NimbleNetwork &&
                     ev.src === token.address &&
                     ev.srcAmount.eq(new BN(amount)) &&
                     ev.destToken === ethAddress &&
@@ -1402,10 +1402,10 @@ contract("KyberUniswapReserve", async accounts => {
 
     describe("#setFee", () => {
         it("default fee", async () => {
-            const newReserve = await KyberUniswapReserve.new(
+            const newReserve = await NimbleUniswapReserve.new(
                 "0x0000000000000000000000000000000000000001" /* uniswapFactory */,
                 admin,
-                kyberNetwork
+                NimbleNetwork
             );
 
             const feeValue = await newReserve.feeBps();
@@ -1691,29 +1691,29 @@ contract("KyberUniswapReserve", async accounts => {
         });
     });
 
-    describe("#setKyberNetwork", () => {
+    describe("#setNimbleNetwork", () => {
         it("set new value by admin", async () => {
-            await reserve.setKyberNetwork(user, { from: admin });
+            await reserve.setNimbleNetwork(user, { from: admin });
 
-            const updatedKyberNetwork = await reserve.kyberNetwork();
-            updatedKyberNetwork.should.be.eq(user);
+            const updatedNimbleNetwork = await reserve.NimbleNetwork();
+            updatedNimbleNetwork.should.be.eq(user);
         });
 
         it("should reject address 0", async () => {
-            await truffleAssert.reverts(reserve.setKyberNetwork(zeroAddress));
+            await truffleAssert.reverts(reserve.setNimbleNetwork(zeroAddress));
         });
 
         it("only admin can set values", async () => {
             await truffleAssert.reverts(
-                reserve.setKyberNetwork(user, { from: user })
+                reserve.setNimbleNetwork(user, { from: user })
             );
         });
 
         it("setting value emits an event", async () => {
-            const res = await reserve.setKyberNetwork(user, { from: admin });
+            const res = await reserve.setNimbleNetwork(user, { from: admin });
 
-            await truffleAssert.eventEmitted(res, "KyberNetworkSet", ev => {
-                return ev.kyberNetwork === user;
+            await truffleAssert.eventEmitted(res, "NimbleNetworkSet", ev => {
+                return ev.NimbleNetwork === user;
             });
         });
     });
@@ -2047,7 +2047,7 @@ contract("KyberUniswapReserve", async accounts => {
                     ethAddress /* srcToken */,
                     web3.utils.toWei("1") /* srcAmount */,
                     token.address /* destToken */,
-                    KYBER_MAX_QTY /* destAmount */,
+                    Nimble_MAX_QTY /* destAmount */,
                     new BN(9).div(new BN(1)) /* rateSrcDest */,
                     new BN(10).div(new BN(1)) /* rateDestSrc */
                 )
@@ -2062,7 +2062,7 @@ contract("KyberUniswapReserve", async accounts => {
             await truffleAssert.reverts(
                 reserve.shouldUseInternalInventory(
                     ethAddress /* srcToken */,
-                    KYBER_MAX_QTY /* srcAmount */,
+                    Nimble_MAX_QTY /* srcAmount */,
                     token.address /* destToken */,
                     web3.utils.toWei("2") /* destAmount */,
                     new BN(21).div(new BN(9)) /* rateSrcDest */,

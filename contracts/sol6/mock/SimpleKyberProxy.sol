@@ -2,10 +2,10 @@ pragma solidity 0.6.6;
 
 import "../utils/Utils5.sol";
 import "../utils/zeppelin/SafeERC20.sol";
-import "../IKyberNetworkProxy.sol";
+import "../INimbleNetworkProxy.sol";
 
 
-contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
+contract SimpleNimbleProxy is INimbleNetworkProxy, Utils5 {
     using SafeERC20 for IERC20;
 
     mapping(bytes32 => uint256) public pairRate; //rate in precision units. i.e. if rate is 10**18 its same as 1:1
@@ -77,7 +77,7 @@ contract SimpleKyberProxy is IKyberNetworkProxy, Utils5 {
         pairRate[keccak256(abi.encodePacked(src, dest))] = rate;
     }
 
-    // @dev trade function with same prototype as KyberNetwork
+    // @dev trade function with same prototype as NimbleNetwork
     // will be used only to trade token to Ether,
     // will work only when set pair worked.
     function trade(

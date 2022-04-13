@@ -1,7 +1,7 @@
 const UniswapV2FactoryOutput = require('@uniswap/v2-core/build/UniswapV2Factory.json');
 const UniswapV2Router02Output = require('@uniswap/v2-periphery/build/UniswapV2Router02.json');
 const MockUniswapRounter = artifacts.require('MockUniswapRouter.sol');
-const KyberUniswapV2Reserve = artifacts.require('KyberUniswapV2Reserve.sol');
+const NimbleUniswapV2Reserve = artifacts.require('NimbleUniswapV2Reserve.sol');
 const WETH9 = artifacts.require('WETH9.sol');
 const TestToken = artifacts.require('Token.sol');
 
@@ -39,7 +39,7 @@ let destAddress;
 let defaultBps = new BN(25);
 let maxUint256 = new BN(2).pow(new BN(256)).sub(new BN(1));
 
-contract('KyberUniswapv2Reserve', function (accounts) {
+contract('NimbleUniswapv2Reserve', function (accounts) {
   before('init contract and accounts', async () => {
     UniswapV2Factory = truffleContract(UniswapV2FactoryOutput);
     UniswapV2Factory.setProvider(provider);
@@ -64,34 +64,34 @@ contract('KyberUniswapv2Reserve', function (accounts) {
   describe('constructor params', () => {
     it('test revert if uniswapFactory 0', async () => {
       await expectRevert(
-        KyberUniswapV2Reserve.new(zeroAddress, weth.address, admin, network),
+        NimbleUniswapV2Reserve.new(zeroAddress, weth.address, admin, network),
         'uniswapRouter 0'
       );
     });
 
     it('test revert if weth 0', async () => {
       await expectRevert(
-        KyberUniswapV2Reserve.new(uniswapFactory.address, zeroAddress, admin, network),
+        NimbleUniswapV2Reserve.new(uniswapFactory.address, zeroAddress, admin, network),
         'weth 0'
       );
     });
 
-    it('test revert if kyberNetwork 0', async () => {
+    it('test revert if NimbleNetwork 0', async () => {
       await expectRevert(
-        KyberUniswapV2Reserve.new(uniswapFactory.address, weth.address, admin, zeroAddress),
-        'kyberNetwork 0'
+        NimbleUniswapV2Reserve.new(uniswapFactory.address, weth.address, admin, zeroAddress),
+        'NimbleNetwork 0'
       );
     });
 
     it('test revert if admin 0', async () => {
       await expectRevert(
-        KyberUniswapV2Reserve.new(uniswapFactory.address, weth.address, zeroAddress, network),
+        NimbleUniswapV2Reserve.new(uniswapFactory.address, weth.address, zeroAddress, network),
         'admin 0'
       );
     });
 
     it('test constructor success', async () => {
-      reserve = await KyberUniswapV2Reserve.new(
+      reserve = await NimbleUniswapV2Reserve.new(
         uniswapRouter.address,
         weth.address,
         admin,
@@ -103,14 +103,14 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         'unexpected uniswapFactory'
       );
       assert(weth.address == (await reserve.weth()), 'unexpected weth');
-      assert(network == (await reserve.kyberNetwork()), 'unexpected kyberNetwork');
+      assert(network == (await reserve.NimbleNetwork()), 'unexpected NimbleNetwork');
     });
   });
 
   describe('send and withdraw token', async () => {
     let sendAmount = new BN(10).pow(new BN(18));
     before('set up reserve', async () => {
-      reserve = await KyberUniswapV2Reserve.new(
+      reserve = await NimbleUniswapV2Reserve.new(
         uniswapRouter.address,
         weth.address,
         admin,
@@ -137,7 +137,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
   describe('test permission operation', () => {
     let testToken;
     before('set up reserve', async () => {
-      reserve = await KyberUniswapV2Reserve.new(
+      reserve = await NimbleUniswapV2Reserve.new(
         uniswapRouter.address,
         weth.address,
         admin,
@@ -188,20 +188,20 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       });
     });
 
-    it('test setKyberNetwork revert if not admin', async () => {
+    it('test setNimbleNetwork revert if not admin', async () => {
       let newNetwork = accounts[6];
-      await expectRevert(reserve.setKyberNetwork(newNetwork, {from: operator}), 'only admin');
+      await expectRevert(reserve.setNimbleNetwork(newNetwork, {from: operator}), 'only admin');
     });
 
-    it('test setKyberNetwork success', async () => {
+    it('test setNimbleNetwork success', async () => {
       let newNetwork = accounts[6];
-      let txResult = await reserve.setKyberNetwork(newNetwork, {from: admin});
-      expectEvent(txResult, 'KyberNetworkSet', {
-        kyberNetwork: newNetwork
+      let txResult = await reserve.setNimbleNetwork(newNetwork, {from: admin});
+      expectEvent(txResult, 'NimbleNetworkSet', {
+        NimbleNetwork: newNetwork
       });
-      assert(newNetwork == await reserve.kyberNetwork(), "network contract missmatch")
+      assert(newNetwork == await reserve.NimbleNetwork(), "network contract missmatch")
       //reset network value
-      reserve.setKyberNetwork(network, {from: admin})
+      reserve.setNimbleNetwork(network, {from: admin})
     });
 
 
@@ -331,7 +331,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
 
     describe('test add - remove path', async () => {
       before('set up', async () => {
-        reserve = await KyberUniswapV2Reserve.new(
+        reserve = await NimbleUniswapV2Reserve.new(
           uniswapRouter.address,
           weth.address,
           admin,
@@ -447,7 +447,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
     let testTokenDecimal = new BN(15);
     let feeBps = new BN(89);
     before('set up reserve', async () => {
-      reserve = await KyberUniswapV2Reserve.new(
+      reserve = await NimbleUniswapV2Reserve.new(
         uniswapRouter.address,
         weth.address,
         admin,
@@ -580,7 +580,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
         {from: accounts[0]}
       );
 
-      reserve = await KyberUniswapV2Reserve.new(
+      reserve = await NimbleUniswapV2Reserve.new(
         uniswapRouter.address,
         weth.address,
         admin,
@@ -612,7 +612,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
           value: srcAmount,
           from: admin
         }),
-        'only kyberNetwork'
+        'only NimbleNetwork'
       );
     });
 
@@ -733,7 +733,7 @@ contract('KyberUniswapv2Reserve', function (accounts) {
       let reserve;
       before('set up malicious rounter', async () => {
         mockRounter = await MockUniswapRounter.new(uniswapFactory.address, weth.address);
-        reserve = await KyberUniswapV2Reserve.new(
+        reserve = await NimbleUniswapV2Reserve.new(
           mockRounter.address,
           weth.address,
           admin,

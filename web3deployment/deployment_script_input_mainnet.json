@@ -1,6 +1,6 @@
 {
   "permission": { 
-    "KyberNetwork": { 
+    "NimbleNetwork": { 
       "admin": "0xbc33a1f908612640f2849b56b67a4de4d179c151",
       "operator": [
         "0x6e8138188a413ab4eb6528d356e6c98ed0f1ce71",

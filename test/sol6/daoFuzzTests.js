@@ -1,7 +1,7 @@
 const TestToken = artifacts.require('TestToken.sol');
-const DAOContract = artifacts.require('MockKyberDaoMoreGetters.sol');
+const DAOContract = artifacts.require('MockNimbleDaoMoreGetters.sol');
 // using mock contract here, as we need to read the hasInited value
-const KyberStaking = artifacts.require('KyberStaking.sol');
+const NimbleStaking = artifacts.require('NimbleStaking.sol');
 
 const Helper = require('../helper.js');
 const {precisionUnits, zeroBN, zeroAddress, BPS} = require('../helper.js');
@@ -40,7 +40,7 @@ let minCampPeriod = 0;
 let latestNetworkFee = 25;
 let latestRewardBps = new BN(3000); // 30%
 let latestRebateBps = new BN(2000); // 20%
-let link = web3.utils.fromAscii('https://kyberswap.com');
+let link = web3.utils.fromAscii('https://Nimbleswap.com');
 
 let NUM_RUNS = 500;
 let progressIterations = 20;
@@ -71,16 +71,16 @@ const logger = winston.createLogger({
   ]
 });
 
-contract('KyberDAO fuzz', function (accounts) {
-  before('one time init: Stakers, KyberStaking, KNC token', async () => {
+contract('NimbleDAO fuzz', function (accounts) {
+  before('one time init: Stakers, NimbleStaking, KNC token', async () => {
     admin = accounts[1];
     daoSetter = accounts[2];
     campCreator = accounts[3];
     stakers = accounts.slice(1); // first account used to mint KNC tokens
-    kncToken = await TestToken.new('kyber Crystals', 'KNC', tokenDecimals);
+    kncToken = await TestToken.new('Nimble Crystals', 'KNC', tokenDecimals);
     kncAddress = kncToken.address;
 
-    // prepare kyber staking
+    // prepare Nimble staking
     firstBlockTimestamp = await Helper.getCurrentBlockTime();
 
     startTime = (await firstBlockTimestamp) + 10;
@@ -96,7 +96,7 @@ contract('KyberDAO fuzz', function (accounts) {
       campCreator
     );
 
-    stakingContract = await KyberStaking.at(await daoContract.staking());
+    stakingContract = await NimbleStaking.at(await daoContract.staking());
     // 10k KNC token
     let kncTweiDepositAmount = new BN(10000).mul(precisionUnits);
     let maxAllowance = new BN(2).pow(new BN(255));

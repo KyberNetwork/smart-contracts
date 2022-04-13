@@ -1,8 +1,8 @@
-const EmergencyKyberFeeHandler = artifacts.require('EmergencyKyberFeeHandler.sol');
+const EmergencyNimbleFeeHandler = artifacts.require('EmergencyNimbleFeeHandler.sol');
 const MockEmergencyFeeHandler = artifacts.require('MockEmergencyFeeHandler.sol');
-const KyberNetwork = artifacts.require('KyberNetwork.sol');
-const KyberStorage = artifacts.require('KyberStorage.sol');
-const MatchingEngine = artifacts.require('KyberMatchingEngine.sol');
+const NimbleNetwork = artifacts.require('NimbleNetwork.sol');
+const NimbleStorage = artifacts.require('NimbleStorage.sol');
+const MatchingEngine = artifacts.require('NimbleMatchingEngine.sol');
 const TestToken = artifacts.require('Token.sol');
 const NoPayableFallback = artifacts.require('NoPayableFallback.sol');
 
@@ -35,7 +35,7 @@ let rewardBps = new BN(5000);
 let rebateBps = new BN(2500);
 let burnBps = new BN(2500);
 
-contract('EmergencyKyberFeeHandler', function (accounts) {
+contract('EmergencyNimbleFeeHandler', function (accounts) {
   before('Setting global variables', async () => {
     admin = accounts[1];
     network = accounts[2];
@@ -48,14 +48,14 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
   describe('valid constructor params', async () => {
     it('test total BRR value should be BPS', async () => {
       await expectRevert(
-        EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps.add(new BN(1))),
+        EmergencyNimbleFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps.add(new BN(1))),
         'Bad BRR values'
       );
     });
 
     it('test total BRR value should not be overflow', async () => {
       await expectRevert.unspecified(
-        EmergencyKyberFeeHandler.new(admin, network, new BN(BPS), new BN(1), new BN(2).pow(new BN(256)).sub(new BN(1)))
+        EmergencyNimbleFeeHandler.new(admin, network, new BN(BPS), new BN(1), new BN(2).pow(new BN(256)).sub(new BN(1)))
       );
     });
   });
@@ -63,7 +63,7 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
   describe('test set network', async () => {
     let newNetwork = accounts[3];
     beforeEach('init emergencyFeeHandler', async () => {
-      feeHandler = await EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps);
+      feeHandler = await EmergencyNimbleFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps);
     });
 
     it('should revert if not amin set network', async () => {
@@ -71,21 +71,21 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
     });
 
     it('should revert if new network is zero', async () => {
-      await expectRevert(feeHandler.setNetworkContract(zeroAddress, {from: admin}), 'kyberNetwork 0');
+      await expectRevert(feeHandler.setNetworkContract(zeroAddress, {from: admin}), 'NimbleNetwork 0');
     });
 
     it('should success and emit events', async () => {
       let txResult = await feeHandler.setNetworkContract(newNetwork, {from: admin});
-      await expectEvent(txResult, 'KyberNetworkUpdated', {kyberNetwork: newNetwork});
+      await expectEvent(txResult, 'NimbleNetworkUpdated', {NimbleNetwork: newNetwork});
       // not update event if network contract is unchanged
       txResult = await feeHandler.setNetworkContract(newNetwork, {from: admin});
-      await expectEvent.notEmitted(txResult, 'KyberNetworkUpdated');
+      await expectEvent.notEmitted(txResult, 'NimbleNetworkUpdated');
     });
   });
 
   describe('test handle fees with mock Network', async () => {
     before('init emergencyFeeHandler', async () => {
-      feeHandler = await EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps);
+      feeHandler = await EmergencyNimbleFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps);
     });
 
     it('should handle Fee', async () => {
@@ -254,7 +254,7 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
               value: fee
             }
           ),
-          'only kyberNetwork'
+          'only NimbleNetwork'
         );
       });
 
@@ -347,7 +347,7 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
 
   describe('test withdraw and claimPlatformFee function', async () => {
     before('create new feehandler', async () => {
-      feeHandler = await EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps);
+      feeHandler = await EmergencyNimbleFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps);
     });
 
     async function createHandleFee (platformWallet) {
@@ -432,8 +432,8 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
     });
   });
 
-  it('should revert with not implemented method from IKyberFeeHandler', async () => {
-    feeHandler = await EmergencyKyberFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps);
+  it('should revert with not implemented method from INimbleFeeHandler', async () => {
+    feeHandler = await EmergencyNimbleFeeHandler.new(admin, network, rewardBps, rebateBps, burnBps);
     await expectRevert(feeHandler.claimReserveRebate(rebateWallets[0]), 'not implemented');
     await expectRevert(feeHandler.claimStakerReward(rebateWallets[0], new BN(0)), 'not implemented');
   });
@@ -444,7 +444,7 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
     let operator;
     let alerter;
     let taker;
-    let kyberNetwork;
+    let NimbleNetwork;
     let storage;
     let reserveIdToWallet;
 
@@ -465,15 +465,15 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
 
       // init storage and network
       storage = await nwHelper.setupStorage(admin);
-      kyberNetwork = await KyberNetwork.new(admin, storage.address);
-      await storage.setNetworkContract(kyberNetwork.address, {from: admin});
+      NimbleNetwork = await NimbleNetwork.new(admin, storage.address);
+      await storage.setNetworkContract(NimbleNetwork.address, {from: admin});
       await storage.addOperator(operator, {from: admin});
 
-      feeHandler = await EmergencyKyberFeeHandler.new(admin, kyberNetwork.address, rewardBps, rebateBps, burnBps);
+      feeHandler = await EmergencyNimbleFeeHandler.new(admin, NimbleNetwork.address, rewardBps, rebateBps, burnBps);
       // init matchingEngine
       matchingEngine = await MatchingEngine.new(admin);
-      await matchingEngine.setNetworkContract(kyberNetwork.address, {from: admin});
-      await matchingEngine.setKyberStorage(storage.address, {from: admin});
+      await matchingEngine.setNetworkContract(NimbleNetwork.address, {from: admin});
+      await matchingEngine.setNimbleStorage(storage.address, {from: admin});
       await storage.setFeeAccountedPerReserveType(true, true, true, true, true, true, {
         from: admin
       });
@@ -482,16 +482,16 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
       });
 
       // setup network
-      await kyberNetwork.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {
+      await NimbleNetwork.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, {
         from: admin
       });
-      await kyberNetwork.addOperator(operator, {from: admin});
-      await kyberNetwork.addKyberProxy(networkProxy, {from: admin});
+      await NimbleNetwork.addOperator(operator, {from: admin});
+      await NimbleNetwork.addNimbleProxy(networkProxy, {from: admin});
       // in the emergency case, dao address is set to zero
-      await kyberNetwork.setKyberDaoContract(zeroAddress, {from: admin});
+      await NimbleNetwork.setNimbleDaoContract(zeroAddress, {from: admin});
       //set params, enable network
-      await kyberNetwork.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
-      await kyberNetwork.setEnable(true, {from: admin});
+      await NimbleNetwork.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
+      await NimbleNetwork.setEnable(true, {from: admin});
 
       testToken = await TestToken.new('test', 'tst', new BN(18));
       let tokens = [testToken];
@@ -504,8 +504,8 @@ contract('EmergencyKyberFeeHandler', function (accounts) {
     it('network should trade, fee update as expected', async () => {
       let ethSrcQty = new BN(10).pow(new BN(18));
       let initalState = await getFeeHanlerState(feeHandler, rebateWallets, platformWallet);
-      let txResult = await kyberNetwork.tradeWithHintAndFee(
-        kyberNetwork.address,
+      let txResult = await NimbleNetwork.tradeWithHintAndFee(
+        NimbleNetwork.address,
         ethAddress,
         ethSrcQty,
         testToken.address,

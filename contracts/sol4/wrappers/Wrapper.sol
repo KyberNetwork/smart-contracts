@@ -4,14 +4,14 @@ import "../ERC20Interface.sol";
 import "../Utils.sol";
 import "../reserves/fprConversionRate/ConversionRates.sol";
 import "../reserves/orderBookReserve/permissionless/OrderbookReserve.sol";
-import "../KyberNetworkInterface.sol";
+import "../NimbleNetworkInterface.sol";
 
 
 contract NetworkInterface {
 
     enum ReserveType {NONE, PERMISSIONED, PERMISSIONLESS}
 
-    KyberReserveInterface[] public reserves;
+    NimbleReserveInterface[] public reserves;
     mapping(address=>ReserveType) public reserveType;
     
     function maxGasPrice() public view returns(uint);
@@ -30,7 +30,7 @@ contract NetworkInterface {
 
 
 contract proxyInterface {
-    KyberNetworkInterface public kyberNetworkContract;
+    NimbleNetworkInterface public NimbleNetworkContract;
 }
 
 
@@ -153,7 +153,7 @@ contract Wrapper is Utils {
       view
       returns (ERC20[] memory permissionlessTokens, uint[] memory decimals, bool isEnded)
     {
-        NetworkInterface network = NetworkInterface(networkProxy.kyberNetworkContract());
+        NetworkInterface network = NetworkInterface(networkProxy.NimbleNetworkContract());
         uint numReserves = network.getNumReserves();
         if (startIndex >= numReserves || startIndex > endIndex) {
             // no need to iterate
@@ -166,7 +166,7 @@ contract Wrapper is Utils {
         uint numberTokens = 0;
         uint rID; // reserveID
         ERC20 token;
-        KyberReserveInterface reserve;
+        NimbleReserveInterface reserve;
         // count number of tokens in unofficial reserves
         for(rID = startIndex; rID <= endIterator; rID++) {
             reserve = network.reserves(rID);

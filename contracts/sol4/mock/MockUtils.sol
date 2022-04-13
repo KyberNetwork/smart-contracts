@@ -3,7 +3,7 @@ pragma solidity 0.4.18;
 
 import "../Utils.sol";
 
-/// @title Kyber utils contract
+/// @title Nimble utils contract
 contract MockUtils is Utils {
 
     function getMaxRate() public pure returns(uint) {

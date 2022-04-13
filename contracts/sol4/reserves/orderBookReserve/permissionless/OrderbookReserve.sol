@@ -5,7 +5,7 @@ import "./OrderListInterface.sol";
 import "./OrderIdManager.sol";
 import "./OrderbookReserveInterface.sol";
 import "../../../Utils2.sol";
-import "../../../KyberReserveInterface.sol";
+import "../../../NimbleReserveInterface.sol";
 
 
 contract FeeBurnerRateInterface {
@@ -18,7 +18,7 @@ interface MedianizerInterface {
 }
 
 
-contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, OrderbookReserveInterface {
+contract OrderbookReserve is OrderIdManager, Utils2, NimbleReserveInterface, OrderbookReserveInterface {
 
     uint public constant BURN_TO_STAKE_FACTOR = 5;      // stake per order must be xfactor expected burn amount.
     uint public constant MAX_BURN_FEE_BPS = 100;        // 1%
@@ -41,7 +41,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         ERC20 kncToken;          // not constant. to enable testing while not on main net
         ERC20 token;             // only supported token.
         FeeBurnerRateInterface feeBurner;
-        address kyberNetwork;
+        address NimbleNetwork;
         MedianizerInterface medianizer; // price feed Eth - USD from maker DAO.
         OrderListFactoryInterface orderListFactory;
     }
@@ -99,7 +99,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(maxOrdersPerTrade != 0);
         require(minNewOrderUsd > 0);
 
-        contracts.kyberNetwork = network;
+        contracts.NimbleNetwork = network;
         contracts.feeBurner = FeeBurnerRateInterface(burner);
         contracts.medianizer = medianizer;
         contracts.orderListFactory = factory;
@@ -194,7 +194,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         payable
         returns(bool)
     {
-        require(msg.sender == contracts.kyberNetwork);
+        require(msg.sender == contracts.NimbleNetwork);
         require((srcToken == ETH_TOKEN_ADDRESS) || (dstToken == ETH_TOKEN_ADDRESS));
         require((srcToken == contracts.token) || (dstToken == contracts.token));
         require(srcAmount <= MAX_QTY);

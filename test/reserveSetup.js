@@ -1,6 +1,6 @@
 const EnhancedConversionRates = artifacts.require("MockEnhancedStepFunctions.sol");
 const ConversionRates = artifacts.require("MockConversionRate.sol");
-const KyberFprReserveV2 = artifacts.require("KyberFprReserveV2");
+const NimbleFprReserveV2 = artifacts.require("NimbleFprReserveV2");
 
 const Helper = require("./helper.js");
 const BN = web3.utils.BN;
@@ -207,7 +207,7 @@ module.exports.setupFprReserveV2 = async function(
   withdrawAddress, tokenWallet, isUsingWeth, doRateValidation
 ) {
   // init reserves and balances
-  let reserveInst = await KyberFprReserveV2.new(network, convRatesInst.address, weth.address, maxGasPrice, doRateValidation, admin);
+  let reserveInst = await NimbleFprReserveV2.new(network, convRatesInst.address, weth.address, maxGasPrice, doRateValidation, admin);
 
   await reserveInst.addOperator(operator);
   await reserveInst.addAlerter(alerter);

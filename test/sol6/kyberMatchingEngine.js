@@ -1,9 +1,9 @@
 const TestToken = artifacts.require("Token.sol");
-const KyberMatchingEngine = artifacts.require("KyberMatchingEngine.sol");
+const NimbleMatchingEngine = artifacts.require("NimbleMatchingEngine.sol");
 const MockMatchEngine = artifacts.require("MockMatchEngine.sol");
-const KyberStorage = artifacts.require("KyberStorage.sol");
-const RateHelper = artifacts.require("KyberRateHelper.sol");
-const KyberNetwork = artifacts.require("KyberNetwork.sol");
+const NimbleStorage = artifacts.require("NimbleStorage.sol");
+const RateHelper = artifacts.require("NimbleRateHelper.sol");
+const NimbleNetwork = artifacts.require("NimbleNetwork.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -65,7 +65,7 @@ let expectedTradeResult;
 let expectedOutput;
 let actualResult;
 
-contract('KyberMatchingEngine', function(accounts) {
+contract('NimbleMatchingEngine', function(accounts) {
     before("one time global init", async() => {
         //init accounts
         user = accounts[0];
@@ -76,7 +76,7 @@ contract('KyberMatchingEngine', function(accounts) {
 
     describe("test onlyAdmin and onlyNetwork permissions", async() => {
         before("deploy matchingEngine and storage instance, 1 mock reserve and 1 mock token", async() => {
-            matchingEngine = await KyberMatchingEngine.new(admin);
+            matchingEngine = await NimbleMatchingEngine.new(admin);
             storage = await nwHelper.setupStorage(admin);
             await storage.setNetworkContract(network, {from:admin});
             token = await TestToken.new("test", "tst", 18);
@@ -107,24 +107,24 @@ contract('KyberMatchingEngine', function(accounts) {
 
         it("should have admin set network contract", async() => {
             await matchingEngine.setNetworkContract(network, {from: admin});
-            let result = await matchingEngine.kyberNetwork();
+            let result = await matchingEngine.NimbleNetwork();
             Helper.assertEqual(network, result, "network not set by admin");
         });
 
         it("should not have unauthorized personnel set negligble rate diff bps", async() => {
             await expectRevert(
                 matchingEngine.setNegligibleRateDiffBps(negligibleRateDiffBps, {from: user}),
-                "only kyberNetwork"
+                "only NimbleNetwork"
             );
 
             await expectRevert(
                 matchingEngine.setNegligibleRateDiffBps(negligibleRateDiffBps, {from: operator}),
-                "only kyberNetwork"
+                "only NimbleNetwork"
             );
 
             await expectRevert(
                 matchingEngine.setNegligibleRateDiffBps(negligibleRateDiffBps, {from: admin}),
-                "only kyberNetwork"
+                "only NimbleNetwork"
             );
         });
 
@@ -141,24 +141,24 @@ contract('KyberMatchingEngine', function(accounts) {
 
         it("should not have unauthorized personnel set storage", async() => {
             await expectRevert(
-                matchingEngine.setKyberStorage(storage.address, {from: user}),
+                matchingEngine.setNimbleStorage(storage.address, {from: user}),
                 "only admin"
             );
 
             await expectRevert(
-                matchingEngine.setKyberStorage(storage.address, {from: operator}),
+                matchingEngine.setNimbleStorage(storage.address, {from: operator}),
                 "only admin"
             );
 
             await expectRevert(
-                matchingEngine.setKyberStorage(storage.address, {from: network}),
+                matchingEngine.setNimbleStorage(storage.address, {from: network}),
                 "only admin"
             );
         });
 
         it("should have network set storage contract", async() => {
-            await matchingEngine.setKyberStorage(storage.address, {from: admin});
-            let result = await matchingEngine.kyberStorage();
+            await matchingEngine.setNimbleStorage(storage.address, {from: admin});
+            let result = await matchingEngine.NimbleStorage();
             Helper.assertEqual(storage.address, result, "storage not set by admin");
         });
 
@@ -166,28 +166,28 @@ contract('KyberMatchingEngine', function(accounts) {
 
     describe("test contract event", async() => {
         before("deploy and setup matchingEngine instance", async() => {
-            matchingEngine = await KyberMatchingEngine.new(admin);
+            matchingEngine = await NimbleMatchingEngine.new(admin);
         });
 
         it("shoud test set network event", async() => {
             txResult = await matchingEngine.setNetworkContract(network, {from: admin});
-            expectEvent(txResult, "KyberNetworkUpdated", {
-                newKyberNetwork: network
+            expectEvent(txResult, "NimbleNetworkUpdated", {
+                newNimbleNetwork: network
             });
         });
 
         it("should test set storage event", async() => {
             await matchingEngine.setNetworkContract(network, {from: admin});
-            txResult = await matchingEngine.setKyberStorage(storage.address, {from: admin});
-            expectEvent(txResult, "KyberStorageUpdated", {
-                newKyberStorage: storage.address
+            txResult = await matchingEngine.setNimbleStorage(storage.address, {from: admin});
+            expectEvent(txResult, "NimbleStorageUpdated", {
+                newNimbleStorage: storage.address
             });
         });
     });
 
     describe("test setting contracts and params", async() => {
         before("deploy and setup matchingEngine instance", async() => {
-            matchingEngine = await KyberMatchingEngine.new(admin);
+            matchingEngine = await NimbleMatchingEngine.new(admin);
         });
 
         it("should revert if negligbleRateDiffBps > BPS", async() => {
@@ -201,18 +201,18 @@ contract('KyberMatchingEngine', function(accounts) {
         it("should revert setting zero address for network", async() => {
             await expectRevert(
                 matchingEngine.setNetworkContract(zeroAddress, {from: admin}),
-                "kyberNetwork 0"
+                "NimbleNetwork 0"
             );
         });
     });
 
     describe("test RateHelper getRatesForToken", async() => {
         before("setup matchingEngine instance and 2 tokens", async() => {
-            matchingEngine = await KyberMatchingEngine.new(admin);
+            matchingEngine = await NimbleMatchingEngine.new(admin);
             storage = await nwHelper.setupStorage(admin);
-            network = await KyberNetwork.new(admin, storage.address);
+            network = await NimbleNetwork.new(admin, storage.address);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
-            await matchingEngine.setKyberStorage(storage.address, {from: admin});
+            await matchingEngine.setNimbleStorage(storage.address, {from: admin});
             await storage.addOperator(operator, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
@@ -418,9 +418,9 @@ contract('KyberMatchingEngine', function(accounts) {
         before("setup matchingEngine instance", async() => {
             matchingEngine = await MockMatchEngine.new(admin);
             storage = await nwHelper.setupStorage(admin);
-            network = await KyberNetwork.new(admin, storage.address);
+            network = await NimbleNetwork.new(admin, storage.address);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
-            await matchingEngine.setKyberStorage(storage.address, {from: admin});
+            await matchingEngine.setNimbleStorage(storage.address, {from: admin});
             await storage.addOperator(operator, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
             await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
@@ -475,9 +475,9 @@ contract('KyberMatchingEngine', function(accounts) {
         before("setup matchingEngine instance", async() => {
             matchingEngine = await MockMatchEngine.new(admin);
             storage = await nwHelper.setupStorage(admin);
-            network = await KyberNetwork.new(admin, storage.address);
+            network = await NimbleNetwork.new(admin, storage.address);
             await matchingEngine.setNetworkContract(network.address, {from: admin});
-            await matchingEngine.setKyberStorage(storage.address, {from: admin});
+            await matchingEngine.setNimbleStorage(storage.address, {from: admin});
             await storage.addOperator(operator, {from: admin});
             await storage.setNetworkContract(network.address, {from: admin});
             await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});

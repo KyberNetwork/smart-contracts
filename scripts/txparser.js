@@ -17,7 +17,7 @@ var pricingAbi =
 ////////////////////////////////////////////////////////////////////////////////
 
 var allAbis = [erc20Abi];
-var contracts = ["KyberReserve", "KyberNetwork", "ConversionRates"];
+var contracts = ["NimbleReserve", "NimbleNetwork", "ConversionRates"];
 var mockContracts = ["MockCentralBank", "Wrapper"];
 var configFile = "deployment_dev.json";
 

@@ -190,7 +190,7 @@ async function deployPricingContract(output) {
 
 async function deployReserveContract(output) {
   console.log("deploying reserve contract");
-  [reserveAddress,reserveContract] = await deployContract(output, "KyberReserve.sol", "KyberReserve", [networkAddress, pricingAddress, sender]);
+  [reserveAddress,reserveContract] = await deployContract(output, "NimbleReserve.sol", "NimbleReserve", [networkAddress, pricingAddress, sender]);
   console.log(`reserveAddress: ${reserveAddress}`)
 }
 

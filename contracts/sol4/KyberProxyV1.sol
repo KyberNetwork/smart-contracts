@@ -4,18 +4,18 @@ pragma solidity 0.4.18;
 import "./ERC20Interface.sol";
 import "./Withdrawable.sol";
 import "./Utils2.sol";
-import "./KyberNetworkInterface.sol";
-import "./KyberNetworkProxyInterface.sol";
+import "./NimbleNetworkInterface.sol";
+import "./NimbleNetworkProxyInterface.sol";
 import "./SimpleNetworkInterface.sol";
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// @title Kyber Network proxy for main contract
-contract KyberProxyV1 is KyberNetworkProxyInterface, SimpleNetworkInterface, Withdrawable, Utils2 {
+/// @title Nimble Network proxy for main contract
+contract NimbleProxyV1 is NimbleNetworkProxyInterface, SimpleNetworkInterface, Withdrawable, Utils2 {
 
-    KyberNetworkInterface public kyberNetworkContract;
+    NimbleNetworkInterface public NimbleNetworkContract;
 
-    function KyberProxyV1(address _admin) public {
+    function NimbleProxyV1(address _admin) public {
         require(_admin != address(0));
         admin = _admin;
     }
@@ -167,10 +167,10 @@ contract KyberProxyV1 is KyberNetworkProxyInterface, SimpleNetworkInterface, Wit
         if (src == ETH_TOKEN_ADDRESS) {
             userBalanceBefore.srcBalance += msg.value;
         } else {
-            require(src.transferFrom(msg.sender, kyberNetworkContract, srcAmount));
+            require(src.transferFrom(msg.sender, NimbleNetworkContract, srcAmount));
         }
 
-        uint reportedDestAmount = kyberNetworkContract.tradeWithHint.value(msg.value)(
+        uint reportedDestAmount = NimbleNetworkContract.tradeWithHint.value(msg.value)(
             msg.sender,
             src,
             srcAmount,
@@ -198,42 +198,42 @@ contract KyberProxyV1 is KyberNetworkProxyInterface, SimpleNetworkInterface, Wit
         return tradeOutcome.userDeltaDestAmount;
     }
 
-    event KyberNetworkSet(address newNetworkContract, address oldNetworkContract);
+    event NimbleNetworkSet(address newNetworkContract, address oldNetworkContract);
 
-    function setKyberNetworkContract(KyberNetworkInterface _kyberNetworkContract) public onlyAdmin {
+    function setNimbleNetworkContract(NimbleNetworkInterface _NimbleNetworkContract) public onlyAdmin {
 
-        require(_kyberNetworkContract != address(0));
+        require(_NimbleNetworkContract != address(0));
 
-        KyberNetworkSet(_kyberNetworkContract, kyberNetworkContract);
+        NimbleNetworkSet(_NimbleNetworkContract, NimbleNetworkContract);
 
-        kyberNetworkContract = _kyberNetworkContract;
+        NimbleNetworkContract = _NimbleNetworkContract;
     }
 
     function getExpectedRate(ERC20 src, ERC20 dest, uint srcQty)
         public view
         returns(uint expectedRate, uint slippageRate)
     {
-        return kyberNetworkContract.getExpectedRate(src, dest, srcQty);
+        return NimbleNetworkContract.getExpectedRate(src, dest, srcQty);
     }
 
     function getUserCapInWei(address user) public view returns(uint) {
-        return kyberNetworkContract.getUserCapInWei(user);
+        return NimbleNetworkContract.getUserCapInWei(user);
     }
 
     function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint) {
-        return kyberNetworkContract.getUserCapInTokenWei(user, token);
+        return NimbleNetworkContract.getUserCapInTokenWei(user, token);
     }
 
     function maxGasPrice() public view returns(uint) {
-        return kyberNetworkContract.maxGasPrice();
+        return NimbleNetworkContract.maxGasPrice();
     }
 
     function enabled() public view returns(bool) {
-        return kyberNetworkContract.enabled();
+        return NimbleNetworkContract.enabled();
     }
 
     function info(bytes32 field) public view returns(uint) {
-        return kyberNetworkContract.info(field);
+        return NimbleNetworkContract.info(field);
     }
 
     struct TradeOutcome {

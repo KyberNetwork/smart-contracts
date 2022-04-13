@@ -1,9 +1,9 @@
 pragma solidity 0.6.6;
 
-import "../IKyberReserve.sol";
+import "../INimbleReserve.sol";
 
 
-interface IKyberRateHelper {
+interface INimbleRateHelper {
     function getRatesForToken(
         IERC20 token,
         uint256 optionalBuyAmountWei,

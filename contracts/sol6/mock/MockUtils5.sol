@@ -3,7 +3,7 @@ pragma solidity 0.6.6;
 import "../utils/Utils5.sol";
 
 
-/// @title Kyber utils contract
+/// @title Nimble utils contract
 contract MockUtils5 is Utils5 {
     function mockCheckGetUpdateDecimals(IERC20 token) public returns (uint256) {
         return getUpdateDecimals(token);

@@ -1,12 +1,12 @@
 pragma solidity 0.6.6;
 
-import "../IKyberReserve.sol";
+import "../INimbleReserve.sol";
 import "../utils/Utils5.sol";
 import "../utils/zeppelin/SafeERC20.sol";
-import "../IKyberNetwork.sol";
+import "../INimbleNetwork.sol";
 
 
-contract ReserveReturnFalse is IKyberReserve, Utils5 {
+contract ReserveReturnFalse is INimbleReserve, Utils5 {
     using SafeERC20 for IERC20;
 
     mapping(address => uint256) public buyTokenRates;

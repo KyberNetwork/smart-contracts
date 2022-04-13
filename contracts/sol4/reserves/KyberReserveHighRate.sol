@@ -1,16 +1,16 @@
 pragma solidity 0.4.18;
 
-import "./KyberReserve.sol";
+import "./NimbleReserve.sol";
 
-/// @title Kyber Reserve contract
-/// reuses KyberReserve.sol contract while overriding a few functions / values.
+/// @title Nimble Reserve contract
+/// reuses NimbleReserve.sol contract while overriding a few functions / values.
 /// Update MAX_RATE to higher value and should have maximum code reuse
-contract KyberReserveHighRate is KyberReserve {
+contract NimbleReserveHighRate is NimbleReserve {
 
     uint  constant internal MAX_RATE  = (PRECISION * 10 ** 7); // 10M tokens per ETH
 
-    function KyberReserveHighRate(address _kyberNetwork, ConversionRatesInterface _ratesContract,
-        address _admin) public KyberReserve(_kyberNetwork, _ratesContract, _admin)
+    function NimbleReserveHighRate(address _NimbleNetwork, ConversionRatesInterface _ratesContract,
+        address _admin) public NimbleReserve(_NimbleNetwork, _ratesContract, _admin)
         { }
 
     function calcDstQty(uint srcQty, uint srcDecimals, uint dstDecimals, uint rate)

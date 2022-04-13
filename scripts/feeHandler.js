@@ -29,16 +29,16 @@ const input = {
     "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'VolumeImbalanceRecorder.sol', 'utf8'),
     "FeeBurner.sol" : fs.readFileSync(contractPath + 'FeeBurner.sol', 'utf8'),
     "WhiteListInterface.sol" : fs.readFileSync(contractPath + 'WhiteListInterface.sol', 'utf8'),
-    "KyberNetwork.sol" : fs.readFileSync(contractPath + 'KyberNetwork.sol', 'utf8'),
-    "KyberNetworkInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkInterface.sol', 'utf8'),
+    "NimbleNetwork.sol" : fs.readFileSync(contractPath + 'NimbleNetwork.sol', 'utf8'),
+    "NimbleNetworkInterface.sol" : fs.readFileSync(contractPath + 'NimbleNetworkInterface.sol', 'utf8'),
     "SimpleNetworkInterface.sol" : fs.readFileSync(contractPath + 'SimpleNetworkInterface.sol', 'utf8'),
-    "KyberNetworkProxyInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkProxyInterface.sol', 'utf8'),
-    "KyberNetworkProxy.sol" : fs.readFileSync(contractPath + 'KyberNetworkProxy.sol', 'utf8'),
+    "NimbleNetworkProxyInterface.sol" : fs.readFileSync(contractPath + 'NimbleNetworkProxyInterface.sol', 'utf8'),
+    "NimbleNetworkProxy.sol" : fs.readFileSync(contractPath + 'NimbleNetworkProxy.sol', 'utf8'),
     "WhiteList.sol" : fs.readFileSync(contractPath + 'WhiteList.sol', 'utf8'),
-    "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
+    "NimbleReserveInterface.sol" : fs.readFileSync(contractPath + 'NimbleReserveInterface.sol', 'utf8'),
     "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-    "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
-    "KyberReserveV1.sol" : fs.readFileSync(contractPath + 'previousContracts/KyberReserveV1.sol', 'utf8'),
+    "NimbleReserve.sol" : fs.readFileSync(contractPath + 'NimbleReserve.sol', 'utf8'),
+    "NimbleReserveV1.sol" : fs.readFileSync(contractPath + 'previousContracts/NimbleReserveV1.sol', 'utf8'),
     "WrapConversionRate.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapConversionRate.sol', 'utf8'),
     "WrapFeeBurner.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapFeeBurner.sol', 'utf8'),
     "WrapperBase.sol" : fs.readFileSync(contractPath + 'wrapperContracts/WrapperBase.sol', 'utf8'),
@@ -280,7 +280,7 @@ function getConfig() {
 async function getAbis() {
     const output = await solc.compile({ sources: input }, 1);
     erc20Abi = output.contracts["ERC20Interface.sol:ERC20"].interface;
-    networkAbi = output.contracts["KyberNetwork.sol:KyberNetwork"].interface;
+    networkAbi = output.contracts["NimbleNetwork.sol:NimbleNetwork"].interface;
     feeBurnerAbi = output.contracts["FeeBurner.sol:FeeBurner"].interface;
     feeBurnerWrapperAbi = output.contracts["WrapFeeBurner.sol:WrapFeeBurner"].interface;
 }

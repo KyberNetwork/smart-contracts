@@ -1,6 +1,6 @@
 {
   "permission": {
-    "KyberNetwork": {
+    "NimbleNetwork": {
       "admin": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
       "operator": [
         "0x1be6064ca70e40a39473372be0ac8a5e16f7be45"
@@ -24,7 +24,7 @@
   },
 
   "reserves" : {
-    "kyber" : {
+    "Nimble" : {
       "address" : "0xeb52ce516a8d054a574905bdc3d4a176d3a2d51a",
       "KNC wallet" : "0xeb52ce516a8d054a574905bdc3d4a176d3a2d51a",
       "fees" : "25",

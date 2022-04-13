@@ -1,15 +1,15 @@
 pragma solidity 0.6.6;
 
-import "../KyberNetwork.sol";
+import "../NimbleNetwork.sol";
 
 
 /*
- * @title Kyber Network main contract that doesn't check max dest amount. so we can test it on proxy
+ * @title Nimble Network main contract that doesn't check max dest amount. so we can test it on proxy
  */
-contract KyberNetworkNoMaxDest is KyberNetwork {
-    constructor(address _admin, IKyberStorage _kyberStorage)
+contract NimbleNetworkNoMaxDest is NimbleNetwork {
+    constructor(address _admin, INimbleStorage _NimbleStorage)
         public
-        KyberNetwork(_admin, _kyberStorage)
+        NimbleNetwork(_admin, _NimbleStorage)
     {}
 
     function calcTradeSrcAmountFromDest(TradeData memory tData)

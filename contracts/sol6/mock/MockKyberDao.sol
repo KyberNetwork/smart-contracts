@@ -1,12 +1,12 @@
 pragma solidity 0.6.6;
 
-import "../IKyberDao.sol";
+import "../INimbleDao.sol";
 import "../utils/Utils5.sol";
-import "../IKyberFeeHandler.sol";
+import "../INimbleFeeHandler.sol";
 
 
-contract MockKyberDao is IKyberDao, Utils5 {
-    IKyberFeeHandler public feeHandler;
+contract MockNimbleDao is INimbleDao, Utils5 {
+    INimbleFeeHandler public feeHandler;
     uint256 public rewardInBPS;
     uint256 public rebateInBPS;
     uint256 public epoch;
@@ -126,7 +126,7 @@ contract MockKyberDao is IKyberDao, Utils5 {
         expiryTimestamp = now + epochPeriod;
     }
 
-    function setFeeHandler(IKyberFeeHandler _handler) public {
+    function setFeeHandler(INimbleFeeHandler _handler) public {
         feeHandler = _handler;
     }
 

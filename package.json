@@ -1,7 +1,7 @@
 {
   "name": "smart-contracts",
   "version": "1.0.0",
-  "description": "This repository has the main contracts for KyberNetwork protocol.",
+  "description": "This repository has the main contracts for NimbleNetwork protocol.",
   "main": "truffle.js",
   "directories": {
     "test": "test"
@@ -11,14 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KyberNetwork/smart-contracts.git"
+    "url": "git+https://github.com/NimbleNetwork/smart-contracts.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/KyberNetwork/smart-contracts/issues"
+    "url": "https://github.com/NimbleNetwork/smart-contracts/issues"
   },
-  "homepage": "https://github.com/KyberNetwork/smart-contracts#readme",
+  "homepage": "https://github.com/NimbleNetwork/smart-contracts#readme",
   "dependencies": {
     "chai-as-promised": "7.1.1",
     "compare-versions": "3.5.1",

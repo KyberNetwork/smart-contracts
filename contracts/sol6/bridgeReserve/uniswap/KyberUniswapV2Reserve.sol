@@ -4,19 +4,19 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 
-import "../../IKyberReserve.sol";
+import "../../INimbleReserve.sol";
 import "../../IERC20.sol";
 import "../../utils/Withdrawable3.sol";
 import "../../utils/Utils5.sol";
 import "../../utils/zeppelin/SafeERC20.sol";
 
-contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
+contract NimbleUniswapV2Reserve is INimbleReserve, Withdrawable3, Utils5 {
     using SafeERC20 for IERC20;
 
     uint256 public constant DEFAULT_FEE_BPS = 0;
     uint256 public constant DEADLINE = 2**255;
 
-    address public kyberNetwork;
+    address public NimbleNetwork;
     // fee deducted for each trade
     uint256 public feeBps = DEFAULT_FEE_BPS;
 
@@ -49,22 +49,22 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
 
     event EtherReceival(address indexed sender, uint256 amount);
 
-    event KyberNetworkSet(address kyberNetwork);
+    event NimbleNetworkSet(address NimbleNetwork);
 
     constructor(
         IUniswapV2Router01 _uniswapRouter,
         address _weth,
         address _admin,
-        address _kyberNetwork
+        address _NimbleNetwork
     ) public Withdrawable3(_admin) {
         require(address(_uniswapRouter) != address(0), "uniswapRouter 0");
         require(_weth != address(0), "weth 0");
-        require(_kyberNetwork != address(0), "kyberNetwork 0");
+        require(_NimbleNetwork != address(0), "NimbleNetwork 0");
 
         uniswapRouter = _uniswapRouter;
         uniswapFactory = IUniswapV2Factory(_uniswapRouter.factory());
         weth = _weth;
-        kyberNetwork = _kyberNetwork;
+        NimbleNetwork = _NimbleNetwork;
     }
 
     receive() external payable {
@@ -83,7 +83,7 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
         bool /* validate */
     ) external override payable returns (bool) {
         require(tradeEnabled, "trade is disabled");
-        require(msg.sender == kyberNetwork, "only kyberNetwork");
+        require(msg.sender == NimbleNetwork, "only NimbleNetwork");
         require(isValidTokens(srcToken, destToken), "only use eth and listed token");
 
         require(conversionRate > 0, "conversionRate 0");
@@ -157,11 +157,11 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
         }
     }
 
-    function setKyberNetwork(address _kyberNetwork) external onlyAdmin {
-        require(_kyberNetwork != address(0));
-        if (kyberNetwork != _kyberNetwork) {
-            kyberNetwork = _kyberNetwork;
-            emit KyberNetworkSet(kyberNetwork);
+    function setNimbleNetwork(address _NimbleNetwork) external onlyAdmin {
+        require(_NimbleNetwork != address(0));
+        if (NimbleNetwork != _NimbleNetwork) {
+            NimbleNetwork = _NimbleNetwork;
+            emit NimbleNetworkSet(NimbleNetwork);
         }
     }
 
@@ -240,7 +240,7 @@ contract KyberUniswapV2Reserve is IKyberReserve, Withdrawable3, Utils5 {
     }
 
     /**
-     *   @dev called by kybernetwork to get settlement rate
+     *   @dev called by Nimblenetwork to get settlement rate
      */
     function getConversionRate(
         IERC20 src,

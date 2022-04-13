@@ -1,18 +1,18 @@
 pragma solidity 0.6.6;
 
-import "../KyberNetwork.sol";
+import "../NimbleNetwork.sol";
 
 
 /*
- * @title GenerousKyberNetwork2 transfer the fixed dest amount to destAddress and returns this amount to proxy
+ * @title GenerousNimbleNetwork2 transfer the fixed dest amount to destAddress and returns this amount to proxy
  * This would allow us to check the condition of maxDestAmount
  */
-contract GenerousKyberNetwork2 is KyberNetwork {
+contract GenerousNimbleNetwork2 is NimbleNetwork {
     event GenerousTrade(int256 which, int256 more, IERC20 token);
 
-    constructor(address _admin, IKyberStorage _kyberStorage)
+    constructor(address _admin, INimbleStorage _NimbleStorage)
         public
-        KyberNetwork(_admin, _kyberStorage)
+        NimbleNetwork(_admin, _NimbleStorage)
     {}
 
     function trade(TradeData memory tData, bytes memory hint)
@@ -90,7 +90,7 @@ contract GenerousKyberNetwork2 is KyberNetwork {
 
         handleFees(tData);
 
-        emit KyberTrade({
+        emit NimbleTrade({
             src: tData.input.src,
             dest: tData.input.dest,
             ethWeiValue: tData.tradeWei,

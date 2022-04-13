@@ -3,8 +3,8 @@ pragma solidity 0.4.18;
 
 import "./ERC20Interface.sol";
 
-/// @title Kyber Reserve contract
-interface KyberReserveInterface {
+/// @title Nimble Reserve contract
+interface NimbleReserveInterface {
 
     function trade(
         ERC20 srcToken,

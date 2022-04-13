@@ -57,8 +57,8 @@ module.exports.readPermisionlessOrderbookLister = async function (listerAddress,
     let medianizerContract = await Lister.methods.medianizerContract().call();
     myLog((medianizerContract.valueOf() == 0), 0, "medianizerContract: " + medianizerContract.valueOf());
 
-    let kyberNetworkContract = (await Lister.methods.kyberNetworkContract().call()).toLowerCase();
-    myLog((kyberNetworkContract.valueOf() != jsonNetworkAdd), 0, "kyberNetworkContract: " + kyberNetworkContract);
+    let NimbleNetworkContract = (await Lister.methods.NimbleNetworkContract().call()).toLowerCase();
+    myLog((NimbleNetworkContract.valueOf() != jsonNetworkAdd), 0, "NimbleNetworkContract: " + NimbleNetworkContract);
 
     let orderFactoryContract = await Lister.methods.orderFactoryContract().call();
     myLog(0, 0, "orderFactoryContract " + orderFactoryContract);
@@ -101,7 +101,7 @@ module.exports.readOrderbookReserve = async function (reserveAddress, solcOutput
     myLog(0, 0, "token " + (await a2n(contracts[0].valueOf(), 1)));
     myLog(0, 0, "kncToken " + (await a2n(contracts[1].valueOf(), 1)));
     myLog(0, (contracts[2].valueOf().toLowerCase()  != jsonFeeBurnerAdd), "feeBurner " + contracts[2].valueOf());
-    myLog(0, (contracts[3].valueOf().toLowerCase() != jsonNetworkAdd), "kyberNetwork " + contracts[3].valueOf());
+    myLog(0, (contracts[3].valueOf().toLowerCase() != jsonNetworkAdd), "NimbleNetwork " + contracts[3].valueOf());
     myLog(0, 0, "medianizer " + contracts[4].valueOf());
     myLog(0, 0, "orderListFactory " + contracts[5].valueOf());
 

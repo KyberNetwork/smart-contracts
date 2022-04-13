@@ -1,8 +1,8 @@
-const MockDao = artifacts.require('MockKyberDao.sol');
-const KyberRateHelper = artifacts.require('KyberRateHelper.sol');
+const MockDao = artifacts.require('MockNimbleDao.sol');
+const NimbleRateHelper = artifacts.require('NimbleRateHelper.sol');
 const TestToken = artifacts.require('Token.sol');
 const MockReserve = artifacts.require('MockReserve.sol');
-const KyberNetwork = artifacts.require('KyberNetwork.sol');
+const NimbleNetwork = artifacts.require('NimbleNetwork.sol');
 
 const BN = web3.utils.BN;
 const Helper = require('../../helper.js');
@@ -27,7 +27,7 @@ const {
 const {flatMap} = require('mathjs/lib');
 const {assert} = require('chai');
 
-//KyberDao related data
+//NimbleDao related data
 let rewardInBPS = new BN(7000);
 let rebateInBPS = new BN(2000);
 let epoch = new BN(3);
@@ -44,7 +44,7 @@ let token;
 const defaultBaseAmount = new BN(10).pow(new BN(16)); // 0.01 ether
 const defaultSlippageAmount = new BN(10).pow(new BN(19)); // 10 ether
 
-contract('KyberRateHelper', accounts => {
+contract('NimbleRateHelper', accounts => {
   before('global init ', async () => {
     admin = accounts[1];
     operator = accounts[2];
@@ -53,7 +53,7 @@ contract('KyberRateHelper', accounts => {
   });
 
   it('test const', async () => {
-    rateHelper = await KyberRateHelper.new(admin);
+    rateHelper = await NimbleRateHelper.new(admin);
     Helper.assertEqual(defaultBaseAmount, await rateHelper.DEFAULT_SLIPPAGE_QUERY_BASE_AMOUNT_WEI());
     Helper.assertEqual(defaultSlippageAmount, await rateHelper.DEFAULT_SLIPPAGE_QUERY_AMOUNT_WEI());
   });
@@ -64,10 +64,10 @@ contract('KyberRateHelper', accounts => {
     let numReserve = 3;
     beforeEach('init storage and dao', async () => {
       storage = await nwHelper.setupStorage(admin);
-      network = await KyberNetwork.new(admin, kyberStorage.address);
-      await kyberStorage.setNetworkContract(network.address, {from: admin});
+      network = await NimbleNetwork.new(admin, NimbleStorage.address);
+      await NimbleStorage.setNetworkContract(network.address, {from: admin});
       await storage.addOperator(operator, {from: admin});
-      //KyberDao related init.
+      //NimbleDao related init.
       expiryTimestamp = (await Helper.getCurrentBlockTime()) + 10;
       dao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
       await dao.setNetworkFeeBps(networkFeeBps);
@@ -117,7 +117,7 @@ contract('KyberRateHelper', accounts => {
         'unexpected listed reserveIds'
       );
 
-      rateHelper = await KyberRateHelper.new(admin);
+      rateHelper = await NimbleRateHelper.new(admin);
       rateHelper.setContracts(dao.address, storage.address, {from: admin});
     });
 
@@ -171,10 +171,10 @@ contract('KyberRateHelper', accounts => {
     let reserveId;
     before('set up apr reserve', async () => {
       storage = await nwHelper.setupStorage(admin);
-      network = await KyberNetwork.new(admin, kyberStorage.address);
-      await kyberStorage.setNetworkContract(network.address, {from: admin});
+      network = await NimbleNetwork.new(admin, NimbleStorage.address);
+      await NimbleStorage.setNetworkContract(network.address, {from: admin});
       await storage.addOperator(operator, {from: admin});
-      //KyberDao related init.
+      //NimbleDao related init.
       expiryTimestamp = (await Helper.getCurrentBlockTime()) + 10;
       dao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
       await dao.setNetworkFeeBps(networkFeeBps);
@@ -199,7 +199,7 @@ contract('KyberRateHelper', accounts => {
       await storage.listPairForReserve(reserveId, token.address, true, true, true, {
         from: operator
       });
-      rateHelper = await KyberRateHelper.new(admin);
+      rateHelper = await NimbleRateHelper.new(admin);
       rateHelper.setContracts(dao.address, storage.address, {from: admin});
     });
 

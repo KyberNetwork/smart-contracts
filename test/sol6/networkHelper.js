@@ -1,12 +1,12 @@
 const BN = web3.utils.BN;
 const Helper = require("../helper.js");
 
-const Reserve = artifacts.require("KyberReserve.sol");
+const Reserve = artifacts.require("NimbleReserve.sol");
 const ConversionRates = artifacts.require("ConversionRates.sol");
-const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
-const KyberHistory = artifacts.require("KyberHistory.sol");
-const KyberStorage = artifacts.require("KyberStorage.sol");
-const FeeHandler = artifacts.require("KyberFeeHandler.sol");
+const MatchingEngine = artifacts.require("NimbleMatchingEngine.sol");
+const NimbleHistory = artifacts.require("NimbleHistory.sol");
+const NimbleStorage = artifacts.require("NimbleStorage.sol");
+const FeeHandler = artifacts.require("NimbleFeeHandler.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
 const LiquidityConversionRates = artifacts.require("LiquidityConversionRates.sol");
 const StrictValidatingReserve = artifacts.require("StrictValidatingReserve.sol");
@@ -51,22 +51,22 @@ module.exports = {NULL_ID, APR_ID, BRIDGE_ID, MOCK_ID, FPR_ID, ZERO_RESERVE_ID, 
 
 module.exports.setupStorage = setupStorage;
 async function setupStorage(admin) {
-    let networkHistory = await KyberHistory.new(admin);
-    let feeHandlerHistory = await KyberHistory.new(admin);
-    let kyberDaoHistory = await KyberHistory.new(admin);
-    let matchingEngineHistory = await KyberHistory.new(admin);
-    kyberStorage = await KyberStorage.new(
+    let networkHistory = await NimbleHistory.new(admin);
+    let feeHandlerHistory = await NimbleHistory.new(admin);
+    let NimbleDaoHistory = await NimbleHistory.new(admin);
+    let matchingEngineHistory = await NimbleHistory.new(admin);
+    NimbleStorage = await NimbleStorage.new(
         admin,
         networkHistory.address,
         feeHandlerHistory.address,
-        kyberDaoHistory.address,
+        NimbleDaoHistory.address,
         matchingEngineHistory.address
         );
-    await networkHistory.setStorageContract(kyberStorage.address, {from: admin});
-    await feeHandlerHistory.setStorageContract(kyberStorage.address, {from: admin});
-    await kyberDaoHistory.setStorageContract(kyberStorage.address, {from: admin});
-    await matchingEngineHistory.setStorageContract(kyberStorage.address, {from: admin});
-    return kyberStorage;
+    await networkHistory.setStorageContract(NimbleStorage.address, {from: admin});
+    await feeHandlerHistory.setStorageContract(NimbleStorage.address, {from: admin});
+    await NimbleDaoHistory.setStorageContract(NimbleStorage.address, {from: admin});
+    await matchingEngineHistory.setStorageContract(NimbleStorage.address, {from: admin});
+    return NimbleStorage;
 }
 
 module.exports.setupReserves = setupReserves;
@@ -208,7 +208,7 @@ async function listTokenForRedeployNetwork(storageInstance, reserveInstances, to
 
 module.exports.setupNetwork = setupNetwork;
 async function setupNetwork
-    (NetworkArtifact, networkProxyAddress, KNCAddress, kyberDaoAddress, admin, operator) {
+    (NetworkArtifact, networkProxyAddress, KNCAddress, NimbleDaoAddress, admin, operator) {
     const storage =  await setupStorage(admin);
     const network = await NetworkArtifact.new(admin, storage.address);
     await storage.setNetworkContract(network.address, {from: admin});
@@ -217,17 +217,17 @@ async function setupNetwork
     //init matchingEngine, feeHandler
     const matchingEngine = await MatchingEngine.new(admin);
     await matchingEngine.setNetworkContract(network.address, { from: admin });
-    await matchingEngine.setKyberStorage(storage.address, {from : admin});
+    await matchingEngine.setNimbleStorage(storage.address, {from : admin});
     await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, { from: admin });
     await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
     let feeHandler = await FeeHandler.new(admin, network.address, network.address, KNCAddress, burnBlockInterval, admin);
-    feeHandler.setDaoContract(kyberDaoAddress, {from: admin});
+    feeHandler.setDaoContract(NimbleDaoAddress, {from: admin});
     await network.setContracts(feeHandler.address, matchingEngine.address, zeroAddress, { from: admin });
-    // set KyberDao contract
-    await network.setKyberDaoContract(kyberDaoAddress, { from: admin });
+    // set NimbleDao contract
+    await network.setNimbleDaoContract(NimbleDaoAddress, { from: admin });
     // point proxy to network
-    await network.addKyberProxy(networkProxyAddress, { from: admin });
+    await network.addNimbleProxy(networkProxyAddress, { from: admin });
     //set params, enable network
     await network.setParams(gasPrice, negligibleRateDiffBps, { from: admin });
     await network.setEnable(true, { from: admin });
@@ -465,7 +465,7 @@ module.exports.getTradeEventArgs = function(tradeTx) {
     let result = {}
 
     for (let event of tradeTx.logs) {
-        if(event.event == 'KyberTrade') {
+        if(event.event == 'NimbleTrade') {
             result['t2eIds'] = event.args.t2eIds;
             result['e2tIds'] = event.args.e2tIds;
             result['ethWeiValue'] = event.args.ethWeiValue;

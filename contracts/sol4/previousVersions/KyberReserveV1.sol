@@ -6,23 +6,23 @@ import "../Utils.sol";
 import "../Withdrawable.sol";
 import "../ConversionRatesInterface.sol";
 import "../SanityRatesInterface.sol";
-import "../KyberReserveInterface.sol";
+import "../NimbleReserveInterface.sol";
 
 
-/// @title Kyber Reserve contract
-contract KyberReserveV1 is KyberReserveInterface, Withdrawable, Utils {
+/// @title Nimble Reserve contract
+contract NimbleReserveV1 is NimbleReserveInterface, Withdrawable, Utils {
 
-    address public kyberNetwork;
+    address public NimbleNetwork;
     bool public tradeEnabled;
     ConversionRatesInterface public conversionRatesContract;
     SanityRatesInterface public sanityRatesContract;
     mapping(bytes32=>bool) public approvedWithdrawAddresses; // sha3(token,address)=>bool
 
-    function KyberReserve(address _kyberNetwork, ConversionRatesInterface _ratesContract, address _admin) public {
+    function NimbleReserve(address _NimbleNetwork, ConversionRatesInterface _ratesContract, address _admin) public {
         require(_admin != address(0));
         require(_ratesContract != address(0));
-        require(_kyberNetwork != address(0));
-        kyberNetwork = _kyberNetwork;
+        require(_NimbleNetwork != address(0));
+        NimbleNetwork = _NimbleNetwork;
         conversionRatesContract = _ratesContract;
         admin = _admin;
         tradeEnabled = true;
@@ -56,7 +56,7 @@ contract KyberReserveV1 is KyberReserveInterface, Withdrawable, Utils {
     returns(bool)
     {
         require(tradeEnabled);
-        require(msg.sender == kyberNetwork);
+        require(msg.sender == NimbleNetwork);
 
         require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
 
@@ -106,18 +106,18 @@ contract KyberReserveV1 is KyberReserveInterface, Withdrawable, Utils {
 
     event SetContractAddresses(address network, address rate, address sanity);
 
-    function setContracts(address _kyberNetwork, ConversionRatesInterface _conversionRates, SanityRatesInterface _sanityRates)
+    function setContracts(address _NimbleNetwork, ConversionRatesInterface _conversionRates, SanityRatesInterface _sanityRates)
     public
     onlyAdmin
     {
-        require(_kyberNetwork != address(0));
+        require(_NimbleNetwork != address(0));
         require(_conversionRates != address(0));
 
-        kyberNetwork = _kyberNetwork;
+        NimbleNetwork = _NimbleNetwork;
         conversionRatesContract = _conversionRates;
         sanityRatesContract = _sanityRates;
 
-        SetContractAddresses(kyberNetwork, conversionRatesContract, sanityRatesContract);
+        SetContractAddresses(NimbleNetwork, conversionRatesContract, sanityRatesContract);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -191,7 +191,7 @@ contract KyberReserveV1 is KyberReserveInterface, Withdrawable, Utils {
     internal
     returns(bool)
     {
-        // can skip validation if done at kyber network level
+        // can skip validation if done at Nimble network level
         if (validate) {
             require(conversionRate > 0);
             if (srcToken == ETH_TOKEN_ADDRESS)

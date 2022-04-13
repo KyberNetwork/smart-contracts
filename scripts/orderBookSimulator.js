@@ -1,6 +1,6 @@
 const TestToken = artifacts.require("TestToken.sol");
-const NetworkProxy = artifacts.require("KyberNetworkProxy.sol");
-const KyberNetwork = artifacts.require("KyberNetwork.sol");
+const NetworkProxy = artifacts.require("NimbleNetworkProxy.sol");
+const NimbleNetwork = artifacts.require("NimbleNetwork.sol");
 const FeeBurner = artifacts.require("FeeBurner.sol");
 const ExpectedRate = artifacts.require("ExpectedRate.sol");
 const OrderList = artifacts.require("OrderList.sol");
@@ -10,7 +10,7 @@ const MockOrderbookReserve = artifacts.require("MockOrderbookReserve.sol");
 const TestTokenFailing = artifacts.require("TestTokenFailing.sol");
 const TestTokenTransferFailing = artifacts.require("TestTokenTransferFailing.sol");
 const MockMedianizer = artifacts.require("MockMedianizer.sol");
-const MockKyberNetwork = artifacts.require("MockKyberNetwork.sol");
+const MockNimbleNetwork = artifacts.require("MockNimbleNetwork.sol");
 const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
 const MockUtils = artifacts.require("MockUtils.sol");
 
@@ -85,11 +85,11 @@ contract('OrderbookReserve fuzzer', async (accounts) => {
 
         token = await TestToken.new("the token", "tok", 18);
         tokenAdd = token.address;
-        KNCToken = await TestToken.new("kyber crystals", "knc", 18);
+        KNCToken = await TestToken.new("Nimble crystals", "knc", 18);
         kncAddress = KNCToken.address;
 
-        // prepare kyber network
-        mockNetwork = await MockKyberNetwork.new(admin);
+        // prepare Nimble network
+        mockNetwork = await MockNimbleNetwork.new(admin);
 
         feeBurner = await FeeBurner.new(
             admin,

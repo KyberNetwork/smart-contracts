@@ -110,14 +110,14 @@ const input = {
     "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
     "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
     "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
-    "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
-    "KyberOasisReserve.sol" : fs.readFileSync(oasisContractPath + 'KyberOasisReserve.sol', 'utf8')
+    "NimbleReserveInterface.sol" : fs.readFileSync(contractPath + 'NimbleReserveInterface.sol', 'utf8'),
+    "NimbleOasisReserve.sol" : fs.readFileSync(oasisContractPath + 'NimbleOasisReserve.sol', 'utf8')
 };
 
 
 const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const feeBurnerAddress = '0xd6703974Dc30155d768c058189A2936Cf7C62Da6'; //staging
-const kyberNetworkAddress = '0x706aBcE058DB29eB36578c463cf295F180a1Fe9C'; //staging
+const NimbleNetworkAddress = '0x706aBcE058DB29eB36578c463cf295F180a1Fe9C'; //staging
 const otcAddress = '0xB7ac09C2c0217B07d7c103029B4918a2C401eeCB';
 const wethTokenAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const adminAddress = '0xF9eF59dB62f56aF114380A7496Fd51172dafD41d';
@@ -140,13 +140,13 @@ async function main() {
         await waitForEth();
     }
 
-    [kyberOasisReserveAddress, kyberOasisReserveContract] = await deployContract(
+    [NimbleOasisReserveAddress, NimbleOasisReserveContract] = await deployContract(
         output,
-        "KyberOasisReserve.sol:KyberOasisReserve",
-        [kyberNetworkAddress, otcAddress, wethTokenAddress, adminAddress, feeBps]
+        "NimbleOasisReserve.sol:NimbleOasisReserve",
+        [NimbleNetworkAddress, otcAddress, wethTokenAddress, adminAddress, feeBps]
     );
 
-    console.log("kyberOasisReserveAddress: " + kyberOasisReserveAddress)
+    console.log("NimbleOasisReserveAddress: " + NimbleOasisReserveAddress)
     console.log("last nonce is", nonce);
 }
 

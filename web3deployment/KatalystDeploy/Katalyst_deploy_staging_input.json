@@ -24,7 +24,7 @@
     "ORDERBOOK": true
   },
   "permission": {
-    "KyberDao": {
+    "NimbleDao": {
       "DaoOperator": "0xfdb39391184481df0f8e7d57c029f9bf8dbdaca8"
     },
     "FeeHandler": {
@@ -75,7 +75,7 @@
       "address": "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07"
     },
     "KNC": {
-      "name": "Kyber Network Crystal",
+      "name": "Nimble Network Crystal",
       "decimals": "18",
       "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200"
     },
@@ -425,7 +425,7 @@
       "address": "0xb683D83a532e2Cb7DFa5275eED3698436371cc9f"
     },
     "PT": {
-      "name": "Promotion Token @ https://kyber.network/swap",
+      "name": "Promotion Token @ https://Nimble.network/swap",
       "decimals": "18",
       "address": "0x094c875704c14783049DDF8136E298B3a099c446"
     },

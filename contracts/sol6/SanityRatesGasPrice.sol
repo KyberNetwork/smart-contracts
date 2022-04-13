@@ -1,6 +1,6 @@
 pragma solidity 0.6.6;
 
-import "./IKyberSanity.sol";
+import "./INimbleSanity.sol";
 import "./utils/Utils5.sol";
 import "./utils/Withdrawable3.sol";
 
@@ -20,7 +20,7 @@ import "./utils/Withdrawable3.sol";
  *   then trades involving the reserve will be disabled.
  */
 
-contract SanityRatesGasPrice is IKyberSanity, Withdrawable3, Utils5 {
+contract SanityRatesGasPrice is INimbleSanity, Withdrawable3, Utils5 {
     struct SanityData {
         uint128 tokenRate;
         uint128 reasonableDiffInBps;

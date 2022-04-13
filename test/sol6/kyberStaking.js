@@ -1,9 +1,9 @@
 const TestToken = artifacts.require("Token.sol");
-const MockKyberDao = artifacts.require("MockKyberDaoTestHandleWithdrawal.sol");
-const MockKyberDaoWithdrawFailed = artifacts.require("MockKyberDaoWithdrawFailed.sol");
-const StakingContract = artifacts.require("MockKyberStaking.sol");
-const MaliciousStaking = artifacts.require("MockKyberStakingMalicious.sol");
-const MaliciousDaoReentrancy = artifacts.require("MockMaliciousKyberDaoReentrancy.sol");
+const MockNimbleDao = artifacts.require("MockNimbleDaoTestHandleWithdrawal.sol");
+const MockNimbleDaoWithdrawFailed = artifacts.require("MockNimbleDaoWithdrawFailed.sol");
+const StakingContract = artifacts.require("MockNimbleStaking.sol");
+const MaliciousStaking = artifacts.require("MockNimbleStakingMalicious.sol");
+const MaliciousDaoReentrancy = artifacts.require("MockMaliciousNimbleDaoReentrancy.sol");
 const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
@@ -11,7 +11,7 @@ const BN = web3.utils.BN;
 const { precisionUnits, zeroAddress } = require("../helper.js");
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-let kyberDao;
+let NimbleDao;
 
 let currentBlock;
 
@@ -25,10 +25,10 @@ let victor;
 let loi;
 let mike;
 
-contract('KyberStaking', function(accounts) {
+contract('NimbleStaking', function(accounts) {
   before("one time init", async() => {
-    kyberDao = accounts[1];
-    kncToken = await TestToken.new("Kyber Network Crystal", "KNC", 18);
+    NimbleDao = accounts[1];
+    kncToken = await TestToken.new("Nimble Network Crystal", "KNC", 18);
     victor = accounts[2];
     loi = accounts[3];
     mike = accounts[4];
@@ -57,7 +57,7 @@ contract('KyberStaking', function(accounts) {
       kncToken.address,
       blocksToSeconds(epochPeriod),
       blockToTimestamp(startBlock),
-      kyberDao
+      NimbleDao
     );
   };
 
@@ -1021,12 +1021,12 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
     });
 
-    it("Test withdraw should call KyberDao handleWithdrawal as expected", async function() {
-      let dao = await MockKyberDao.new(
+    it("Test withdraw should call NimbleDao handleWithdrawal as expected", async function() {
+      let dao = await MockNimbleDao.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      kyberDao = dao.address;
+      NimbleDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -1098,15 +1098,15 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(mulPrecision(25), await dao.values(mike), "dao values should be correct");
       Helper.assertEqual(mulPrecision(10), await dao.values(loi), "dao values should be correct");
 
-      kyberDao = accounts[1];
+      NimbleDao = accounts[1];
     });
 
     it("Test handleWithdrawal should revert sender is not staking", async() => {
-      let dao = await MockKyberDao.new(
+      let dao = await MockNimbleDao.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      kyberDao = dao.address;
+      NimbleDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -1118,15 +1118,15 @@ contract('KyberStaking', function(accounts) {
         "only staking contract"
       )
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
-      kyberDao = accounts[1];
+      NimbleDao = accounts[1];
     });
 
     it("Test withdraw gas usages", async function() {
-      let dao = await MockKyberDao.new(
+      let dao = await MockNimbleDao.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      kyberDao = dao.address;
+      NimbleDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -1171,7 +1171,7 @@ contract('KyberStaking', function(accounts) {
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
       logInfo("Withdraw has delegation: without init epoch data + no penalty amount, gas used: " + tx.receipt.gasUsed);
     });
-    kyberDao = accounts[1];
+    NimbleDao = accounts[1];
   });
 
   describe("#Delegate Tests", () => {
@@ -2363,8 +2363,8 @@ contract('KyberStaking', function(accounts) {
       verifyStakerData(stakerData, mulPrecision(100), 0, mike);
     });
 
-    it("Test get staker data for current epoch called by KyberDao", async function() {
-      kyberDao = accounts[1];
+    it("Test get staker data for current epoch called by NimbleDao", async function() {
+      NimbleDao = accounts[1];
       await deployStakingContract(15, currentBlock + 15);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2376,10 +2376,10 @@ contract('KyberStaking', function(accounts) {
       await kncToken.transfer(loi, mulPrecision(500));
       await kncToken.approve(stakingContract.address, mulPrecision(500), {from: loi});
 
-      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, kyberDao);
+      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, NimbleDao);
 
       await stakingContract.deposit(mulPrecision(100), {from: victor});
-      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, kyberDao);
+      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, NimbleDao);
 
       // delay to epoch 2
       await Helper.setNextBlockTimestamp(
@@ -2390,7 +2390,7 @@ contract('KyberStaking', function(accounts) {
 
       // victor: stake (100), delegated stake (0), representative (victor)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, victor, kyberDao
+        victor, mulPrecision(100), 0, victor, NimbleDao
       );
       Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 2), "should inited value for epoch 2");
       Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 3), "should inited value for epoch 3");
@@ -2398,12 +2398,12 @@ contract('KyberStaking', function(accounts) {
       await stakingContract.delegate(mike, {from: victor});
       // victor: stake (100), delegated stake (0), representative (victor)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, victor, kyberDao
+        victor, mulPrecision(100), 0, victor, NimbleDao
       );
 
       // mike: stake (0), delegated stake (0), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, 0, 0, mike, kyberDao
+        mike, 0, 0, mike, NimbleDao
       );
 
       await stakingContract.deposit(mulPrecision(200), {from: mike});
@@ -2414,34 +2414,34 @@ contract('KyberStaking', function(accounts) {
 
       // victor: stake (100), delegated stake (0), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, mike, kyberDao
+        victor, mulPrecision(100), 0, mike, NimbleDao
       );
 
       // mike: stake (200), delegated stake (100), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, kyberDao
+        mike, mulPrecision(200), mulPrecision(100), mike, NimbleDao
       );
 
       await stakingContract.delegate(loi, {from: victor});
 
       // mike: stake (200), delegated stake (100), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, kyberDao
+        mike, mulPrecision(200), mulPrecision(100), mike, NimbleDao
       );
       // loi: stake (0), delegated stake (0), representative (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, 0, loi, kyberDao
+        loi, 0, 0, loi, NimbleDao
       );
 
       await stakingContract.deposit(mulPrecision(10), {from: victor});
       // loi: stake (0), delegated stake (0), representative (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, 0, loi, kyberDao
+        loi, 0, 0, loi, NimbleDao
       );
 
       // mike: stake (200), delegated stake (100), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, kyberDao
+        mike, mulPrecision(200), mulPrecision(100), mike, NimbleDao
       );
 
       await Helper.setNextBlockTimestamp(
@@ -2450,12 +2450,12 @@ contract('KyberStaking', function(accounts) {
 
       // mike: stake (200), delegated stake (0), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), 0, mike, kyberDao
+        mike, mulPrecision(200), 0, mike, NimbleDao
       );
 
       // loi: stake (0), delegated stake (90), representative (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, mulPrecision(110), loi, kyberDao
+        loi, 0, mulPrecision(110), loi, NimbleDao
       );
     });
   });
@@ -2468,7 +2468,7 @@ contract('KyberStaking', function(accounts) {
           zeroAddress,
           blocksToSeconds(20),
           blockToTimestamp(currentBlock + 10),
-          kyberDao
+          NimbleDao
         ),
         "ctor: kncToken 0"
       );
@@ -2478,7 +2478,7 @@ contract('KyberStaking', function(accounts) {
           kncToken.address,
           blocksToSeconds(0),
           blockToTimestamp(currentBlock + 10),
-          kyberDao
+          NimbleDao
         ),
         "ctor: epoch period is 0"
       )
@@ -2488,7 +2488,7 @@ contract('KyberStaking', function(accounts) {
           kncToken.address,
           blocksToSeconds(20),
           blockToTimestamp(currentBlock - 1),
-          kyberDao
+          NimbleDao
         ),
         "ctor: start in the past"
       )
@@ -2500,13 +2500,13 @@ contract('KyberStaking', function(accounts) {
           blockToTimestamp(currentBlock + 10),
           zeroAddress
         ),
-        "ctor: kyberDao 0"
+        "ctor: NimbleDao 0"
       )
       stakingContract = await StakingContract.new(
         kncToken.address,
         blocksToSeconds(20),
         blockToTimestamp(currentBlock + 10),
-        kyberDao
+        NimbleDao
       )
     });
 
@@ -2562,13 +2562,13 @@ contract('KyberStaking', function(accounts) {
     });
 
     it("Test get staker data for current epoch should revert when sender is not dao", async function() {
-      kyberDao = accounts[1];
+      NimbleDao = accounts[1];
       await deployStakingContract(10, currentBlock + 10);
       await expectRevert(
         stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike}),
-        "initAndReturnData: only kyberDao"
+        "initAndReturnData: only NimbleDao"
       )
-      await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: kyberDao});
+      await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: NimbleDao});
     });
 
     it("Test withdraw should revert amount is 0", async function() {
@@ -2732,12 +2732,12 @@ contract('KyberStaking', function(accounts) {
   };
 
   describe("Test Withdrawal shouldn't revert", () => {
-    it("Test withdraw shouldn't revert when handleWithdrawal in KyberDao reverted", async function() {
-      let dao = await MockKyberDaoWithdrawFailed.new(
+    it("Test withdraw shouldn't revert when handleWithdrawal in NimbleDao reverted", async function() {
+      let dao = await MockNimbleDaoWithdrawFailed.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10)
       );
-      kyberDao = dao.address;
+      NimbleDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2751,17 +2751,17 @@ contract('KyberStaking', function(accounts) {
       await Helper.increaseNextBlockTimestamp(
         blocksToSeconds(epochPeriod)
       );
-      // shoule call KyberDao, but shouldn't revert, all data is updated
+      // shoule call NimbleDao, but shouldn't revert, all data is updated
       await withdrawAndCheckData(victor, mulPrecision(100), false);
-      kyberDao = accounts[1];
+      NimbleDao = accounts[1];
     });
 
-    it("Test withdraw shouldn't revert when handleWithdrawal in KyberDao reverted - delegation", async function() {
-      let dao = await MockKyberDaoWithdrawFailed.new(
+    it("Test withdraw shouldn't revert when handleWithdrawal in NimbleDao reverted - delegation", async function() {
+      let dao = await MockNimbleDaoWithdrawFailed.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10)
       );
-      kyberDao = dao.address;
+      NimbleDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2777,18 +2777,18 @@ contract('KyberStaking', function(accounts) {
       );
       await stakingContract.delegate(loi, {from: victor});
 
-      // shoule call KyberDao, but shouldn't revert, all data is updated
+      // shoule call NimbleDao, but shouldn't revert, all data is updated
       await withdrawAndCheckData(victor, mulPrecision(100), false);
       // delegate back to self and check
       await stakingContract.delegate(victor, {from: victor});
       await withdrawAndCheckData(victor, mulPrecision(100), false);
       await stakingContract.delegate(mike, {from: victor});
       await withdrawAndCheckData(victor, mulPrecision(100), false);
-      kyberDao = accounts[1];
+      NimbleDao = accounts[1];
     });
 
-    it("Test withdraw shouldn't revert when KyberDao does not have handleWithdrawl func", async function() {
-      kyberDao = accounts[1];
+    it("Test withdraw shouldn't revert when NimbleDao does not have handleWithdrawl func", async function() {
+      NimbleDao = accounts[1];
       await deployStakingContract(10, currentBlock + 10);
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2806,7 +2806,7 @@ contract('KyberStaking', function(accounts) {
       await withdrawAndCheckData(victor, mulPrecision(100), false);
     });
 
-    it("Test withdraw shouldn't revert with re-entrancy from KyberDao", async() => {
+    it("Test withdraw shouldn't revert with re-entrancy from NimbleDao", async() => {
       await deployStakingContract(10, currentBlock + 10);
       let maliciousDao = await MaliciousDaoReentrancy.new(
         blocksToSeconds(10),
@@ -2819,7 +2819,7 @@ contract('KyberStaking', function(accounts) {
 
       await maliciousDao.deposit(mulPrecision(80));
 
-      // delay to epoch 1, so withdraw will call KyberDao to handle withdrawal
+      // delay to epoch 1, so withdraw will call NimbleDao to handle withdrawal
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(startBlock)
       );
@@ -2846,7 +2846,7 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        kyberDao
+        NimbleDao
       );
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2868,7 +2868,7 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        kyberDao
+        NimbleDao
       );
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2898,7 +2898,7 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        kyberDao
+        NimbleDao
       );
 
       await kncToken.transfer(victor, mulPrecision(500));
@@ -2922,7 +2922,7 @@ contract('KyberStaking', function(accounts) {
         kncToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        kyberDao
+        NimbleDao
       );
 
       await kncToken.transfer(victor, mulPrecision(500));

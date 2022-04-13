@@ -1,14 +1,14 @@
 pragma solidity 0.6.6;
 
-import "../../IKyberFeeHandler.sol";
+import "../../INimbleFeeHandler.sol";
 
 
 contract MockStakerClaimRewardReentrancy {
-    IKyberFeeHandler public feeHandler;
+    INimbleFeeHandler public feeHandler;
     bool public isTestingReentrant = true;
 
     constructor(
-        IKyberFeeHandler _feeHandler
+        INimbleFeeHandler _feeHandler
     )
         public
     {

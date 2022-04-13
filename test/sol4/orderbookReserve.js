@@ -1,6 +1,6 @@
 // const TestToken = artifacts.require("TestToken.sol");
-// const NetworkProxy = artifacts.require("KyberNetworkProxy.sol");
-// const KyberNetwork = artifacts.require("KyberNetwork.sol");
+// const NetworkProxy = artifacts.require("NimbleNetworkProxy.sol");
+// const NimbleNetwork = artifacts.require("NimbleNetwork.sol");
 // const FeeBurner = artifacts.require("FeeBurner.sol");
 // const OrderList = artifacts.require("OrderList.sol");
 // const OrderListFactory = artifacts.require("OrderListFactory.sol");
@@ -9,7 +9,7 @@
 // const TestTokenFailing = artifacts.require("TestTokenFailing.sol");
 // const TestTokenTransferFailing = artifacts.require("TestTokenTransferFailing.sol");
 // const MockMedianizer = artifacts.require("MockMedianizer.sol");
-// const MockKyberNetwork = artifacts.require("MockKyberNetwork.sol");
+// const MockNimbleNetwork = artifacts.require("MockNimbleNetwork.sol");
 // const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
 // const MockUtils = artifacts.require("MockUtils.sol");
 
@@ -91,7 +91,7 @@
 //         token = await TestToken.new("the token", "TOK", tokenDecimals);
 //         tokenAdd = token.address;
 
-//         KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
+//         KNCToken = await TestToken.new("Nimble Crystals", "KNC", 18);
 //         kncAddress = KNCToken.address;
 
 //         feeBurner = await FeeBurner.new(admin, kncAddress, network, initialEthToKncRatePrecision);
@@ -388,7 +388,7 @@
 //         it("verify can't construct order book reserve if approve knc to burner fails.", async() => {
 //             let res;
 
-//             let failingKnc = await TestTokenFailing.new("kyber no approve", "KNC", 18);
+//             let failingKnc = await TestTokenFailing.new("Nimble no approve", "KNC", 18);
 
 //             try {
 //                 await OrderbookReserve.new(failingKnc.address, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
@@ -4416,11 +4416,11 @@
 
 //         token = await TestToken.new("the token", "tok", 18);
 //         tokenAdd = token.address;
-//         KNCToken = await TestToken.new("kyber crystals", "knc", 18);
+//         KNCToken = await TestToken.new("Nimble crystals", "knc", 18);
 //         kncAddress = KNCToken.address;
 
-//         // prepare kyber network
-//         mockNetwork = await MockKyberNetwork.new(admin);
+//         // prepare Nimble network
+//         mockNetwork = await MockNimbleNetwork.new(admin);
 
 //         feeBurner = await FeeBurner.new(
 //             admin,

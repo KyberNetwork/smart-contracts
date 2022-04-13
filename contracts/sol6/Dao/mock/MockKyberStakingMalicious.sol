@@ -1,15 +1,15 @@
 pragma solidity 0.6.6;
 
-import "../KyberStaking.sol";
+import "../NimbleStaking.sol";
 
 
-contract MockKyberStakingMalicious is KyberStaking {
+contract MockNimbleStakingMalicious is NimbleStaking {
     constructor(
         IERC20 _kncToken,
         uint256 _epochPeriod,
         uint256 _startBlock,
-        IKyberDao _admin
-    ) public KyberStaking(_kncToken, _epochPeriod, _startBlock, _admin) {}
+        INimbleDao _admin
+    ) public NimbleStaking(_kncToken, _epochPeriod, _startBlock, _admin) {}
 
     function setLatestStake(address staker, uint256 amount) public {
         stakerLatestData[staker].stake = amount;

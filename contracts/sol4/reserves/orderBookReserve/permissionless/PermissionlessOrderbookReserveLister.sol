@@ -7,14 +7,14 @@ import "../../../FeeBurnerInterface.sol";
 
 contract InternalNetworkInterface {
     function addReserve(
-        KyberReserveInterface reserve,
+        NimbleReserveInterface reserve,
         bool isPermissionless
     )
         public
         returns(bool);
 
     function removeReserve(
-        KyberReserveInterface reserve,
+        NimbleReserveInterface reserve,
         uint index
     )
         public
@@ -41,7 +41,7 @@ contract PermissionlessOrderbookReserveLister {
     uint public minNewOrderValueUsd = 1000; // set in order book minimum USD value of a new limit order
     uint public maxOrdersPerTrade;          // set in order book maximum orders to be traversed in rate query and trade
 
-    InternalNetworkInterface public kyberNetworkContract;
+    InternalNetworkInterface public NimbleNetworkContract;
     OrderListFactoryInterface public orderFactoryContract;
     MedianizerInterface public medianizerContract;
     ERC20 public kncToken;
@@ -53,7 +53,7 @@ contract PermissionlessOrderbookReserveLister {
     mapping(address => bool) tokenListingBlocked;
 
     function PermissionlessOrderbookReserveLister(
-        InternalNetworkInterface kyber,
+        InternalNetworkInterface Nimble,
         OrderListFactoryInterface factory,
         MedianizerInterface medianizer,
         ERC20 knc,
@@ -63,14 +63,14 @@ contract PermissionlessOrderbookReserveLister {
     )
         public
     {
-        require(kyber != address(0));
+        require(Nimble != address(0));
         require(factory != address(0));
         require(medianizer != address(0));
         require(knc != address(0));
         require(maxOrders > 1);
         require(minOrderValueUsd > 0);
 
-        kyberNetworkContract = kyber;
+        NimbleNetworkContract = Nimble;
         orderFactoryContract = factory;
         medianizerContract = medianizer;
         kncToken = knc;
@@ -93,8 +93,8 @@ contract PermissionlessOrderbookReserveLister {
         reserves[token] = new OrderbookReserve({
             knc: kncToken,
             reserveToken: token,
-            burner: kyberNetworkContract.feeBurnerContract(),
-            network: kyberNetworkContract,
+            burner: NimbleNetworkContract.feeBurnerContract(),
+            network: NimbleNetworkContract,
             medianizer: medianizerContract,
             factory: orderFactoryContract,
             minNewOrderUsd: minNewOrderValueUsd,
@@ -123,15 +123,15 @@ contract PermissionlessOrderbookReserveLister {
         require(reserveListingStage[token] == ListingStage.RESERVE_INIT);
 
         require(
-            kyberNetworkContract.addReserve(
-                KyberReserveInterface(reserves[token]),
+            NimbleNetworkContract.addReserve(
+                NimbleReserveInterface(reserves[token]),
                 true
             )
         );
 
         require(
-            kyberNetworkContract.listPairForReserve(
-                KyberReserveInterface(reserves[token]),
+            NimbleNetworkContract.listPairForReserve(
+                NimbleReserveInterface(reserves[token]),
                 token,
                 true,
                 true,
@@ -139,7 +139,7 @@ contract PermissionlessOrderbookReserveLister {
             )
         );
 
-        FeeBurnerInterface feeBurner = FeeBurnerInterface(kyberNetworkContract.feeBurnerContract());
+        FeeBurnerInterface feeBurner = FeeBurnerInterface(NimbleNetworkContract.feeBurnerContract());
 
         feeBurner.setReserveData(
             reserves[token], /* reserve */
@@ -155,7 +155,7 @@ contract PermissionlessOrderbookReserveLister {
     function unlistOrderbookContract(ERC20 token, uint hintReserveIndex) public {
         require(reserveListingStage[token] == ListingStage.RESERVE_LISTED);
         require(reserves[token].kncRateBlocksTrade());
-        require(kyberNetworkContract.removeReserve(KyberReserveInterface(reserves[token]), hintReserveIndex));
+        require(NimbleNetworkContract.removeReserve(NimbleReserveInterface(reserves[token]), hintReserveIndex));
         reserveListingStage[token] = ListingStage.NO_RESERVE;
         reserves[token] = OrderbookReserveInterface(0);
         TokenOrderbookListingStage(token, ListingStage.NO_RESERVE);

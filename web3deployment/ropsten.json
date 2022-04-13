@@ -15,7 +15,7 @@
     "KNC": {
       "rate": "0.00256856",
       "symbol": "KNC",
-      "name": "KyberNetwork",
+      "name": "NimbleNetwork",
       "decimals": 18,
       "address": "0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6",
       "minimalRecordResolution": "1000000000000000",
@@ -322,7 +322,7 @@
     }
   },
   "permission": {
-    "KyberNetwork": {
+    "NimbleNetwork": {
       "admin": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
       "operator": [
         "0x1be6064ca70e40a39473372be0ac8a5e16f7be45"
@@ -337,7 +337,7 @@
       ],
       "alerter": []
     },
-    "KyberReserve": {
+    "NimbleReserve": {
       "admin": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
       "operator": [
         "0x1be6064ca70e40a39473372be0ac8a5e16f7be45"

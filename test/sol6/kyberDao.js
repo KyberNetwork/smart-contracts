@@ -1,7 +1,7 @@
 const TestToken = artifacts.require("Token.sol");
-const KyberDaoContract = artifacts.require("MockKyberDaoMoreGetters.sol");
-const StakingContract = artifacts.require("KyberStaking.sol");
-const MockMaliciousKyberDao = artifacts.require("MockMaliciousKyberDao.sol");
+const NimbleDaoContract = artifacts.require("MockNimbleDaoMoreGetters.sol");
+const StakingContract = artifacts.require("NimbleStaking.sol");
+const MockMaliciousNimbleDao = artifacts.require("MockMaliciousNimbleDao.sol");
 const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
@@ -20,7 +20,7 @@ let startBlock;
 let blockTime;
 let kncToken;
 let stakingContract;
-let kyberDao;
+let NimbleDao;
 let victor;
 let loi;
 let mike;
@@ -43,10 +43,10 @@ let initMikeStake = mulPrecision(2000);
 let initLoiStake = mulPrecision(3000);
 let initPoolMaster2Stake = mulPrecision(1000);
 
-contract('KyberDao', function(accounts) {
+contract('NimbleDao', function(accounts) {
   before("one time init", async() => {
     daoOperator = accounts[1];
-    kncToken = await TestToken.new("Kyber Network Crystal", "KNC", 18);
+    kncToken = await TestToken.new("Nimble Network Crystal", "KNC", 18);
     victor = accounts[2];
     loi = accounts[3];
     mike = accounts[4];
@@ -81,7 +81,7 @@ contract('KyberDao', function(accounts) {
   };
 
   const submitNewCampaign = async(
-    kyberDao,
+    NimbleDao,
     campaignType,
     startBlock,
     endBlock,
@@ -93,7 +93,7 @@ contract('KyberDao', function(accounts) {
     opt
   ) => {
     console.log(`new campaign: start: ${blockToTimestamp(startBlock)}, end: ${blockToTimestamp(endBlock)}`);
-    return await kyberDao.submitNewCampaign(
+    return await NimbleDao.submitNewCampaign(
       campaignType,
       blockToTimestamp(startBlock),
       blockToTimestamp(endBlock),
@@ -107,7 +107,7 @@ contract('KyberDao', function(accounts) {
   };
 
   const submitNewCampaignAndDelayToStart = async(
-    kyberDao,
+    NimbleDao,
     campaignType,
     startBlock,
     endBlock,
@@ -119,7 +119,7 @@ contract('KyberDao', function(accounts) {
     opt
   ) => {
     console.log(`new campaign: start: ${blockToTimestamp(startBlock)}, end: ${blockToTimestamp(endBlock)}`);
-    await kyberDao.submitNewCampaign(
+    await NimbleDao.submitNewCampaign(
       campaignType,
       blockToTimestamp(startBlock),
       blockToTimestamp(endBlock),
@@ -139,7 +139,7 @@ contract('KyberDao', function(accounts) {
     daoStartTime = blockToTimestamp(startBlock);
     console.log(`new dao contract: period: ${blocksToSeconds(epochPeriod)}, start: ${daoStartTime}`);
     minCampPeriod = _campPeriod;
-    kyberDao = await KyberDaoContract.new(
+    NimbleDao = await NimbleDaoContract.new(
       blocksToSeconds(epochPeriod),
       daoStartTime,
       kncToken.address,
@@ -149,7 +149,7 @@ contract('KyberDao', function(accounts) {
       defaultRebateBps,
       daoOperator
     )
-    stakingContract = await StakingContract.at(await kyberDao.staking());
+    stakingContract = await StakingContract.at(await NimbleDao.staking());
   };
 
   const setupSimpleStakingData = async() => {
@@ -219,20 +219,20 @@ contract('KyberDao', function(accounts) {
   }
 
   const checkLatestBrrData = async(reward, rebate, burn, epoch, expiryTime) => {
-	let latestBrrData = await kyberDao.getLatestBRRDataWithCache.call();
+	let latestBrrData = await NimbleDao.getLatestBRRDataWithCache.call();
 	Helper.assertEqual(reward, latestBrrData.rewardInBps);
 	Helper.assertEqual(rebate, latestBrrData.rebateInBps);
 	Helper.assertEqual(burn, latestBrrData.burnInBps);
 	Helper.assertEqual(epoch, latestBrrData.epoch);
 	Helper.assertEqual(expiryTime, latestBrrData.expiryTimestamp);
-	await kyberDao.getLatestBRRDataWithCache();
+	await NimbleDao.getLatestBRRDataWithCache();
   }
 
   const checkLatestNetworkFeeData = async(networkFee, expiryTime) => {
-	let result = await kyberDao.getLatestNetworkFeeDataWithCache.call();
+	let result = await NimbleDao.getLatestNetworkFeeDataWithCache.call();
 	Helper.assertEqual(networkFee, result.feeInBps);
 	Helper.assertEqual(expiryTime, result.expiryTimestamp);
-	await kyberDao.getLatestNetworkFeeDataWithCache()
+	await NimbleDao.getLatestNetworkFeeDataWithCache()
   }
 
   describe("#Handle Withdrawal tests", () => {
@@ -242,9 +242,9 @@ contract('KyberDao', function(accounts) {
 
       await Helper.mineNewBlockAt(daoStartTime);
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0,
         currentBlock + 3,
         currentBlock + 3 + minCampPeriod,
@@ -256,19 +256,19 @@ contract('KyberDao', function(accounts) {
 
       // withdraw when no votes
       let totalPoints = new BN(0);
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
       await stakingContract.withdraw(mulPrecision(10), {from: victor});
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      await kyberDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 1, {from: victor});
 
       totalPoints.iadd(initVictorStake).isub(mulPrecision(10));
       let voteCount1 = new BN(0);
       voteCount1.iadd(initVictorStake).isub(mulPrecision(10));
 
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      let voteData = await kyberDao.getCampaignVoteCountData(1);
+      let voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], 0, "option voted count is incorrect");
@@ -278,29 +278,29 @@ contract('KyberDao', function(accounts) {
       totalPoints.isub(mulPrecision(100));
       voteCount1.isub(mulPrecision(100));
 
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], 0, "option voted count is incorrect");
 
       await stakingContract.withdraw(mulPrecision(100), {from: mike});
 
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], 0, "option voted count is incorrect");
 
-      await kyberDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 2, {from: mike});
       totalPoints.iadd(initMikeStake).isub(mulPrecision(100));
       let voteCount2 = initMikeStake.sub(mulPrecision(100));
 
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
@@ -310,9 +310,9 @@ contract('KyberDao', function(accounts) {
       totalPoints.isub(mulPrecision(100));
       voteCount2.isub(mulPrecision(100));
 
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
@@ -320,9 +320,9 @@ contract('KyberDao', function(accounts) {
 
       await stakingContract.deposit(mulPrecision(200), {from: victor});
 
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
@@ -331,9 +331,9 @@ contract('KyberDao', function(accounts) {
       // less than new deposit (200)
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
 
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
@@ -344,22 +344,22 @@ contract('KyberDao', function(accounts) {
 
       totalPoints.isub(mulPrecision(200));
       voteCount1.isub(mulPrecision(200));
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[2], 0, "option voted count is incorrect");
 
       // change vote of victor from 1 to 2, make sure vote counts change correctly after withdraw
-      await kyberDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 2, {from: victor});
       voteCount2.iadd(voteCount1);
       voteCount1 = new BN(0);
 
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
@@ -370,9 +370,9 @@ contract('KyberDao', function(accounts) {
       totalPoints.isub(mulPrecision(100));
       voteCount2.isub(mulPrecision(100));
 
-      Helper.assertEqual(totalPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
+      Helper.assertEqual(totalPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
 
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalPoints, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount1, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount2, "option voted count is incorrect");
@@ -385,10 +385,10 @@ contract('KyberDao', function(accounts) {
 
       await Helper.mineNewBlockAt(daoStartTime);
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
       await updateCurrentBlockAndTimestamp();
       let options = [1,2,3,4]
-      let txResult = await submitNewCampaign(kyberDao,
+      let txResult = await submitNewCampaign(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, options, link, {from: daoOperator}
       );
@@ -413,20 +413,20 @@ contract('KyberDao', function(accounts) {
 
       await Helper.setNextBlockTimestamp(blockToTimestamp(currentBlock + 2));
       // vote for first campaign
-      await kyberDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 1, {from: victor});
 
       // check total points
       let totalEpochPoints = (new BN(0)).add(initVictorStake);
       let totalCampPoint1 = (new BN(0)).add(initVictorStake);
       let voteCount11 = (new BN(0)).add(initVictorStake);
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      let voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      let voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
 
       await updateCurrentBlockAndTimestamp();
-      txResult = await submitNewCampaign(kyberDao,
+      txResult = await submitNewCampaign(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
@@ -444,18 +444,18 @@ contract('KyberDao', function(accounts) {
       // delay to start time of camp
       await Helper.setNextBlockTimestamp(blockToTimestamp(currentBlock + 2));
       // vote for second campaign
-      await kyberDao.vote(2, 2, {from: victor});
+      await NimbleDao.vote(2, 2, {from: victor});
 
       totalEpochPoints.iadd(initVictorStake);
       let totalCampPoint2 = (new BN(0)).add(initVictorStake);
       let voteCount22 = (new BN(0)).add(initVictorStake);
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
-      voteData = await kyberDao.getCampaignVoteCountData(2);
+      voteData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
 
@@ -468,26 +468,26 @@ contract('KyberDao', function(accounts) {
       voteCount22.isub(mulPrecision(100));
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
-      voteData = await kyberDao.getCampaignVoteCountData(2);
+      voteData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
 
-      await kyberDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 2, {from: victor});
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount11, "option voted count is incorrect");
-      voteData = await kyberDao.getCampaignVoteCountData(2);
+      voteData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
 
       // delay to end of campaign 1
-      let data = await kyberDao.getCampaignDetails(1);
+      let data = await NimbleDao.getCampaignDetails(1);
       await Helper.mineNewBlockAt(data.endTimestamp * 1);
 
       // withdraw should change epoch points, but only camp2 vote data
@@ -497,17 +497,17 @@ contract('KyberDao', function(accounts) {
       totalCampPoint2.isub(mulPrecision(100));
       voteCount22.isub(mulPrecision(100));
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount11, "option voted count is incorrect");
-      voteData = await kyberDao.getCampaignVoteCountData(2);
+      voteData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
 
       await updateCurrentBlockAndTimestamp();
       // create new campaign far from current block
-      txResult = await submitNewCampaign(kyberDao,
+      txResult = await submitNewCampaign(NimbleDao,
         2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
@@ -529,15 +529,15 @@ contract('KyberDao', function(accounts) {
       totalCampPoint2.isub(mulPrecision(100));
       voteCount22.isub(mulPrecision(100));
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount11, "option voted count is incorrect");
-      voteData = await kyberDao.getCampaignVoteCountData(2);
+      voteData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount22, "option voted count is incorrect");
       // data for camp 3 should be 0
-      voteData = await kyberDao.getCampaignVoteCountData(3);
+      voteData = await NimbleDao.getCampaignVoteCountData(3);
       Helper.assertEqual(voteData.totalVoteCount, 0, "total camp votes is incorrect");
     });
 
@@ -549,14 +549,14 @@ contract('KyberDao', function(accounts) {
 
       await Helper.mineNewBlockAt(daoStartTime);
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
       // vote for first campaign
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
 
       // check total points
       let totalEpochPoints = (new BN(0)).add(initVictorStake).add(initMikeStake);
@@ -564,8 +564,8 @@ contract('KyberDao', function(accounts) {
       let voteCount11 = (new BN(0)).add(initVictorStake).add(initMikeStake);
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      let voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      let voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
 
@@ -577,36 +577,36 @@ contract('KyberDao', function(accounts) {
       voteCount11.isub(victorWithdrewAmt);
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
 
       // withdraw from staker with no votes
       await stakingContract.withdraw(mulPrecision(10), {from: loi});
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
 
-      await kyberDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 2, {from: victor});
       // note: Loi already withdraw 10 knc
       totalEpochPoints.iadd(initLoiStake).isub(mulPrecision(10));
       totalCampPoint1.iadd(initLoiStake).isub(mulPrecision(10));
       let voteCount12 = (new BN(0)).add(initLoiStake).isub(mulPrecision(10));
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
 
-      await kyberDao.vote(1, 3, {from: loi});
+      await NimbleDao.vote(1, 3, {from: loi});
       // check pts and vote counts, nothing should be changed
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
@@ -614,30 +614,30 @@ contract('KyberDao', function(accounts) {
       await stakingContract.delegate(loi, {from: victor});
 
       // check pts and vote counts, nothing should be changed
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
 
-      await kyberDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake).iadd(initVictorStake).isub(victorWithdrewAmt);
       let totalCampPoint2 = (new BN(0)).add(initMikeStake).add(initVictorStake).sub(victorWithdrewAmt);
       let voteCount21 = (new BN(0)).add(initMikeStake).add(initVictorStake).sub(victorWithdrewAmt);
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
-      voteData = await kyberDao.getCampaignVoteCountData(2);
+      voteData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount21, "option voted count is incorrect");
 
@@ -652,17 +652,17 @@ contract('KyberDao', function(accounts) {
       voteCount21.isub(mulPrecision(200));
 
       // check pts and vote counts
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
-      voteData = await kyberDao.getCampaignVoteCountData(2);
+      voteData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount21, "option voted count is incorrect");
 
       // delay to end of campaign 1
-      let data = await kyberDao.getCampaignDetails(1);
+      let data = await NimbleDao.getCampaignDetails(1);
       await Helper.mineNewBlockAt(data.endTimestamp * 1);
 
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
@@ -672,18 +672,18 @@ contract('KyberDao', function(accounts) {
       totalCampPoint2.isub(mulPrecision(100));
       voteCount21.isub(mulPrecision(100));
 
-      Helper.assertEqual(totalEpochPoints, await kyberDao.getTotalEpochPoints(1), "points should be correct");
-      voteData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(totalEpochPoints, await NimbleDao.getTotalEpochPoints(1), "points should be correct");
+      voteData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint1, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount11, "option voted count is incorrect");
       Helper.assertEqual(voteData.voteCounts[1], voteCount12, "option voted count is incorrect");
-      voteData = await kyberDao.getCampaignVoteCountData(2);
+      voteData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(voteData.totalVoteCount, totalCampPoint2, "total camp votes is incorrect");
       Helper.assertEqual(voteData.voteCounts[0], voteCount21, "option voted count is incorrect");
     });
 
     it("Test handle withdrawal should revert when sender is not staking", async function() {
-      kyberDao = await KyberDaoContract.new(
+      NimbleDao = await NimbleDaoContract.new(
         10, blockToTimestamp(currentBlock + 10),
         kncToken.address, minCampPeriod,
         defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -691,11 +691,11 @@ contract('KyberDao', function(accounts) {
       );
 
       await expectRevert(
-        kyberDao.handleWithdrawal(victor, 0, {from: victor}),
+        NimbleDao.handleWithdrawal(victor, 0, {from: victor}),
         "only staking contract"
       );
       await expectRevert(
-        kyberDao.handleWithdrawal(victor, mulPrecision(10), {from: daoOperator}),
+        NimbleDao.handleWithdrawal(victor, mulPrecision(10), {from: daoOperator}),
         "only staking contract"
       );
     });
@@ -705,24 +705,24 @@ contract('KyberDao', function(accounts) {
     it("Test submit campaign returns correct data after created", async function() {
       await deployContracts(10, currentBlock + 30, 10);
 
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(0), "shouldn't have network fee camp");
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(0), "shouldn't have brr camp");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(0), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(0), "shouldn't have brr camp");
 
       let totalSupply = await kncToken.INITIAL_SUPPLY();
 
       let gasUsed = new BN(0);
       for(let id = 0; id <= 2; id++) {
-        Helper.assertEqual(false, await kyberDao.campaignExists(id + 1), "campaign shouldn't be existed");
+        Helper.assertEqual(false, await NimbleDao.campaignExists(id + 1), "campaign shouldn't be existed");
         let link = web3.utils.fromAscii(id == 0 ? "" : "some_link");
-        let tx = await submitNewCampaign(kyberDao,
+        let tx = await submitNewCampaign(NimbleDao,
           id, currentBlock + 2 * id + 5, currentBlock + 2 * id + 5 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
         );
         gasUsed.iadd(new BN(tx.receipt.gasUsed));
-        Helper.assertEqual(id + 1, await kyberDao.numberCampaigns(), "number campaign is incorrect");
-        Helper.assertEqual(true, await kyberDao.campaignExists(id + 1), "campaign should be existed");
+        Helper.assertEqual(id + 1, await NimbleDao.numberCampaigns(), "number campaign is incorrect");
+        Helper.assertEqual(true, await NimbleDao.campaignExists(id + 1), "campaign should be existed");
 
-        let data = await kyberDao.getCampaignDetails(id + 1);
+        let data = await NimbleDao.getCampaignDetails(id + 1);
         Helper.assertEqual(id, data.campaignType, "campaignType is incorrect");
         Helper.assertEqual(blockToTimestamp(currentBlock + 2 * id + 5), data.startTimestamp, "start time is incorrect");
         Helper.assertEqual(blockToTimestamp(currentBlock + 2 * id + 5 + minCampPeriod), data.endTimestamp, "end time is incorrect");
@@ -737,7 +737,7 @@ contract('KyberDao', function(accounts) {
         Helper.assertEqual(3, data.options[2], "option value is incorrect");
         Helper.assertEqual(4, data.options[3], "option value is incorrect");
 
-        let voteData = await kyberDao.getCampaignVoteCountData(id + 1);
+        let voteData = await NimbleDao.getCampaignVoteCountData(id + 1);
         Helper.assertEqual(4, voteData.voteCounts.length, "number options is incorrect");
         Helper.assertEqual(0, voteData.voteCounts[0], "option voted point is incorrect");
         Helper.assertEqual(0, voteData.voteCounts[1], "option voted point is incorrect");
@@ -745,7 +745,7 @@ contract('KyberDao', function(accounts) {
         Helper.assertEqual(0, voteData.voteCounts[3], "option voted point is incorrect");
         Helper.assertEqual(0, voteData.totalVoteCount, "total voted points is incorrect");
 
-        let listCamps = await kyberDao.getListCampaignIDs(0);
+        let listCamps = await NimbleDao.getListCampaignIDs(0);
         Helper.assertEqual(id + 1, listCamps.length, "number camps is incorrect");
 
         // burn KNC to reduce total supply value
@@ -755,10 +755,10 @@ contract('KyberDao', function(accounts) {
 
       logInfo("Submit Campaign: Average gas used for submit new campaign: " + gasUsed.div(new BN(3)).toString(10));
 
-      Helper.assertEqual(2, await kyberDao.networkFeeCampaigns(0), "should have network fee camp");
-      Helper.assertEqual(3, await kyberDao.brrCampaigns(0), "should have brr camp");
+      Helper.assertEqual(2, await NimbleDao.networkFeeCampaigns(0), "should have network fee camp");
+      Helper.assertEqual(3, await NimbleDao.brrCampaigns(0), "should have brr camp");
 
-      let listCamps = await kyberDao.getListCampaignIDs(0);
+      let listCamps = await NimbleDao.getListCampaignIDs(0);
       Helper.assertEqual(3, listCamps.length, "number camps is incorrect");
       Helper.assertEqual(1, listCamps[0], "camp id is incorrect");
       Helper.assertEqual(2, listCamps[1], "camp id is incorrect");
@@ -768,23 +768,23 @@ contract('KyberDao', function(accounts) {
     it("Test submit campaign recored correctly network fee camp for different epoch", async function() {
       await deployContracts(15, currentBlock + 20, 3);
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 9, currentBlock + 9 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(0), "should have network fee camp");
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(1), "shouldn't have network fee camp");
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(0), "should have network fee camp");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(1), "shouldn't have network fee camp");
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 9, currentBlock + 9 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 9, currentBlock + 9 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
@@ -792,34 +792,34 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 6, currentBlock + 6 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 6, currentBlock + 6 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(0), "should have network fee camp");
-      Helper.assertEqual(5, await kyberDao.networkFeeCampaigns(1), "should have network fee camp");
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(0), "should have network fee camp");
+      Helper.assertEqual(5, await NimbleDao.networkFeeCampaigns(1), "should have network fee camp");
 
-      await kyberDao.cancelCampaign(5, {from: daoOperator});
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(0), "should have network fee camp");
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(1), "shouldn't have network fee camp");
+      await NimbleDao.cancelCampaign(5, {from: daoOperator});
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(0), "should have network fee camp");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(1), "shouldn't have network fee camp");
 
       // delay to epoch 3
       await Helper.mineNewBlockAt(daoStartTime + blocksToSeconds(2 * epochPeriod));
 
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(3), "shouldn't have network fee camp");
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(2), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(3), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(2), "shouldn't have network fee camp");
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 6, currentBlock + 6 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(2), "shouldn't have network fee camp");
-      Helper.assertEqual(6, await kyberDao.networkFeeCampaigns(3), "should have network fee camp");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(2), "shouldn't have network fee camp");
+      Helper.assertEqual(6, await NimbleDao.networkFeeCampaigns(3), "should have network fee camp");
     });
 
     it("Test submit campaign network fee campaign changed correctly after cancel and created new one", async function() {
@@ -828,42 +828,42 @@ contract('KyberDao', function(accounts) {
       // delay to epoch 1
       await Helper.mineNewBlockAfter(blocksToSeconds(3));
 
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(1), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(1), "shouldn't have network fee camp");
 
       await updateCurrentBlockAndTimestamp();
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
 
-      let tx = await submitNewCampaign(kyberDao,
+      let tx = await submitNewCampaign(NimbleDao,
         1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
       logInfo("Submit Campaign: First time create network fee camp, gas used: " + tx.receipt.gasUsed);
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(1), "should have network fee camp");
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(1), "should have network fee camp");
 
-      let txResult = await kyberDao.cancelCampaign(1, {from: daoOperator});
+      let txResult = await NimbleDao.cancelCampaign(1, {from: daoOperator});
       expectEvent(txResult, 'CancelledCampaign', {
         campaignID: new BN(1)
       });
 
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(1), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(1), "shouldn't have network fee camp");
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(1), "shouldn't have network fee camp");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(1), "shouldn't have network fee camp");
 
-      tx = await submitNewCampaign(kyberDao,
+      tx = await submitNewCampaign(NimbleDao,
         1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
       logInfo("Submit Campaign: Recreate network fee camp, gas used: " + tx.receipt.gasUsed);
-      Helper.assertEqual(4, await kyberDao.networkFeeCampaigns(1), "should have network fee camp");
+      Helper.assertEqual(4, await NimbleDao.networkFeeCampaigns(1), "should have network fee camp");
     });
 
     it("Test submit campaign brr campaign changed correctly after cancel and created new one", async function() {
@@ -872,61 +872,61 @@ contract('KyberDao', function(accounts) {
       // delay to epoch 1
       await Helper.mineNewBlockAfter(blocksToSeconds(3));
 
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(1), "shouldn't have brr camp");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(1), "shouldn't have brr camp");
 
       await updateCurrentBlockAndTimestamp();
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
 
-      let tx = await submitNewCampaign(kyberDao,
+      let tx = await submitNewCampaign(NimbleDao,
         2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
       logInfo("Submit Campaign: First time create brr camp, gas used: " + tx.receipt.gasUsed);
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(1), "should have brr camp");
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(1), "should have brr camp");
 
-      await kyberDao.cancelCampaign(1, {from: daoOperator});
+      await NimbleDao.cancelCampaign(1, {from: daoOperator});
 
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(1), "shouldn't have brr camp");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(1), "shouldn't have brr camp");
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(1), "shouldn't have brr camp");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(1), "shouldn't have brr camp");
 
-      tx = await submitNewCampaign(kyberDao,
+      tx = await submitNewCampaign(NimbleDao,
         2, currentBlock + 10, currentBlock + 10 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
       logInfo("Submit Campaign: Recreate brr camp, gas used: " + tx.receipt.gasUsed);
-      Helper.assertEqual(4, await kyberDao.brrCampaigns(1), "shouldn't have brr camp");
+      Helper.assertEqual(4, await NimbleDao.brrCampaigns(1), "shouldn't have brr camp");
     });
 
     it("Test submit campaign recored correctly brr camp for different epoch", async function() {
       await deployContracts(15, currentBlock + 20, 3);
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 9, currentBlock + 9 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(0), "should have brr camp");
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(1), "shouldn't have brr camp");
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(0), "should have brr camp");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(1), "shouldn't have brr camp");
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 9, currentBlock + 9 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 9, currentBlock + 9 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
@@ -934,47 +934,47 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 6, currentBlock + 6 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 6, currentBlock + 6 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(0), "should have brr camp");
-      Helper.assertEqual(5, await kyberDao.brrCampaigns(1), "should have brr camp");
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(0), "should have brr camp");
+      Helper.assertEqual(5, await NimbleDao.brrCampaigns(1), "should have brr camp");
 
-      await kyberDao.cancelCampaign(5, {from: daoOperator});
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(0), "should have brr camp");
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(1), "shouldn't have brr camp");
+      await NimbleDao.cancelCampaign(5, {from: daoOperator});
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(0), "should have brr camp");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(1), "shouldn't have brr camp");
 
       // deploy to epoch 3
       await Helper.mineNewBlockAt(blocksToSeconds(2 * epochPeriod) + daoStartTime);
 
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(2), "shouldn't have brr camp");
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(3), "shouldn't have brr camp");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(2), "shouldn't have brr camp");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(3), "shouldn't have brr camp");
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 6, currentBlock + 6 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], link, {from: daoOperator}
       );
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(2), "should have brr camp");
-      Helper.assertEqual(6, await kyberDao.brrCampaigns(3), "shouldn't have brr camp");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(2), "should have brr camp");
+      Helper.assertEqual(6, await NimbleDao.brrCampaigns(3), "shouldn't have brr camp");
     });
 
     it("Test submit new campaign for next epoch, data changes as expected", async function() {
       await deployContracts(20, currentBlock + 10, 5);
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
-      await submitNewCampaign(kyberDao,
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
+      await submitNewCampaign(NimbleDao,
         0, startBlock + 1, startBlock + 1 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
       // test recorded correct data
-      let data = await kyberDao.getCampaignDetails(1);
+      let data = await NimbleDao.getCampaignDetails(1);
       Helper.assertEqual(0, data.campaignType, "campaignType is incorrect");
       Helper.assertEqual(blockToTimestamp(startBlock + 1), data.startTimestamp, "start timestamp is incorrect");
       Helper.assertEqual(blockToTimestamp(startBlock + 1 + minCampPeriod), data.endTimestamp, "end timestamp is incorrect");
@@ -988,19 +988,19 @@ contract('KyberDao', function(accounts) {
       Helper.assertEqual(2, data.options[1], "option value is incorrect");
       Helper.assertEqual(3, data.options[2], "option value is incorrect");
 
-      let listCampIDs = await kyberDao.getListCampaignIDs(1);
+      let listCampIDs = await NimbleDao.getListCampaignIDs(1);
       Helper.assertEqual(1, listCampIDs.length, "should have added first camp");
       Helper.assertEqual(1, listCampIDs[0], "should have added first camp");
 
-      listCampIDs = await kyberDao.getListCampaignIDs(0);
+      listCampIDs = await NimbleDao.getListCampaignIDs(0);
       Helper.assertEqual(0, listCampIDs.length, "shouldn't have added any camps");
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, startBlock + 4, startBlock + 4 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: daoOperator}
       );
 
-      listCampIDs = await kyberDao.getListCampaignIDs(1);
+      listCampIDs = await NimbleDao.getListCampaignIDs(1);
       Helper.assertEqual(2, listCampIDs.length, "should have added 2 camps");
       Helper.assertEqual(1, listCampIDs[0], "should have added 2 camps");
       Helper.assertEqual(2, listCampIDs[1], "should have added 2 camps");
@@ -1009,33 +1009,33 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, startBlock + 4, startBlock + 4 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: daoOperator}
       );
 
-      listCampIDs = await kyberDao.getListCampaignIDs(1);
+      listCampIDs = await NimbleDao.getListCampaignIDs(1);
       Helper.assertEqual(3, listCampIDs.length, "should have added 3 camps");
       Helper.assertEqual(1, listCampIDs[0], "should have added 3 camps");
       Helper.assertEqual(2, listCampIDs[1], "should have added 3 camps");
       Helper.assertEqual(3, listCampIDs[2], "should have added 3 camps");
-      listCampIDs = await kyberDao.getListCampaignIDs(0);
+      listCampIDs = await NimbleDao.getListCampaignIDs(0);
       Helper.assertEqual(0, listCampIDs.length, "shouldn't have added any camps");
     });
 
     it("Test submit new campaign of network fee for next epoch", async function() {
       await deployContracts(20, currentBlock + 20, 4);
       // create network fee
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, startBlock + 1, startBlock + 1 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: daoOperator}
       );
-      let networkFeeCampaigns = await kyberDao.networkFeeCampaigns(1);
+      let networkFeeCampaigns = await NimbleDao.networkFeeCampaigns(1);
       Helper.assertEqual(1, networkFeeCampaigns, "network fee camp is invalid");
 
       // can not create new campaign of network fee for next epoch
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           1, startBlock + 2, startBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: daoOperator}
         ),
@@ -1044,14 +1044,14 @@ contract('KyberDao', function(accounts) {
 
       // still able to create for current epoch
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: daoOperator}
       );
 
-      networkFeeCampaigns = await kyberDao.networkFeeCampaigns(1);
+      networkFeeCampaigns = await NimbleDao.networkFeeCampaigns(1);
       Helper.assertEqual(1, networkFeeCampaigns, "network fee camp is invalid");
-      networkFeeCampaigns = await kyberDao.networkFeeCampaigns(0);
+      networkFeeCampaigns = await NimbleDao.networkFeeCampaigns(0);
       Helper.assertEqual(2, networkFeeCampaigns, "network fee camp is invalid");
 
       // delay to next epoch, try to create fee campaign again
@@ -1059,7 +1059,7 @@ contract('KyberDao', function(accounts) {
       await updateCurrentBlockAndTimestamp();
       // can not create new camp of network fee for current epoch as already existed
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: daoOperator}
         ),
@@ -1067,32 +1067,32 @@ contract('KyberDao', function(accounts) {
       );
       // still able to create camp of other types
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: daoOperator}
       );
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: daoOperator}
       );
-      networkFeeCampaigns = await kyberDao.networkFeeCampaigns(1);
+      networkFeeCampaigns = await NimbleDao.networkFeeCampaigns(1);
       Helper.assertEqual(1, networkFeeCampaigns, "network fee camp is invalid");
     });
 
     it("Test submit new campaign of brr for next epoch", async function() {
       await deployContracts(20, currentBlock + 20, 4);
       // create network fee
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, startBlock + 1, startBlock + 1 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: daoOperator}
       );
-      let brrCamp = await kyberDao.brrCampaigns(1);
+      let brrCamp = await NimbleDao.brrCampaigns(1);
       Helper.assertEqual(1, brrCamp, "brr camp is invalid");
 
       // can not create new camp of network fee for next epoch
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           2, startBlock + 2, startBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: daoOperator}
         ),
@@ -1101,14 +1101,14 @@ contract('KyberDao', function(accounts) {
 
       // still able to create for current epoch
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: daoOperator}
       );
 
-      brrCamp = await kyberDao.brrCampaigns(1);
+      brrCamp = await NimbleDao.brrCampaigns(1);
       Helper.assertEqual(1, brrCamp, "brr camp is invalid");
-      brrCamp = await kyberDao.brrCampaigns(0);
+      brrCamp = await NimbleDao.brrCampaigns(0);
       Helper.assertEqual(2, brrCamp, "brr camp is invalid");
 
       // delay to next epoch, try to create fee campaign again
@@ -1117,7 +1117,7 @@ contract('KyberDao', function(accounts) {
 
       // can not create new camp of network fee for current epoch as already existed
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: daoOperator}
         ),
@@ -1125,16 +1125,16 @@ contract('KyberDao', function(accounts) {
       );
       // still able to create camp of other types
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: daoOperator}
       );
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3, 4], '0x', {from: daoOperator}
       );
-      brrCamp = await kyberDao.brrCampaigns(1);
+      brrCamp = await NimbleDao.brrCampaigns(1);
       Helper.assertEqual(1, brrCamp, "brr camp is invalid");
     });
 
@@ -1142,13 +1142,13 @@ contract('KyberDao', function(accounts) {
       await deployContracts(10, currentBlock + 30, 10);
       await updateCurrentBlockAndTimestamp();
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           0, currentBlock + 6, currentBlock + 20, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: mike}
         ),
         "only daoOperator"
       )
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 6, currentBlock + 20, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
@@ -1159,7 +1159,7 @@ contract('KyberDao', function(accounts) {
       await updateCurrentBlockAndTimestamp();
       // start in the past, use time to make it more accurate
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, currentTimestamp - 1, currentTimestamp + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: daoOperator}
         ),
@@ -1167,7 +1167,7 @@ contract('KyberDao', function(accounts) {
       );
       // start in the next 2 epochs, use time to make it more accurate
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, daoStartTime + epochPeriod * blockTime, daoStartTime + (epochPeriod + minCampPeriod) * blockTime,
           minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: daoOperator}
@@ -1176,7 +1176,7 @@ contract('KyberDao', function(accounts) {
       )
       // start in the next 10 epochs
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, daoStartTime + 10 * epochPeriod * blockTime, daoStartTime + (10 * epochPeriod + minCampPeriod) * blockTime,
           minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: daoOperator}
@@ -1185,7 +1185,7 @@ contract('KyberDao', function(accounts) {
       )
       // start at current epoch but end in the next epoch
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, daoStartTime - 1, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: daoOperator}
         ),
@@ -1193,7 +1193,7 @@ contract('KyberDao', function(accounts) {
       )
       // start less than end
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, daoStartTime + 10, daoStartTime, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: daoOperator}
         ),
@@ -1201,24 +1201,24 @@ contract('KyberDao', function(accounts) {
       )
       // duration is smaller than min camp duration
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, daoStartTime, daoStartTime + minCampPeriod * blockTime - 2, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: daoOperator}
         ),
         "validateParams: campaign duration is low"
       )
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.submitNewCampaign(
         0, daoStartTime - minCampPeriod * blockTime, daoStartTime - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
       // start at next epoch, should be ok
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.submitNewCampaign(
         0, daoStartTime, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
       // set next block timestamp and start at that time
       await Helper.setNextBlockTimestamp(daoStartTime);
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.submitNewCampaign(
         0, daoStartTime, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
@@ -1227,13 +1227,13 @@ contract('KyberDao', function(accounts) {
     it("Test submit campaign with startTimestamp is beginning of an epoch", async() => {
       await deployContracts(30, currentBlock + 30, 10);
       // start at beginning of epoch 1
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.submitNewCampaign(
         0, daoStartTime, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
       // should revert: start at end of epoch 0, end at epoch 1
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, daoStartTime - 1, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: daoOperator}
         ),
@@ -1243,20 +1243,20 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
       // start at beginning of epoch 2
       let startEpoch2Timestamp = daoStartTime + blocksToSeconds(epochPeriod);
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.submitNewCampaign(
         0, startEpoch2Timestamp, startEpoch2Timestamp + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
       // should revert: start at end of epoch 1, end at epoch 2
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, startEpoch2Timestamp - 1, startEpoch2Timestamp + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: daoOperator}
         ),
         "validateParams: start & end not same epoch"
       )
       // start at beginning, end at end timestamp of an epoch
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.submitNewCampaign(
         0, startEpoch2Timestamp, startEpoch2Timestamp + blocksToSeconds(epochPeriod) - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
@@ -1265,13 +1265,13 @@ contract('KyberDao', function(accounts) {
     it("Test submit campaign with endTimestamp is end timestamp of an epoch", async() => {
       await deployContracts(30, currentBlock + 30, 10);
       // end at end of epoch 0
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.submitNewCampaign(
         0, daoStartTime - minCampPeriod * blockTime, daoStartTime - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
       // should revert: start at epoch 0, end at beginning of epoch 1
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, daoStartTime - minCampPeriod * blockTime, daoStartTime, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: daoOperator}
         ),
@@ -1279,13 +1279,13 @@ contract('KyberDao', function(accounts) {
       )
       // end of end of epoch 1
       let endEpoch1Timestamp = daoStartTime + blocksToSeconds(epochPeriod) - 1;
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.submitNewCampaign(
         0, endEpoch1Timestamp - minCampPeriod * blockTime, endEpoch1Timestamp, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
       // should revert: start at epoch 1, end at beginning of epoch 2
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, endEpoch1Timestamp - minCampPeriod * blockTime, endEpoch1Timestamp + 1, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4], '0x', {from: daoOperator}
         ),
@@ -1294,7 +1294,7 @@ contract('KyberDao', function(accounts) {
       // delay to epoch 1
       await Helper.mineNewBlockAt(daoStartTime);
       // start at beginning, end at end timestamp of an epoch
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.submitNewCampaign(
         0, endEpoch1Timestamp - minCampPeriod * blockTime - 10, endEpoch1Timestamp, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
@@ -1305,7 +1305,7 @@ contract('KyberDao', function(accounts) {
       await updateCurrentBlockAndTimestamp();
       // no options
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           0, currentBlock + 3, currentBlock + 3 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [], '0x', {from: daoOperator}
         ),
@@ -1313,7 +1313,7 @@ contract('KyberDao', function(accounts) {
       )
       // one options
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           0, currentBlock + 5, currentBlock + 5 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1], '0x', {from: daoOperator}
         ),
@@ -1321,22 +1321,22 @@ contract('KyberDao', function(accounts) {
       )
       // more than 8 options (max number options)
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           0, currentBlock + 7, currentBlock + 7 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 4, 5, 6, 7, 8, 9], '0x', {from: daoOperator}
         ),
         "validateParams: invalid number of options"
       )
       // should work with 2, 3, 4 options
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 9, currentBlock + 9 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2], '0x', {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 11, currentBlock + 11 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 13, currentBlock + 13 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3, 4], '0x', {from: daoOperator}
       );
@@ -1347,59 +1347,59 @@ contract('KyberDao', function(accounts) {
       // general camp: option value is 0
       await updateCurrentBlockAndTimestamp();
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           0, currentBlock + 3, currentBlock + 3 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [0, 1, 2], '0x', {from: daoOperator}
         ),
         "validateParams: general campaign option is 0"
       )
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           0, currentBlock + 5, currentBlock + 5 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 0], '0x', {from: daoOperator}
         ),
         "validateParams: general campaign option is 0"
       )
       // valid option values
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 7, currentBlock + 7 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
       // network fee: option > 100% (BPS)
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           1, currentBlock + 9, currentBlock + 9 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3, 5000], '0x', {from: daoOperator}
         ),
         "validateParams: network fee must be smaller then BPS / 2"
       )
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           1, currentBlock + 11, currentBlock + 11 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 10000, 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: network fee must be smaller then BPS / 2"
       )
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 13, currentBlock + 13 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 4999, 2, 3], '0x', {from: daoOperator}
       );
       // brr campaign: reward + rebate > 100%
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           2, currentBlock + 15, currentBlock + 15 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, getDataFromRebateAndReward(100, 10001 - 100), 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: rebate + reward can't be bigger than BPS"
       )
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           2, currentBlock + 17, currentBlock + 17 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, getDataFromRebateAndReward(20, 10000)], '0x', {from: daoOperator}
         ),
         "validateParams: rebate + reward can't be bigger than BPS"
       )
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 19, currentBlock + 19 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, getDataFromRebateAndReward(2500, 2500), 2, 3], '0x', {from: daoOperator}
       );
@@ -1411,7 +1411,7 @@ contract('KyberDao', function(accounts) {
       // note: it is reverted as invalid opcode for campaign type, no message here
       // running normal test and coverage are returning different type of exception
       try {
-        await submitNewCampaign(kyberDao,
+        await submitNewCampaign(NimbleDao,
           3, currentBlock + 3, currentBlock + 3 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         );
@@ -1420,7 +1420,7 @@ contract('KyberDao', function(accounts) {
         assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
       }
       try {
-        await submitNewCampaign(kyberDao,
+        await submitNewCampaign(NimbleDao,
           5, currentBlock + 5, currentBlock + 5 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         );
@@ -1428,15 +1428,15 @@ contract('KyberDao', function(accounts) {
       } catch (e) {
         assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
       }
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 7, currentBlock + 7 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 9, currentBlock + 9 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 4999, 2, 3], '0x', {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 11, currentBlock + 11 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, getDataFromRebateAndReward(2500, 2500), 2, 3], '0x', {from: daoOperator}
       );
@@ -1447,7 +1447,7 @@ contract('KyberDao', function(accounts) {
       await updateCurrentBlockAndTimestamp();
       // invalid min percentage (> 100%)
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
           precisionUnits.add(new BN(1)), cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
@@ -1456,7 +1456,7 @@ contract('KyberDao', function(accounts) {
       )
       // cInPrecision >= 2^128
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
           precisionUnits, new BN(2).pow(new BN(128)), tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
@@ -1465,24 +1465,24 @@ contract('KyberDao', function(accounts) {
       )
       // tInPrecision >= 2^128
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
           precisionUnits, tInPrecision, new BN(2).pow(new BN(128)),
           [1, 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: t is high"
       )
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 5, currentBlock + 5 + minCampPeriod,
         precisionUnits.sub(new BN(100)), new BN(2).pow(new BN(128)).sub(new BN(1)), tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 5, currentBlock + 5 + minCampPeriod,
         precisionUnits.sub(new BN(100)), cInPrecision, new BN(2).pow(new BN(128)).sub(new BN(1)),
         [1, 2, 3], '0x', {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 7, currentBlock + 7 + minCampPeriod,
         precisionUnits, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
@@ -1492,40 +1492,40 @@ contract('KyberDao', function(accounts) {
     it("Test submit campaign should revert network fee camp's already existed", async function() {
       await deployContracts(30, currentBlock + 20, 4);
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 4, currentBlock + 4 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           1, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: already had network fee campaign for this epoch"
       )
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
       // jump to epoch 1
       await Helper.mineNewBlockAt(blockToTimestamp(startBlock + 1));
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 4, currentBlock + 4 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           1, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: already had network fee campaign for this epoch"
       )
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
@@ -1534,40 +1534,40 @@ contract('KyberDao', function(accounts) {
     it("Test submit campaign should revert brr camp's already existed", async function() {
       await deployContracts(30, currentBlock + 20, 4);
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 4, currentBlock + 4 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           2, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: already had brr campaign for this epoch"
       )
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
       // jump to epoch 1
       await Helper.mineNewBlockAt(blockToTimestamp(startBlock + 1));
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 4, currentBlock + 4 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
       await expectRevert(
-        submitNewCampaign(kyberDao,
+        submitNewCampaign(NimbleDao,
           2, currentBlock + 6, currentBlock + 6 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: already had brr campaign for this epoch"
       )
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 8, currentBlock + 8 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
@@ -1576,32 +1576,32 @@ contract('KyberDao', function(accounts) {
     it("Test submit campaign should revert exceed max campaigns for current or next epoch", async function() {
       await deployContracts(20, currentBlock + 50, 4);
       await updateCurrentBlockAndTimestamp();
-      let maxCamps = await kyberDao.MAX_EPOCH_CAMPAIGNS();
+      let maxCamps = await NimbleDao.MAX_EPOCH_CAMPAIGNS();
 
       for(let id = 0; id < maxCamps; id++) {
-        await kyberDao.submitNewCampaign(
+        await NimbleDao.submitNewCampaign(
           id <= 2 ? id : 0, daoStartTime - minCampPeriod * blockTime, daoStartTime - 1,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: daoOperator}
         );
       }
 
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, daoStartTime - minCampPeriod * blockTime, daoStartTime - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: too many campaigns"
       )
 
-      await kyberDao.cancelCampaign(1, {from: daoOperator});
+      await NimbleDao.cancelCampaign(1, {from: daoOperator});
 
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.submitNewCampaign(
         0, daoStartTime - minCampPeriod * blockTime, daoStartTime - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
 
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, daoStartTime - minCampPeriod * blockTime, daoStartTime - 1, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
@@ -1609,20 +1609,20 @@ contract('KyberDao', function(accounts) {
       )
 
       for(let id = 0; id < maxCamps; id++) {
-        await kyberDao.submitNewCampaign(
+        await NimbleDao.submitNewCampaign(
           id <= 2 ? id : 0, daoStartTime, daoStartTime + minCampPeriod * blockTime,
           minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], '0x', {from: daoOperator}
         );
       }
       await expectRevert(
-        kyberDao.submitNewCampaign(
+        NimbleDao.submitNewCampaign(
           0, daoStartTime, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         ),
         "validateParams: too many campaigns"
       )
-      await kyberDao.cancelCampaign(await kyberDao.numberCampaigns(), {from: daoOperator});
-      await kyberDao.submitNewCampaign(
+      await NimbleDao.cancelCampaign(await NimbleDao.numberCampaigns(), {from: daoOperator});
+      await NimbleDao.submitNewCampaign(
         0, daoStartTime, daoStartTime + minCampPeriod * blockTime, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
@@ -1633,51 +1633,51 @@ contract('KyberDao', function(accounts) {
     it("Test cancel campaign should revert campaign is not existed", async function() {
       await deployContracts(10, currentBlock + 20, 2);
       await expectRevert(
-        kyberDao.cancelCampaign(1, {from: daoOperator}),
+        NimbleDao.cancelCampaign(1, {from: daoOperator}),
         "cancelCampaign: campaignID doesn't exist"
       )
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 5, currentBlock + 5 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
       await expectRevert(
-        kyberDao.cancelCampaign(2, {from: daoOperator}),
+        NimbleDao.cancelCampaign(2, {from: daoOperator}),
         "cancelCampaign: campaignID doesn't exist"
       )
-      await kyberDao.cancelCampaign(1, {from: daoOperator});
+      await NimbleDao.cancelCampaign(1, {from: daoOperator});
     });
 
     it("Test cancel campaign should revert sender is not daoOperator", async function() {
       await deployContracts(10, currentBlock + 20, 2);
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 5, currentBlock + 5 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
       await expectRevert(
-        kyberDao.cancelCampaign(1, {from: mike}),
+        NimbleDao.cancelCampaign(1, {from: mike}),
         "only daoOperator"
       );
-      await kyberDao.cancelCampaign(1, {from: daoOperator});
+      await NimbleDao.cancelCampaign(1, {from: daoOperator});
     })
 
     it("Test cancel campaign should revert camp already started or ended", async function() {
       await deployContracts(10, currentBlock + 20, 5);
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
         [1, 2, 3], '0x', {from: daoOperator}
       );
       // camp already running, can not cancel
       await expectRevert(
-        kyberDao.cancelCampaign(1, {from: daoOperator}),
+        NimbleDao.cancelCampaign(1, {from: daoOperator}),
         "cancelCampaign: campaign already started"
       )
       await Helper.mineNewBlockAt(blocksToSeconds(minCampPeriod));
       // camp already ended, cancel cancel
       await expectRevert(
-        kyberDao.cancelCampaign(1, {from: daoOperator}),
+        NimbleDao.cancelCampaign(1, {from: daoOperator}),
         "cancelCampaign: campaign already started"
       )
     })
@@ -1689,28 +1689,28 @@ contract('KyberDao', function(accounts) {
 
       for(let id = 0; id < 2; id++) {
         await updateCurrentBlockAndTimestamp();
-        await submitNewCampaign(kyberDao,
+        await submitNewCampaign(NimbleDao,
           0, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         );
-        await submitNewCampaign(kyberDao,
+        await submitNewCampaign(NimbleDao,
           1, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         );
-        await submitNewCampaign(kyberDao,
+        await submitNewCampaign(NimbleDao,
           2, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         );
-        await submitNewCampaign(kyberDao,
+        await submitNewCampaign(NimbleDao,
           0, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         );
 
         campCounts += 4;
 
-        Helper.assertEqual(await kyberDao.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
+        Helper.assertEqual(await NimbleDao.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
 
-        let listCamps = await kyberDao.getListCampaignIDs(id);
+        let listCamps = await NimbleDao.getListCampaignIDs(id);
 
         Helper.assertEqual(listCamps.length, 4, "number camps for this epoch is incorrect");
         Helper.assertEqual(listCamps[0], campCounts - 3, "camp id for this epoch is incorrect");
@@ -1719,21 +1719,21 @@ contract('KyberDao', function(accounts) {
         Helper.assertEqual(listCamps[3], campCounts, "camp id for this epoch is incorrect");
 
         // cancel last created camp
-        let tx = await kyberDao.cancelCampaign(campCounts, {from: daoOperator});
+        let tx = await NimbleDao.cancelCampaign(campCounts, {from: daoOperator});
         logInfo("Cancel campaign: 4 camps, cancel last one, gas used: " + tx.receipt.gasUsed);
         expectEvent(tx, 'CancelledCampaign', {
           campaignID: new BN(campCounts)
         });
 
-        listCamps = await kyberDao.getListCampaignIDs(id);
+        listCamps = await NimbleDao.getListCampaignIDs(id);
         Helper.assertEqual(listCamps.length, 3, "number camps for this epoch is incorrect");
         Helper.assertEqual(listCamps[0], campCounts - 3, "camp id for this epoch is incorrect");
         Helper.assertEqual(listCamps[1], campCounts - 2, "camp id for this epoch is incorrect");
         Helper.assertEqual(listCamps[2], campCounts - 1, "camp id for this epoch is incorrect");
 
-        Helper.assertEqual(false, await kyberDao.campaignExists(campCounts), "camp shouldn't be existed after cancel");
+        Helper.assertEqual(false, await NimbleDao.campaignExists(campCounts), "camp shouldn't be existed after cancel");
 
-        let campData = await kyberDao.getCampaignDetails(campCounts);
+        let campData = await NimbleDao.getCampaignDetails(campCounts);
         Helper.assertEqual(campData.campaignType, 0, "camp details should be deleted");
         Helper.assertEqual(campData.startTimestamp, 0, "camp details should be deleted");
         Helper.assertEqual(campData.endTimestamp, 0, "camp details should be deleted");
@@ -1742,26 +1742,26 @@ contract('KyberDao', function(accounts) {
         Helper.assertEqual(campData.cInPrecision, 0, "camp details should be deleted");
         Helper.assertEqual(campData.tInPrecision, 0, "camp details should be deleted");
 
-        let voteData = await kyberDao.getCampaignVoteCountData(campCounts);
+        let voteData = await NimbleDao.getCampaignVoteCountData(campCounts);
         Helper.assertEqual(voteData.voteCounts.length, 0, "camp vote data should be deleted");
         Helper.assertEqual(voteData.totalVoteCount, 0, "camp vote data be deleted");
 
         // numberCampaigns value shouldn't be changed
-        Helper.assertEqual(await kyberDao.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
+        Helper.assertEqual(await NimbleDao.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
 
         // cancel middle camp
-        tx = await kyberDao.cancelCampaign(campCounts - 3, {from: daoOperator});
+        tx = await NimbleDao.cancelCampaign(campCounts - 3, {from: daoOperator});
         logInfo("Cancel campaign: 3 camps, cancel first one, gas used: " + tx.receipt.gasUsed);
         expectEvent(tx, 'CancelledCampaign', {
           campaignID: new BN(campCounts - 3)
         });
 
-        listCamps = await kyberDao.getListCampaignIDs(id);
+        listCamps = await NimbleDao.getListCampaignIDs(id);
         Helper.assertEqual(listCamps.length, 2, "number camps for this epoch is incorrect");
         Helper.assertEqual(listCamps[0], campCounts - 1, "camp id for this epoch is incorrect");
         Helper.assertEqual(listCamps[1], campCounts - 2, "camp id for this epoch is incorrect");
 
-        campData = await kyberDao.getCampaignDetails(campCounts - 3);
+        campData = await NimbleDao.getCampaignDetails(campCounts - 3);
         Helper.assertEqual(campData.campaignType, 0, "camp details should be deleted");
         Helper.assertEqual(campData.startTimestamp, 0, "camp details should be deleted");
         Helper.assertEqual(campData.endTimestamp, 0, "camp details should be deleted");
@@ -1770,25 +1770,25 @@ contract('KyberDao', function(accounts) {
         Helper.assertEqual(campData.cInPrecision, 0, "camp details should be deleted");
         Helper.assertEqual(campData.tInPrecision, 0, "camp details should be deleted");
 
-        voteData = await kyberDao.getCampaignVoteCountData(campCounts - 3);
+        voteData = await NimbleDao.getCampaignVoteCountData(campCounts - 3);
         Helper.assertEqual(voteData.voteCounts.length, 0, "camp vote data should be deleted");
         Helper.assertEqual(voteData.totalVoteCount, 0, "camp vote data be deleted");
 
-        Helper.assertEqual(false, await kyberDao.campaignExists(campCounts - 3), "camp shouldn't be existed after cancel");
+        Helper.assertEqual(false, await NimbleDao.campaignExists(campCounts - 3), "camp shouldn't be existed after cancel");
 
         // numberCampaigns value shouldn't be changed
-        Helper.assertEqual(await kyberDao.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
+        Helper.assertEqual(await NimbleDao.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
 
-        await submitNewCampaign(kyberDao,
+        await submitNewCampaign(NimbleDao,
           0, currentBlock + 10, currentBlock + 10 + minCampPeriod, minPercentageInPrecision, cInPrecision, tInPrecision,
           [1, 2, 3], '0x', {from: daoOperator}
         );
 
         campCounts++;
 
-        Helper.assertEqual(await kyberDao.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
+        Helper.assertEqual(await NimbleDao.numberCampaigns(), campCounts, "number campaigns have been created is incorrect");
 
-        listCamps = await kyberDao.getListCampaignIDs(id);
+        listCamps = await NimbleDao.getListCampaignIDs(id);
 
         Helper.assertEqual(listCamps.length, 3, "number camps for this epoch is incorrect");
         Helper.assertEqual(listCamps[0], campCounts - 2, "camp id for this epoch is incorrect");
@@ -1803,17 +1803,17 @@ contract('KyberDao', function(accounts) {
     it("Test cancel campaign correctly for network fee camp", async function() {
       await deployContracts(20, currentBlock + 50, 5);
 
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(0), "network fee camp id should be correct");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(0), "network fee camp id should be correct");
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
-      await submitNewCampaign(kyberDao,
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 15, currentBlock + 15 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(0), "network fee camp id should be correct");
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(0), "network fee camp id should be correct");
 
-      let campData = await kyberDao.getCampaignDetails(1);
+      let campData = await NimbleDao.getCampaignDetails(1);
       Helper.assertEqual(campData.campaignType, 1, "camp details should be correct");
       Helper.assertEqual(campData.startTimestamp, blockToTimestamp(currentBlock + 15), "camp details should be correct");
       Helper.assertEqual(campData.endTimestamp, blockToTimestamp(currentBlock + 15 + minCampPeriod), "camp details should be correct");
@@ -1827,10 +1827,10 @@ contract('KyberDao', function(accounts) {
       Helper.assertEqual(campData.options[1], 2, "camp details should be correct");
       Helper.assertEqual(campData.options[2], 3, "camp details should be correct");
 
-      let tx = await kyberDao.cancelCampaign(1, {from: daoOperator});
+      let tx = await NimbleDao.cancelCampaign(1, {from: daoOperator});
       logInfo("Cancel campaign: cancel network fee camp, gas used: " + tx.receipt.gasUsed);
 
-      campData = await kyberDao.getCampaignDetails(1);
+      campData = await NimbleDao.getCampaignDetails(1);
       Helper.assertEqual(campData.campaignType, 0, "camp details should be deleted");
       Helper.assertEqual(campData.startTimestamp, 0, "camp details should be deleted");
       Helper.assertEqual(campData.endTimestamp, 0, "camp details should be deleted");
@@ -1841,33 +1841,33 @@ contract('KyberDao', function(accounts) {
       // campData[7] is null, can not use assert equal
       Helper.assertEqual(campData[8].length, 0, "camp details should be deleted");
 
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(0), "network fee camp id should be deleted");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(0), "network fee camp id should be deleted");
 
       // create a general camp
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 20, currentBlock + 20 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: daoOperator}
       );
       // create brr camp
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: daoOperator}
       );
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(0), "network fee camp id should be deleted");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(0), "network fee camp id should be deleted");
 
       link = web3.utils.fromAscii("https://google.com");
       minPercentageInPrecision = precisionUnits.div(new BN(10));
       cInPrecision = precisionUnits.div(new BN(2));
       tInPrecision = precisionUnits.div(new BN(4));
       await kncToken.burn(mulPrecision(100));
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 20, currentBlock + 20 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(4, await kyberDao.networkFeeCampaigns(0), "network fee camp id should be correct");
+      Helper.assertEqual(4, await NimbleDao.networkFeeCampaigns(0), "network fee camp id should be correct");
 
-      campData = await kyberDao.getCampaignDetails(4);
+      campData = await NimbleDao.getCampaignDetails(4);
       Helper.assertEqual(campData.campaignType, 1, "camp details should be correct");
       Helper.assertEqual(campData.startTimestamp, blockToTimestamp(currentBlock + 20), "camp details should be correct");
       Helper.assertEqual(campData.endTimestamp, blockToTimestamp(currentBlock + 20 + minCampPeriod), "camp details should be correct");
@@ -1884,17 +1884,17 @@ contract('KyberDao', function(accounts) {
     it("Test cancel campaign correctly for brr camp", async function() {
       await deployContracts(20, currentBlock + 50, 5);
 
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(0), "brr camp id should be correct");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(0), "brr camp id should be correct");
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
-      await submitNewCampaign(kyberDao,
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 15, currentBlock + 15 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(0), "brr camp id should be correct");
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(0), "brr camp id should be correct");
 
-      let campData = await kyberDao.getCampaignDetails(1);
+      let campData = await NimbleDao.getCampaignDetails(1);
       Helper.assertEqual(campData.campaignType, 2, "camp details should be correct");
       Helper.assertEqual(campData.startTimestamp, blockToTimestamp(currentBlock + 15), "camp details should be correct");
       Helper.assertEqual(campData.endTimestamp, blockToTimestamp(currentBlock + 15 + minCampPeriod), "camp details should be correct");
@@ -1908,10 +1908,10 @@ contract('KyberDao', function(accounts) {
       Helper.assertEqual(campData.options[1], 2, "camp details should be correct");
       Helper.assertEqual(campData.options[2], 3, "camp details should be correct");
 
-      let tx = await kyberDao.cancelCampaign(1, {from: daoOperator});
+      let tx = await NimbleDao.cancelCampaign(1, {from: daoOperator});
       logInfo("Cancel campaign: cancel brr camp, gas used: " + tx.receipt.gasUsed);
 
-      campData = await kyberDao.getCampaignDetails(1);
+      campData = await NimbleDao.getCampaignDetails(1);
       Helper.assertEqual(campData.campaignType, 0, "camp details should be deleted");
       Helper.assertEqual(campData.startTimestamp, 0, "camp details should be deleted");
       Helper.assertEqual(campData.endTimestamp, 0, "camp details should be deleted");
@@ -1922,19 +1922,19 @@ contract('KyberDao', function(accounts) {
       // campData[7] is null, can not use assert equal
       Helper.assertEqual(campData[8].length, 0, "camp details should be deleted");
 
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(0), "brr camp id should be deleted");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(0), "brr camp id should be deleted");
 
       // create a general camp
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 20, currentBlock + 20 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: daoOperator}
       );
       // create network fee camp
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 20, currentBlock + 20 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: daoOperator}
       );
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(0), "brr camp id should be deleted");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(0), "brr camp id should be deleted");
 
       link = web3.utils.fromAscii("https://google.com");
 
@@ -1942,14 +1942,14 @@ contract('KyberDao', function(accounts) {
       cInPrecision = precisionUnits.div(new BN(2));
       tInPrecision = precisionUnits.div(new BN(4));
       await kncToken.burn(mulPrecision(100));
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 20, currentBlock + 20 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(4, await kyberDao.brrCampaigns(0), "brr camp id should be correct");
+      Helper.assertEqual(4, await NimbleDao.brrCampaigns(0), "brr camp id should be correct");
 
-      campData = await kyberDao.getCampaignDetails(4);
+      campData = await NimbleDao.getCampaignDetails(4);
       Helper.assertEqual(campData.campaignType, 2, "camp details should be correct");
       Helper.assertEqual(campData.startTimestamp, blockToTimestamp(currentBlock + 20), "camp details should be correct");
       Helper.assertEqual(campData.endTimestamp, blockToTimestamp(currentBlock + 20 + minCampPeriod), "camp details should be correct");
@@ -1966,47 +1966,47 @@ contract('KyberDao', function(accounts) {
     it("Test cancel campaign of next epoch campaign, data changes as expected", async function() {
       await deployContracts(50, currentBlock + 50, 5);
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 15, currentBlock + 15 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 15, currentBlock + 15 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 15, currentBlock + 15 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
       let epoch1Block = startBlock + 1;
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, epoch1Block + 15, epoch1Block + 15 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
-      let campaignIDs = await kyberDao.getListCampaignIDs(0);
+      let campaignIDs = await NimbleDao.getListCampaignIDs(0);
       Helper.assertEqual(3, campaignIDs.length, "number ids for first epoch is wrong");
       Helper.assertEqual(1, campaignIDs[0], "camp id for first epoch is wrong");
       Helper.assertEqual(2, campaignIDs[1], "camp id for first epoch is wrong");
       Helper.assertEqual(3, campaignIDs[2], "camp id for first epoch is wrong");
 
-      campaignIDs = await kyberDao.getListCampaignIDs(1);
+      campaignIDs = await NimbleDao.getListCampaignIDs(1);
       Helper.assertEqual(4, campaignIDs.length, "number ids for second epoch is wrong");
       Helper.assertEqual(4, campaignIDs[0], "camp id for second epoch is wrong");
       Helper.assertEqual(5, campaignIDs[1], "camp id for second epoch is wrong");
@@ -2014,30 +2014,30 @@ contract('KyberDao', function(accounts) {
       Helper.assertEqual(7, campaignIDs[3], "camp id for second epoch is wrong");
 
       // cancel next camp
-      await kyberDao.cancelCampaign(5, {from: daoOperator});
+      await NimbleDao.cancelCampaign(5, {from: daoOperator});
 
-      campaignIDs = await kyberDao.getListCampaignIDs(1);
+      campaignIDs = await NimbleDao.getListCampaignIDs(1);
       Helper.assertEqual(3, campaignIDs.length, "number ids for second epoch is wrong");
       Helper.assertEqual(4, campaignIDs[0], "camp id for second epoch is wrong");
       Helper.assertEqual(7, campaignIDs[1], "camp id for second epoch is wrong");
       Helper.assertEqual(6, campaignIDs[2], "camp id for second epoch is wrong");
 
       // epoch 1 camps shouldn't be changed
-      campaignIDs = await kyberDao.getListCampaignIDs(0);
+      campaignIDs = await NimbleDao.getListCampaignIDs(0);
       Helper.assertEqual(3, campaignIDs.length, "number ids for first epoch is wrong");
       Helper.assertEqual(1, campaignIDs[0], "camp id for first epoch is wrong");
       Helper.assertEqual(2, campaignIDs[1], "camp id for first epoch is wrong");
       Helper.assertEqual(3, campaignIDs[2], "camp id for first epoch is wrong");
 
-      await kyberDao.cancelCampaign(2, {from: daoOperator});
+      await NimbleDao.cancelCampaign(2, {from: daoOperator});
 
-      campaignIDs = await kyberDao.getListCampaignIDs(1);
+      campaignIDs = await NimbleDao.getListCampaignIDs(1);
       Helper.assertEqual(3, campaignIDs.length, "number ids for second epoch is wrong");
       Helper.assertEqual(4, campaignIDs[0], "camp id for second epoch is wrong");
       Helper.assertEqual(7, campaignIDs[1], "camp id for second epoch is wrong");
       Helper.assertEqual(6, campaignIDs[2], "camp id for second epoch is wrong");
 
-      campaignIDs = await kyberDao.getListCampaignIDs(0);
+      campaignIDs = await NimbleDao.getListCampaignIDs(0);
       Helper.assertEqual(2, campaignIDs.length, "number ids for first epoch is wrong");
       Helper.assertEqual(1, campaignIDs[0], "camp id for first epoch is wrong");
       Helper.assertEqual(3, campaignIDs[1], "camp id for first epoch is wrong");
@@ -2045,9 +2045,9 @@ contract('KyberDao', function(accounts) {
       // delay to epoch 1
       await Helper.mineNewBlockAt(daoStartTime);
 
-      await kyberDao.cancelCampaign(4, {from: daoOperator});
+      await NimbleDao.cancelCampaign(4, {from: daoOperator});
       // check camp ids
-      campaignIDs = await kyberDao.getListCampaignIDs(1);
+      campaignIDs = await NimbleDao.getListCampaignIDs(1);
       Helper.assertEqual(2, campaignIDs.length, "number ids for second epoch is wrong");
       Helper.assertEqual(6, campaignIDs[0], "camp id for second epoch is wrong");
       Helper.assertEqual(7, campaignIDs[1], "camp id for second epoch is wrong");
@@ -2056,101 +2056,101 @@ contract('KyberDao', function(accounts) {
     it("Test cancel campaign for network fee camp of next epoch", async function() {
       await deployContracts(20, currentBlock + 20, 5);
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 5, currentBlock + 5 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(0), "network fee camp is wrong");
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(1), "network fee camp is wrong");
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(0), "network fee camp is wrong");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(1), "network fee camp is wrong");
 
       // create network fee for next epoch
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, startBlock + 5, startBlock + 5 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(0), "network fee camp is wrong");
-      Helper.assertEqual(2, await kyberDao.networkFeeCampaigns(1), "network fee camp is wrong");
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(0), "network fee camp is wrong");
+      Helper.assertEqual(2, await NimbleDao.networkFeeCampaigns(1), "network fee camp is wrong");
 
-      await kyberDao.cancelCampaign(2, {from: daoOperator});
+      await NimbleDao.cancelCampaign(2, {from: daoOperator});
 
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(0), "network fee camp is wrong");
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(1), "network fee camp is wrong");
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(0), "network fee camp is wrong");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(1), "network fee camp is wrong");
 
       // create network fee for next epoch again
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, startBlock + 5, startBlock + 5 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(0), "network fee camp is wrong");
-      Helper.assertEqual(3, await kyberDao.networkFeeCampaigns(1), "network fee camp is wrong");
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(0), "network fee camp is wrong");
+      Helper.assertEqual(3, await NimbleDao.networkFeeCampaigns(1), "network fee camp is wrong");
 
       // delay to next epoch
       await Helper.mineNewBlockAt(daoStartTime);
 
-      await kyberDao.cancelCampaign(3, {from: daoOperator});
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(1), "network fee camp is wrong");
+      await NimbleDao.cancelCampaign(3, {from: daoOperator});
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(1), "network fee camp is wrong");
 
       // create network fee for epoch 1 again
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, startBlock + 5, startBlock + 5 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
-      Helper.assertEqual(4, await kyberDao.networkFeeCampaigns(1), "network fee camp is wrong");
+      Helper.assertEqual(4, await NimbleDao.networkFeeCampaigns(1), "network fee camp is wrong");
     });
 
     it("Test cancel campaign for brr camp of next epoch", async function() {
       await deployContracts(20, currentBlock + 20, 5);
 
-      let link = web3.utils.fromAscii("https://kyberswap.com");
+      let link = web3.utils.fromAscii("https://Nimbleswap.com");
 
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 5, currentBlock + 5 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(0), "brr camp is wrong");
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(1), "brr camp is wrong");
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(0), "brr camp is wrong");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(1), "brr camp is wrong");
 
       // create brr for next epoch
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, startBlock + 5, startBlock + 5 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(0), "brr camp is wrong");
-      Helper.assertEqual(2, await kyberDao.brrCampaigns(1), "brr camp is wrong");
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(0), "brr camp is wrong");
+      Helper.assertEqual(2, await NimbleDao.brrCampaigns(1), "brr camp is wrong");
 
-      await kyberDao.cancelCampaign(2, {from: daoOperator});
+      await NimbleDao.cancelCampaign(2, {from: daoOperator});
 
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(0), "brr camp is wrong");
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(1), "brr camp is wrong");
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(0), "brr camp is wrong");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(1), "brr camp is wrong");
 
       // create brr for next epoch again
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, startBlock + 5, startBlock + 5 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
 
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(0), "brr camp is wrong");
-      Helper.assertEqual(3, await kyberDao.brrCampaigns(1), "brr camp is wrong");
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(0), "brr camp is wrong");
+      Helper.assertEqual(3, await NimbleDao.brrCampaigns(1), "brr camp is wrong");
 
       // delay to next epoch
       await Helper.mineNewBlockAt(daoStartTime);
 
-      await kyberDao.cancelCampaign(3, {from: daoOperator});
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(1), "brr camp is wrong");
+      await NimbleDao.cancelCampaign(3, {from: daoOperator});
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(1), "brr camp is wrong");
 
       // create brr for epoch 1 again
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, startBlock + 5, startBlock + 5 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [1, 2, 3], link, {from: daoOperator}
       );
-      Helper.assertEqual(4, await kyberDao.brrCampaigns(1), "brr camp is wrong");
+      Helper.assertEqual(4, await NimbleDao.brrCampaigns(1), "brr camp is wrong");
     });
   });
 
@@ -2162,64 +2162,64 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      Helper.assertEqual(0, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      let campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(0, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      let campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(0, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       let gasUsed = new BN(0);
-      let tx = await kyberDao.vote(1, 1, {from: victor});
+      let tx = await NimbleDao.vote(1, 1, {from: victor});
       gasUsed.iadd(new BN(tx.receipt.gasUsed));
 
       let epochPoints = new BN(0).add(initVictorStake);
       let campPoints = new BN(0).add(initVictorStake);
       let optionPoint1 = new BN(0).add(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
       // checked voted option for campaign 1
-      Helper.assertEqual(1, await kyberDao.stakerVotedOption(victor, 1), "voted option should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.stakerVotedOption(victor, 1), "voted option should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
-      tx = await kyberDao.vote(1, 2, {from: mike});
+      tx = await NimbleDao.vote(1, 2, {from: mike});
       gasUsed.iadd(new BN(tx.receipt.gasUsed));
 
       epochPoints.iadd(initMikeStake);
       campPoints.iadd(initMikeStake);
       let optionPoint2 = new BN(0).add(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
       // checked voted option for campaign 1
-      Helper.assertEqual(2, await kyberDao.stakerVotedOption(mike, 1), "voted option should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(2, await NimbleDao.stakerVotedOption(mike, 1), "voted option should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
-      tx = await kyberDao.vote(1, 1, {from: loi});
+      tx = await NimbleDao.vote(1, 1, {from: loi});
       gasUsed.iadd(new BN(tx.receipt.gasUsed));
 
       logInfo("Vote: average gas used without delegation: " + gasUsed.div(new BN(3)).toString(10));
@@ -2228,16 +2228,16 @@ contract('KyberDao', function(accounts) {
       campPoints.iadd(initLoiStake);
       optionPoint1.iadd(initLoiStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       await stakingContract.withdraw(mulPrecision(100), {from: loi});
 
@@ -2245,60 +2245,60 @@ contract('KyberDao', function(accounts) {
       campPoints.isub(mulPrecision(100));
       optionPoint1.isub(mulPrecision(100));
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       await stakingContract.deposit(mulPrecision(100), {from: mike});
       await stakingContract.delegate(victor, {from: loi});
 
       // data shouldn't be changed
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [25, 50], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(2, 1, {from: victor});
+      await NimbleDao.vote(2, 1, {from: victor});
 
       epochPoints.iadd(initVictorStake);
       let campPoints2 = new BN(0).add(initVictorStake);
       let optionPoint21 = new BN(0).add(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
 
-      Helper.assertEqual(2, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(2, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
       // checked voted option for campaign 1
-      Helper.assertEqual(1, await kyberDao.stakerVotedOption(victor, 2), "voted option should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.stakerVotedOption(victor, 2), "voted option should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       await stakingContract.withdraw(mulPrecision(200), {from: victor});
 
@@ -2308,14 +2308,14 @@ contract('KyberDao', function(accounts) {
       campPoints2.isub(mulPrecision(200));
       optionPoint21.isub(mulPrecision(200));
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
@@ -2328,27 +2328,27 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 4, currentBlock + 4 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
 
-      Helper.assertEqual(0, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      let campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(0, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      let campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(0, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
 
-      let tx = await kyberDao.vote(1, 1, {from: victor});
+      let tx = await NimbleDao.vote(1, 1, {from: victor});
       expectEvent(tx, 'Voted', {
         staker: victor,
         epoch: new BN(1),
@@ -2360,18 +2360,18 @@ contract('KyberDao', function(accounts) {
       let campPoints = new BN(0).add(initVictorStake);
       let optionPoint1 = new BN(0).add(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
-      tx = await kyberDao.vote(1, 2, {from: mike});
+      tx = await NimbleDao.vote(1, 2, {from: mike});
       logInfo("Vote: revote different option, gas used: " + tx.receipt.gasUsed);
       expectEvent(tx, 'Voted', {
         staker: mike,
@@ -2379,68 +2379,68 @@ contract('KyberDao', function(accounts) {
         campaignID: new BN(1),
         option: new BN(2)
       });
-      await kyberDao.vote(1, 2, {from: loi});
+      await NimbleDao.vote(1, 2, {from: loi});
 
       epochPoints.iadd(initMikeStake).iadd(initLoiStake);
       campPoints.iadd(initMikeStake).iadd(initLoiStake);
       let optionPoint2 = new BN(0).add(initMikeStake).add(initLoiStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
       // checked voted option for campaign 1
-      Helper.assertEqual(2, await kyberDao.stakerVotedOption(mike, 1), "voted option should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(2, await NimbleDao.stakerVotedOption(mike, 1), "voted option should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       // vote the same
-      tx = await kyberDao.vote(1, 2, {from: mike});
+      tx = await NimbleDao.vote(1, 2, {from: mike});
       logInfo("Vote: revote same option, gas used: " + tx.receipt.gasUsed);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
       // checked voted option for campaign 1
-      Helper.assertEqual(2, await kyberDao.stakerVotedOption(mike, 1), "voted option should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(2, await NimbleDao.stakerVotedOption(mike, 1), "voted option should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       // revote for mike
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
 
       // total points + camp points shouldn't change
       // move mike's stake from op2 to op1
       optionPoint1.iadd(initMikeStake);
       optionPoint2.isub(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
       // checked voted option for campaign 1
-      Helper.assertEqual(1, await kyberDao.stakerVotedOption(mike, 1), "voted option should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.stakerVotedOption(mike, 1), "voted option should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
-      await kyberDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: mike});
       epochPoints.iadd(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
@@ -2449,14 +2449,14 @@ contract('KyberDao', function(accounts) {
       let campPoints2 = new BN(0).add(initMikeStake);
       let option1Camp2 = new BN(0).add(initMikeStake);
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(option1Camp2, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(2, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(2, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       await stakingContract.withdraw(mulPrecision(100), {from: mike});
 
@@ -2466,14 +2466,14 @@ contract('KyberDao', function(accounts) {
       campPoints2.isub(mulPrecision(100));
       option1Camp2.isub(mulPrecision(100));
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(option1Camp2, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
@@ -2487,14 +2487,14 @@ contract('KyberDao', function(accounts) {
       await stakingContract.delegate(mike, {from: victor});
 
       // nothing should be changed here
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(option1Camp2, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
@@ -2506,30 +2506,30 @@ contract('KyberDao', function(accounts) {
       await stakingContract.delegate(mike, {from: victor});
       await stakingContract.delegate(poolMaster, {from: mike});
 
-      // delay to start time of KyberDao
+      // delay to start time of NimbleDao
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
       // Check: initial data for epoch 1 and camp 1
-      Helper.assertEqual(0, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      let campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(0, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      let campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(0, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       // Check: victor has no delegated stake, has stake but already delegated to mike
       // => no data changes here
-      let tx = await kyberDao.vote(1, 1, {from: victor});
+      let tx = await NimbleDao.vote(1, 1, {from: victor});
       let gasUsed = new BN(tx.receipt.gasUsed);
 
       // Victor has delegated to mike, and no one delegated to him
@@ -2538,20 +2538,20 @@ contract('KyberDao', function(accounts) {
       let campPoints = new BN(0);
       let optionPoint1 = new BN(0);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       // Check: mike delegated to poolMaster, victor delegated mike
       // data should change based on victor's stake here
-      tx = await kyberDao.vote(1, 1, {from: mike});
+      tx = await NimbleDao.vote(1, 1, {from: mike});
       gasUsed.iadd(new BN(tx.receipt.gasUsed));
 
       logInfo("Vote: average gas used with delegation: " + gasUsed.div(new BN(2)).toString(10));
@@ -2563,34 +2563,34 @@ contract('KyberDao', function(accounts) {
       optionPoint1.iadd(initVictorStake);
       let optionPoint2 = new BN(0);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       // Check: vote from someone has stake, no delegated stake, no representative
-      await kyberDao.vote(1, 1, {from: loi});
+      await NimbleDao.vote(1, 1, {from: loi});
 
       epochPoints.iadd(initLoiStake);
       campPoints.iadd(initLoiStake);
       optionPoint1.iadd(initLoiStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       // Check: withdraw from staker with no representative
       await stakingContract.withdraw(mulPrecision(100), {from: loi});
@@ -2599,34 +2599,34 @@ contract('KyberDao', function(accounts) {
       campPoints.isub(mulPrecision(100));
       optionPoint1.isub(mulPrecision(100));
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       // Check: vote from someone with no stake, but has delegated stake
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
 
       epochPoints.iadd(initMikeStake);
       campPoints.iadd(initMikeStake);
       optionPoint2.iadd(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(poolMaster, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(poolMaster, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       // Check: new delegate + deposit won't affect current data
       await stakingContract.deposit(mulPrecision(100), {from: mike});
@@ -2640,43 +2640,43 @@ contract('KyberDao', function(accounts) {
       await stakingContract.deposit(initPoolMasterStake, {from: poolMaster});
 
       // data shouldn't be changed
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
 
       // Check: vote for second camp
-      await kyberDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: mike});
 
       epochPoints.iadd(initVictorStake);
       let campPoints2 = new BN(0).add(initVictorStake);
       let optionPoint21 = new BN(0).add(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
 
-      Helper.assertEqual(2, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(poolMaster, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(2, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(poolMaster, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
 
       // Check: withdraw from someone who has delegated
       // victor delegated to mike, so his withdrawal will affect mike's data
@@ -2690,13 +2690,13 @@ contract('KyberDao', function(accounts) {
       campPoints2.isub(mulPrecision(100));
       optionPoint21.isub(mulPrecision(100));
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint1, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint2, campPointsData[0][1], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
 
@@ -2712,28 +2712,28 @@ contract('KyberDao', function(accounts) {
       // loi + victor (delegated to poolMaster, has stake, no delegated stake)
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(3, 1, {from: poolMaster});
-      await kyberDao.vote(3, 2, {from: mike});
+      await NimbleDao.vote(3, 1, {from: poolMaster});
+      await NimbleDao.vote(3, 2, {from: mike});
 
       epochPoints = new BN(0).add(initPoolMasterStake).add(initMikeStake).add(initVictorStake).add(initLoiStake);
       let campPoints3 = new BN(0).add(epochPoints);
       let optionPoints31 = new BN(0).add(initPoolMasterStake).add(initVictorStake).add(initLoiStake);
       let optionPoints32 = new BN(0).add(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(2), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(3);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(2), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(3);
       Helper.assertEqual(campPoints3, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoints31, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoints32, campPointsData[0][1], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][2], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 2), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(poolMaster, 2), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 2), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(poolMaster, 2), "number votes should be correct");
 
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
       await stakingContract.withdraw(mulPrecision(200), {from: loi});
@@ -2745,32 +2745,32 @@ contract('KyberDao', function(accounts) {
       optionPoints31.isub(mulPrecision(350));
       optionPoints32.isub(mulPrecision(150));
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(2), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(3);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(2), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(3);
       Helper.assertEqual(campPoints3, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoints31, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoints32, campPointsData[0][1], "option voted count is incorrect");
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(4, 2, {from: poolMaster});
+      await NimbleDao.vote(4, 2, {from: poolMaster});
 
       let campPoints4 = new BN(0).add(initPoolMasterStake).add(initVictorStake).add(initLoiStake);
       campPoints4.isub(mulPrecision(350));
       let votePoints42 = new BN(0).add(campPoints4);
       epochPoints.iadd(campPoints4);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(2), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(3);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(2), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(3);
       Helper.assertEqual(campPoints3, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoints31, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoints32, campPointsData[0][1], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(4);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(4);
       Helper.assertEqual(campPoints4, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(votePoints42, campPointsData[0][1], "option voted count is incorrect");
@@ -2786,17 +2786,17 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 1, {from: victor});
-      await kyberDao.vote(1, 2, {from: loi});
+      await NimbleDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 2, {from: loi});
 
       // Nothing changes as victor + loi have delegated to another
       let epochPoints = new BN(0);
@@ -2807,25 +2807,25 @@ contract('KyberDao', function(accounts) {
       let optionPoint21 = new BN(0);
       let optionPoint22 = new BN(0);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      let campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      let campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(mike, 1), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 1), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(poolMaster2, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(mike, 1), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 1), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(poolMaster2, 1), "number votes should be correct");
 
-      let tx = await kyberDao.vote(1, 1, {from: poolMaster});
+      let tx = await NimbleDao.vote(1, 1, {from: poolMaster});
       logInfo("Vote: init 1 epoch - with delegated stake, no stake, gas used: " + tx.receipt.gasUsed);
-      await kyberDao.vote(2, 1, {from: poolMaster});
+      await NimbleDao.vote(2, 1, {from: poolMaster});
 
       epochPoints.iadd(initMikeStake).iadd(initMikeStake);
       campPoints1.iadd(initMikeStake);
@@ -2833,73 +2833,73 @@ contract('KyberDao', function(accounts) {
       campPoints2.iadd(initMikeStake);
       optionPoint21.iadd(initMikeStake);
 
-      tx = await kyberDao.vote(1, 2, {from: poolMaster2});
+      tx = await NimbleDao.vote(1, 2, {from: poolMaster2});
       logInfo("Vote: init 1 epoch - with both delegated stake + stake, gas used: " + tx.receipt.gasUsed);
 
       epochPoints.iadd(initPoolMaster2Stake).iadd(initLoiStake);
       campPoints1.iadd(initPoolMaster2Stake).iadd(initLoiStake);
       optionPoint12.iadd(initPoolMaster2Stake).iadd(initLoiStake);
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(poolMaster2, 1), "number votes should be correct");
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(poolMaster2, 1), "number votes should be correct");
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
 
       // Revote
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
 
       optionPoint12.isub(initPoolMaster2Stake).isub(initLoiStake);
       optionPoint11.iadd(initPoolMaster2Stake).iadd(initLoiStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
 
       // Revote
-      await kyberDao.vote(2, 2, {from: poolMaster});
+      await NimbleDao.vote(2, 2, {from: poolMaster});
 
       optionPoint21.isub(initMikeStake);
       optionPoint22.iadd(initMikeStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
 
       // Revote back to older option
-      await kyberDao.vote(1, 2, {from: poolMaster2});
+      await NimbleDao.vote(1, 2, {from: poolMaster2});
 
       optionPoint11.isub(initPoolMaster2Stake).isub(initLoiStake);
       optionPoint12.iadd(initPoolMaster2Stake).iadd(initLoiStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
 
       // Revote the same previous option
-      await kyberDao.vote(1, 2, {from: poolMaster2});
-      await kyberDao.vote(2, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster2});
+      await NimbleDao.vote(2, 2, {from: poolMaster});
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
@@ -2915,11 +2915,11 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime + blocksToSeconds(3 * epochPeriod));
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
@@ -2933,43 +2933,43 @@ contract('KyberDao', function(accounts) {
       let optionPoint22 = new BN(0);
 
       // nothing changes since victor+loi have delegated to another
-      let tx = await kyberDao.vote(1, 1, {from: victor});
+      let tx = await NimbleDao.vote(1, 1, {from: victor});
       let gasUsed = new BN(tx.receipt.gasUsed);
-      tx = await kyberDao.vote(1, 2, {from: loi});
+      tx = await NimbleDao.vote(1, 2, {from: loi});
       gasUsed.iadd(new BN(tx.receipt.gasUsed));
-      tx = await kyberDao.vote(1, 1, {from: mike});
+      tx = await NimbleDao.vote(1, 1, {from: mike});
       gasUsed.iadd(new BN(tx.receipt.gasUsed));
       logInfo("Vote: init data for 2 epoches, average gas used: " + gasUsed.div(new BN(3)).toString(10));
 
       epochPoints.iadd(initMikeStake);
       campPoints1.iadd(initMikeStake);
       optionPoint11.iadd(initMikeStake);
-      await kyberDao.vote(2, 2, {from: mike});
+      await NimbleDao.vote(2, 2, {from: mike});
       epochPoints.iadd(initMikeStake);
       campPoints2.iadd(initMikeStake);
       optionPoint22.iadd(initMikeStake);
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       epochPoints.iadd(initVictorStake);
       campPoints1.iadd(initVictorStake);
       optionPoint12.iadd(initVictorStake);
-      await kyberDao.vote(2, 1, {from: poolMaster2});
+      await NimbleDao.vote(2, 1, {from: poolMaster2});
       epochPoints.iadd(initLoiStake).iadd(initPoolMaster2Stake);
       campPoints2.iadd(initLoiStake).iadd(initPoolMaster2Stake);
       optionPoint21.iadd(initLoiStake).iadd(initPoolMaster2Stake);
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 4), "number votes should be correct");
-      Helper.assertEqual(2, await kyberDao.getNumberVotes(mike, 4), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 4), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(poolMaster2, 4), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(poolMaster, 4), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 4), "number votes should be correct");
+      Helper.assertEqual(2, await NimbleDao.getNumberVotes(mike, 4), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 4), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(poolMaster2, 4), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(poolMaster, 4), "number votes should be correct");
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(4), "total epoch points should be correct");
-      let campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(4), "total epoch points should be correct");
+      let campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint22, campPointsData[0][1], "option voted count is incorrect");
@@ -2981,24 +2981,24 @@ contract('KyberDao', function(accounts) {
       await stakingContract.delegate(poolMaster, {from: victor});
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 2, {from: victor});
-      await kyberDao.vote(1, 3, {from: loi});
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 3, {from: loi});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
 
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(victor, 0), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(mike, 0), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(loi, 0), "number votes should be correct");
-      Helper.assertEqual(0, await kyberDao.getNumberVotes(poolMaster2, 0), "number votes should be correct");
-      Helper.assertEqual(1, await kyberDao.getNumberVotes(poolMaster, 0), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(victor, 0), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(mike, 0), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(loi, 0), "number votes should be correct");
+      Helper.assertEqual(0, await NimbleDao.getNumberVotes(poolMaster2, 0), "number votes should be correct");
+      Helper.assertEqual(1, await NimbleDao.getNumberVotes(poolMaster, 0), "number votes should be correct");
 
-      Helper.assertEqual(0, await kyberDao.getTotalEpochPoints(0), "total epoch points should be correct");
-      let campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(0, await NimbleDao.getTotalEpochPoints(0), "total epoch points should be correct");
+      let campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(0, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(0, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(0, campPointsData[0][1], "option voted count is incorrect");
@@ -3014,12 +3014,12 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
@@ -3037,28 +3037,28 @@ contract('KyberDao', function(accounts) {
 
       // delay to start time of campaign
       await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 3));
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
       epochPoints.iadd(initMikeStake).isub(mulPrecision(100));
       campPoints2.iadd(initMikeStake).isub(mulPrecision(100));
       optionPoint23.iadd(initMikeStake).isub(mulPrecision(100));
 
-      await kyberDao.vote(2, 3, {from: mike});
+      await NimbleDao.vote(2, 3, {from: mike});
       epochPoints.iadd(initMikeStake).isub(mulPrecision(100));
       campPoints1.iadd(initMikeStake).isub(mulPrecision(100));
       optionPoint11.iadd(initMikeStake).isub(mulPrecision(100));
 
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       epochPoints.iadd(initVictorStake);
       campPoints1.iadd(initVictorStake);
       optionPoint12.iadd(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      let campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      let campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
 
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint23, campPointsData[0][2], "option voted count is incorrect");
@@ -3069,16 +3069,16 @@ contract('KyberDao', function(accounts) {
       campPoints1.isub(initVictorStake);
       optionPoint12.isub(initVictorStake);
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(1);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(1);
       Helper.assertEqual(campPoints1, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint11, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint12, campPointsData[0][1], "option voted count is incorrect");
 
-      await kyberDao.vote(2, 1, {from: poolMaster});
+      await NimbleDao.vote(2, 1, {from: poolMaster});
 
-      Helper.assertEqual(epochPoints, await kyberDao.getTotalEpochPoints(1), "total epoch points should be correct");
-      campPointsData = await kyberDao.getCampaignVoteCountData(2);
+      Helper.assertEqual(epochPoints, await NimbleDao.getTotalEpochPoints(1), "total epoch points should be correct");
+      campPointsData = await NimbleDao.getCampaignVoteCountData(2);
       Helper.assertEqual(campPoints2, campPointsData[1], "camp total points should be correct");
       Helper.assertEqual(optionPoint21, campPointsData[0][0], "option voted count is incorrect");
       Helper.assertEqual(optionPoint23, campPointsData[0][2], "option voted count is incorrect");
@@ -3089,36 +3089,36 @@ contract('KyberDao', function(accounts) {
       await deployContracts(4, currentBlock + 20, 3);
 
       await expectRevert(
-        kyberDao.vote(1, 1, {from: mike}),
+        NimbleDao.vote(1, 1, {from: mike}),
         "vote: campaign doesn't exist"
       )
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
 
       await expectRevert(
-        kyberDao.vote(2, 1, {from: mike}),
+        NimbleDao.vote(2, 1, {from: mike}),
         "vote: campaign doesn't exist"
       )
 
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
     })
 
     it("Test vote should revert camp has not started or already ended", async function() {
       await deployContracts(4, currentBlock + 20, 5);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 5, currentBlock + 5 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
 
       // camp not started yet
       await expectRevert(
-        kyberDao.vote(1, 1, {from: mike}),
+        NimbleDao.vote(1, 1, {from: mike}),
         "vote: campaign not started"
       )
 
@@ -3126,13 +3126,13 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 5));
 
       // can note now
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
 
       await Helper.mineNewBlockAfter(blocksToSeconds(minCampPeriod));
 
       // camp alread ended
       await expectRevert(
-        kyberDao.vote(1, 1, {from: mike}),
+        NimbleDao.vote(1, 1, {from: mike}),
         "vote: campaign already ended"
       );
     })
@@ -3141,40 +3141,40 @@ contract('KyberDao', function(accounts) {
       await deployContracts(4, currentBlock + 20, 8);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
 
       // can not vote for 0
       await expectRevert(
-        kyberDao.vote(1, 0, {from: mike}),
+        NimbleDao.vote(1, 0, {from: mike}),
         "vote: option is 0"
       )
 
       // can not vote for option that is bigger than range
       await expectRevert(
-        kyberDao.vote(1, 3, {from: mike}),
+        NimbleDao.vote(1, 3, {from: mike}),
         "vote: option is not in range"
       );
 
       // can note now
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 2, {from: mike});
     })
   });
 
   describe("#Get staker percentage tests", () => {
     const verifyCurrentEpochStakerRewardPercentages = async function(stakers, expectedPercentages) {
       for(let i = 0; i < stakers.length; i++) {
-        let onChainRewardPercentage = await kyberDao.getCurrentEpochRewardPercentageInPrecision(stakers[i]);
+        let onChainRewardPercentage = await NimbleDao.getCurrentEpochRewardPercentageInPrecision(stakers[i]);
         Helper.assertEqual(expectedPercentages[i], onChainRewardPercentage, "reward percentage is wrong");
       }
     }
 
     const verifyPastEpochtStakerRewardPercentages = async function(stakers, expectedPercentages, epoch) {
       for(let i = 0; i < stakers.length; i++) {
-        let onChainRewardPercentage = await kyberDao.getPastEpochRewardPercentageInPrecision(stakers[i], epoch);
+        let onChainRewardPercentage = await NimbleDao.getPastEpochRewardPercentageInPrecision(stakers[i], epoch);
         Helper.assertEqual(expectedPercentages[i], onChainRewardPercentage, "reward percentage is wrong");
       }
     }
@@ -3186,11 +3186,11 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
@@ -3200,23 +3200,23 @@ contract('KyberDao', function(accounts) {
       let victorPoints = new BN(0);
       let loiPoints = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 2, {from: mike});
       mikePoints.iadd(initMikeStake);
       totalEpochPoints.iadd(initMikeStake);
-      await kyberDao.vote(2, 1, {from: mike});
-      await kyberDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: mike});
       mikePoints.iadd(initMikeStake);
       totalEpochPoints.iadd(initMikeStake);
-      await kyberDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 1, {from: victor});
       totalEpochPoints.iadd(initVictorStake);
       victorPoints.iadd(initVictorStake);
-      await kyberDao.vote(1, 1, {from: loi});
+      await NimbleDao.vote(1, 1, {from: loi});
       totalEpochPoints.iadd(initLoiStake);
       loiPoints.iadd(initLoiStake);
 
-      await kyberDao.vote(1, 1, {from: victor});
-      await kyberDao.vote(1, 1, {from: loi});
+      await NimbleDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 1, {from: loi});
 
       let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
       let loiPer = loiPoints.mul(precisionUnits).div(totalEpochPoints);
@@ -3254,11 +3254,11 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
@@ -3268,23 +3268,23 @@ contract('KyberDao', function(accounts) {
       let poolMasterPoints = new BN(0);
       let poolMaster2Points = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 2, {from: mike});
       mikePoints.iadd(initMikeStake);
       totalEpochPoints.iadd(initMikeStake);
-      await kyberDao.vote(2, 1, {from: mike});
-      await kyberDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: mike});
       mikePoints.iadd(initMikeStake);
       totalEpochPoints.iadd(initMikeStake);
-      await kyberDao.vote(1, 1, {from: poolMaster});
+      await NimbleDao.vote(1, 1, {from: poolMaster});
       totalEpochPoints.iadd(initVictorStake);
       poolMasterPoints.iadd(initVictorStake);
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initLoiStake).iadd(initPoolMaster2Stake);
       poolMaster2Points.iadd(initLoiStake).iadd(initPoolMaster2Stake);
 
-      await kyberDao.vote(1, 1, {from: victor});
-      await kyberDao.vote(1, 1, {from: loi});
+      await NimbleDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 1, {from: loi});
 
       let mikePer = mikePoints.mul(precisionUnits).div(totalEpochPoints);
       let poolMasterPer = poolMasterPoints.mul(precisionUnits).div(totalEpochPoints);
@@ -3321,7 +3321,7 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
@@ -3331,18 +3331,18 @@ contract('KyberDao', function(accounts) {
       let poolMasterPoints = new BN(0);
       let poolMaster2Points = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
       poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
-      await kyberDao.vote(1, 1, {from: victor});
-      await kyberDao.vote(1, 2, {from: loi});
+      await NimbleDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 2, {from: loi});
 
       // delay few epochs not doing anything
       await Helper.mineNewBlockAt(blocksToSeconds(4 * epochPeriod) + daoStartTime);
@@ -3371,13 +3371,13 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 2, {from: victor});
 
       // get staker percentage for next and far in the future epochs, return 0
       await verifyPastEpochtStakerRewardPercentages(
@@ -3411,12 +3411,12 @@ contract('KyberDao', function(accounts) {
 
       // create campaign and vote in epoch 2
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
       await Helper.mineNewBlockAfter(blocksToSeconds(2));
-      await kyberDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: mike});
 
       // mike should be 100% reward for current epoch
       await verifyCurrentEpochStakerRewardPercentages(
@@ -3442,7 +3442,7 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
@@ -3452,13 +3452,13 @@ contract('KyberDao', function(accounts) {
       let poolMasterPoints = new BN(0);
       let poolMaster2Points = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
       poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
@@ -3478,7 +3478,7 @@ contract('KyberDao', function(accounts) {
         [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -3497,7 +3497,7 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
@@ -3507,13 +3507,13 @@ contract('KyberDao', function(accounts) {
       let poolMasterPoints = new BN(0);
       let poolMaster2Points = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
       poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
@@ -3531,7 +3531,7 @@ contract('KyberDao', function(accounts) {
         [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -3550,7 +3550,7 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
@@ -3560,13 +3560,13 @@ contract('KyberDao', function(accounts) {
       let poolMasterPoints = new BN(0);
       let poolMaster2Points = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
       poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
@@ -3581,9 +3581,9 @@ contract('KyberDao', function(accounts) {
       )
 
       // revote different option
-      await kyberDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 2, {from: mike});
       // revote same option
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
 
       // percentage no change after revoted
       await verifyCurrentEpochStakerRewardPercentages(
@@ -3591,7 +3591,7 @@ contract('KyberDao', function(accounts) {
         [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -3610,7 +3610,7 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
@@ -3620,13 +3620,13 @@ contract('KyberDao', function(accounts) {
       let poolMasterPoints = new BN(0);
       let poolMaster2Points = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
       poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
@@ -3659,7 +3659,7 @@ contract('KyberDao', function(accounts) {
         [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -3678,7 +3678,7 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
@@ -3688,13 +3688,13 @@ contract('KyberDao', function(accounts) {
       let poolMasterPoints = new BN(0);
       let poolMaster2Points = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
       poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
@@ -3727,7 +3727,7 @@ contract('KyberDao', function(accounts) {
         [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -3746,15 +3746,15 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 4, currentBlock + 4 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
@@ -3764,22 +3764,22 @@ contract('KyberDao', function(accounts) {
       let poolMasterPoints = new BN(0);
       let poolMaster2Points = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
-      await kyberDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(2, 1, {from: poolMaster});
+      await NimbleDao.vote(2, 1, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(3, 2, {from: poolMaster});
+      await NimbleDao.vote(3, 2, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
       poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
@@ -3817,7 +3817,7 @@ contract('KyberDao', function(accounts) {
         [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -3841,38 +3841,38 @@ contract('KyberDao', function(accounts) {
       let poolMaster2Points = new BN(0);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(2, 1, {from: poolMaster});
+      await NimbleDao.vote(2, 1, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(3, 2, {from: poolMaster});
+      await NimbleDao.vote(3, 2, {from: poolMaster});
       totalEpochPoints.iadd(initLoiStake);
       poolMasterPoints.iadd(initLoiStake);
-      await kyberDao.vote(3, 1, {from: poolMaster2});
+      await NimbleDao.vote(3, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initVictorStake).iadd(initPoolMaster2Stake);
       poolMaster2Points.iadd(initVictorStake).iadd(initPoolMaster2Stake);
 
@@ -3896,7 +3896,7 @@ contract('KyberDao', function(accounts) {
         [mikePer, poolMasterPer, poolMaster2Per, 0, 0]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -3912,16 +3912,16 @@ contract('KyberDao', function(accounts) {
       await stakingContract.delegate(poolMaster2, {from: loi});
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 2, {from: victor});
-      await kyberDao.vote(1, 3, {from: loi});
-      await kyberDao.vote(1, 2, {from: poolMaster});
-      await kyberDao.vote(1, 2, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 3, {from: loi});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster2});
 
       await verifyCurrentEpochStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -3938,11 +3938,11 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 3, currentBlock + 3 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
@@ -3954,15 +3954,15 @@ contract('KyberDao', function(accounts) {
       let poolMasterPoints = new BN(0);
 
       // partial withdraw
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
       totalEpochPoints.iadd(initMikeStake).isub(mulPrecision(100));
       mikePoints.iadd(initMikeStake).isub(mulPrecision(100));
 
-      await kyberDao.vote(2, 3, {from: mike});
+      await NimbleDao.vote(2, 3, {from: mike});
       totalEpochPoints.iadd(initMikeStake).isub(mulPrecision(100));
       mikePoints.iadd(initMikeStake).isub(mulPrecision(100));
 
-      await kyberDao.vote(1, 2, {from: poolMaster});
+      await NimbleDao.vote(1, 2, {from: poolMaster});
       totalEpochPoints.iadd(initVictorStake).iadd(initLoiStake);
       poolMasterPoints.iadd(initVictorStake).iadd(initLoiStake);
 
@@ -3979,7 +3979,7 @@ contract('KyberDao', function(accounts) {
         [mikePer, poolMasterPer, 0, 0, 0]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -3998,7 +3998,7 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
@@ -4007,11 +4007,11 @@ contract('KyberDao', function(accounts) {
       let poolMasterPoints = new BN(0);
       let poolMaster2Points = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initVictorStake).iadd(initLoiStake);
       poolMaster2Points.iadd(initVictorStake).iadd(initLoiStake);
 
-      await kyberDao.vote(1, 3, {from: poolMaster});
+      await NimbleDao.vote(1, 3, {from: poolMaster});
       totalEpochPoints.iadd(initPoolMaster2Stake);
       poolMasterPoints.iadd(initPoolMaster2Stake);
 
@@ -4023,7 +4023,7 @@ contract('KyberDao', function(accounts) {
         [0, poolMasterPer, poolMaster2Per, 0, 0]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -4041,7 +4041,7 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
@@ -4050,11 +4050,11 @@ contract('KyberDao', function(accounts) {
       let mikePoints = new BN(0);
       let poolMaster2Points = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initPoolMaster2Stake).iadd(initVictorStake).iadd(initLoiStake);
       poolMaster2Points.iadd(initPoolMaster2Stake).iadd(initVictorStake).iadd(initLoiStake);
 
-      await kyberDao.vote(1, 3, {from: mike});
+      await NimbleDao.vote(1, 3, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
 
@@ -4066,7 +4066,7 @@ contract('KyberDao', function(accounts) {
         [mikePer, 0, poolMaster2Per, 0, 0]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -4085,7 +4085,7 @@ contract('KyberDao', function(accounts) {
       await stakingContract.delegate(poolMaster2, {from: loi});
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
@@ -4095,15 +4095,15 @@ contract('KyberDao', function(accounts) {
       let poolMaster2Points = new BN(0);
       let loiPoints = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initPoolMaster2Stake).iadd(initVictorStake);
       poolMaster2Points.iadd(initPoolMaster2Stake).iadd(initVictorStake);
 
-      await kyberDao.vote(1, 3, {from: mike});
+      await NimbleDao.vote(1, 3, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
 
-      await kyberDao.vote(1, 3, {from: loi});
+      await NimbleDao.vote(1, 3, {from: loi});
       totalEpochPoints.iadd(initLoiStake);
       loiPoints.iadd(initLoiStake);
 
@@ -4116,7 +4116,7 @@ contract('KyberDao', function(accounts) {
         [mikePer, 0, poolMaster2Per, 0, loiPer]
       )
       // delay one epoch and verify past epoch data
-      let currentEpoch = await kyberDao.getCurrentEpochNumber();
+      let currentEpoch = await NimbleDao.getCurrentEpochNumber();
       await Helper.mineNewBlockAfter(blocksToSeconds(epochPeriod));
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -4138,11 +4138,11 @@ contract('KyberDao', function(accounts) {
       let campCount = 0;
       for(let id = 1; id < 5; id++) {
         await updateCurrentBlockAndTimestamp();
-        await submitNewCampaign(kyberDao,
+        await submitNewCampaign(NimbleDao,
           0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
           0, 0, 0, [25, 50], '0x', {from: daoOperator}
         );
-        await submitNewCampaignAndDelayToStart(kyberDao,
+        await submitNewCampaignAndDelayToStart(NimbleDao,
           0, currentBlock + 3, currentBlock + 3 + minCampPeriod,
           0, 0, 0, [25, 50], '0x', {from: daoOperator}
         );
@@ -4153,20 +4153,20 @@ contract('KyberDao', function(accounts) {
         let victorPoints = new BN(0);
         let loiPoints = new BN(0);
 
-        await kyberDao.vote(campCount - 1, 1, {from: mike});
+        await NimbleDao.vote(campCount - 1, 1, {from: mike});
         totalEpochPoints.iadd(mikeCurStake);
         mikePoints.iadd(mikeCurStake);
-        await kyberDao.vote(campCount, 2, {from: mike});
+        await NimbleDao.vote(campCount, 2, {from: mike});
         totalEpochPoints.iadd(mikeCurStake);
         mikePoints.iadd(mikeCurStake);
-        await kyberDao.vote(campCount, 1, {from: victor});
-        await kyberDao.vote(campCount, 1, {from: victor});
+        await NimbleDao.vote(campCount, 1, {from: victor});
+        await NimbleDao.vote(campCount, 1, {from: victor});
         totalEpochPoints.iadd(victorCurStake);
         victorPoints.iadd(victorCurStake);
-        await kyberDao.vote(campCount - 1, 2, {from: loi});
+        await NimbleDao.vote(campCount - 1, 2, {from: loi});
         totalEpochPoints.iadd(loiCurStake);
         loiPoints.iadd(loiCurStake);
-        await kyberDao.vote(campCount - 1, 1, {from: loi});
+        await NimbleDao.vote(campCount - 1, 1, {from: loi});
 
         await stakingContract.deposit(mulPrecision(10), {from: loi});
         loiCurStake.iadd(mulPrecision(10));
@@ -4207,7 +4207,7 @@ contract('KyberDao', function(accounts) {
       await stakingContract.delegate(poolMaster2, {from: loi});
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
@@ -4217,15 +4217,15 @@ contract('KyberDao', function(accounts) {
       let poolMaster2Points = new BN(0);
       let loiPoints = new BN(0);
 
-      await kyberDao.vote(1, 1, {from: poolMaster2});
+      await NimbleDao.vote(1, 1, {from: poolMaster2});
       totalEpochPoints.iadd(initPoolMaster2Stake).iadd(initVictorStake);
       poolMaster2Points.iadd(initPoolMaster2Stake).iadd(initVictorStake);
 
-      await kyberDao.vote(1, 3, {from: mike});
+      await NimbleDao.vote(1, 3, {from: mike});
       totalEpochPoints.iadd(initMikeStake);
       mikePoints.iadd(initMikeStake);
 
-      await kyberDao.vote(1, 3, {from: loi});
+      await NimbleDao.vote(1, 3, {from: loi});
       totalEpochPoints.iadd(initLoiStake);
       loiPoints.iadd(initLoiStake);
 
@@ -4247,14 +4247,14 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(blocksToSeconds(4 * epochPeriod) + daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(2, 1, {from: poolMaster2});
-      await kyberDao.vote(2, 3, {from: mike});
-      await kyberDao.vote(2, 3, {from: loi});
+      await NimbleDao.vote(2, 1, {from: poolMaster2});
+      await NimbleDao.vote(2, 3, {from: mike});
+      await NimbleDao.vote(2, 3, {from: loi});
 
       await verifyPastEpochtStakerRewardPercentages(
         [mike, poolMaster, poolMaster2, victor, loi],
@@ -4279,7 +4279,7 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       // has stake, but no vote yet
-      Helper.assertEqual(0, await kyberDao.getPastEpochRewardPercentageInPrecision(mike, 0), "reward percentage is wrong");
+      Helper.assertEqual(0, await NimbleDao.getPastEpochRewardPercentageInPrecision(mike, 0), "reward percentage is wrong");
     });
 
     // test coverage for total epoch points = 0 or less than staker's point
@@ -4289,13 +4289,13 @@ contract('KyberDao', function(accounts) {
 
       minCampPeriod = 10;
       daoStartTime = blockToTimestamp(startBlock);
-      kyberDao = await MockMaliciousKyberDao.new(
+      NimbleDao = await MockMaliciousNimbleDao.new(
         blocksToSeconds(epochPeriod), daoStartTime,
         kncToken.address, minCampPeriod,
         defaultNetworkFee, defaultRewardBps, defaultRebateBps,
         daoOperator
       )
-      stakingContract = await StakingContract.at(await kyberDao.staking());
+      stakingContract = await StakingContract.at(await NimbleDao.staking());
 
       await setupSimpleStakingData();
 
@@ -4304,21 +4304,21 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 2, {from: mike});
 
       // set total epoch points is 0
-      await kyberDao.setTotalEpochPoints(1, 0);
+      await NimbleDao.setTotalEpochPoints(1, 0);
 
-      Helper.assertEqual(0, await kyberDao.getPastEpochRewardPercentageInPrecision(mike, 1), "reward should be 0");
+      Helper.assertEqual(0, await NimbleDao.getPastEpochRewardPercentageInPrecision(mike, 1), "reward should be 0");
 
       // set total epoch points less than point of mike
-      await kyberDao.setTotalEpochPoints(1, mulPrecision(90));
+      await NimbleDao.setTotalEpochPoints(1, mulPrecision(90));
 
-      Helper.assertEqual(0, await kyberDao.getPastEpochRewardPercentageInPrecision(mike, 1), "reward should be 0");
+      Helper.assertEqual(0, await NimbleDao.getPastEpochRewardPercentageInPrecision(mike, 1), "reward should be 0");
     });
   });
 
@@ -4327,7 +4327,7 @@ contract('KyberDao', function(accounts) {
     it("Test get winning option for non-existed campaign", async function() {
       await deployContracts(10, currentBlock + 10, 5);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "option id should be 0");
       Helper.assertEqual(0, data[1], "option value should be 0");
     });
@@ -4340,13 +4340,13 @@ contract('KyberDao', function(accounts) {
 
       await updateCurrentBlockAndTimestamp();
       // min percentage: 0%, c = 0, t = 0
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 4, currentBlock + 4 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
       // not started yet
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "option id should be 0");
       Helper.assertEqual(0, data[1], "option value should be 0");
 
@@ -4354,17 +4354,17 @@ contract('KyberDao', function(accounts) {
 
       // delay to start time of campaign
       await Helper.mineNewBlockAt(blockToTimestamp(currentBlock + 4));
-      await kyberDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: mike});
 
       // currently running
-      data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "option id should be 0");
       Helper.assertEqual(0, data[1], "option value should be 0");
 
       // delay until end of first camp
       await Helper.mineNewBlockAfter(blocksToSeconds(minCampPeriod));
 
-      data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(1, data[0], "winning option id is invalid");
       Helper.assertEqual(25, data[1], "winning option value is invalid");
     });
@@ -4382,7 +4382,7 @@ contract('KyberDao', function(accounts) {
 
       await updateCurrentBlockAndTimestamp();
       // min percentage: 0%, c = 0, t = 0
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
@@ -4390,12 +4390,12 @@ contract('KyberDao', function(accounts) {
       // delay to end of this epocch
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "winning option id is invalid");
       Helper.assertEqual(0, data[1], "winning option value is invalid");
 
       // conclude result, it is network fee so just call get network fee with cache
-      await kyberDao.getLatestNetworkFeeDataWithCache();
+      await NimbleDao.getLatestNetworkFeeDataWithCache();
     });
 
     it("Test get winning option with no vote", async function() {
@@ -4412,7 +4412,7 @@ contract('KyberDao', function(accounts) {
 
       await updateCurrentBlockAndTimestamp();
       // min percentage: 0%, c = 0, t = 0
-      await submitNewCampaign(kyberDao,
+      await submitNewCampaign(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
@@ -4420,12 +4420,12 @@ contract('KyberDao', function(accounts) {
       // delay to end of this epocch
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "winning option id is invalid");
       Helper.assertEqual(0, data[1], "winning option value is invalid");
 
       // conclude result, it is network fee so just call get network fee with cache
-      await kyberDao.getLatestNetworkFeeDataWithCache();
+      await NimbleDao.getLatestNetworkFeeDataWithCache();
 
       await resetSetupForKNCToken();
     });
@@ -4444,23 +4444,23 @@ contract('KyberDao', function(accounts) {
 
       await updateCurrentBlockAndTimestamp();
       // min percentage: 0%, c = 0, t = 0
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 2, {from: victor});
 
       // delay to end of this epocch
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "winning option id is invalid");
       Helper.assertEqual(0, data[1], "winning option value is invalid");
 
       // conclude result, it is network fee so just call get network fee with cache
-      await kyberDao.getLatestNetworkFeeDataWithCache();
+      await NimbleDao.getLatestNetworkFeeDataWithCache();
     });
 
     it("Test get winning option return 0 vote count less than min percentage (20%)", async function() {
@@ -4472,14 +4472,14 @@ contract('KyberDao', function(accounts) {
       // 20% of total supply
       await updateCurrentBlockAndTimestamp();
       // min percentage: 0%, c = 0, t = 0
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         precisionUnits.div(new BN(5)), 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 1, {from: victor});
-      await kyberDao.vote(1, 1, {from: loi});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 1, {from: loi});
 
       let totalSupply = await kncToken.totalSupply();
 
@@ -4491,7 +4491,7 @@ contract('KyberDao', function(accounts) {
 
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "winning option id is invalid");
       Helper.assertEqual(0, data[1], "winning option value is invalid")
     });
@@ -4506,18 +4506,18 @@ contract('KyberDao', function(accounts) {
 
       await updateCurrentBlockAndTimestamp();
       // min percentage: 0%, c = 0, t = 0
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 2, {from: mike});
-      await kyberDao.vote(1, 1, {from: victor});
-      await kyberDao.vote(1, 3, {from: loi});
+      await NimbleDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 3, {from: loi});
 
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(2, data[0], "winning option id is invalid");
       Helper.assertEqual(50, data[1], "winning option value is invalid")
     });
@@ -4535,25 +4535,25 @@ contract('KyberDao', function(accounts) {
 
       await updateCurrentBlockAndTimestamp();
       // min percentage: 20%, c = 0, t = 0
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         precisionUnits.div(new BN(5)), 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 3, {from: mike});
-      await kyberDao.vote(1, 2, {from: victor});
-      await kyberDao.vote(1, 3, {from: loi});
+      await NimbleDao.vote(1, 3, {from: mike});
+      await NimbleDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 3, {from: loi});
 
       // delay to end of this epocch
       await updateCurrentBlockAndTimestamp();
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(3, data[0], "winning option id is invalid");
       Helper.assertEqual(100, data[1], "winning option value is invalid");
 
       // conclude result, it is network fee so just call get network fee with cache
-      await kyberDao.getLatestNetworkFeeDataWithCache();
+      await NimbleDao.getLatestNetworkFeeDataWithCache();
 
       // resetup data, increase total supply so total votes less than 20%
       totalSupply.iadd(new BN(1));
@@ -4566,19 +4566,19 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         precisionUnits.div(new BN(5)), 0, 0, [25, 50, 100], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 3, {from: mike});
-      await kyberDao.vote(1, 2, {from: victor});
-      await kyberDao.vote(1, 3, {from: loi});
+      await NimbleDao.vote(1, 3, {from: mike});
+      await NimbleDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 3, {from: loi});
 
       // delay to end of this epocch
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "winning option id is invalid");
       Helper.assertEqual(0, data[1], "winning option value is invalid");
 
@@ -4598,22 +4598,22 @@ contract('KyberDao', function(accounts) {
       minPercentageInPrecision = mulPrecision(20).div(new BN(100));
       cInPrecision = precisionUnits; // 100%
       tInPrecision = precisionUnits; // 1
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 2, {from: mike});
-      await kyberDao.vote(1, 3, {from: victor});
-      await kyberDao.vote(1, 1, {from: loi});
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 2, {from: loi});
+      await NimbleDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 3, {from: victor});
+      await NimbleDao.vote(1, 1, {from: loi});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 2, {from: loi});
 
       // delay to end of this epocch
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
       // no winning option
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "winning option id is invalid");
       Helper.assertEqual(0, data[1], "winning option value is invalid");
 
@@ -4633,20 +4633,20 @@ contract('KyberDao', function(accounts) {
       minPercentageInPrecision = mulPrecision(20).div(new BN(100));
       cInPrecision = precisionUnits; // 100%
       tInPrecision = precisionUnits; // 1
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 2, {from: mike});
-      await kyberDao.vote(1, 3, {from: victor});
-      await kyberDao.vote(1, 1, {from: loi});
+      await NimbleDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 3, {from: victor});
+      await NimbleDao.vote(1, 1, {from: loi});
 
       // delay to end of this epocch
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
       // option 2 should win as it equals the threshold
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(2, data[0], "winning option id is invalid");
       Helper.assertEqual(26, data[1], "winning option value is invalid");
 
@@ -4668,20 +4668,20 @@ contract('KyberDao', function(accounts) {
       minPercentageInPrecision = mulPrecision(40).div(new BN(100));
       cInPrecision = precisionUnits; // 100%
       tInPrecision = precisionUnits; // 1
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 3, {from: victor});
-      await kyberDao.vote(1, 1, {from: loi});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 3, {from: victor});
+      await NimbleDao.vote(1, 1, {from: loi});
 
       // delay to end of this epocch
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
       // option 1 should win as it equals the threshold
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(1, data[0], "winning option id is invalid");
       Helper.assertEqual(32, data[1], "winning option value is invalid");
 
@@ -4703,19 +4703,19 @@ contract('KyberDao', function(accounts) {
       minPercentageInPrecision = mulPrecision(40).div(new BN(100));
       cInPrecision = precisionUnits.div(new BN(10)); // 10%
       tInPrecision = precisionUnits; // 1
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 3, {from: mike});
-      await kyberDao.vote(1, 1, {from: victor});
-      await kyberDao.vote(1, 2, {from: loi});
+      await NimbleDao.vote(1, 3, {from: mike});
+      await NimbleDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 2, {from: loi});
 
       // delay to end of this epocch
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(3, data[0], "winning option id is invalid");
       Helper.assertEqual(44, data[1], "winning option value is invalid");
 
@@ -4737,19 +4737,19 @@ contract('KyberDao', function(accounts) {
       minPercentageInPrecision = mulPrecision(40).div(new BN(100));
       cInPrecision = mulPrecision(2); // 10%
       tInPrecision = precisionUnits; // 1
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 1, {from: victor});
-      await kyberDao.vote(1, 1, {from: loi});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 1, {from: loi});
 
       // delay to end of this epocch
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "winning option id is invalid");
       Helper.assertEqual(0, data[1], "winning option value is invalid");
 
@@ -4771,39 +4771,39 @@ contract('KyberDao', function(accounts) {
       minPercentageInPrecision = mulPrecision(40).div(new BN(100));
       cInPrecision = precisionUnits; // 100%
       tInPrecision = 0; // 1
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 2, {from: mike});
-      await kyberDao.vote(1, 2, {from: victor});
-      await kyberDao.vote(1, 2, {from: loi});
+      await NimbleDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 2, {from: loi});
 
       // delay to end of this epocch
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
       // all voted for option 1, however threshold is greater than 100%
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(2, data[0], "winning option id is invalid");
       Helper.assertEqual(26, data[1], "winning option value is invalid");
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
       // one person voted differently
-      await kyberDao.vote(2, 2, {from: mike});
-      await kyberDao.vote(2, 1, {from: victor});
-      await kyberDao.vote(2, 2, {from: loi});
+      await NimbleDao.vote(2, 2, {from: mike});
+      await NimbleDao.vote(2, 1, {from: victor});
+      await NimbleDao.vote(2, 2, {from: loi});
 
       // delay to end of this epocch
       await updateCurrentBlockAndTimestamp();
       await Helper.mineNewBlockAt(blocksToSeconds(2 * epochPeriod) + daoStartTime);
 
-      data = await kyberDao.getCampaignWinningOptionAndValue(2);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(2);
       Helper.assertEqual(0, data[0], "winning option id is invalid");
       Helper.assertEqual(0, data[1], "winning option value is invalid");
 
@@ -4817,16 +4817,16 @@ contract('KyberDao', function(accounts) {
       await deployContracts(10, currentBlock + 10, 5);
 
       // get fee data for epoch 0
-      let feeData = await kyberDao.getLatestNetworkFeeData();
+      let feeData = await NimbleDao.getLatestNetworkFeeData();
       Helper.assertEqual(defaultNetworkFee, feeData.feeInBps, "network fee default is wrong");
       Helper.assertEqual(daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
-      await kyberDao.setLatestNetworkFee(36);
-      feeData = await kyberDao.getLatestNetworkFeeData();
+      await NimbleDao.setLatestNetworkFee(36);
+      feeData = await NimbleDao.getLatestNetworkFeeData();
       Helper.assertEqual(36, feeData.feeInBps, "network fee default is wrong");
       Helper.assertEqual(daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
-      let tx = await kyberDao.getLatestNetworkFeeDataWithCache();
+      let tx = await NimbleDao.getLatestNetworkFeeDataWithCache();
       logInfo("Get Network Fee: epoch 0, gas used: " + tx.receipt.gasUsed);
     });
 
@@ -4837,23 +4837,23 @@ contract('KyberDao', function(accounts) {
       // delay to epoch 1
       await Helper.mineNewBlockAt(daoStartTime);
       // get fee data for epoch 1
-      feeData = await kyberDao.getLatestNetworkFeeData();
+      feeData = await NimbleDao.getLatestNetworkFeeData();
       Helper.assertEqual(defaultNetworkFee, feeData.feeInBps, "network fee default is wrong");
       Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
-      await kyberDao.setLatestNetworkFee(32);
-      feeData = await kyberDao.getLatestNetworkFeeData();
+      await NimbleDao.setLatestNetworkFee(32);
+      feeData = await NimbleDao.getLatestNetworkFeeData();
       Helper.assertEqual(32, feeData.feeInBps, "network fee default is wrong");
       Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
       // delay to epoch 4
       await Helper.mineNewBlockAt(blocksToSeconds(3 * epochPeriod) + daoStartTime);
       // get fee data for epoch 4
-      feeData = await kyberDao.getLatestNetworkFeeData();
+      feeData = await NimbleDao.getLatestNetworkFeeData();
       Helper.assertEqual(32, feeData.feeInBps, "network fee default is wrong");
       Helper.assertEqual(blocksToSeconds(4*epochPeriod) + daoStartTime - 1, feeData.expiryTimestamp, "expiry timestamp is wrong");
 
-      let tx = await kyberDao.getLatestNetworkFeeDataWithCache();
+      let tx = await NimbleDao.getLatestNetworkFeeDataWithCache();
       logInfo("Get Network Fee: epoch > 0, no fee camp, gas used: " + tx.receipt.gasUsed);
     });
 
@@ -4865,29 +4865,29 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 2, {from: mike});
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [22, 23, 24], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(2, 3, {from: mike});
+      await NimbleDao.vote(2, 3, {from: mike});
 
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
 
       Helper.assertEqual(2, data[0], "winning option is wrong");
       Helper.assertEqual(26, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(0, await kyberDao.networkFeeCampaigns(1), "shouldn't have network fee camp for epoch 1");
+      Helper.assertEqual(0, await NimbleDao.networkFeeCampaigns(1), "shouldn't have network fee camp for epoch 1");
 
-      data = await kyberDao.getLatestNetworkFeeData();
+      data = await NimbleDao.getLatestNetworkFeeData();
 
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
       // expiry timestamp should be end of epoch 2
@@ -4901,27 +4901,27 @@ contract('KyberDao', function(accounts) {
       minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
       cInPrecision = precisionUnits;
       tInPrecision = precisionUnits;
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 50, 44], '0x', {from: daoOperator}
       );
 
       // option 2 should win
-      await kyberDao.vote(1, 2, {from: mike});
-      await kyberDao.vote(1, 2, {from: loi});
-      await kyberDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 2, {from: loi});
+      await NimbleDao.vote(1, 2, {from: victor});
 
       // camp is not ended yet, so data shouldn't change
-      let data = await kyberDao.getLatestNetworkFeeData();
+      let data = await NimbleDao.getLatestNetworkFeeData();
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
       Helper.assertEqual(blocksToSeconds(epochPeriod) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
       // delay to epoch 2
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(1), "should have network fee camp");
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(1), "should have network fee camp");
 
-      data = await kyberDao.getLatestNetworkFeeData();
+      data = await NimbleDao.getLatestNetworkFeeData();
 
       Helper.assertEqual(50, data[0], "should fallback to previous data");
       Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
@@ -4934,58 +4934,58 @@ contract('KyberDao', function(accounts) {
       await simpleSetupToTestThreshold(410, 410, 180, 40);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 2, {from: mike});
-      await kyberDao.vote(1, 1, {from: victor});
-      await kyberDao.vote(1, 3, {from: loi});
+      await NimbleDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 3, {from: loi});
 
       // delay to epoch 2
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
       // no winning as same vote count
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(1, await kyberDao.networkFeeCampaigns(1), "should have network fee camp for epoch 1");
+      Helper.assertEqual(1, await NimbleDao.networkFeeCampaigns(1), "should have network fee camp for epoch 1");
 
-      data = await kyberDao.getLatestNetworkFeeData();
+      data = await NimbleDao.getLatestNetworkFeeData();
 
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
       Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, data[1], "expiry timestamp is wrong for epoch 1");
 
-      let tx = await kyberDao.getLatestNetworkFeeDataWithCache();
+      let tx = await NimbleDao.getLatestNetworkFeeDataWithCache();
       logInfo("Get Network Fee: epoch > 0, has fee camp, no win option, gas used: " + tx.receipt.gasUsed);
-      tx = await kyberDao.getLatestNetworkFeeDataWithCache();
+      tx = await NimbleDao.getLatestNetworkFeeDataWithCache();
       logInfo("Get Network Fee: epoch > 0, has fee camp, already concluded, gas used: " + tx.receipt.gasUsed);
 
       await updateCurrentBlockAndTimestamp();
       // min per: 41%, C = 0, t = 0
       minPercentageInPrecision = precisionUnits.mul(new BN(41)).div(new BN(100));
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(2, 1, {from: mike});
-      await kyberDao.vote(2, 1, {from: victor});
-      await kyberDao.vote(2, 1, {from: loi});
+      await NimbleDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: victor});
+      await NimbleDao.vote(2, 1, {from: loi});
 
       // delay to epoch 3
       await Helper.mineNewBlockAt(blocksToSeconds(2 * epochPeriod) + daoStartTime);
 
       // no winning as min percentage > total votes / total supply
-      data = await kyberDao.getCampaignWinningOptionAndValue(2);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(2);
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(2, await kyberDao.networkFeeCampaigns(2), "should have network fee camp");
+      Helper.assertEqual(2, await NimbleDao.networkFeeCampaigns(2), "should have network fee camp");
 
-      data = await kyberDao.getLatestNetworkFeeData();
+      data = await NimbleDao.getLatestNetworkFeeData();
 
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
       Helper.assertEqual(blocksToSeconds(epochPeriod * 3) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
@@ -4995,26 +4995,26 @@ contract('KyberDao', function(accounts) {
       minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
       cInPrecision = precisionUnits;
       tInPrecision = precisionUnits;
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(3, 1, {from: mike});
-      await kyberDao.vote(3, 1, {from: loi});
-      await kyberDao.vote(3, 2, {from: victor});
+      await NimbleDao.vote(3, 1, {from: mike});
+      await NimbleDao.vote(3, 1, {from: loi});
+      await NimbleDao.vote(3, 2, {from: victor});
 
       // delay to epoch 4
       await Helper.mineNewBlockAt(blocksToSeconds(3 * epochPeriod) + daoStartTime);
 
       // no winning as most option voted percentage (59%) < threshold (60%)
-      data = await kyberDao.getCampaignWinningOptionAndValue(3);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(3);
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(3, await kyberDao.networkFeeCampaigns(3), "should have network fee camp");
+      Helper.assertEqual(3, await NimbleDao.networkFeeCampaigns(3), "should have network fee camp");
 
-      data = await kyberDao.getLatestNetworkFeeData();
+      data = await NimbleDao.getLatestNetworkFeeData();
 
       Helper.assertEqual(defaultNetworkFee, data[0], "should fallback to default network fee value");
       Helper.assertEqual(blocksToSeconds(4 * epochPeriod) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
@@ -5024,64 +5024,64 @@ contract('KyberDao', function(accounts) {
       minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
       cInPrecision = precisionUnits;
       tInPrecision = precisionUnits;
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(4, 1, {from: mike});
-      await kyberDao.vote(4, 1, {from: loi});
-      await kyberDao.vote(4, 1, {from: victor});
+      await NimbleDao.vote(4, 1, {from: mike});
+      await NimbleDao.vote(4, 1, {from: loi});
+      await NimbleDao.vote(4, 1, {from: victor});
 
       // delay to epoch 5
       await Helper.mineNewBlockAt(blocksToSeconds(4 * epochPeriod) + daoStartTime);
 
-      data = await kyberDao.getCampaignWinningOptionAndValue(4);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(4);
       Helper.assertEqual(1, data[0], "winning option is wrong");
       Helper.assertEqual(32, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(4, await kyberDao.networkFeeCampaigns(4), "should have network fee camp");
+      Helper.assertEqual(4, await NimbleDao.networkFeeCampaigns(4), "should have network fee camp");
 
-      data = await kyberDao.getLatestNetworkFeeData();
+      data = await NimbleDao.getLatestNetworkFeeData();
 
       Helper.assertEqual(32, data[0], "should get correct winning value as new network fee");
       Helper.assertEqual(blocksToSeconds(5 * epochPeriod) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
       // conclude and save data
-      Helper.assertEqual(32, (await kyberDao.getLatestNetworkFeeData()).feeInBps, "latest network fee is wrong");
-      await kyberDao.getLatestNetworkFeeDataWithCache();
-      Helper.assertEqual(32, (await kyberDao.getLatestNetworkFeeData()).feeInBps, "latest network fee is wrong");
+      Helper.assertEqual(32, (await NimbleDao.getLatestNetworkFeeData()).feeInBps, "latest network fee is wrong");
+      await NimbleDao.getLatestNetworkFeeDataWithCache();
+      Helper.assertEqual(32, (await NimbleDao.getLatestNetworkFeeData()).feeInBps, "latest network fee is wrong");
 
       await updateCurrentBlockAndTimestamp();
       // min per: 40%, C = 100%, t = 1
       minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
       cInPrecision = precisionUnits;
       tInPrecision = precisionUnits;
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(5, 1, {from: mike});
-      await kyberDao.vote(5, 2, {from: loi});
-      await kyberDao.vote(5, 2, {from: victor});
+      await NimbleDao.vote(5, 1, {from: mike});
+      await NimbleDao.vote(5, 2, {from: loi});
+      await NimbleDao.vote(5, 2, {from: victor});
 
       // delay to epoch 6
       await Helper.mineNewBlockAt(blocksToSeconds(5 * epochPeriod) + daoStartTime);
 
       // no winning as most option voted percentage (59%) < threshold (60%)
-      data = await kyberDao.getCampaignWinningOptionAndValue(5);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(5);
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(5, await kyberDao.networkFeeCampaigns(5), "should have network fee camp");
+      Helper.assertEqual(5, await NimbleDao.networkFeeCampaigns(5), "should have network fee camp");
 
-      data = await kyberDao.getLatestNetworkFeeData();
+      data = await NimbleDao.getLatestNetworkFeeData();
 
       Helper.assertEqual(32, data[0], "should fallback to previous data");
       Helper.assertEqual(blocksToSeconds(6 * epochPeriod) + daoStartTime - 1, data[1], "expiry timestamp is wrong");
 
-      tx = await kyberDao.getLatestNetworkFeeDataWithCache();
+      tx = await NimbleDao.getLatestNetworkFeeDataWithCache();
       logInfo("Get Network Fee: epoch > 0, has fee camp + win option, gas used: " + tx.receipt.gasUsed);
 
       await resetSetupForKNCToken();
@@ -5102,13 +5102,13 @@ contract('KyberDao', function(accounts) {
 
       // create camp, but not fee camp
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 1, {from: loi});
-      await kyberDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 1, {from: loi});
+      await NimbleDao.vote(1, 1, {from: victor});
 
       // delay to epoch 2
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
@@ -5117,13 +5117,13 @@ contract('KyberDao', function(accounts) {
 
        // create fee camp, but no winning
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(2, 1, {from: mike});
-      await kyberDao.vote(2, 2, {from: loi});
-      await kyberDao.vote(2, 3, {from: victor});
+      await NimbleDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 2, {from: loi});
+      await NimbleDao.vote(2, 3, {from: victor});
 
       // delay to epoch 3
       await Helper.mineNewBlockAt(blocksToSeconds(2 * epochPeriod) + daoStartTime);
@@ -5135,13 +5135,13 @@ contract('KyberDao', function(accounts) {
 
       // create fee camp, has winning
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 1], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(3, 3, {from: mike});
-      await kyberDao.vote(3, 3, {from: loi});
-      await kyberDao.vote(3, 3, {from: victor});
+      await NimbleDao.vote(3, 3, {from: mike});
+      await NimbleDao.vote(3, 3, {from: loi});
+      await NimbleDao.vote(3, 3, {from: victor});
       // current epoch has network fee camp with a winning option
       // but getting network fee data for this epoch should still return previous epoch result
       await checkLatestNetworkFeeData(defaultNetworkFee, blocksToSeconds(epochPeriod * 5) + daoStartTime - 1);
@@ -5169,8 +5169,8 @@ contract('KyberDao', function(accounts) {
       defaultBrrData = getDataFromRebateAndReward(rebate, reward);
       await deployContracts(10, currentBlock + 10, 5);
 
-      Helper.assertEqual(defaultBrrData, await kyberDao.latestBrrResult(), "brr default is wrong");
-      let dataDecoded = await kyberDao.getLatestBRRData();
+      Helper.assertEqual(defaultBrrData, await NimbleDao.latestBrrResult(), "brr default is wrong");
+      let dataDecoded = await NimbleDao.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn default is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward default is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate default is wrong");
@@ -5179,7 +5179,7 @@ contract('KyberDao', function(accounts) {
 
       // make sure data is correct
       // reward - rebate - burn - epoch - expiry block
-      let tx = await kyberDao.getLatestBRRDataWithCache();
+      let tx = await NimbleDao.getLatestBRRDataWithCache();
       logInfo("Get Brr: epoch = 0, gas used: " + tx.receipt.gasUsed);
 
       await checkLatestBrrData(
@@ -5189,13 +5189,13 @@ contract('KyberDao', function(accounts) {
       rebate = 46;
       reward = 54;
       let newBrrData = getDataFromRebateAndReward(rebate, reward);
-      await kyberDao.setLatestBrrData(reward, rebate);
-      Helper.assertEqual(newBrrData, await kyberDao.latestBrrResult(), "brr default is wrong");
+      await NimbleDao.setLatestBrrData(reward, rebate);
+      Helper.assertEqual(newBrrData, await NimbleDao.latestBrrResult(), "brr default is wrong");
 
       await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 0, daoStartTime - 1
       );
-      dataDecoded = await kyberDao.getLatestBRRData();
+      dataDecoded = await NimbleDao.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn default is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward default is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate default is wrong");
@@ -5216,7 +5216,7 @@ contract('KyberDao', function(accounts) {
       await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
-      let dataDecoded = await kyberDao.getLatestBRRData();
+      let dataDecoded = await NimbleDao.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn default is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward default is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate default is wrong");
@@ -5226,7 +5226,7 @@ contract('KyberDao', function(accounts) {
       rebate = 46;
       reward = 54;
       let newBrrData = getDataFromRebateAndReward(rebate, reward);
-      await kyberDao.setLatestBrrData(reward, rebate);
+      await NimbleDao.setLatestBrrData(reward, rebate);
       await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
@@ -5238,7 +5238,7 @@ contract('KyberDao', function(accounts) {
         reward, rebate, 10000 - rebate - reward, 4, blocksToSeconds(epochPeriod * 4) + daoStartTime - 1
       );
 
-      dataDecoded = await kyberDao.getLatestBRRData();
+      dataDecoded = await NimbleDao.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate is wrong");
@@ -5259,35 +5259,35 @@ contract('KyberDao', function(accounts) {
       await Helper.mineNewBlockAt(daoStartTime);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 2, {from: mike});
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         1, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [22, 23, 24], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(2, 3, {from: mike});
+      await NimbleDao.vote(2, 3, {from: mike});
 
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
 
       Helper.assertEqual(2, data[0], "winning option is wrong");
       Helper.assertEqual(26, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(0, await kyberDao.brrCampaigns(1), "shouldn't have brr camp for epoch 1");
+      Helper.assertEqual(0, await NimbleDao.brrCampaigns(1), "shouldn't have brr camp for epoch 1");
 
       await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
       );
-      let tx = await kyberDao.getLatestBRRDataWithCache();
+      let tx = await NimbleDao.getLatestBRRDataWithCache();
       logInfo("Get Brr: epoch > 0, no brr camp, gas used: " + tx.receipt.gasUsed);
 
-      Helper.assertEqual(defaultBrrData, await kyberDao.latestBrrResult(), "brr default is wrong");
+      Helper.assertEqual(defaultBrrData, await NimbleDao.latestBrrResult(), "brr default is wrong");
     });
 
     it("Test get brr data returns correct latest data on-going brr camp has a winning option", async function() {
@@ -5307,21 +5307,21 @@ contract('KyberDao', function(accounts) {
       let brrData = getDataFromRebateAndReward(newRebate, newReward);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, brrData, 44], '0x', {from: daoOperator}
       );
       // option 2 should win
-      await kyberDao.vote(1, 2, {from: mike});
-      await kyberDao.vote(1, 2, {from: loi});
-      await kyberDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 2, {from: loi});
+      await NimbleDao.vote(1, 2, {from: victor});
 
       // camp is not ended yet, so data shouldn't change
       await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 1, blocksToSeconds(epochPeriod) + daoStartTime - 1
       );
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(1), "should have brr camp");
-      let dataDecoded = await kyberDao.getLatestBRRData();
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(1), "should have brr camp");
+      let dataDecoded = await NimbleDao.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate is wrong");
@@ -5331,7 +5331,7 @@ contract('KyberDao', function(accounts) {
       // delay to epoch 2, winning option should take effect
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
-      dataDecoded = await kyberDao.getLatestBRRData();
+      dataDecoded = await NimbleDao.getLatestBRRData();
       Helper.assertEqual(10000 - newRebate - newReward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(newReward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(newRebate, dataDecoded.rebateInBps, "rebate is wrong");
@@ -5341,10 +5341,10 @@ contract('KyberDao', function(accounts) {
       await checkLatestBrrData(
         newReward, newRebate, 10000 - newRebate - newReward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
       );
-      Helper.assertEqual(brrData, await kyberDao.latestBrrResult(), "latest brr is wrong");
+      Helper.assertEqual(brrData, await NimbleDao.latestBrrResult(), "latest brr is wrong");
 
       // test winning option is encoded
-      dataDecoded = await kyberDao.getLatestBRRData();
+      dataDecoded = await NimbleDao.getLatestBRRData();
       Helper.assertEqual(10000 - newRebate - newReward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(newReward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(newRebate, dataDecoded.rebateInBps, "rebate is wrong");
@@ -5364,159 +5364,159 @@ contract('KyberDao', function(accounts) {
       await simpleSetupToTestThreshold(410, 410, 180, 40);
 
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 2, {from: mike});
-      await kyberDao.vote(1, 1, {from: victor});
-      await kyberDao.vote(1, 3, {from: loi});
+      await NimbleDao.vote(1, 2, {from: mike});
+      await NimbleDao.vote(1, 1, {from: victor});
+      await NimbleDao.vote(1, 3, {from: loi});
 
       // delay to epoch 2
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
       // no winning as same vote count
-      let data = await kyberDao.getCampaignWinningOptionAndValue(1);
+      let data = await NimbleDao.getCampaignWinningOptionAndValue(1);
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(1, await kyberDao.brrCampaigns(1), "should have brr camp for epoch 1");
+      Helper.assertEqual(1, await NimbleDao.brrCampaigns(1), "should have brr camp for epoch 1");
 
       await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 2, blocksToSeconds(epochPeriod * 2) + daoStartTime - 1
       );
-      let dataDecoded = await kyberDao.getLatestBRRData();
+      let dataDecoded = await NimbleDao.getLatestBRRData();
       Helper.assertEqual(10000 - rebate - reward, dataDecoded.burnInBps, "burn is wrong");
       Helper.assertEqual(reward, dataDecoded.rewardInBps, "reward is wrong");
       Helper.assertEqual(rebate, dataDecoded.rebateInBps, "rebate is wrong");
       Helper.assertEqual(2, dataDecoded.epoch, "epoch is wrong");
       Helper.assertEqual(blocksToSeconds(epochPeriod * 2) + daoStartTime - 1, dataDecoded.expiryTimestamp, "expiry timestamp is wrong");
 
-      let tx = await kyberDao.getLatestBRRDataWithCache();
+      let tx = await NimbleDao.getLatestBRRDataWithCache();
       logInfo("Get Brr: epoch > 0, has brr camp + no win option, gas used: " + tx.receipt.gasUsed);
-      tx = await kyberDao.getLatestBRRDataWithCache();
+      tx = await NimbleDao.getLatestBRRDataWithCache();
       logInfo("Get Brr: epoch > 0, has brr camp, already concluded, gas used: " + tx.receipt.gasUsed);
 
-      Helper.assertEqual(defaultBrrData, await kyberDao.latestBrrResult(), "brr default is wrong");
+      Helper.assertEqual(defaultBrrData, await NimbleDao.latestBrrResult(), "brr default is wrong");
 
       await updateCurrentBlockAndTimestamp();
       // min per: 41%, C = 0, t = 0
       minPercentageInPrecision = precisionUnits.mul(new BN(41)).div(new BN(100));
       cInPrecision = precisionUnits;
       tInPrecision = precisionUnits;
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(2, 1, {from: mike});
-      await kyberDao.vote(2, 1, {from: victor});
-      await kyberDao.vote(2, 1, {from: loi});
+      await NimbleDao.vote(2, 1, {from: mike});
+      await NimbleDao.vote(2, 1, {from: victor});
+      await NimbleDao.vote(2, 1, {from: loi});
 
       // delay to epoch 3
       await Helper.mineNewBlockAt(blocksToSeconds(2 * epochPeriod) + daoStartTime);
 
       // no winning as min percentage > total votes / total supply
-      data = await kyberDao.getCampaignWinningOptionAndValue(2);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(2);
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(2, await kyberDao.brrCampaigns(2), "should have brr camp");
+      Helper.assertEqual(2, await NimbleDao.brrCampaigns(2), "should have brr camp");
 
       await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 3, blocksToSeconds(epochPeriod * 3) + daoStartTime - 1
       );
 
-      Helper.assertEqual(defaultBrrData, await kyberDao.latestBrrResult(), "brr default is wrong");
+      Helper.assertEqual(defaultBrrData, await NimbleDao.latestBrrResult(), "brr default is wrong");
 
       await updateCurrentBlockAndTimestamp();
       // min per: 40%, C = 100%, t = 1
       minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
       cInPrecision = precisionUnits;
       tInPrecision = precisionUnits;
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision , [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(3, 1, {from: mike});
-      await kyberDao.vote(3, 1, {from: loi});
-      await kyberDao.vote(3, 2, {from: victor});
+      await NimbleDao.vote(3, 1, {from: mike});
+      await NimbleDao.vote(3, 1, {from: loi});
+      await NimbleDao.vote(3, 2, {from: victor});
 
       // delay to epoch 4
       await Helper.mineNewBlockAt(blocksToSeconds(3 * epochPeriod) + daoStartTime);
 
       // no winning as most option voted percentage (59%) < threshold (60%)
-      data = await kyberDao.getCampaignWinningOptionAndValue(3);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(3);
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(3, await kyberDao.brrCampaigns(3), "should have brr camp");
+      Helper.assertEqual(3, await NimbleDao.brrCampaigns(3), "should have brr camp");
 
       await checkLatestBrrData(
         reward, rebate, 10000 - rebate - reward, 4, blocksToSeconds(epochPeriod * 4) + daoStartTime - 1
       );
 
-      Helper.assertEqual(defaultBrrData, await kyberDao.latestBrrResult(), "brr default is wrong");
+      Helper.assertEqual(defaultBrrData, await NimbleDao.latestBrrResult(), "brr default is wrong");
 
       await updateCurrentBlockAndTimestamp();
       // min per: 40%, C = 100%, t = 1
       minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
       cInPrecision = precisionUnits;
       tInPrecision = precisionUnits;
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(4, 1, {from: mike});
-      await kyberDao.vote(4, 1, {from: loi});
-      await kyberDao.vote(4, 1, {from: victor});
+      await NimbleDao.vote(4, 1, {from: mike});
+      await NimbleDao.vote(4, 1, {from: loi});
+      await NimbleDao.vote(4, 1, {from: victor});
 
       // delay to epoch 5
       await Helper.mineNewBlockAt(blocksToSeconds(4 * epochPeriod) + daoStartTime);
 
-      data = await kyberDao.getCampaignWinningOptionAndValue(4);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(4);
       Helper.assertEqual(1, data[0], "winning option is wrong");
       Helper.assertEqual(32, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(4, await kyberDao.brrCampaigns(4), "should have brr camp");
+      Helper.assertEqual(4, await NimbleDao.brrCampaigns(4), "should have brr camp");
 
-      await kyberDao.getLatestBRRDataWithCache();
+      await NimbleDao.getLatestBRRDataWithCache();
 
-      Helper.assertEqual(32, await kyberDao.latestBrrResult(), "brr default is wrong");
+      Helper.assertEqual(32, await NimbleDao.latestBrrResult(), "brr default is wrong");
 
       await updateCurrentBlockAndTimestamp();
       // min per: 40%, C = 100%, t = 1
       minPercentageInPrecision = precisionUnits.mul(new BN(40)).div(new BN(100));
       cInPrecision = precisionUnits;
       tInPrecision = precisionUnits;
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         minPercentageInPrecision, cInPrecision, tInPrecision, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(5, 1, {from: mike});
-      await kyberDao.vote(5, 2, {from: loi});
-      await kyberDao.vote(5, 2, {from: victor});
+      await NimbleDao.vote(5, 1, {from: mike});
+      await NimbleDao.vote(5, 2, {from: loi});
+      await NimbleDao.vote(5, 2, {from: victor});
 
       // delay to epoch 6
       await Helper.mineNewBlockAt(blocksToSeconds(5 * epochPeriod) + daoStartTime);
 
       // no winning as most option voted percentage (59%) < threshold (60%)
-      data = await kyberDao.getCampaignWinningOptionAndValue(5);
+      data = await NimbleDao.getCampaignWinningOptionAndValue(5);
       Helper.assertEqual(0, data[0], "winning option is wrong");
       Helper.assertEqual(0, data[1], "winning option value is wrong");
 
-      Helper.assertEqual(5, await kyberDao.brrCampaigns(5), "should have brr camp");
+      Helper.assertEqual(5, await NimbleDao.brrCampaigns(5), "should have brr camp");
 
-      tx = await kyberDao.getLatestBRRDataWithCache();
+      tx = await NimbleDao.getLatestBRRDataWithCache();
       logInfo("Get Brr: epoch > 0, has brr camp + win option, gas used: " + tx.receipt.gasUsed);
-      tx = await kyberDao.getLatestBRRDataWithCache();
+      tx = await NimbleDao.getLatestBRRDataWithCache();
       logInfo("Get Brr: epoch > 0, has brr camp, already concluded, gas used: " + tx.receipt.gasUsed);
 
-      Helper.assertEqual(32, await kyberDao.latestBrrResult(), "brr default is wrong");
+      Helper.assertEqual(32, await NimbleDao.latestBrrResult(), "brr default is wrong");
 
       await resetSetupForKNCToken();
     });
@@ -5527,35 +5527,35 @@ contract('KyberDao', function(accounts) {
       await deployContracts(10, currentBlock + 15, 5);
       await setupSimpleStakingData();
 
-      Helper.assertEqual(false, await kyberDao.shouldBurnRewardForEpoch(0), "should burn all reward result is wrong");
-      Helper.assertEqual(false, await kyberDao.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
-      Helper.assertEqual(false, await kyberDao.shouldBurnRewardForEpoch(10), "should burn all reward result is wrong");
+      Helper.assertEqual(false, await NimbleDao.shouldBurnRewardForEpoch(0), "should burn all reward result is wrong");
+      Helper.assertEqual(false, await NimbleDao.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
+      Helper.assertEqual(false, await NimbleDao.shouldBurnRewardForEpoch(10), "should burn all reward result is wrong");
 
       // delay to epoch 2
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
 
       // create camp and vote
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         2, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
 
-      await kyberDao.vote(1, 1, {from: mike});
-      await kyberDao.vote(1, 2, {from: loi});
-      await kyberDao.vote(1, 2, {from: victor});
+      await NimbleDao.vote(1, 1, {from: mike});
+      await NimbleDao.vote(1, 2, {from: loi});
+      await NimbleDao.vote(1, 2, {from: victor});
 
-      Helper.assertEqual(true, await kyberDao.shouldBurnRewardForEpoch(0), "should burn all reward result is wrong");
-      Helper.assertEqual(true, await kyberDao.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
-      Helper.assertEqual(false, await kyberDao.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
+      Helper.assertEqual(true, await NimbleDao.shouldBurnRewardForEpoch(0), "should burn all reward result is wrong");
+      Helper.assertEqual(true, await NimbleDao.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
+      Helper.assertEqual(false, await NimbleDao.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
 
       // delay to epoch 4
       await Helper.mineNewBlockAt(blocksToSeconds(3 * epochPeriod) + daoStartTime);
 
-      Helper.assertEqual(true, await kyberDao.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
-      Helper.assertEqual(false, await kyberDao.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
-      Helper.assertEqual(true, await kyberDao.shouldBurnRewardForEpoch(3), "should burn all reward result is wrong");
-      Helper.assertEqual(false, await kyberDao.shouldBurnRewardForEpoch(4), "should burn all reward result is wrong");
+      Helper.assertEqual(true, await NimbleDao.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
+      Helper.assertEqual(false, await NimbleDao.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
+      Helper.assertEqual(true, await NimbleDao.shouldBurnRewardForEpoch(3), "should burn all reward result is wrong");
+      Helper.assertEqual(false, await NimbleDao.shouldBurnRewardForEpoch(4), "should burn all reward result is wrong");
     });
 
     it("Test should burn all reward returns correct data", async function() {
@@ -5564,11 +5564,11 @@ contract('KyberDao', function(accounts) {
 
       // delay to epoch 1
       await Helper.mineNewBlockAt(daoStartTime);
-      Helper.assertEqual(true, await kyberDao.shouldBurnRewardForEpoch(0), "should burn all reward result is wrong");
+      Helper.assertEqual(true, await NimbleDao.shouldBurnRewardForEpoch(0), "should burn all reward result is wrong");
 
       // create camp
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
@@ -5576,28 +5576,28 @@ contract('KyberDao', function(accounts) {
       // delay to epoch 2
       await Helper.mineNewBlockAt(blocksToSeconds(epochPeriod) + daoStartTime);
       // has camp but no vote
-      Helper.assertEqual(true, await kyberDao.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
+      Helper.assertEqual(true, await NimbleDao.shouldBurnRewardForEpoch(1), "should burn all reward result is wrong");
 
       // create camp
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(2, 1, {from: poolMaster});
+      await NimbleDao.vote(2, 1, {from: poolMaster});
 
       // delay to epoch 3
       await Helper.mineNewBlockAt(blocksToSeconds(2 * epochPeriod) + daoStartTime);
       // has camp, has vote but staker has 0 stake
-      Helper.assertEqual(true, await kyberDao.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
+      Helper.assertEqual(true, await NimbleDao.shouldBurnRewardForEpoch(2), "should burn all reward result is wrong");
 
       // create camp
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(3, 1, {from: mike});
+      await NimbleDao.vote(3, 1, {from: mike});
       await stakingContract.withdraw(initMikeStake, {from: mike});
 
       await stakingContract.delegate(poolMaster, {from: loi});
@@ -5605,40 +5605,40 @@ contract('KyberDao', function(accounts) {
       // delay to epoch 4
       await Helper.mineNewBlockAt(blocksToSeconds(3 * epochPeriod) + daoStartTime);
       // has camp, voted with staker has stakes, but then withdraw all
-      Helper.assertEqual(true, await kyberDao.shouldBurnRewardForEpoch(3), "should burn all reward result is wrong");
+      Helper.assertEqual(true, await NimbleDao.shouldBurnRewardForEpoch(3), "should burn all reward result is wrong");
 
       // create camp
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(4, 1, {from: poolMaster});
+      await NimbleDao.vote(4, 1, {from: poolMaster});
       await stakingContract.withdraw(initLoiStake, {from: loi});
 
       // delay to epoch 5
       await Helper.mineNewBlockAt(blocksToSeconds(4 * epochPeriod) + daoStartTime);
       // has camp, voted with staker has delegated stakes, but then withdraw all
-      Helper.assertEqual(true, await kyberDao.shouldBurnRewardForEpoch(4), "should burn all reward result is wrong");
+      Helper.assertEqual(true, await NimbleDao.shouldBurnRewardForEpoch(4), "should burn all reward result is wrong");
 
       // create camp
       await updateCurrentBlockAndTimestamp();
-      await submitNewCampaignAndDelayToStart(kyberDao,
+      await submitNewCampaignAndDelayToStart(NimbleDao,
         0, currentBlock + 2, currentBlock + 2 + minCampPeriod,
         0, 0, 0, [32, 26, 44], '0x', {from: daoOperator}
       );
-      await kyberDao.vote(5, 1, {from: victor});
+      await NimbleDao.vote(5, 1, {from: victor});
 
       // delay to epoch 6
       await Helper.mineNewBlockAt(blocksToSeconds(5 * epochPeriod) + daoStartTime);
       // has camp, voted with stakes, burn should be false
-      Helper.assertEqual(false, await kyberDao.shouldBurnRewardForEpoch(5), "should burn all reward result is wrong");
+      Helper.assertEqual(false, await NimbleDao.shouldBurnRewardForEpoch(5), "should burn all reward result is wrong");
 
       // delay to epoch 6
       await updateCurrentBlockAndTimestamp();
       await Helper.mineNewBlockAt(blocksToSeconds(6 * epochPeriod) + daoStartTime);
       // no camp, no reward
-      Helper.assertEqual(true, await kyberDao.shouldBurnRewardForEpoch(6), "should burn all reward result is wrong");
+      Helper.assertEqual(true, await NimbleDao.shouldBurnRewardForEpoch(6), "should burn all reward result is wrong");
     });
   });
 
@@ -5646,26 +5646,26 @@ contract('KyberDao', function(accounts) {
     it("Test correct data is set after deployment", async function() {
       await deployContracts(10, currentBlock + 10, 10);
 
-      Helper.assertEqual(await kyberDao.epochPeriodInSeconds(), blocksToSeconds(10), "Epoch period is wrong");
-      Helper.assertEqual(await kyberDao.firstEpochStartTimestamp(), daoStartTime, "Start timestamp is wrong");
-      Helper.assertEqual(await kyberDao.kncToken(), kncToken.address, "KNC token is wrong");
-      Helper.assertEqual(await kyberDao.staking(), stakingContract.address, "Staking contract is wrong");
-      Helper.assertEqual(await kyberDao.MAX_CAMPAIGN_OPTIONS(), 8, "max camp option is wrong");
-      Helper.assertEqual(await kyberDao.minCampaignDurationInSeconds(), blocksToSeconds(minCampPeriod), "min camp period is wrong");
-      Helper.assertEqual((await kyberDao.getLatestNetworkFeeData()).feeInBps, defaultNetworkFee, "default network fee is wrong");
-      Helper.assertEqual(await kyberDao.latestBrrResult(), defaultBrrData, "default brr data is wrong");
-      Helper.assertEqual(await kyberDao.daoOperator(), daoOperator, "daoOperator is wrong");
-      Helper.assertEqual(await kyberDao.numberCampaigns(), 0, "number campaign is wrong");
-      Helper.assertEqual(await kyberDao.kncToken(), await stakingContract.kncToken(), "knc token is wrong");
-      Helper.assertEqual(await kyberDao.epochPeriodInSeconds(), await stakingContract.epochPeriodInSeconds(), "epochPeriodInSeconds is wrong");
-      Helper.assertEqual(await kyberDao.firstEpochStartTimestamp(), await stakingContract.firstEpochStartTimestamp(), "firstEpochStartTimestamp is wrong");
-      Helper.assertEqual(await kyberDao.address, await stakingContract.kyberDao(), "kyberDao is wrong");
+      Helper.assertEqual(await NimbleDao.epochPeriodInSeconds(), blocksToSeconds(10), "Epoch period is wrong");
+      Helper.assertEqual(await NimbleDao.firstEpochStartTimestamp(), daoStartTime, "Start timestamp is wrong");
+      Helper.assertEqual(await NimbleDao.kncToken(), kncToken.address, "KNC token is wrong");
+      Helper.assertEqual(await NimbleDao.staking(), stakingContract.address, "Staking contract is wrong");
+      Helper.assertEqual(await NimbleDao.MAX_CAMPAIGN_OPTIONS(), 8, "max camp option is wrong");
+      Helper.assertEqual(await NimbleDao.minCampaignDurationInSeconds(), blocksToSeconds(minCampPeriod), "min camp period is wrong");
+      Helper.assertEqual((await NimbleDao.getLatestNetworkFeeData()).feeInBps, defaultNetworkFee, "default network fee is wrong");
+      Helper.assertEqual(await NimbleDao.latestBrrResult(), defaultBrrData, "default brr data is wrong");
+      Helper.assertEqual(await NimbleDao.daoOperator(), daoOperator, "daoOperator is wrong");
+      Helper.assertEqual(await NimbleDao.numberCampaigns(), 0, "number campaign is wrong");
+      Helper.assertEqual(await NimbleDao.kncToken(), await stakingContract.kncToken(), "knc token is wrong");
+      Helper.assertEqual(await NimbleDao.epochPeriodInSeconds(), await stakingContract.epochPeriodInSeconds(), "epochPeriodInSeconds is wrong");
+      Helper.assertEqual(await NimbleDao.firstEpochStartTimestamp(), await stakingContract.firstEpochStartTimestamp(), "firstEpochStartTimestamp is wrong");
+      Helper.assertEqual(await NimbleDao.address, await stakingContract.NimbleDao(), "NimbleDao is wrong");
     });
 
     it("Test constructor should revert invalid arguments", async function() {
       // epoch period is 0
       await expectRevert(
-        KyberDaoContract.new(
+        NimbleDaoContract.new(
           0, blockToTimestamp(currentBlock + 50),
           kncToken.address, minCampPeriod,
           defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -5675,7 +5675,7 @@ contract('KyberDao', function(accounts) {
       )
       // start in the past
       await expectRevert(
-        KyberDaoContract.new(
+        NimbleDaoContract.new(
           blocksToSeconds(20), blockToTimestamp(currentBlock - 1),
           kncToken.address, minCampPeriod,
           defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -5685,7 +5685,7 @@ contract('KyberDao', function(accounts) {
       )
       // knc missing
       await expectRevert(
-        KyberDaoContract.new(
+        NimbleDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           zeroAddress, minCampPeriod,
           defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -5695,7 +5695,7 @@ contract('KyberDao', function(accounts) {
       )
       // network fee is high (>= 50%)
       await expectRevert(
-        KyberDaoContract.new(
+        NimbleDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           kncToken.address, minCampPeriod,
           5000, defaultRewardBps, defaultRebateBps,
@@ -5705,7 +5705,7 @@ contract('KyberDao', function(accounts) {
       )
       // brr is high
       await expectRevert(
-        KyberDaoContract.new(
+        NimbleDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           kncToken.address, minCampPeriod,
           defaultNetworkFee, defaultRewardBps, 10001 - defaultRewardBps,
@@ -5715,7 +5715,7 @@ contract('KyberDao', function(accounts) {
       )
       // brr is high
       await expectRevert(
-        KyberDaoContract.new(
+        NimbleDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           kncToken.address, minCampPeriod,
           defaultNetworkFee, 10001 - defaultRebateBps, defaultRebateBps,
@@ -5725,7 +5725,7 @@ contract('KyberDao', function(accounts) {
       )
       // creator is zero
       await expectRevert(
-        KyberDaoContract.new(
+        NimbleDaoContract.new(
           blocksToSeconds(10), blockToTimestamp(currentBlock + 50),
           kncToken.address, minCampPeriod,
           defaultNetworkFee, defaultRewardBps, defaultRebateBps,
@@ -5743,7 +5743,7 @@ contract('KyberDao', function(accounts) {
       let rebate = 0;
 
       let data = getDataFromRebateAndReward(rebate, reward);
-      let result = await kyberDao.getRebateAndRewardFromData(data);
+      let result = await NimbleDao.getRebateAndRewardFromData(data);
 
       Helper.assertEqual(rebate, result[0], "rebate data is wrong");
       Helper.assertEqual(reward, result[1], "reward data is wrong");
@@ -5751,7 +5751,7 @@ contract('KyberDao', function(accounts) {
       reward = 10000;
       rebate = 0;
       data = getDataFromRebateAndReward(rebate, reward);
-      result = await kyberDao.getRebateAndRewardFromData(data);
+      result = await NimbleDao.getRebateAndRewardFromData(data);
 
       Helper.assertEqual(rebate, result[0], "rebate data is wrong");
       Helper.assertEqual(reward, result[1], "reward data is wrong");
@@ -5759,7 +5759,7 @@ contract('KyberDao', function(accounts) {
       reward = 0;
       rebate = 10000;
       data = getDataFromRebateAndReward(rebate, reward);
-      result = await kyberDao.getRebateAndRewardFromData(data);
+      result = await NimbleDao.getRebateAndRewardFromData(data);
 
       Helper.assertEqual(rebate, result[0], "rebate data is wrong");
       Helper.assertEqual(reward, result[1], "reward data is wrong");
@@ -5767,7 +5767,7 @@ contract('KyberDao', function(accounts) {
       reward = 5000;
       rebate = 5000;
       data = getDataFromRebateAndReward(rebate, reward);
-      result = await kyberDao.getRebateAndRewardFromData(data);
+      result = await NimbleDao.getRebateAndRewardFromData(data);
 
       Helper.assertEqual(rebate, result[0], "rebate data is wrong");
       Helper.assertEqual(reward, result[1], "reward data is wrong");
@@ -5775,7 +5775,7 @@ contract('KyberDao', function(accounts) {
       reward = 2424;
       rebate = 3213;
       data = getDataFromRebateAndReward(rebate, reward);
-      result = await kyberDao.getRebateAndRewardFromData(data);
+      result = await NimbleDao.getRebateAndRewardFromData(data);
 
       Helper.assertEqual(rebate, result[0], "rebate data is wrong");
       Helper.assertEqual(reward, result[1], "reward data is wrong");
@@ -5787,35 +5787,35 @@ contract('KyberDao', function(accounts) {
       let rebate = 0;
 
       let data = getDataFromRebateAndReward(rebate, reward);
-      let result = await kyberDao.getDataFromRewardAndRebateWithValidation(reward, rebate);
+      let result = await NimbleDao.getDataFromRewardAndRebateWithValidation(reward, rebate);
 
       Helper.assertEqual(data, result, "encode function returns different value");
 
       reward = 10000;
       rebate = 0;
       data = getDataFromRebateAndReward(rebate, reward);
-      result = await kyberDao.getDataFromRewardAndRebateWithValidation(reward, rebate);
+      result = await NimbleDao.getDataFromRewardAndRebateWithValidation(reward, rebate);
 
       Helper.assertEqual(data, result, "encode function returns different value");
 
       reward = 0;
       rebate = 10000;
       data = getDataFromRebateAndReward(rebate, reward);
-      result = await kyberDao.getDataFromRewardAndRebateWithValidation(reward, rebate);
+      result = await NimbleDao.getDataFromRewardAndRebateWithValidation(reward, rebate);
 
       Helper.assertEqual(data, result, "encode function returns different value");
 
       reward = 5000;
       rebate = 5000;
       data = getDataFromRebateAndReward(rebate, reward);
-      result = await kyberDao.getDataFromRewardAndRebateWithValidation(reward, rebate);
+      result = await NimbleDao.getDataFromRewardAndRebateWithValidation(reward, rebate);
 
       Helper.assertEqual(data, result, "encode function returns different value");
 
       reward = 2424;
       rebate = 3213;
       data = getDataFromRebateAndReward(rebate, reward);
-      result = await kyberDao.getDataFromRewardAndRebateWithValidation(reward, rebate);
+      result = await NimbleDao.getDataFromRewardAndRebateWithValidation(reward, rebate);
 
       Helper.assertEqual(data, result, "encode function returns different value");
     });
@@ -5825,28 +5825,28 @@ contract('KyberDao', function(accounts) {
       let reward = 10001;
       let rebate = 0;
       await expectRevert(
-        kyberDao.getDataFromRewardAndRebateWithValidation(reward, rebate),
+        NimbleDao.getDataFromRewardAndRebateWithValidation(reward, rebate),
         "reward plus rebate high"
       )
 
       reward = 0;
       rebate = 10001;
       await expectRevert(
-        kyberDao.getDataFromRewardAndRebateWithValidation(reward, rebate),
+        NimbleDao.getDataFromRewardAndRebateWithValidation(reward, rebate),
         "reward plus rebate high"
       )
 
       reward = 5001;
       rebate = 5000;
       await expectRevert(
-        kyberDao.getDataFromRewardAndRebateWithValidation(reward, rebate),
+        NimbleDao.getDataFromRewardAndRebateWithValidation(reward, rebate),
         "reward plus rebate high"
       )
 
       reward = 2424;
       rebate = 10010 - reward;
       await expectRevert(
-        kyberDao.getDataFromRewardAndRebateWithValidation(reward, rebate),
+        NimbleDao.getDataFromRewardAndRebateWithValidation(reward, rebate),
         "reward plus rebate high"
       )
     });

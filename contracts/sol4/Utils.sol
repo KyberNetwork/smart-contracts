@@ -4,7 +4,7 @@ pragma solidity 0.4.18;
 import "./ERC20Interface.sol";
 
 
-/// @title Kyber constants contract
+/// @title Nimble constants contract
 contract Utils {
 
     ERC20 constant internal ETH_TOKEN_ADDRESS = ERC20(0x00eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);

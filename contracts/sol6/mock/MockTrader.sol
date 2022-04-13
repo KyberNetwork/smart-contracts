@@ -1,16 +1,16 @@
 pragma solidity 0.6.6;
 
-import "../IKyberNetworkProxy.sol";
+import "../INimbleNetworkProxy.sol";
 
 
 contract MockTrader {
     IERC20 internal constant ETH_TOKEN_ADDRESS = IERC20(
         0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
     );
-    IKyberNetworkProxy public kyberNetworkProxy;
+    INimbleNetworkProxy public NimbleNetworkProxy;
 
-    constructor(IKyberNetworkProxy _kyberNetworkProxy) public {
-        kyberNetworkProxy = _kyberNetworkProxy;
+    constructor(INimbleNetworkProxy _NimbleNetworkProxy) public {
+        NimbleNetworkProxy = _NimbleNetworkProxy;
     }
 
     function tradeWithHintAndFee(
@@ -24,10 +24,10 @@ contract MockTrader {
     ) external payable returns (uint256 destAmount) {
         if (src != ETH_TOKEN_ADDRESS) {
             require(src.transferFrom(msg.sender, address(this), srcAmount));
-            require(src.approve(address(kyberNetworkProxy), srcAmount));
+            require(src.approve(address(NimbleNetworkProxy), srcAmount));
         }
 
-        uint256 rate = kyberNetworkProxy.getExpectedRateAfterFee(
+        uint256 rate = NimbleNetworkProxy.getExpectedRateAfterFee(
             src,
             dest,
             srcAmount,
@@ -36,7 +36,7 @@ contract MockTrader {
         );
 
         return
-            kyberNetworkProxy.tradeWithHintAndFee{value: msg.value}(
+            NimbleNetworkProxy.tradeWithHintAndFee{value: msg.value}(
                 src,
                 srcAmount,
                 dest,
