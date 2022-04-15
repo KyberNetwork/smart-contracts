@@ -1,6 +1,6 @@
 #!/bin/sh
 while getopts "f:" arg; do
-  case $arg in
+  *)case $arg in
     f) FILE=$OPTARG;;
   esac
 done
