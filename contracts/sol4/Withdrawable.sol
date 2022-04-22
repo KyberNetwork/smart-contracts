@@ -7,7 +7,7 @@ import "./PermissionGroups.sol";
 
 /**
  * @title Contracts that should be able to recover tokens or ethers
- * @author Ilan Doron
+ * @author Dhanushdhaari XP
  * @dev This allows to recover any tokens or Ethers received in a contract.
  * This will prevent any accidental loss of tokens.
  */
