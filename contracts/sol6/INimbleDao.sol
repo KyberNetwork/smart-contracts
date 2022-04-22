@@ -3,7 +3,7 @@ pragma solidity 0.6.6;
 import "./Dao/IEpochUtils.sol";
 
 
-interface IKyberDao is IEpochUtils {
+interface INimbleDao is IEpochUtils {
     event Voted(address indexed staker, uint indexed epoch, uint indexed campaignID, uint option);
 
     function getLatestNetworkFeeDataWithCache()
