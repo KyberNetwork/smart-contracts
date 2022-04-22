@@ -1,32 +1,32 @@
 pragma solidity 0.6.6;
 
-import "./IKyberHistory.sol";
+import "./InimbleHistory.sol";
 import "./utils/PermissionGroupsNoModifiers.sol";
 
 
 /**
- *   @title kyberHistory contract
- *   The contract provides the following functions for kyberStorage contract:
+ *   @title nimbleHistory contract
+ *   The contract provides the following functions for nimbleStorage contract:
  *   - Record contract changes for a set of contracts
  */
-contract KyberHistory is IKyberHistory, PermissionGroupsNoModifiers {
-    address public kyberStorage;
+contract nimbleHistory is InimbleHistory, PermissionGroupsNoModifiers {
+    address public nimbleStorage;
     address[] internal contractsHistory;
 
     constructor(address _admin) public PermissionGroupsNoModifiers(_admin) {}
 
-    event KyberStorageUpdated(address newStorage);
+    event nimbleStorageUpdated(address newStorage);
 
     modifier onlyStorage() {
-        require(msg.sender == kyberStorage, "only storage");
+        require(msg.sender == nimbleStorage, "only storage");
         _;
     }
 
-    function setStorageContract(address _kyberStorage) external {
+    function setStorageContract(address _nimbleStorage) external {
         onlyAdmin();
-        require(_kyberStorage != address(0), "storage 0");
-        emit KyberStorageUpdated(_kyberStorage);
-        kyberStorage = _kyberStorage;
+        require(_nimbleStorage != address(0), "storage 0");
+        emit nimbleStorageUpdated(_nimbleStorage);
+        nimbleStorage = _nimbleStorage;
     }
 
     function saveContract(address _contract) external override onlyStorage {

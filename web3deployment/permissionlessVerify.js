@@ -57,8 +57,8 @@ module.exports.readPermisionlessOrderbookLister = async function (listerAddress,
     let medianizerContract = await Lister.methods.medianizerContract().call();
     myLog((medianizerContract.valueOf() == 0), 0, "medianizerContract: " + medianizerContract.valueOf());
 
-    let kyberNetworkContract = (await Lister.methods.kyberNetworkContract().call()).toLowerCase();
-    myLog((kyberNetworkContract.valueOf() != jsonNetworkAdd), 0, "kyberNetworkContract: " + kyberNetworkContract);
+    let nimbleNetworkContract = (await Lister.methods.nimbleNetworkContract().call()).toLowerCase();
+    myLog((nimbleNetworkContract.valueOf() != jsonNetworkAdd), 0, "nimbleNetworkContract: " + nimbleNetworkContract);
 
     let orderFactoryContract = await Lister.methods.orderFactoryContract().call();
     myLog(0, 0, "orderFactoryContract " + orderFactoryContract);
@@ -94,28 +94,28 @@ module.exports.readOrderbookReserve = async function (reserveAddress, solcOutput
     myLog(0, 0, "minNewOrderSizeWei " + orderLimits[2].valueOf() + " == " + getAmountTokens(orderLimits[2].valueOf(), 18) + " tokens");
     myLog(0, 0, "minOrderSizeWei " + orderLimits[3].valueOf() + " == " + getAmountTokens(orderLimits[3].valueOf(), 18) + " tokens");
 
-    let kncPerEthBaseRatePrecision = await Reserve.methods.kncPerEthBaseRatePrecision().call();
-    myLog(0, 0, "kncPerEthBaseRatePrecision " + kncPerEthBaseRatePrecision.valueOf() + " == " + getAmountTokens(kncPerEthBaseRatePrecision.valueOf(), 18) + " tokens.");
+    let NIMPerEthBaseRatePrecision = await Reserve.methods.NIMPerEthBaseRatePrecision().call();
+    myLog(0, 0, "NIMPerEthBaseRatePrecision " + NIMPerEthBaseRatePrecision.valueOf() + " == " + getAmountTokens(NIMPerEthBaseRatePrecision.valueOf(), 18) + " tokens.");
 
     let contracts = await Reserve.methods.contracts().call();
     myLog(0, 0, "token " + (await a2n(contracts[0].valueOf(), 1)));
-    myLog(0, 0, "kncToken " + (await a2n(contracts[1].valueOf(), 1)));
+    myLog(0, 0, "NIMToken " + (await a2n(contracts[1].valueOf(), 1)));
     myLog(0, (contracts[2].valueOf().toLowerCase()  != jsonFeeBurnerAdd), "feeBurner " + contracts[2].valueOf());
-    myLog(0, (contracts[3].valueOf().toLowerCase() != jsonNetworkAdd), "kyberNetwork " + contracts[3].valueOf());
+    myLog(0, (contracts[3].valueOf().toLowerCase() != jsonNetworkAdd), "nimbleNetwork " + contracts[3].valueOf());
     myLog(0, 0, "medianizer " + contracts[4].valueOf());
     myLog(0, 0, "orderListFactory " + contracts[5].valueOf());
 
-    let depositKncEvents = await Reserve.getPastEvents("KncFeeDeposited", {fromBlock: 0, toBlock: 'latest'});
-    let makersDictKncAmount = [];
+    let depositNIMEvents = await Reserve.getPastEvents("NIMFeeDeposited", {fromBlock: 0, toBlock: 'latest'});
+    let makersDictNIMAmount = [];
 
-    for(let i = 0; i < depositKncEvents.length; i++) {
-        let maker = depositKncEvents[i].returnValues.maker;
-        if(makersDictKncAmount[maker] == undefined) makersDictKncAmount[maker] = web3.utils.toBN(0);
-        makersDictKncAmount[maker] = (web3.utils.toBN(depositKncEvents[i].returnValues.amount)).add(makersDictKncAmount[maker]);
+    for(let i = 0; i < depositNIMEvents.length; i++) {
+        let maker = depositNIMEvents[i].returnValues.maker;
+        if(makersDictNIMAmount[maker] == undefined) makersDictNIMAmount[maker] = web3.utils.toBN(0);
+        makersDictNIMAmount[maker] = (web3.utils.toBN(depositNIMEvents[i].returnValues.amount)).add(makersDictNIMAmount[maker]);
     };
 
-    for(let maker in makersDictKncAmount) {
-        myLog(0, 0, "Maker: " + maker + ": Knc deposited:  " + getAmountTokens(makersDictKncAmount[maker].valueOf(), 18));
+    for(let maker in makersDictNIMAmount) {
+        myLog(0, 0, "Maker: " + maker + ": NIM deposited:  " + getAmountTokens(makersDictNIMAmount[maker].valueOf(), 18));
     }
 }
 

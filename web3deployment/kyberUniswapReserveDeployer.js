@@ -133,12 +133,12 @@ const input = {
     ),
     "Utils.sol": fs.readFileSync(contractPath + "Utils.sol", "utf8"),
     "Utils2.sol": fs.readFileSync(contractPath + "Utils2.sol", "utf8"),
-    "KyberReserveInterface.sol": fs.readFileSync(
-        contractPath + "KyberReserveInterface.sol",
+    "nimbleReserveInterface.sol": fs.readFileSync(
+        contractPath + "nimbleReserveInterface.sol",
         "utf8"
     ),
-    "KyberUniswapReserve.sol": fs.readFileSync(
-        contractPath + "reserves/bridgeReserves/uniswap/KyberUniswapReserve.sol",
+    "nimbleUniswapReserve.sol": fs.readFileSync(
+        contractPath + "reserves/bridgeReserves/uniswap/nimbleUniswapReserve.sol",
         "utf8"
     )
 };
@@ -147,7 +147,7 @@ const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 const feeBurnerAddress = "0x8007aa43792A392b221DC091bdb2191E5fF626d1"; // production
 const uniswapFactoryAddress = "0xc0a47dFe034B400B47bDaD5FecDa2621de6c4d95";
 const adminAddress = "0x2Fd6181541bEbe30D17CF3a5d9f40eBceCbdBA43";
-const kyberNetworkAddress = "0x65bF64Ff5f51272f729BDcD7AcFB00677ced86Cd"; // production
+const nimbleNetworkAddress = "0x65bF64Ff5f51272f729BDcD7AcFB00677ced86Cd"; // production
 
 async function main() {
     nonce = await web3.eth.getTransactionCount(sender);
@@ -168,14 +168,14 @@ async function main() {
 
     const [reserveAddress, reserveContract] = await deployContract(
         output,
-        "KyberUniswapReserve.sol:KyberUniswapReserve",
-        [uniswapFactoryAddress, sender, kyberNetworkAddress]
+        "nimbleUniswapReserve.sol:nimbleUniswapReserve",
+        [uniswapFactoryAddress, sender, nimbleNetworkAddress]
     );
 
     await sendTx(reserveContract.methods.setFee(1));
 
 //    const reserveAddress = "";
-//    const reserveContract = new web3.eth.Contract(JSON.parse(output.contracts["KyberUniswapReserve.sol:KyberUniswapReserve"].interface), reserveAddress);
+//    const reserveContract = new web3.eth.Contract(JSON.parse(output.contracts["nimbleUniswapReserve.sol:nimbleUniswapReserve"].interface), reserveAddress);
 
     let operators = ["0xd3cc03c1d1e9d46f28aebc4ba26c5990c7ffbc3e"]
 

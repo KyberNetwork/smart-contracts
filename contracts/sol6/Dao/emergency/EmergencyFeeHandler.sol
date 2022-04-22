@@ -1,24 +1,24 @@
 pragma solidity 0.6.6;
 
-import "../../IKyberFeeHandler.sol";
+import "../../InimbleFeeHandler.sol";
 import "../../utils/PermissionGroupsNoModifiers.sol";
 import "../../utils/zeppelin/ReentrancyGuard.sol";
 import "../../utils/zeppelin/SafeMath.sol";
 import "../../utils/Utils5.sol";
 
 /**
- * @title kyberFeeHandler
+ * @title nimbleFeeHandler
  *
  * @dev EmergencyFeeHandler works when dao has problem
  *      rebateBps and rewardBps is only set when initialization
  *      user can claim platformfee, rebate and reward will be distributed by admin
  */
-contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifiers, ReentrancyGuard, Utils5 {
+contract EmergencynimbleFeeHandler is InimbleFeeHandler, PermissionGroupsNoModifiers, ReentrancyGuard, Utils5 {
     using SafeMath for uint256;
 
     uint16 public immutable rewardBps;
     uint16 public immutable rebateBps;
-    address public kyberNetwork;
+    address public nimbleNetwork;
 
     mapping(address => uint256) public feePerPlatformWallet;
     uint256 public totalPlatformFeeWei; // total balance in the contract that is for platform fee
@@ -56,11 +56,11 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
 
     event EtherWithdraw(uint256 amount, address sendTo);
 
-    event KyberNetworkUpdated(address kyberNetwork);
+    event nimbleNetworkUpdated(address nimbleNetwork);
 
     constructor(
         address admin,
-        address _kyberNetwork,
+        address _nimbleNetwork,
         uint256 _rewardBps,
         uint256 _rebateBps,
         uint256 _burnBps
@@ -68,15 +68,15 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
         require(_burnBps.add(_rewardBps).add(_rebateBps) == BPS, "Bad BRR values");
         rewardBps = uint16(_rewardBps);
         rebateBps = uint16(_rebateBps);
-        kyberNetwork = _kyberNetwork;
+        nimbleNetwork = _nimbleNetwork;
     }
 
-    modifier onlyKyberNetwork {
-        require(msg.sender == address(kyberNetwork), "only kyberNetwork");
+    modifier onlynimbleNetwork {
+        require(msg.sender == address(nimbleNetwork), "only nimbleNetwork");
         _;
     }
 
-    /// @dev handleFees function is called per trade on KyberNetwork. unless the trade is not involving any fees.
+    /// @dev handleFees function is called per trade on nimbleNetwork. unless the trade is not involving any fees.
     /// @param token Token currency of fees
     /// @param rebateWallets a list of rebate wallets that will get rebate for this trade.
     /// @param rebateBpsPerWallet percentage of rebate for each wallet, out of total rebate.
@@ -90,7 +90,7 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
         address platformWallet,
         uint256 platformFee,
         uint256 networkFee
-    ) external payable override onlyKyberNetwork nonReentrant {
+    ) external payable override onlynimbleNetwork nonReentrant {
         require(token == ETH_TOKEN_ADDRESS, "token not eth");
         require(msg.value == platformFee.add(networkFee), "msg.value not equal to total fees");
 
@@ -203,24 +203,24 @@ contract EmergencyKyberFeeHandler is IKyberFeeHandler, PermissionGroupsNoModifie
         emit EtherWithdraw(amount, sendTo);
     }
 
-    /// @dev claimReserveRebate is implemented for IKyberFeeHandler
+    /// @dev claimReserveRebate is implemented for InimbleFeeHandler
     function claimReserveRebate(address) external override returns (uint256) {
         revert("not implemented");
     }
 
-    /// @dev claimStakerReward is implemented for IKyberFeeHandler
+    /// @dev claimStakerReward is implemented for InimbleFeeHandler
     function claimStakerReward(address, uint256) external override returns (uint256) {
         revert("not implemented");
     }
 
-    /// @dev set new kyberNetwork address by daoOperator
-    /// @param _kyberNetwork new kyberNetwork contract
-    function setNetworkContract(address _kyberNetwork) external {
+    /// @dev set new nimbleNetwork address by daoOperator
+    /// @param _nimbleNetwork new nimbleNetwork contract
+    function setNetworkContract(address _nimbleNetwork) external {
         onlyAdmin();
-        require(_kyberNetwork != address(0), "kyberNetwork 0");
-        if (_kyberNetwork != kyberNetwork) {
-            kyberNetwork = _kyberNetwork;
-            emit KyberNetworkUpdated(kyberNetwork);
+        require(_nimbleNetwork != address(0), "nimbleNetwork 0");
+        if (_nimbleNetwork != nimbleNetwork) {
+            nimbleNetwork = _nimbleNetwork;
+            emit nimbleNetworkUpdated(nimbleNetwork);
         }
     }
 

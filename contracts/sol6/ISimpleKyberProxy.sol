@@ -4,10 +4,10 @@ import "./IERC20.sol";
 
 
 /*
- * @title simple Kyber Network proxy interface
- * add convenient functions to help with kyber proxy API
+ * @title simple nimble Network proxy interface
+ * add convenient functions to help with nimble proxy API
  */
-interface ISimpleKyberProxy {
+interface ISimplenimbleProxy {
     function swapTokenToEther(
         IERC20 token,
         uint256 srcAmount,

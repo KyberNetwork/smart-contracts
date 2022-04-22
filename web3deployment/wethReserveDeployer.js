@@ -110,12 +110,12 @@ const input = {
     "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
     "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
     "Utils2.sol" : fs.readFileSync(contractPath + 'Utils2.sol', 'utf8'),
-    "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
-    "KyberWethReserve.sol" : fs.readFileSync(wethContractPath + 'KyberWethReserve.sol', 'utf8')
+    "nimbleReserveInterface.sol" : fs.readFileSync(contractPath + 'nimbleReserveInterface.sol', 'utf8'),
+    "nimbleWethReserve.sol" : fs.readFileSync(wethContractPath + 'nimbleWethReserve.sol', 'utf8')
 };
 
 const ethAddress = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-const kyberNetworkAddress = '0x706aBcE058DB29eB36578c463cf295F180a1Fe9C'; //staging
+const nimbleNetworkAddress = '0x706aBcE058DB29eB36578c463cf295F180a1Fe9C'; //staging
 const wethTokenAddress = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const adminAddress = '0xF9eF59dB62f56aF114380A7496Fd51172dafD41d';
 
@@ -136,13 +136,13 @@ async function main() {
         //await waitForEth();
     }
 
-    [kyberWethReserveAddress, kyberWethReserveContract] = await deployContract(
+    [nimbleWethReserveAddress, nimbleWethReserveContract] = await deployContract(
         output,
-        "KyberWethReserve.sol:KyberWethReserve",
-        [kyberNetworkAddress, wethTokenAddress, adminAddress]
+        "nimbleWethReserve.sol:nimbleWethReserve",
+        [nimbleNetworkAddress, wethTokenAddress, adminAddress]
     );
 
-    console.log("kyberWethReserveAddress: " + kyberWethReserveAddress)
+    console.log("nimbleWethReserveAddress: " + nimbleWethReserveAddress)
     console.log("last nonce is", nonce);
 }
 

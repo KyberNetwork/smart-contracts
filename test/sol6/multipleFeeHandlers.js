@@ -3,19 +3,19 @@ const nwHelper = require("./networkHelper");
 const BN = web3.utils.BN;
 const { expectRevert } = require('@openzeppelin/test-helpers');
 
-const MockKyberDao = artifacts.require("MockKyberDao.sol");
-const FeeHandler = artifacts.require("KyberFeeHandler.sol");
-const BurnKncSanityRate = artifacts.require("MockChainLinkSanityRate.sol");
-const FeeTokenHandler = artifacts.require("KyberTokenFeeHandler.sol");
-const FeeWrapper = artifacts.require("KyberFeeHandlerWrapper.sol");
+const MocknimbleDao = artifacts.require("MocknimbleDao.sol");
+const FeeHandler = artifacts.require("nimbleFeeHandler.sol");
+const BurnNIMSanityRate = artifacts.require("MockChainLinkSanityRate.sol");
+const FeeTokenHandler = artifacts.require("nimbleTokenFeeHandler.sol");
+const FeeWrapper = artifacts.require("nimbleFeeHandlerWrapper.sol");
 const Token = artifacts.require("Token.sol");
-const Proxy = artifacts.require("SimpleKyberProxy.sol");
+const Proxy = artifacts.require("SimplenimbleProxy.sol");
 const {BPS, precisionUnits, ethDecimals, ethAddress, zeroAddress, zeroBN, MAX_RATE} = require("../helper.js");
 
 const blockTime = 16; // each block is mined after 16s
 const DAI_DECIMALS = 18;
 const EURS_DECIMALS = 2;
-const KNC_DECIMALS = 18;
+const NIM_DECIMALS = 18;
 const USDC_DECIMALS = 6;
 const BURN_BLOCK_INTERVAL = 3;
 
@@ -23,10 +23,10 @@ let proxy;
 let staker;
 let daoSetter;
 let daoOperator;
-let mockKyberDao;
+let mocknimbleDao;
 let dai;
 let eurs;
-let knc;
+let NIM;
 let usdc;
 let ethFeeHandler;
 let daiFeeHandler;
@@ -44,7 +44,7 @@ let rebateBpsPerWallet = [];
 let platformWallet;
 let tokens = [];
 let tokenAddresses = [];
-let oneKnc = new BN(10).pow(new BN(KNC_DECIMALS));
+let oneNIM = new BN(10).pow(new BN(NIM_DECIMALS));
 let oneEth = new BN(10).pow(new BN(ethDecimals));
 let oneDai = new BN(10).pow(new BN(DAI_DECIMALS));
 let oneEurs = new BN(10).pow(new BN(EURS_DECIMALS));
@@ -55,10 +55,10 @@ let daiWeiToBurn = oneDai.mul(new BN(500)); // 500 dai
 let eursWeiToBurn = oneEurs.mul(new BN(400)); // 400 eurs
 let usdcWeiToBurn = oneUsdc.mul(new BN(500)); // 500 usdc
 
-let ethToKncPrecision = precisionUnits.div(new BN(200)); // 1 eth --> 200 knc
-let kncToEthPrecision = precisionUnits.mul(new BN(200));
+let ethToNIMPrecision = precisionUnits.div(new BN(200)); // 1 eth --> 200 NIM
+let NIMToEthPrecision = precisionUnits.mul(new BN(200));
 
-contract('KyberFeeHandlerWrapper', function(accounts) {
+contract('nimbleFeeHandlerWrapper', function(accounts) {
     before("Setting global variables", async() => {
         staker = accounts[8];
         daoSetter = accounts[1];
@@ -73,7 +73,7 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
 
         epoch = new BN(0);
         expiryTimestamp = new BN(5);
-        mockKyberDao = await MockKyberDao.new(
+        mocknimbleDao = await MocknimbleDao.new(
             rewardInBPS,
             rebateInBPS,
             epoch,
@@ -81,39 +81,39 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
         );
 
         let stakerPercentageInPrecision = precisionUnits.mul(rewardInBPS).div(BPS);
-        await mockKyberDao.setStakerPercentageInPrecision(stakerPercentageInPrecision);
+        await mocknimbleDao.setStakerPercentageInPrecision(stakerPercentageInPrecision);
 
         proxy = await Proxy.new();
-        kyberNetwork = accounts[7];
+        nimbleNetwork = accounts[7];
 
         // deploy tokens
         dai = await Token.new("DAI", "DAI", DAI_DECIMALS);
         eurs = await Token.new("STASIS EURS", "EURS", EURS_DECIMALS);
-        knc = await Token.new("KyberNetworkCrystal", "KNC", KNC_DECIMALS);
+        NIM = await Token.new("nimbleNetworkCrystal", "NIM", NIM_DECIMALS);
         usdc = await Token.new("USD Coin", "USDC", USDC_DECIMALS);
 
         tokens = [{'address': ethAddress}, dai, eurs, usdc];
         tokenAddresses = [ethAddress, dai.address, eurs.address, usdc.address];
 
-        await knc.transfer(proxy.address, oneKnc.mul(new BN(100000)));
+        await NIM.transfer(proxy.address, oneNIM.mul(new BN(100000)));
         await Helper.sendEtherWithPromise(accounts[9], proxy.address, oneEth.mul(new BN(100)));
 
-        // for burning KNC
-        await proxy.setPairRate(ethAddress, knc.address, ethToKncPrecision);
-        await proxy.setPairRate(knc.address, ethAddress, kncToEthPrecision);
+        // for burning NIM
+        await proxy.setPairRate(ethAddress, NIM.address, ethToNIMPrecision);
+        await proxy.setPairRate(NIM.address, ethAddress, NIMToEthPrecision);
 
         // setup sanity rate for ethFeeHandler
-        sanityRate = await BurnKncSanityRate.new();
-        await sanityRate.setLatestKncToEthRate(kncToEthPrecision);
+        sanityRate = await BurnNIMSanityRate.new();
+        await sanityRate.setLatestNIMToEthRate(NIMToEthPrecision);
     });
 
     beforeEach("setup feeHandlers and wrapper", async() => {
         // setup feeHandlers
-        ethFeeHandler = await FeeHandler.new(daoSetter, proxy.address, kyberNetwork, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
-        await ethFeeHandler.setDaoContract(mockKyberDao.address, {from: daoSetter});
-        daiFeeHandler = await FeeTokenHandler.new(mockKyberDao.address, proxy.address, kyberNetwork, dai.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
-        eursFeeHandler = await FeeTokenHandler.new(mockKyberDao.address, proxy.address, kyberNetwork, eurs.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
-        usdcFeeHandler = await FeeTokenHandler.new(mockKyberDao.address, proxy.address, kyberNetwork, usdc.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+        ethFeeHandler = await FeeHandler.new(daoSetter, proxy.address, nimbleNetwork, NIM.address, BURN_BLOCK_INTERVAL, daoOperator);
+        await ethFeeHandler.setDaoContract(mocknimbleDao.address, {from: daoSetter});
+        daiFeeHandler = await FeeTokenHandler.new(mocknimbleDao.address, proxy.address, nimbleNetwork, dai.address, NIM.address, BURN_BLOCK_INTERVAL, daoOperator);
+        eursFeeHandler = await FeeTokenHandler.new(mocknimbleDao.address, proxy.address, nimbleNetwork, eurs.address, NIM.address, BURN_BLOCK_INTERVAL, daoOperator);
+        usdcFeeHandler = await FeeTokenHandler.new(mocknimbleDao.address, proxy.address, nimbleNetwork, usdc.address, NIM.address, BURN_BLOCK_INTERVAL, daoOperator);
         bindTokenToFeeHandler(ethFeeHandler, {'address': ethAddress}, ethWeiToBurn, oneEth);
         bindTokenToFeeHandler(daiFeeHandler, dai, daiWeiToBurn, oneDai);
         bindTokenToFeeHandler(eursFeeHandler, eurs, eursWeiToBurn, oneEurs);
@@ -122,7 +122,7 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
         feeHandlers = [ethFeeHandler, daiFeeHandler, eursFeeHandler, usdcFeeHandler];
 
         // deploy wrapper
-        feeWrapper = await FeeWrapper.new(mockKyberDao.address, daoOperator);
+        feeWrapper = await FeeWrapper.new(mocknimbleDao.address, daoOperator);
 
         // setup tokenFeeHandlers
         for (const feeHandler of feeHandlers) {
@@ -130,13 +130,13 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
             if (token.address == ethAddress) {
                 await feeHandler.setBurnConfigParams(sanityRate.address, feeHandler.weiToBurn, {from: daoOperator});
             } else {
-                // give token to kyberNetwork
-                await token.transfer(kyberNetwork, feeHandler.oneToken.mul(new BN(100000)));
+                // give token to nimbleNetwork
+                await token.transfer(nimbleNetwork, feeHandler.oneToken.mul(new BN(100000)));
                 await feeHandler.setBurnConfigParams(zeroAddress, feeHandler.weiToBurn, {from: daoOperator});
             }
 
             await feeWrapper.addFeeHandler(token.address, feeHandler.address, {from: daoOperator});
-            let actualFeeHandlerArray = (await feeWrapper.getKyberFeeHandlersPerToken(token.address)).kyberFeeHandlers;
+            let actualFeeHandlerArray = (await feeWrapper.getnimbleFeeHandlersPerToken(token.address)).nimbleFeeHandlers;
             Helper.assertEqualArray(actualFeeHandlerArray, [feeHandler.address], "feeHandler not added");
             await feeHandler.getBRR();
         }
@@ -150,9 +150,9 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
         let numEpochs = 3;
 
         beforeEach("send feeHandlers fees for some epochs", async() => {
-            initialEpoch = (await mockKyberDao.epoch()).toNumber();
-            await sendFeesToAllFeeHandlers(mockKyberDao, feeHandlers, numEpochs);
-            currentEpoch = (await mockKyberDao.epoch()).toNumber();
+            initialEpoch = (await mocknimbleDao.epoch()).toNumber();
+            await sendFeesToAllFeeHandlers(mocknimbleDao, feeHandlers, numEpochs);
+            currentEpoch = (await mocknimbleDao.epoch()).toNumber();
         });
 
         it("should not revert if startTokenIndex > endTokenIndex", async() => {
@@ -406,17 +406,17 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
 
         before("setup tempFeeHandlers, get token index in feeWrapper", async() => {
             tokenIndex = (await feeWrapper.getSupportedTokens()).indexOf(usdc.address);
-            tempUsdcFeeHandler1 = await FeeTokenHandler.new(mockKyberDao.address, proxy.address, kyberNetwork, usdc.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+            tempUsdcFeeHandler1 = await FeeTokenHandler.new(mocknimbleDao.address, proxy.address, nimbleNetwork, usdc.address, NIM.address, BURN_BLOCK_INTERVAL, daoOperator);
             bindTokenToFeeHandler(tempUsdcFeeHandler1, usdc, usdcWeiToBurn, oneUsdc);
-            tempUsdcFeeHandler2 = await FeeTokenHandler.new(mockKyberDao.address, proxy.address, kyberNetwork, usdc.address, knc.address, BURN_BLOCK_INTERVAL, daoOperator);
+            tempUsdcFeeHandler2 = await FeeTokenHandler.new(mocknimbleDao.address, proxy.address, nimbleNetwork, usdc.address, NIM.address, BURN_BLOCK_INTERVAL, daoOperator);
             bindTokenToFeeHandler(tempUsdcFeeHandler2, usdc, usdcWeiToBurn, oneUsdc);
             for (const feeHandler of [tempUsdcFeeHandler1, tempUsdcFeeHandler2]) {
                 let token = feeHandler.token;
                 if (token.address == ethAddress) {
                     await feeHandler.setBurnConfigParams(sanityRate.address, feeHandler.weiToBurn, {from: daoOperator});
                 } else {
-                    // give token to kyberNetwork
-                    await token.transfer(kyberNetwork, feeHandler.oneToken.mul(new BN(100000)));
+                    // give token to nimbleNetwork
+                    await token.transfer(nimbleNetwork, feeHandler.oneToken.mul(new BN(100000)));
                     await feeHandler.setBurnConfigParams(zeroAddress, feeHandler.weiToBurn, {from: daoOperator});
                 }
                 await feeHandler.getBRR();
@@ -427,19 +427,19 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
             tempFeeHandlers = [usdcFeeHandler, tempUsdcFeeHandler1, tempUsdcFeeHandler2];
             tempFeeHandlerAddresses = [usdcFeeHandler.address, tempUsdcFeeHandler1.address, tempUsdcFeeHandler2.address];
             
-            await sendFeesToAllFeeHandlers(mockKyberDao, feeHandlers, numEpochs);
+            await sendFeesToAllFeeHandlers(mocknimbleDao, feeHandlers, numEpochs);
 
-            tempUsdcFeeHandler1StartEpoch = (await mockKyberDao.epoch()).toNumber();
+            tempUsdcFeeHandler1StartEpoch = (await mocknimbleDao.epoch()).toNumber();
             await feeWrapper.addFeeHandler(usdc.address, tempUsdcFeeHandler1.address, {from: daoOperator});
-            await sendFeesToAllFeeHandlers(mockKyberDao, [tempUsdcFeeHandler1], numEpochs);
+            await sendFeesToAllFeeHandlers(mocknimbleDao, [tempUsdcFeeHandler1], numEpochs);
 
-            tempUsdcFeeHandler2StartEpoch = (await mockKyberDao.epoch()).toNumber();
+            tempUsdcFeeHandler2StartEpoch = (await mocknimbleDao.epoch()).toNumber();
             await feeWrapper.addFeeHandler(usdc.address, tempUsdcFeeHandler2.address, {from: daoOperator});
-            await sendFeesToAllFeeHandlers(mockKyberDao, [tempUsdcFeeHandler2], numEpochs);
-            currentEpoch = (await mockKyberDao.epoch()).toNumber();
+            await sendFeesToAllFeeHandlers(mocknimbleDao, [tempUsdcFeeHandler2], numEpochs);
+            currentEpoch = (await mocknimbleDao.epoch()).toNumber();
 
-            let result = await feeWrapper.getKyberFeeHandlersPerToken(usdc.address);
-            Helper.assertEqualArray(result.kyberFeeHandlers, tempFeeHandlerAddresses, "feeHandlers not the same");
+            let result = await feeWrapper.getnimbleFeeHandlersPerToken(usdc.address);
+            Helper.assertEqualArray(result.nimbleFeeHandlers, tempFeeHandlerAddresses, "feeHandlers not the same");
             Helper.assertEqual(new BN(tempUsdcFeeHandler1StartEpoch), result.epochs[1]);
             Helper.assertEqual(new BN(tempUsdcFeeHandler2StartEpoch), result.epochs[2]);
         });
@@ -554,18 +554,18 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
         });
 
         it("should revert for bad array indices", async() => {
-            // set startKyberFeeHandlerIndex > num of feeHandlers
+            // set startnimbleFeeHandlerIndex > num of feeHandlers
             let selectedEpoch = currentEpoch - 2;
-            let startKyberFeeHandlerIndex = 5;
-            let endKyberFeeHandlerIndex = 10;
+            let startnimbleFeeHandlerIndex = 5;
+            let endnimbleFeeHandlerIndex = 10;
             await expectRevert(
                 feeWrapper.claimStakerReward(
                     staker,
                     selectedEpoch,
                     tokenIndex,
                     tokenIndex + 1,
-                    startKyberFeeHandlerIndex,
-                    endKyberFeeHandlerIndex
+                    startnimbleFeeHandlerIndex,
+                    endnimbleFeeHandlerIndex
                 ),
                 "bad array indices"
             );
@@ -576,8 +576,8 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
                     rebateWallet,
                     tokenIndex,
                     tokenIndex + 1,
-                    startKyberFeeHandlerIndex,
-                    endKyberFeeHandlerIndex
+                    startnimbleFeeHandlerIndex,
+                    endnimbleFeeHandlerIndex
                     ),
                 "bad array indices"
                 );
@@ -588,8 +588,8 @@ contract('KyberFeeHandlerWrapper', function(accounts) {
                     platformWallet,
                     tokenIndex,
                     tokenIndex + 1,
-                    startKyberFeeHandlerIndex,
-                    endKyberFeeHandlerIndex
+                    startnimbleFeeHandlerIndex,
+                    endnimbleFeeHandlerIndex
                 ),
                 "bad array indices"
             );
@@ -631,11 +631,11 @@ async function sendFeesToFeeHandler(feeHandler, platformFeeWei, networkFeeWei) {
     let token = feeHandler.token;
     if (token.address == ethAddress) {
         sendVal = platformFeeWei.add(networkFeeWei);
-        await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, networkFeeWei, {from: kyberNetwork, value: sendVal});
+        await feeHandler.handleFees(ethAddress, rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, networkFeeWei, {from: nimbleNetwork, value: sendVal});
     } else {
         sendVal = platformFeeWei.add(networkFeeWei);
-        await token.approve(feeHandler.address, sendVal, {from: kyberNetwork});
-        await feeHandler.handleFees(token.address, rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, networkFeeWei, {from: kyberNetwork});
+        await token.approve(feeHandler.address, sendVal, {from: nimbleNetwork});
+        await feeHandler.handleFees(token.address, rebateWallets, rebateBpsPerWallet, platformWallet, platformFeeWei, networkFeeWei, {from: nimbleNetwork});
     }
 }
 

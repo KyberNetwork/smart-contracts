@@ -1,9 +1,9 @@
 pragma solidity 0.6.6;
 
-import "../IKyberSanity.sol";
+import "../InimbleSanity.sol";
 
 
-contract MockSanityRates is IKyberSanity {
+contract MockSanityRates is InimbleSanity {
     uint256 public sanityRateValue;
 
     function setSanityRateValue(uint256 _value) external {

@@ -5,9 +5,9 @@ import "./ConversionRates.sol";
 /// @title ConversionRateEnhancedSteps contract - new ConversionRates contract with step function enhancement
 /// Removed qty step function overhead
 /// Also fixed following issues:
-/// https://github.com/KyberNetwork/smart-contracts/issues/291
-/// https://github.com/KyberNetwork/smart-contracts/issues/241
-/// https://github.com/KyberNetwork/smart-contracts/issues/240
+/// https://github.com/nimbleNetwork/smart-contracts/issues/291
+/// https://github.com/nimbleNetwork/smart-contracts/issues/241
+/// https://github.com/nimbleNetwork/smart-contracts/issues/240
 
 
 contract ConversionRateEnhancedSteps is ConversionRates {

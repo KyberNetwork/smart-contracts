@@ -2,9 +2,9 @@ pragma solidity 0.6.6;
 
 import "./EpochUtils.sol";
 import "./DaoOperator.sol";
-import "./KyberStaking.sol";
+import "./nimbleStaking.sol";
 import "../IERC20.sol";
-import "../IKyberDao.sol";
+import "../InimbleDao.sol";
 import "../utils/zeppelin/ReentrancyGuard.sol";
 import "../utils/Utils5.sol";
 
@@ -15,7 +15,7 @@ import "../utils/Utils5.sol";
  *      BRR fee handler campaign: options are combined of rebate (left most 128 bits) + reward (right most 128 bits)
  *      General campaign: options are from 1 to num_options
  */
-contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator {
+contract nimbleDao is InimbleDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator {
     // max number of campaigns for each epoch
     uint256 public   constant MAX_EPOCH_CAMPAIGNS = 10;
     // max number of options for each campaign
@@ -40,7 +40,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         bool campaignExists;
         uint256 startTimestamp;
         uint256 endTimestamp;
-        uint256 totalKNCSupply; // total KNC supply at the time campaign was created
+        uint256 totalNIMSupply; // total NIM supply at the time campaign was created
         FormulaData formulaData; // formula params for concluding campaign result
         bytes link; // link to KIP, explaination of options, etc.
         uint256[] options; // data of options
@@ -53,8 +53,8 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     }
 
     uint256 public minCampaignDurationInSeconds = 4 days;
-    IERC20 public immutable kncToken;
-    IKyberStaking public immutable staking;
+    IERC20 public immutable NIMToken;
+    InimbleStaking public immutable staking;
 
     // use to generate increasing campaign ID
     uint256 public numberCampaigns = 0;
@@ -94,7 +94,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     constructor(
         uint256 _epochPeriod,
         uint256 _startTimestamp,
-        IERC20 _knc,
+        IERC20 _NIM,
         uint256 _defaultNetworkFeeBps,
         uint256 _defaultRewardBps,
         uint256 _defaultRebateBps,
@@ -102,7 +102,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     ) public DaoOperator(_daoOperator) {
         require(_epochPeriod > 0, "ctor: epoch period is 0");
         require(_startTimestamp >= now, "ctor: start in the past");
-        require(_knc != IERC20(0), "ctor: knc token 0");
+        require(_NIM != IERC20(0), "ctor: NIM token 0");
         // in Network, maximum fee that can be taken from 1 tx is (platform fee + 2 * network fee)
         // so network fee should be less than 50%
         require(_defaultNetworkFeeBps < BPS / 2, "ctor: network fee high");
@@ -110,7 +110,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
         epochPeriodInSeconds = _epochPeriod;
         firstEpochStartTimestamp = _startTimestamp;
-        kncToken = _knc;
+        NIMToken = _NIM;
 
         latestNetworkFeeResult = _defaultNetworkFeeBps;
         latestBrrData = BRRData({
@@ -119,11 +119,11 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         });
 
         // deploy staking contract 
-        staking = new KyberStaking({
-            _kncToken: _knc,
+        staking = new nimbleStaking({
+            _NIMToken: _NIM,
             _epochPeriod: _epochPeriod,
             _startTimestamp: _startTimestamp,
-            _kyberDao: IKyberDao(this)
+            _nimbleDao: InimbleDao(this)
         });
     }
 
@@ -238,7 +238,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             campaignType: campaignType,
             startTimestamp: startTimestamp,
             endTimestamp: endTimestamp,
-            totalKNCSupply: kncToken.totalSupply(),
+            totalNIMSupply: NIMToken.totalSupply(),
             link: link,
             formulaData: formulaData,
             options: options,
@@ -337,7 +337,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     /**
      * @dev get latest network fee data + expiry timestamp
-     *    conclude network fee campaign if needed and caching latest result in KyberDao
+     *    conclude network fee campaign if needed and caching latest result in nimbleDao
      */
     function getLatestNetworkFeeDataWithCache()
         external
@@ -351,7 +351,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
 
     /**
      * @dev return latest burn/reward/rebate data, also affecting epoch + expiry timestamp
-     *      conclude brr campaign if needed and caching latest result in KyberDao
+     *      conclude brr campaign if needed and caching latest result in nimbleDao
      */
     function getLatestBRRDataWithCache()
         external
@@ -399,7 +399,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             CampaignType campaignType,
             uint256 startTimestamp,
             uint256 endTimestamp,
-            uint256 totalKNCSupply,
+            uint256 totalNIMSupply,
             uint256 minPercentageInPrecision,
             uint256 cInPrecision,
             uint256 tInPrecision,
@@ -411,7 +411,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         campaignType = campaign.campaignType;
         startTimestamp = campaign.startTimestamp;
         endTimestamp = campaign.endTimestamp;
-        totalKNCSupply = campaign.totalKNCSupply;
+        totalNIMSupply = campaign.totalNIMSupply;
         minPercentageInPrecision = campaign.formulaData.minPercentageInPrecision;
         cInPrecision = campaign.formulaData.cInPrecision;
         tInPrecision = campaign.formulaData.tInPrecision;
@@ -484,8 +484,8 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
             return (0, 0);
         }
 
-        uint256 totalSupply = campaign.totalKNCSupply;
-        // something is wrong here, total KNC supply shouldn't be 0
+        uint256 totalSupply = campaign.totalNIMSupply;
+        // something is wrong here, total NIM supply shouldn't be 0
         if (totalSupply == 0) {
             return (0, 0);
         }
@@ -513,7 +513,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
         FormulaData memory formulaData = campaign.formulaData;
 
         // compute voted percentage (in precision)
-        uint256 votedPercentage = totalVotes.mul(PRECISION).div(campaign.totalKNCSupply);
+        uint256 votedPercentage = totalVotes.mul(PRECISION).div(campaign.totalNIMSupply);
 
         // total voted percentage is below min acceptable percentage, no winning option
         if (formulaData.minPercentageInPrecision > votedPercentage) {
@@ -734,7 +734,7 @@ contract KyberDao is IKyberDao, EpochUtils, ReentrancyGuard, Utils5, DaoOperator
     /**
      * @dev  return staker's reward percentage in precision for an epoch
      *       return 0 if staker has no votes or stakes
-     *       called by 2 functions in KyberDao
+     *       called by 2 functions in nimbleDao
      */
     function getRewardPercentageInPrecision(address staker, uint256 epoch)
         internal

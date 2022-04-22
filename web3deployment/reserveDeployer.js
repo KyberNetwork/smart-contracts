@@ -171,33 +171,33 @@ const input = {
     contractPath + 'WhiteListInterface.sol',
     'utf8'
   ),
-  'KyberNetwork.sol': fs.readFileSync(
-    contractPath + 'KyberNetwork.sol',
+  'nimbleNetwork.sol': fs.readFileSync(
+    contractPath + 'nimbleNetwork.sol',
     'utf8'
   ),
-  'KyberNetworkInterface.sol': fs.readFileSync(
-    contractPath + 'KyberNetworkInterface.sol',
+  'nimbleNetworkInterface.sol': fs.readFileSync(
+    contractPath + 'nimbleNetworkInterface.sol',
     'utf8'
   ),
-  'KyberNetworkProxy.sol': fs.readFileSync(
-    contractPath + 'KyberNetworkProxy.sol',
+  'nimbleNetworkProxy.sol': fs.readFileSync(
+    contractPath + 'nimbleNetworkProxy.sol',
     'utf8'
   ),
-  'KyberNetworkProxyInterface.sol': fs.readFileSync(
-    contractPath + 'KyberNetworkProxyInterface.sol',
+  'nimbleNetworkProxyInterface.sol': fs.readFileSync(
+    contractPath + 'nimbleNetworkProxyInterface.sol',
     'utf8'
   ),
   'WhiteList.sol': fs.readFileSync(contractPath + 'WhiteList.sol', 'utf8'),
-  'KyberReserveInterface.sol': fs.readFileSync(
-    contractPath + 'KyberReserveInterface.sol',
+  'nimbleReserveInterface.sol': fs.readFileSync(
+    contractPath + 'nimbleReserveInterface.sol',
     'utf8'
   ),
   'Withdrawable.sol': fs.readFileSync(
     contractPath + 'Withdrawable.sol',
     'utf8'
   ),
-  'KyberReserve.sol': fs.readFileSync(
-    contractPath + 'reserves/KyberReserve.sol',
+  'nimbleReserve.sol': fs.readFileSync(
+    contractPath + 'reserves/nimbleReserve.sol',
     'utf8'
   )
 }
@@ -254,7 +254,7 @@ function parseInput( jsonInput ) {
       });
     });
 
-    reservePermissions = jsonInput.permission["KyberReserve"];
+    reservePermissions = jsonInput.permission["nimbleReserve"];
     conversionRatesPermissions = jsonInput.permission["ConversionRates"];
     validDurationBlock = jsonInput["valid duration block"];
 
@@ -301,8 +301,8 @@ async function main() {
 
   console.log("deploying conversion rates");
   [conversionRatesAddress,conversionRatesContract] = await deployContract(output, "ConversionRates.sol:ConversionRates", [sender]);
-  console.log("deploying kyber reserve");
-  [reserveAddress,reserveContract] = await deployContract(output, "KyberReserve.sol:KyberReserve", [networkAddress,conversionRatesAddress,sender]);
+  console.log("deploying nimble reserve");
+  [reserveAddress,reserveContract] = await deployContract(output, "nimbleReserve.sol:nimbleReserve", [networkAddress,conversionRatesAddress,sender]);
 
   console.log("rates", conversionRatesAddress);
   console.log("reserve", reserveAddress);

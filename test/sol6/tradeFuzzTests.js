@@ -1,12 +1,12 @@
 const TestToken = artifacts.require("Token.sol");
 const MockReserve = artifacts.require("MockReserve.sol");
-const MockDao = artifacts.require("MockKyberDao.sol");
+const MockDao = artifacts.require("MocknimbleDao.sol");
 const MockGasHelper = artifacts.require("MockGasHelper.sol");
-const KyberNetwork = artifacts.require("KyberNetwork.sol");
-const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
-const FeeHandler = artifacts.require("KyberFeeHandler.sol");
-const MatchingEngine = artifacts.require("KyberMatchingEngine.sol");
-const RateHelper = artifacts.require("KyberRateHelper.sol");
+const nimbleNetwork = artifacts.require("nimbleNetwork.sol");
+const nimbleNetworkProxy = artifacts.require("nimbleNetworkProxy.sol");
+const FeeHandler = artifacts.require("nimbleFeeHandler.sol");
+const MatchingEngine = artifacts.require("nimbleMatchingEngine.sol");
+const RateHelper = artifacts.require("nimbleRateHelper.sol");
 
 const Helper = require("../helper.js");
 const nwHelper = require("./networkHelper.js");
@@ -27,7 +27,7 @@ let networkFeeBps = new BN(20);
 let admin;
 let storage;
 let network;
-let kyberDao;
+let nimbleDao;
 let networkProxy;
 let feeHandler;
 let matchingEngine;
@@ -35,14 +35,14 @@ let gasHelperAdd;
 let operator;
 let platformWallet;
 
-//kyberDao related data
+//nimbleDao related data
 let rewardInBPS = new BN(7000);
 let rebateInBPS = new BN(2000);
 let epoch = new BN(3);
 let expiryTimestamp;
 
 //fee hanlder related
-let KNC;
+let NIM;
 let burnBlockInterval = new BN(30);
 
 //reserve data
@@ -68,10 +68,10 @@ contract('TradeFuzzTests', function(accounts) {
         admin = accounts[5]; // we don't want admin as account 0.
         hintParser = accounts[6];
 
-        //kyberDao related init.
+        //nimbleDao related init.
         expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
-        kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-        await kyberDao.setNetworkFeeBps(networkFeeBps);
+        nimbleDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+        await nimbleDao.setNetworkFeeBps(networkFeeBps);
 
         //init tokens
         for (let i = 0; i < numTokens; i++) {
@@ -83,28 +83,28 @@ contract('TradeFuzzTests', function(accounts) {
     });
 
     beforeEach("init for each test", async() => {
-        // kyberDao related init.
+        // nimbleDao related init.
         expiryTimestamp = await Helper.getCurrentBlockTime() + 10;
-        kyberDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
-        await kyberDao.setNetworkFeeBps(networkFeeBps);
+        nimbleDao = await MockDao.new(rewardInBPS, rebateInBPS, epoch, expiryTimestamp);
+        await nimbleDao.setNetworkFeeBps(networkFeeBps);
 
         // init storage and network
         storage = await nwHelper.setupStorage(admin);
-        network = await KyberNetwork.new(admin, storage.address);
+        network = await nimbleNetwork.new(admin, storage.address);
         await storage.setNetworkContract(network.address, {from: admin});
         await storage.addOperator(operator, {from: admin});
 
-        networkProxy = await KyberNetworkProxy.new(admin);
-        await networkProxy.setKyberNetwork(network.address, {from: admin});
+        networkProxy = await nimbleNetworkProxy.new(admin);
+        await networkProxy.setnimbleNetwork(network.address, {from: admin});
 
         // init feeHandler
-        KNC = await TestToken.new("kyber network crystal", "KNC", 18);
-        feeHandler = await FeeHandler.new(kyberDao.address, networkProxy.address, network.address, KNC.address, burnBlockInterval, kyberDao.address);
+        NIM = await TestToken.new("nimble network crystal", "NIM", 18);
+        feeHandler = await FeeHandler.new(nimbleDao.address, networkProxy.address, network.address, NIM.address, burnBlockInterval, nimbleDao.address);
 
         // init matchingEngine
         matchingEngine = await MatchingEngine.new(admin);
         await matchingEngine.setNetworkContract(network.address, {from: admin});
-        await matchingEngine.setKyberStorage(storage.address, {from: admin});
+        await matchingEngine.setnimbleStorage(storage.address, {from: admin});
         await storage.setFeeAccountedPerReserveType(true, true, true, false, true, true, {from: admin});
         await storage.setEntitledRebatePerReserveType(true, false, true, false, true, true, {from: admin});
 
@@ -112,7 +112,7 @@ contract('TradeFuzzTests', function(accounts) {
 
         // init rateHelper
         rateHelper = await RateHelper.new(admin);
-        await rateHelper.setContracts(kyberDao.address, storage.address, {from: admin});
+        await rateHelper.setContracts(nimbleDao.address, storage.address, {from: admin});
 
         // init gas helper
         // tests gasHelper when gasHelper != address(0), and when a trade is being done
@@ -122,8 +122,8 @@ contract('TradeFuzzTests', function(accounts) {
         await network.setContracts(feeHandler.address, matchingEngine.address,
             gasHelperAdd.address, {from: admin});
         await network.addOperator(operator, {from: admin});
-        await network.addKyberProxy(networkProxy.address, {from: admin});
-        await network.setKyberDaoContract(kyberDao.address, {from: admin});
+        await network.addnimbleProxy(networkProxy.address, {from: admin});
+        await network.setnimbleDaoContract(nimbleDao.address, {from: admin});
         //set params, enable network
         await network.setParams(gasPrice, negligibleRateDiffBps, {from: admin});
         await network.setEnable(true, {from: admin});

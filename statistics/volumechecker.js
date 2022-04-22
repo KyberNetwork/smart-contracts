@@ -16,7 +16,7 @@ var networkAddress = new web3.eth.Contract(networkABI, networkAddress);
 
 
 var EOS = "0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0";
-var KNC = "0xdd974d5c2e2928dea5f71b9825b8b646686bd200";
+var NIM = "0xdd974d5c2e2928dea5f71b9825b8b646686bd200";
 var OMG = "0xd26114cd6EE289AccF82350c8d8487fedB8A0C07";
 var SNT = "0x744d70fdbe2ba4cf95131626614a1763df805b9e";
 var BAT = "0x0d8775f648430679a709e98d2b0cb6250d2887ef";
@@ -32,8 +32,8 @@ var SALT = "0x4156D3342D5c385a87D264F90653733592000581";
 var APPC = "0x1a7a8BD9106F2B8D977E08582DC7d24c723ab0DB";
 var BQX = "0x5af2be193a6abca9c8817001f45744777db30756";
 
-var names = ["ETH","EOS", "KNC", "OMG", "SNT", "BAT", "ELF", "GIFTO", "REQ", "MANA", "POWR","ENG","RDN","SALT","APPC","BQX"];
-var tokens = [ETH,EOS, KNC, OMG, SNT, BAT, ELF, GIFTO, REQ, MANA, POWR,ENG,RDN,SALT,APPC,BQX];
+var names = ["ETH","EOS", "NIM", "OMG", "SNT", "BAT", "ELF", "GIFTO", "REQ", "MANA", "POWR","ENG","RDN","SALT","APPC","BQX"];
+var tokens = [ETH,EOS, NIM, OMG, SNT, BAT, ELF, GIFTO, REQ, MANA, POWR,ENG,RDN,SALT,APPC,BQX];
 var decimals = [18,18,18,18,18,18,18,5,18,18,6,8,18,8,18,8];
 
 function getName(address) {

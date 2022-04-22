@@ -1,7 +1,7 @@
 const BN = web3.utils.BN;
 
 const MockWeth = artifacts.require("./wethContracts/mockContracts/WETH9.sol");
-const KyberWethReserve = artifacts.require("./wethContracts/KyberWethReserve");
+const nimbleWethReserve = artifacts.require("./wethContracts/nimbleWethReserve");
 const TestToken = artifacts.require("./mockContracts/TestToken.sol");
 
 const Helper = require("../helper.js");
@@ -12,7 +12,7 @@ const zeroBN = new BN(0);
 const precision = new BN(10).pow(new BN(18));
 const eth1 = new BN(10).pow(new BN(18));
 
-contract('KyberWethReserve', function (accounts) {
+contract('nimbleWethReserve', function (accounts) {
 
     const admin = accounts[0];
     const non_admin = accounts[1]
@@ -28,7 +28,7 @@ contract('KyberWethReserve', function (accounts) {
         anotherToken = await TestToken.new("my token", "tok", 18);
 
         // create reserve, use admin as network
-        reserve = await KyberWethReserve.new(admin, wethToken.address, admin);
+        reserve = await nimbleWethReserve.new(admin, wethToken.address, admin);
 
         // buy some weth to start with
         const initialBuyRate = await reserve.getConversionRate(ethAddress, wethToken.address, amount3Eth, 0);
@@ -182,7 +182,7 @@ contract('KyberWethReserve', function (accounts) {
         });
 
         it("change network to another address and see that trade fails since sender is not network", async function (){
-            await reserve.setKyberNetwork(accounts[2]);
+            await reserve.setnimbleNetwork(accounts[2]);
             const buyRate = await reserve.getConversionRate(ethAddress, wethToken.address, amount3Eth, 0);
             await Helper.expectThrow(
                     reserve.trade(ethAddress, amount3Eth, wethToken.address, admin, buyRate, true, {value: amount3Eth})
@@ -219,7 +219,7 @@ contract('KyberWethReserve', function (accounts) {
         });
 
         it("change network fails", async function (){
-            await Helper.expectThrow(reserve.setKyberNetwork(accounts[2], {from}));
+            await Helper.expectThrow(reserve.setnimbleNetwork(accounts[2], {from}));
         });
     });
 

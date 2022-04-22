@@ -1,30 +1,30 @@
 pragma solidity 0.6.6;
 
-import "./IKyberHistory.sol";
-import "./IKyberStorage.sol";
-import "./IKyberNetwork.sol";
+import "./InimbleHistory.sol";
+import "./InimbleStorage.sol";
+import "./InimbleNetwork.sol";
 import "./utils/PermissionGroupsNoModifiers.sol";
 import "./utils/Utils5.sol";
 
 
 /**
- *   @title kyberStorage contract
- *   The contract provides the following functions for kyberNetwork contract:
- *   - Stores reserve and token listing information by the kyberNetwork
+ *   @title nimbleStorage contract
+ *   The contract provides the following functions for nimbleNetwork contract:
+ *   - Stores reserve and token listing information by the nimbleNetwork
  *   - Stores feeAccounted data for reserve types
- *   - Record contract changes for reserves and kyberProxies
- *   - Points to historical contracts that record contract changes for kyberNetwork,
- *        kyberFeeHandler, kyberDao and kyberMatchingEngine
+ *   - Record contract changes for reserves and nimbleProxies
+ *   - Points to historical contracts that record contract changes for nimbleNetwork,
+ *        nimbleFeeHandler, nimbleDao and nimbleMatchingEngine
  */
-contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
+contract nimbleStorage is InimbleStorage, PermissionGroupsNoModifiers, Utils5 {
     // store current and previous contracts
-    IKyberHistory public kyberNetworkHistory;
-    IKyberHistory public kyberFeeHandlerHistory;
-    IKyberHistory public kyberDaoHistory;
-    IKyberHistory public kyberMatchingEngineHistory;
+    InimbleHistory public nimbleNetworkHistory;
+    InimbleHistory public nimbleFeeHandlerHistory;
+    InimbleHistory public nimbleDaoHistory;
+    InimbleHistory public nimbleMatchingEngineHistory;
 
-    IKyberReserve[] internal reserves;
-    IKyberNetworkProxy[] internal kyberProxyArray;
+    InimbleReserve[] internal reserves;
+    InimbleNetworkProxy[] internal nimbleProxyArray;
 
     mapping(bytes32 => address[]) internal reserveIdToAddresses;
     mapping(bytes32 => address) internal reserveRebateWallet;
@@ -42,33 +42,33 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     mapping(bytes32 => uint256) internal reserveType; // type from enum ReserveType
     mapping(ReserveType => bytes32[]) internal reservesPerType;
 
-    IKyberNetwork public kyberNetwork;
+    InimbleNetwork public nimbleNetwork;
 
     constructor(
         address _admin,
-        IKyberHistory _kyberNetworkHistory,
-        IKyberHistory _kyberFeeHandlerHistory,
-        IKyberHistory _kyberDaoHistory,
-        IKyberHistory _kyberMatchingEngineHistory
+        InimbleHistory _nimbleNetworkHistory,
+        InimbleHistory _nimbleFeeHandlerHistory,
+        InimbleHistory _nimbleDaoHistory,
+        InimbleHistory _nimbleMatchingEngineHistory
     ) public PermissionGroupsNoModifiers(_admin) {
-        require(_kyberNetworkHistory != IKyberHistory(0), "kyberNetworkHistory 0");
-        require(_kyberFeeHandlerHistory != IKyberHistory(0), "kyberFeeHandlerHistory 0");
-        require(_kyberDaoHistory != IKyberHistory(0), "kyberDaoHistory 0");
-        require(_kyberMatchingEngineHistory != IKyberHistory(0), "kyberMatchingEngineHistory 0");
+        require(_nimbleNetworkHistory != InimbleHistory(0), "nimbleNetworkHistory 0");
+        require(_nimbleFeeHandlerHistory != InimbleHistory(0), "nimbleFeeHandlerHistory 0");
+        require(_nimbleDaoHistory != InimbleHistory(0), "nimbleDaoHistory 0");
+        require(_nimbleMatchingEngineHistory != InimbleHistory(0), "nimbleMatchingEngineHistory 0");
 
-        kyberNetworkHistory = _kyberNetworkHistory;
-        kyberFeeHandlerHistory = _kyberFeeHandlerHistory;
-        kyberDaoHistory = _kyberDaoHistory;
-        kyberMatchingEngineHistory = _kyberMatchingEngineHistory;
+        nimbleNetworkHistory = _nimbleNetworkHistory;
+        nimbleFeeHandlerHistory = _nimbleFeeHandlerHistory;
+        nimbleDaoHistory = _nimbleDaoHistory;
+        nimbleMatchingEngineHistory = _nimbleMatchingEngineHistory;
     }
 
-    event KyberNetworkUpdated(IKyberNetwork newKyberNetwork);
+    event nimbleNetworkUpdated(InimbleNetwork newnimbleNetwork);
     event RemoveReserveFromStorage(address indexed reserve, bytes32 indexed reserveId);
 
     event AddReserveToStorage(
         address indexed reserve,
         bytes32 indexed reserveId,
-        IKyberStorage.ReserveType reserveType,
+        InimbleStorage.ReserveType reserveType,
         address indexed rebateWallet
     );
 
@@ -85,12 +85,12 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         bool add
     );
 
-    function setNetworkContract(IKyberNetwork _kyberNetwork) external {
+    function setNetworkContract(InimbleNetwork _nimbleNetwork) external {
         onlyAdmin();
-        require(_kyberNetwork != IKyberNetwork(0), "kyberNetwork 0");
-        emit KyberNetworkUpdated(_kyberNetwork);
-        kyberNetworkHistory.saveContract(address(_kyberNetwork));
-        kyberNetwork = _kyberNetwork;
+        require(_nimbleNetwork != InimbleNetwork(0), "nimbleNetwork 0");
+        emit nimbleNetworkUpdated(_nimbleNetwork);
+        nimbleNetworkHistory.saveContract(address(_nimbleNetwork));
+        nimbleNetwork = _nimbleNetwork;
     }
 
     function setRebateWallet(bytes32 reserveId, address rebateWallet) external {
@@ -104,22 +104,22 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         emit ReserveRebateWalletSet(reserveId, rebateWallet);
     }
 
-    function setContracts(address _kyberFeeHandler, address _kyberMatchingEngine)
+    function setContracts(address _nimbleFeeHandler, address _nimbleMatchingEngine)
         external
         override
     {
         onlyNetwork();
-        require(_kyberFeeHandler != address(0), "kyberFeeHandler 0");
-        require(_kyberMatchingEngine != address(0), "kyberMatchingEngine 0");
+        require(_nimbleFeeHandler != address(0), "nimbleFeeHandler 0");
+        require(_nimbleMatchingEngine != address(0), "nimbleMatchingEngine 0");
 
-        kyberFeeHandlerHistory.saveContract(_kyberFeeHandler);
-        kyberMatchingEngineHistory.saveContract(_kyberMatchingEngine);
+        nimbleFeeHandlerHistory.saveContract(_nimbleFeeHandler);
+        nimbleMatchingEngineHistory.saveContract(_nimbleMatchingEngine);
     }
 
-    function setKyberDaoContract(address _kyberDao) external override {
+    function setnimbleDaoContract(address _nimbleDao) external override {
         onlyNetwork();
 
-        kyberDaoHistory.saveContract(_kyberDao);
+        nimbleDaoHistory.saveContract(_nimbleDao);
     }
 
     /// @notice Can be called only by operator
@@ -154,7 +154,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
             reserveIdToAddresses[reserveId][0] = reserve;
         }
 
-        reserves.push(IKyberReserve(reserve));
+        reserves.push(InimbleReserve(reserve));
         reservesPerType[resType].push(reserveId);
         reserveAddressToId[reserve] = reserveId;
         reserveType[reserveId] = uint256(resType);
@@ -179,7 +179,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
         uint256 reserveIndex = 2**255;
         for (uint256 i = startIndex; i < reserves.length; i++) {
-            if (reserves[i] == IKyberReserve(reserve)) {
+            if (reserves[i] == InimbleReserve(reserve)) {
                 reserveIndex = i;
                 break;
             }
@@ -238,38 +238,38 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         }
 
         if (tokenToEth) {
-            kyberNetwork.listTokenForReserve(reserve, token, add);
+            nimbleNetwork.listTokenForReserve(reserve, token, add);
             listPairs(reserveId, token, true, add);
             emit ListReservePairs(reserveId, reserve, token, ETH_TOKEN_ADDRESS, add);
         }
     }
 
-    /// @dev No. of kyberProxies are capped
-    function addKyberProxy(address kyberProxy, uint256 maxApprovedProxies)
+    /// @dev No. of nimbleProxies are capped
+    function addnimbleProxy(address nimbleProxy, uint256 maxApprovedProxies)
         external
         override
     {
         onlyNetwork();
-        require(kyberProxy != address(0), "kyberProxy 0");
-        require(kyberProxyArray.length < maxApprovedProxies, "max kyberProxies limit reached");
+        require(nimbleProxy != address(0), "nimbleProxy 0");
+        require(nimbleProxyArray.length < maxApprovedProxies, "max nimbleProxies limit reached");
 
-        kyberProxyArray.push(IKyberNetworkProxy(kyberProxy));
+        nimbleProxyArray.push(InimbleNetworkProxy(nimbleProxy));
     }
 
-    function removeKyberProxy(address kyberProxy) external override {
+    function removenimbleProxy(address nimbleProxy) external override {
         onlyNetwork();
         uint256 proxyIndex = 2**255;
 
-        for (uint256 i = 0; i < kyberProxyArray.length; i++) {
-            if (kyberProxyArray[i] == IKyberNetworkProxy(kyberProxy)) {
+        for (uint256 i = 0; i < nimbleProxyArray.length; i++) {
+            if (nimbleProxyArray[i] == InimbleNetworkProxy(nimbleProxy)) {
                 proxyIndex = i;
                 break;
             }
         }
 
-        require(proxyIndex != 2**255, "kyberProxy not found");
-        kyberProxyArray[proxyIndex] = kyberProxyArray[kyberProxyArray.length - 1];
-        kyberProxyArray.pop();
+        require(proxyIndex != 2**255, "nimbleProxy not found");
+        nimbleProxyArray[proxyIndex] = nimbleProxyArray[nimbleProxyArray.length - 1];
+        nimbleProxyArray.pop();
     }
 
     function setFeeAccountedPerReserveType(
@@ -340,7 +340,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
 
     /// @notice Should be called off chain
     /// @return An array of all reserves
-    function getReserves() external view returns (IKyberReserve[] memory) {
+    function getReserves() external view returns (InimbleReserve[] memory) {
         return reserves;
     }
 
@@ -397,7 +397,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
         reserveIds = reservesPerTokenSrc[token];
     }
 
-    /// @dev kyberNetwork is calling this function to approve (allowance) for list of reserves for a token
+    /// @dev nimbleNetwork is calling this function to approve (allowance) for list of reserves for a token
     ///      in case we have a long list of reserves, approving all of them could run out of gas
     ///      using startIndex and endIndex to prevent above scenario
     ///      also enable us to approve reserve one by one
@@ -440,32 +440,32 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     }
 
     /// @notice Should be called off chain
-    /// @dev Returns list of kyberDao, kyberFeeHandler, kyberMatchingEngine and kyberNetwork contracts
+    /// @dev Returns list of nimbleDao, nimbleFeeHandler, nimbleMatchingEngine and nimbleNetwork contracts
     /// @dev Index 0 is currently used contract address, indexes > 0 are older versions
     function getContracts()
         external
         view
         returns (
-            address[] memory kyberDaoAddresses,
-            address[] memory kyberFeeHandlerAddresses,
-            address[] memory kyberMatchingEngineAddresses,
-            address[] memory kyberNetworkAddresses
+            address[] memory nimbleDaoAddresses,
+            address[] memory nimbleFeeHandlerAddresses,
+            address[] memory nimbleMatchingEngineAddresses,
+            address[] memory nimbleNetworkAddresses
         )
     {
-        kyberDaoAddresses = kyberDaoHistory.getContracts();
-        kyberFeeHandlerAddresses = kyberFeeHandlerHistory.getContracts();
-        kyberMatchingEngineAddresses = kyberMatchingEngineHistory.getContracts();
-        kyberNetworkAddresses = kyberNetworkHistory.getContracts();
+        nimbleDaoAddresses = nimbleDaoHistory.getContracts();
+        nimbleFeeHandlerAddresses = nimbleFeeHandlerHistory.getContracts();
+        nimbleMatchingEngineAddresses = nimbleMatchingEngineHistory.getContracts();
+        nimbleNetworkAddresses = nimbleNetworkHistory.getContracts();
     }
 
     /// @notice Should be called off chain
-    /// @return An array of KyberNetworkProxies
-    function getKyberProxies() external view override returns (IKyberNetworkProxy[] memory) {
-        return kyberProxyArray;
+    /// @return An array of nimbleNetworkProxies
+    function getnimbleProxies() external view override returns (InimbleNetworkProxy[] memory) {
+        return nimbleProxyArray;
     }
 
-    function isKyberProxyAdded() external view override returns (bool) {
-        return (kyberProxyArray.length > 0);
+    function isnimbleProxyAdded() external view override returns (bool) {
+        return (nimbleProxyArray.length > 0);
     }
 
     /// @notice Returns information about a reserve given its reserve ID
@@ -577,11 +577,11 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
             bool areAllReservesListed,
             bool[] memory feeAccountedArr,
             bool[] memory entitledRebateArr,
-            IKyberReserve[] memory reserveAddresses)
+            InimbleReserve[] memory reserveAddresses)
     {
         feeAccountedArr = new bool[](reserveIds.length);
         entitledRebateArr = new bool[](reserveIds.length);
-        reserveAddresses = new IKyberReserve[](reserveIds.length);
+        reserveAddresses = new InimbleReserve[](reserveIds.length);
         areAllReservesListed = true;
 
         uint256 entitledRebateData = entitledRebatePerType;
@@ -595,7 +595,7 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
             uint256 resType = reserveType[reserveIds[i]];
             entitledRebateArr[i] = (entitledRebateData & (1 << resType) > 0);
             feeAccountedArr[i] = (feeAccountedData & (1 << resType) > 0);
-            reserveAddresses[i] = IKyberReserve(reserveIdToAddresses[reserveIds[i]][0]);
+            reserveAddresses[i] = InimbleReserve(reserveIdToAddresses[reserveIds[i]][0]);
 
             if (!isListedReserveWithToken[reserveIds[i]]){
                 areAllReservesListed = false;
@@ -669,6 +669,6 @@ contract KyberStorage is IKyberStorage, PermissionGroupsNoModifiers, Utils5 {
     }
 
     function onlyNetwork() internal view {
-        require(msg.sender == address(kyberNetwork), "only kyberNetwork");
+        require(msg.sender == address(nimbleNetwork), "only nimbleNetwork");
     }
 }

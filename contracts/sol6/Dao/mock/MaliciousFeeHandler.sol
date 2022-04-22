@@ -1,23 +1,23 @@
 pragma solidity 0.6.6;
 
-import "../KyberFeeHandler.sol";
+import "../nimbleFeeHandler.sol";
 
 
-contract MaliciousFeeHandler is KyberFeeHandler {
+contract MaliciousFeeHandler is nimbleFeeHandler {
     constructor(
         address daoSetter,
-        IKyberProxy _kyberNetworkProxy,
-        address _kyberNetwork,
-        IERC20 _knc,
+        InimbleProxy _nimbleNetworkProxy,
+        address _nimbleNetwork,
+        IERC20 _NIM,
         uint256 _burnBlockInterval,
         address _daoOperator
     )
         public
-        KyberFeeHandler(
+        nimbleFeeHandler(
             daoSetter,
-            _kyberNetworkProxy,
-            _kyberNetwork,
-            _knc,
+            _nimbleNetworkProxy,
+            _nimbleNetwork,
+            _NIM,
             _burnBlockInterval,
             _daoOperator
         )

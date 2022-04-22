@@ -1,12 +1,12 @@
 pragma solidity 0.4.18;
 
 import "../ERC20Interface.sol";
-import "../KyberReserveInterface.sol";
+import "../nimbleReserveInterface.sol";
 import "../Utils.sol";
 import "../Withdrawable.sol";
-import "../KyberNetworkProxyInterface.sol";
+import "../nimbleNetworkProxyInterface.sol";
 
-contract MaliciousReserve is KyberReserveInterface, Withdrawable, Utils {
+contract MaliciousReserve is nimbleReserveInterface, Withdrawable, Utils {
 
     mapping(address => uint256) public buyTokenRates;
     mapping(address => uint256) public sellTokenRates;
@@ -15,7 +15,7 @@ contract MaliciousReserve is KyberReserveInterface, Withdrawable, Utils {
 
     function() public payable {}
 
-    KyberNetworkProxyInterface public proxy;
+    nimbleNetworkProxyInterface public proxy;
     address public scammer;
     ERC20 public scamToken;
 
@@ -72,7 +72,7 @@ contract MaliciousReserve is KyberReserveInterface, Withdrawable, Utils {
         return true;
     }
 
-    function setKyberProxy(KyberNetworkProxyInterface _proxy) public {
+    function setnimbleProxy(nimbleNetworkProxyInterface _proxy) public {
 
         require(_proxy != address(0));
 

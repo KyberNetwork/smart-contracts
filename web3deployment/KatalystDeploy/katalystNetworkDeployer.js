@@ -123,7 +123,7 @@ async function deployContract(artifacts, contractName, ctorArgs) {
 
 //token addresses
 let allTokens;
-let kncTokenAddress;
+let NIMTokenAddress;
 
 //contracts
 let feeHandlerContract;
@@ -194,7 +194,7 @@ function parseInput(jsonInput) {
     networkPermissions = jsonInput.permission["Network"];
     proxyPermissions = jsonInput.permission["Proxy"];
     storagePermissions = jsonInput.permission["Storage"];
-    daoOperator = jsonInput.permission["KyberDao"]["DaoOperator"]
+    daoOperator = jsonInput.permission["nimbleDao"]["DaoOperator"]
 
     //constants
     isFeeAccounted = jsonInput["isFeeAccounted"];
@@ -208,7 +208,7 @@ function parseInput(jsonInput) {
     rewardFeeBps = jsonInput["reward fee bps"].toString();;
     rebateFeeBps = jsonInput["rebate bps"].toString();;
 
-    kncTokenAddress = jsonInput["addresses"].knc;
+    NIMTokenAddress = jsonInput["addresses"].NIM;
     gasHelperAddress = jsonInput["addresses"].gasHelper;
 
     // output file name
@@ -393,13 +393,13 @@ function verifyInput() {
 async function deployMatchingEngineContract(output) {
   if (matchingEngineAddress == "") {
     console.log("deploying matching engine");
-    [matchingEngineAddress, matchingEngineContract] = await deployContract(output, "KyberMatchingEngine", [sender]);
+    [matchingEngineAddress, matchingEngineContract] = await deployContract(output, "nimbleMatchingEngine", [sender]);
     console.log(`matchingEngine: ${matchingEngineAddress}`);
     await pressToContinue();
   } else {
     console.log("Instantiating matching engine...");
     matchingEngineContract = new web3.eth.Contract(
-      output["KyberMatchingEngine"].abi, matchingEngineAddress
+      output["nimbleMatchingEngine"].abi, matchingEngineAddress
     );
   }
 }
@@ -408,48 +408,48 @@ async function deployStorageContracts(output) {
   // network history
   if (networkHistoryAddress == "") {
     console.log("deploy networkHistory");
-    [networkHistoryAddress, networkHistoryContract] = await deployContract(output, "KyberHistory", [sender]);
+    [networkHistoryAddress, networkHistoryContract] = await deployContract(output, "nimbleHistory", [sender]);
     console.log(`networkHistory: ${networkHistoryAddress}`);
   } else {
     console.log("instantiating networkHistory...");
     networkHistoryContract = new web3.eth.Contract(
-      output["KyberHistory"].abi, networkHistoryAddress
+      output["nimbleHistory"].abi, networkHistoryAddress
     );
   }
 
   // feeHandlerhistory
   if (feeHandlerHistoryAddress == "") {
     console.log("deploy feeHandlerHistory");
-    [feeHandlerHistoryAddress, feeHandlerHistoryContract] = await deployContract(output, "KyberHistory", [sender]);
+    [feeHandlerHistoryAddress, feeHandlerHistoryContract] = await deployContract(output, "nimbleHistory", [sender]);
     console.log(`feeHandlerHistory: ${feeHandlerHistoryAddress}`);
   } else {
     console.log("instantiating feeHandlerHistory...");
     feeHandlerHistoryContract = new web3.eth.Contract(
-      output["KyberHistory"].abi, feeHandlerHistoryAddress
+      output["nimbleHistory"].abi, feeHandlerHistoryAddress
     );
   }
 
-  // kyberDao history
+  // nimbleDao history
   if (daoHistoryAddress == "") {
     console.log("deploy daoHistory");
-    [daoHistoryAddress, daoHistoryContract] = await deployContract(output, "KyberHistory", [sender]);
+    [daoHistoryAddress, daoHistoryContract] = await deployContract(output, "nimbleHistory", [sender]);
     console.log(`daoHistory: ${daoHistoryAddress}`);
   } else {
     console.log("instantiating daoHistory...");
     daoHistoryContract = new web3.eth.Contract(
-      output["KyberHistory"].abi, daoHistoryAddress
+      output["nimbleHistory"].abi, daoHistoryAddress
     );
   }
 
   // matchingEngine history
   if (matchingEngineHistoryAddress == "") {
     console.log("deploy matchingEngineHistory");
-    [matchingEngineHistoryAddress, matchingEngineHistoryContract] = await deployContract(output, "KyberHistory", [sender]);
+    [matchingEngineHistoryAddress, matchingEngineHistoryContract] = await deployContract(output, "nimbleHistory", [sender]);
     console.log(`matchingEngineHistory: ${matchingEngineHistoryAddress}`);
   } else {
     console.log("instantiating matchingEngineHistory...");
     matchingEngineHistoryContract = new web3.eth.Contract(
-      output["KyberHistory"].abi, matchingEngineHistoryAddress
+      output["nimbleHistory"].abi, matchingEngineHistoryAddress
     );
   }
 
@@ -457,7 +457,7 @@ async function deployStorageContracts(output) {
     console.log("deploying storage");
     [storageAddress, storageContract] = await deployContract(
       output,
-      "KyberStorage",
+      "nimbleStorage",
       [sender, networkHistoryAddress, feeHandlerHistoryAddress, daoHistoryAddress, matchingEngineHistoryAddress]
       );
     console.log(`storage: ${storageAddress}`);
@@ -465,21 +465,21 @@ async function deployStorageContracts(output) {
   } else {
     console.log("Instantiating storage...");
     storageContract = new web3.eth.Contract(
-      output["KyberStorage"].abi, storageAddress
+      output["nimbleStorage"].abi, storageAddress
     );
   }
 }
 
 async function deployNetworkContract(output) {
   if (networkAddress == "") {
-    console.log("deploying kyber network");
-    [networkAddress, networkContract] = await deployContract(output, "KyberNetwork", [sender, storageAddress]);
+    console.log("deploying nimble network");
+    [networkAddress, networkContract] = await deployContract(output, "nimbleNetwork", [sender, storageAddress]);
     console.log(`network: ${networkAddress}`);
     await pressToContinue();
   } else {
     console.log("Instantiating network...");
     networkContract = new web3.eth.Contract(
-    output["KyberNetwork"].abi, networkAddress
+    output["nimbleNetwork"].abi, networkAddress
     );
   }
 }
@@ -487,13 +487,13 @@ async function deployNetworkContract(output) {
 async function deployProxyContract(output) {
   if (proxyAddress == "") {
     console.log("deploying KNProxy");
-    [proxyAddress, proxyContract] = await deployContract(output, "KyberNetworkProxy", [sender]);
+    [proxyAddress, proxyContract] = await deployContract(output, "nimbleNetworkProxy", [sender]);
     console.log(`KNProxy: ${proxyAddress}`);
     await pressToContinue();
   } else {
     console.log("Instantiating proxy...");
     proxyContract = new web3.eth.Contract(
-      output["KyberNetworkProxy"].abi, proxyAddress
+      output["nimbleNetworkProxy"].abi, proxyAddress
     );
   }
 }
@@ -502,15 +502,15 @@ async function deployFeeHandlerContract(output) {
   if (feeHandlerAddress == "") {
     console.log("deploying feeHandler");
     [feeHandlerAddress, feeHandlerContract] = await deployContract(
-      output, "KyberFeeHandler", 
-      [sender, proxyAddress, networkAddress, kncTokenAddress, burnBlockInterval, daoOperator]
+      output, "nimbleFeeHandler", 
+      [sender, proxyAddress, networkAddress, NIMTokenAddress, burnBlockInterval, daoOperator]
     );
     console.log(`Fee Handler: ${feeHandlerAddress}`);
     await pressToContinue();
   } else {
     console.log("Instantiating feeHandler...");
     feeHandlerContract = new web3.eth.Contract(
-      output["KyberFeeHandler"].abi, feeHandlerAddress
+      output["nimbleFeeHandler"].abi, feeHandlerAddress
     );
   }
 }
@@ -519,9 +519,9 @@ async function deployDaoContract(output) {
     if (daoAddress == "") {
         console.log("deploying Dao and staking contracts");
         [daoAddress, daoContract] = await deployContract(
-            output, "KyberDao",
+            output, "nimbleDao",
             [
-              epochPeriod, startTimestamp, kncTokenAddress,
+              epochPeriod, startTimestamp, NIMTokenAddress,
               networkFeeBps, rewardFeeBps, rebateFeeBps, daoOperator
             ]
         );
@@ -529,7 +529,7 @@ async function deployDaoContract(output) {
     } else {
         console.log("Instantiating Dao...");
         daoContract = new web3.eth.Contract(
-          output["KyberDao"].abi, daoAddress
+          output["nimbleDao"].abi, daoAddress
         );
     }
     // Note: Staking contract need not be instantiated, since it doesn't require any setup
@@ -544,8 +544,8 @@ async function getStakingAddress() {
 
 async function waitForMatchingEngineAndStorageUpdate() {
   while(true) {
-    let matchingEngineNetwork = await matchingEngineContract.methods.kyberNetwork().call();
-    let storageNetwork = await storageContract.methods.kyberNetwork().call();
+    let matchingEngineNetwork = await matchingEngineContract.methods.nimbleNetwork().call();
+    let storageNetwork = await storageContract.methods.nimbleNetwork().call();
     if (matchingEngineNetwork == networkAddress && storageNetwork == networkAddress) {
       return;
     } else if (matchingEngineNetwork != networkAddress) {
@@ -563,9 +563,9 @@ async function waitForMatchingEngineAndStorageUpdate() {
 }
 
 async function checkZeroProxies() {
-    let networkProxies = await storageContract.methods.getKyberProxies().call();
+    let networkProxies = await storageContract.methods.getnimbleProxies().call();
     if (networkProxies.length > 0) {
-      console.log("\x1b[41m%s\x1b[0m" ,"Existing kyberProxies in storage, remove before proceeding");
+      console.log("\x1b[41m%s\x1b[0m" ,"Existing nimbleProxies in storage, remove before proceeding");
       process.exit(1);
     }
     return;
@@ -592,9 +592,9 @@ async function setNetworkAddressInStorage(tempAddress) {
 async function setStorageAddressInMatchingEngine(tempAddress) {
   console.log("set storage in matching engine");
   if (tempAddress == undefined) {
-    await sendTx(matchingEngineContract.methods.setKyberStorage(storageAddress));
+    await sendTx(matchingEngineContract.methods.setnimbleStorage(storageAddress));
   } else {
-    await sendTx(matchingEngineContract.methods.setKyberStorage(tempAddress));
+    await sendTx(matchingEngineContract.methods.setnimbleStorage(tempAddress));
   }
 }
 
@@ -619,7 +619,7 @@ async function set_Fee_MatchEngine_Gas_ContractsInNetwork() {
 
 async function setDaoInNetwork() {
   console.log("Setting dao address in network");
-  await sendTx(networkContract.methods.setKyberDaoContract(daoAddress));
+  await sendTx(networkContract.methods.setnimbleDaoContract(daoAddress));
 }
 
 async function setDaoInFeeHandler() {
@@ -629,12 +629,12 @@ async function setDaoInFeeHandler() {
 
 async function setProxyInNetwork() {
   console.log("set proxy in network");
-  await sendTx(networkContract.methods.addKyberProxy(proxyAddress));
+  await sendTx(networkContract.methods.addnimbleProxy(proxyAddress));
 }
 
 async function setNetworkInProxy() {
   console.log("setting network in proxy");
-  await sendTx(proxyContract.methods.setKyberNetwork(networkAddress));
+  await sendTx(proxyContract.methods.setnimbleNetwork(networkAddress));
 }
 
 async function setHintHandlerInProxy() {

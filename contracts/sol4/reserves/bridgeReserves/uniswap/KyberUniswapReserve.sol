@@ -1,7 +1,7 @@
 pragma solidity 0.4.18;
 
 import "../../../Withdrawable.sol";
-import "../../../KyberReserveInterface.sol";
+import "../../../nimbleReserveInterface.sol";
 import "../../../Utils2.sol";
 
 
@@ -56,12 +56,12 @@ interface UniswapFactory {
  * An additional premium may be added to the converted price for optional
  * promotions.
  */
-contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
+contract nimbleUniswapReserve is nimbleReserveInterface, Withdrawable, Utils2 {
     // Parts per 10000
     uint public constant DEFAULT_FEE_BPS = 25;
 
     UniswapFactory public uniswapFactory;
-    address public kyberNetwork;
+    address public nimbleNetwork;
 
     uint public feeBps = DEFAULT_FEE_BPS;
 
@@ -87,20 +87,20 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
     /**
         Constructor
     */
-    function KyberUniswapReserve(
+    function nimbleUniswapReserve(
         UniswapFactory _uniswapFactory,
         address _admin,
-        address _kyberNetwork
+        address _nimbleNetwork
     )
         public
     {
         require(address(_uniswapFactory) != 0);
         require(_admin != 0);
-        require(_kyberNetwork != 0);
+        require(_nimbleNetwork != 0);
 
         uniswapFactory = _uniswapFactory;
         admin = _admin;
-        kyberNetwork = _kyberNetwork;
+        nimbleNetwork = _nimbleNetwork;
     }
 
     function() public payable {
@@ -215,7 +215,7 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         returns(bool)
     {
         require(tradeEnabled);
-        require(msg.sender == kyberNetwork);
+        require(msg.sender == nimbleNetwork);
         require(isValidTokens(srcToken, destToken));
 
         if (validate) {
@@ -438,26 +438,26 @@ contract KyberUniswapReserve is KyberReserveInterface, Withdrawable, Utils2 {
         return true;
     }
 
-    event KyberNetworkSet(
-        address kyberNetwork
+    event nimbleNetworkSet(
+        address nimbleNetwork
     );
 
-    function setKyberNetwork(
-        address _kyberNetwork
+    function setnimbleNetwork(
+        address _nimbleNetwork
     )
         public
         onlyAdmin
     {
-        require(_kyberNetwork != 0);
-        kyberNetwork = _kyberNetwork;
-        KyberNetworkSet(kyberNetwork);
+        require(_nimbleNetwork != 0);
+        nimbleNetwork = _nimbleNetwork;
+        nimbleNetworkSet(nimbleNetwork);
     }
 
     /*
      * Uses amounts and rates to check if the reserve's internal inventory can
      * be used directly.
      *
-     * rateEthToToken and rateTokenToEth are in kyber rate format meaning
+     * rateEthToToken and rateTokenToEth are in nimble rate format meaning
      * rate as numerator and 1e18 as denominator.
      */
     function shouldUseInternalInventory(

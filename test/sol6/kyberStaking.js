@@ -1,9 +1,9 @@
 const TestToken = artifacts.require("Token.sol");
-const MockKyberDao = artifacts.require("MockKyberDaoTestHandleWithdrawal.sol");
-const MockKyberDaoWithdrawFailed = artifacts.require("MockKyberDaoWithdrawFailed.sol");
-const StakingContract = artifacts.require("MockKyberStaking.sol");
-const MaliciousStaking = artifacts.require("MockKyberStakingMalicious.sol");
-const MaliciousDaoReentrancy = artifacts.require("MockMaliciousKyberDaoReentrancy.sol");
+const MocknimbleDao = artifacts.require("MocknimbleDaoTestHandleWithdrawal.sol");
+const MocknimbleDaoWithdrawFailed = artifacts.require("MocknimbleDaoWithdrawFailed.sol");
+const StakingContract = artifacts.require("MocknimbleStaking.sol");
+const MaliciousStaking = artifacts.require("MocknimbleStakingMalicious.sol");
+const MaliciousDaoReentrancy = artifacts.require("MockMaliciousnimbleDaoReentrancy.sol");
 const Helper = require("../helper.js");
 
 const BN = web3.utils.BN;
@@ -11,7 +11,7 @@ const BN = web3.utils.BN;
 const { precisionUnits, zeroAddress } = require("../helper.js");
 const { expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
-let kyberDao;
+let nimbleDao;
 
 let currentBlock;
 
@@ -19,16 +19,16 @@ let epochPeriod = 20;
 let startBlock;
 let blockTime;
 let currentChainTime;
-let kncToken;
+let NIMToken;
 let stakingContract;
 let victor;
 let loi;
 let mike;
 
-contract('KyberStaking', function(accounts) {
+contract('nimbleStaking', function(accounts) {
   before("one time init", async() => {
-    kyberDao = accounts[1];
-    kncToken = await TestToken.new("Kyber Network Crystal", "KNC", 18);
+    nimbleDao = accounts[1];
+    NIMToken = await TestToken.new("nimble Network Crystal", "NIM", 18);
     victor = accounts[2];
     loi = accounts[3];
     mike = accounts[4];
@@ -54,10 +54,10 @@ contract('KyberStaking', function(accounts) {
     startBlock = _startBlock;
     console.log(`deploy staking contract: period: ${blocksToSeconds(epochPeriod)}, start: ${blockToTimestamp(startBlock)}`);
     stakingContract = await StakingContract.new(
-      kncToken.address,
+      NIMToken.address,
       blocksToSeconds(epochPeriod),
       blockToTimestamp(startBlock),
-      kyberDao
+      nimbleDao
     );
   };
 
@@ -99,8 +99,8 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit at beginning of epoch, stakes change as expected", async function() {
       await deployStakingContract(6, currentBlock + 6);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
 
       Helper.assertEqual(0, await stakingContract.getStake(victor, 0), "stake at epoch 0 is wrong");
       Helper.assertEqual(0, await stakingContract.getLatestStakeBalance(victor), "latest stake balance is wrong");
@@ -130,8 +130,8 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit at end of epoch, stakes change as expected", async function() {
       await deployStakingContract(6, currentBlock + 6);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
 
       Helper.assertEqual(0, await stakingContract.getStake(victor, 0), "stake at epoch 0 is wrong");
       Helper.assertEqual(0, await stakingContract.getLatestStakeBalance(victor), "latest stake balance is wrong");
@@ -167,8 +167,8 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit then withdraw at same + different epoch, stakes change as expected", async function() {
       await deployStakingContract(6, currentBlock + 6);
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
 
       // deposit at epoch 0
       await stakingContract.deposit(mulPrecision(50), {from: victor});
@@ -200,8 +200,8 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit then withdraw + deposit again at same epoch, stakes change as expected", async function() {
       await deployStakingContract(6, currentBlock + 6);
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
 
       // deposit at epoch 0
       await stakingContract.deposit(mulPrecision(50), {from: victor});
@@ -222,8 +222,8 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit after full withdraw, stakes change as expected - no delegation", async function() {
       await deployStakingContract(6, currentBlock + 6);
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
 
       // deposit at epoch 0
       await stakingContract.deposit(mulPrecision(50), {from: victor});
@@ -260,8 +260,8 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit after full withdraw, stakes change as expected - with delegation", async function() {
       await deployStakingContract(6, currentBlock + 6);
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
 
       // deposit at epoch 0
       await stakingContract.deposit(mulPrecision(50), {from: victor});
@@ -304,8 +304,8 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit few consecutive epochs + after few epochs, stakes change as expected", async function() {
       await deployStakingContract(6, currentBlock + 6);
 
-      await kncToken.transfer(victor, mulPrecision(1000));
-      await kncToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(1000));
+      await NIMToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
 
       let currentEpoch = 0;
       let totalDeposited = 0;
@@ -338,8 +338,8 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit then delegate, then deposit again, stakes changes as expected", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(1000));
-      await kncToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(1000));
+      await NIMToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
 
       await stakingContract.deposit(mulPrecision(100), {from: victor});
       await stakingContract.delegate(mike, {from: victor});
@@ -378,8 +378,8 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit then delegate, then delegate again at same + different epoch", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(1000));
-      await kncToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(1000));
+      await NIMToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
 
       await stakingContract.delegate(mike, {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
@@ -431,12 +431,12 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit with many stakers", async function() {
       await deployStakingContract(6, currentBlock + 20);
 
-      await kncToken.transfer(victor, mulPrecision(1000));
-      await kncToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
-      await kncToken.transfer(loi, mulPrecision(1000));
-      await kncToken.approve(stakingContract.address, mulPrecision(1000), {from: loi});
-      await kncToken.transfer(mike, mulPrecision(1000));
-      await kncToken.approve(stakingContract.address, mulPrecision(1000), {from: mike});
+      await NIMToken.transfer(victor, mulPrecision(1000));
+      await NIMToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
+      await NIMToken.transfer(loi, mulPrecision(1000));
+      await NIMToken.approve(stakingContract.address, mulPrecision(1000), {from: loi});
+      await NIMToken.transfer(mike, mulPrecision(1000));
+      await NIMToken.approve(stakingContract.address, mulPrecision(1000), {from: mike});
 
       await stakingContract.deposit(mulPrecision(100), {from: mike});
       await stakingContract.deposit(mulPrecision(200), {from: victor});
@@ -478,8 +478,8 @@ contract('KyberStaking', function(accounts) {
       await deployStakingContract(10, currentBlock + 10);
 
       // has 100 tokens, approve enough but try to deposit more
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(3 * epochPeriod + startBlock)
@@ -531,26 +531,26 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit balances change as expected", async function() {
       await deployStakingContract(4, currentBlock + 20);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
 
-      let expectedUserBal = await kncToken.balanceOf(victor);
-      let expectedStakingBal = await kncToken.balanceOf(stakingContract.address);
+      let expectedUserBal = await NIMToken.balanceOf(victor);
+      let expectedStakingBal = await NIMToken.balanceOf(stakingContract.address);
 
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
       expectedUserBal.isub(mulPrecision(100));
       expectedStakingBal.iadd(mulPrecision(100));
 
-      Helper.assertEqual(expectedUserBal, await kncToken.balanceOf(victor), "user balance is not changed as expected");
-      Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
+      Helper.assertEqual(expectedUserBal, await NIMToken.balanceOf(victor), "user balance is not changed as expected");
+      Helper.assertEqual(expectedStakingBal, await NIMToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
 
       await stakingContract.deposit(mulPrecision(200), {from: victor});
       expectedUserBal.isub(mulPrecision(200));
       expectedStakingBal.iadd(mulPrecision(200));
 
-      Helper.assertEqual(expectedUserBal, await kncToken.balanceOf(victor), "user balance is not changed as expected");
-      Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
+      Helper.assertEqual(expectedUserBal, await NIMToken.balanceOf(victor), "user balance is not changed as expected");
+      Helper.assertEqual(expectedStakingBal, await NIMToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
 
       await Helper.increaseNextBlockTimestamp(
         blocksToSeconds(30)
@@ -561,16 +561,16 @@ contract('KyberStaking', function(accounts) {
       expectedUserBal.isub(mulPrecision(100));
       expectedStakingBal.iadd(mulPrecision(100));
 
-      Helper.assertEqual(expectedUserBal, await kncToken.balanceOf(victor), "user balance is not changed as expected");
-      Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
+      Helper.assertEqual(expectedUserBal, await NIMToken.balanceOf(victor), "user balance is not changed as expected");
+      Helper.assertEqual(expectedStakingBal, await NIMToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
     });
 
     it("Test deposit large amount of tokens, check for overflow", async function() {
       await deployStakingContract(4, currentBlock + 20);
 
       let totalAmount = precisionUnits.mul(new BN(10).pow(new BN(8))).mul(new BN(2)); // 200M tokens
-      await kncToken.transfer(victor, totalAmount);
-      await kncToken.approve(stakingContract.address, totalAmount, {from: victor});
+      await NIMToken.transfer(victor, totalAmount);
+      await NIMToken.approve(stakingContract.address, totalAmount, {from: victor});
       await stakingContract.deposit(totalAmount, {from: victor});
 
       Helper.assertEqual(totalAmount, await stakingContract.getLatestStakeBalance(victor), "latest stake balance is wrong");
@@ -596,8 +596,8 @@ contract('KyberStaking', function(accounts) {
     it("Test deposit gas usages", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(1000));
-      await kncToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(1000));
+      await NIMToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
 
       let tx = await stakingContract.deposit(mulPrecision(100), {from: victor});
       logInfo("Deposit no delegation: init 2 epochs data, gas used: " + tx.receipt.gasUsed);
@@ -630,8 +630,8 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw (partial + full), stakes change as expected - no delegation", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(500), {from: victor});
 
       let tx = await stakingContract.withdraw(mulPrecision(50), {from: victor});
@@ -693,8 +693,8 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw (partial + full), stakes change as expected - with delegation", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(500), {from: victor});
       await stakingContract.delegate(mike, {from: victor});
 
@@ -744,8 +744,8 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw more than current epoch stake, but less than total stake", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(300), {from: victor});
 
       // delay to epoch 1
@@ -755,7 +755,7 @@ contract('KyberStaking', function(accounts) {
 
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
-      // total victor has 400 knc, at current epoch (1) he has 300 knc
+      // total victor has 400 NIM, at current epoch (1) he has 300 NIM
       await stakingContract.withdraw(mulPrecision(350), {from: victor});
 
       Helper.assertEqual(mulPrecision(50), await stakingContract.getStakesValue(victor, 1), "stake at epoch 1 should be correct");
@@ -766,8 +766,8 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw before new deposit, stakes change as expected", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(400), {from: victor});
       await stakingContract.delegate(mike, {from: victor});
 
@@ -802,8 +802,8 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw less than new deposit, stakes change as expected", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(400), {from: victor});
       await stakingContract.delegate(mike, {from: victor});
 
@@ -828,8 +828,8 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw total more than new deposit, stakes change as expected", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(400), {from: victor});
       await stakingContract.delegate(mike, {from: victor});
 
@@ -855,8 +855,8 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw total more than new deposit, then deposit again stakes change as expected", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(1000));
-      await kncToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(1000));
+      await NIMToken.approve(stakingContract.address, mulPrecision(1000), {from: victor});
       await stakingContract.deposit(mulPrecision(400), {from: victor});
       await stakingContract.delegate(mike, {from: victor});
 
@@ -882,16 +882,16 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw at end and beginning of an epoch", async function() {
       await deployStakingContract(10, currentBlock + 20);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
-      await kncToken.transfer(mike, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: mike});
+      await NIMToken.transfer(mike, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: mike});
       await stakingContract.deposit(mulPrecision(100), {from: mike});
 
-      await kncToken.transfer(loi, mulPrecision(800));
-      await kncToken.approve(stakingContract.address, mulPrecision(800), {from: loi});
+      await NIMToken.transfer(loi, mulPrecision(800));
+      await NIMToken.approve(stakingContract.address, mulPrecision(800), {from: loi});
       await stakingContract.deposit(mulPrecision(800), {from: loi});
 
       Helper.assertEqual(0, await stakingContract.getStake(victor, 0), "stake at epoch 0 is wrong");
@@ -929,8 +929,8 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw data is inited correctly", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
       await Helper.setNextBlockTimestamp(
@@ -981,27 +981,27 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw balances change as expected", async function() {
       await deployStakingContract(4, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
 
       await stakingContract.deposit(mulPrecision(400), {from: victor});
 
-      let expectedUserBal = await kncToken.balanceOf(victor);
-      let expectedStakingBal = await kncToken.balanceOf(stakingContract.address);
+      let expectedUserBal = await NIMToken.balanceOf(victor);
+      let expectedStakingBal = await NIMToken.balanceOf(stakingContract.address);
 
       await stakingContract.withdraw(mulPrecision(50), {from: victor});
       expectedUserBal.iadd(mulPrecision(50));
       expectedStakingBal.isub(mulPrecision(50));
 
-      Helper.assertEqual(expectedUserBal, await kncToken.balanceOf(victor), "user balance is not changed as expected");
-      Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
+      Helper.assertEqual(expectedUserBal, await NIMToken.balanceOf(victor), "user balance is not changed as expected");
+      Helper.assertEqual(expectedStakingBal, await NIMToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
 
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
       expectedUserBal.iadd(mulPrecision(100));
       expectedStakingBal.isub(mulPrecision(100));
 
-      Helper.assertEqual(expectedUserBal, await kncToken.balanceOf(victor), "user balance is not changed as expected");
-      Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
+      Helper.assertEqual(expectedUserBal, await NIMToken.balanceOf(victor), "user balance is not changed as expected");
+      Helper.assertEqual(expectedStakingBal, await NIMToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
 
       await Helper.increaseNextBlockTimestamp(
         blocksToSeconds(20)
@@ -1010,27 +1010,27 @@ contract('KyberStaking', function(accounts) {
       expectedUserBal.iadd(mulPrecision(100));
       expectedStakingBal.isub(mulPrecision(100));
 
-      Helper.assertEqual(expectedUserBal, await kncToken.balanceOf(victor), "user balance is not changed as expected");
-      Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
+      Helper.assertEqual(expectedUserBal, await NIMToken.balanceOf(victor), "user balance is not changed as expected");
+      Helper.assertEqual(expectedStakingBal, await NIMToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
 
       await stakingContract.withdraw(mulPrecision(50), {from: victor});
       expectedUserBal.iadd(mulPrecision(50));
       expectedStakingBal.isub(mulPrecision(50));
 
-      Helper.assertEqual(expectedUserBal, await kncToken.balanceOf(victor), "user balance is not changed as expected");
-      Helper.assertEqual(expectedStakingBal, await kncToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
+      Helper.assertEqual(expectedUserBal, await NIMToken.balanceOf(victor), "user balance is not changed as expected");
+      Helper.assertEqual(expectedStakingBal, await NIMToken.balanceOf(stakingContract.address), "staking balance is not changed as expected");
     });
 
-    it("Test withdraw should call KyberDao handleWithdrawal as expected", async function() {
-      let dao = await MockKyberDao.new(
+    it("Test withdraw should call nimbleDao handleWithdrawal as expected", async function() {
+      let dao = await MocknimbleDao.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      kyberDao = dao.address;
+      nimbleDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
 
       await stakingContract.deposit(mulPrecision(400), {from: victor});
       await stakingContract.withdraw(mulPrecision(10), {from: victor});
@@ -1098,19 +1098,19 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(mulPrecision(25), await dao.values(mike), "dao values should be correct");
       Helper.assertEqual(mulPrecision(10), await dao.values(loi), "dao values should be correct");
 
-      kyberDao = accounts[1];
+      nimbleDao = accounts[1];
     });
 
     it("Test handleWithdrawal should revert sender is not staking", async() => {
-      let dao = await MockKyberDao.new(
+      let dao = await MocknimbleDao.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      kyberDao = dao.address;
+      nimbleDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(500), {from: victor});
 
       await expectRevert(
@@ -1118,19 +1118,19 @@ contract('KyberStaking', function(accounts) {
         "only staking contract"
       )
       await stakingContract.withdraw(mulPrecision(100), {from: victor});
-      kyberDao = accounts[1];
+      nimbleDao = accounts[1];
     });
 
     it("Test withdraw gas usages", async function() {
-      let dao = await MockKyberDao.new(
+      let dao = await MocknimbleDao.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
       );
-      kyberDao = dao.address;
+      nimbleDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
 
       await stakingContract.deposit(mulPrecision(300), {from: victor});
       let tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
@@ -1171,15 +1171,15 @@ contract('KyberStaking', function(accounts) {
       tx = await stakingContract.withdraw(mulPrecision(10), {from: victor});
       logInfo("Withdraw has delegation: without init epoch data + no penalty amount, gas used: " + tx.receipt.gasUsed);
     });
-    kyberDao = accounts[1];
+    nimbleDao = accounts[1];
   });
 
   describe("#Delegate Tests", () => {
     it("Test delegate, representative and stake change as expected", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
 
       let tx = await stakingContract.delegate(mike, {from: victor});
       expectEvent(tx, "Delegated", {
@@ -1260,8 +1260,8 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate same address many times", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
 
       await stakingContract.delegate(mike, {from: victor});
 
@@ -1297,8 +1297,8 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate, then delegate back to yourself", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
 
       await stakingContract.delegate(mike, {from: victor});
       await stakingContract.deposit(mulPrecision(50), {from: victor});
@@ -1325,8 +1325,8 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate after few epochs didn't do anything", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
       await Helper.setNextBlockTimestamp(
@@ -1344,8 +1344,8 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate then deposit more at current + next + after few epochs", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(400));
-      await kncToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(400));
+      await NIMToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
       await Helper.setNextBlockTimestamp(
@@ -1378,12 +1378,12 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate from many addresses, stakes change as expected", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(400));
-      await kncToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(400));
+      await NIMToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
-      await kncToken.transfer(mike, mulPrecision(400));
-      await kncToken.approve(stakingContract.address, mulPrecision(400), {from: mike});
+      await NIMToken.transfer(mike, mulPrecision(400));
+      await NIMToken.approve(stakingContract.address, mulPrecision(400), {from: mike});
       await stakingContract.deposit(mulPrecision(100), {from: mike});
 
       await stakingContract.delegate(loi, {from: victor});
@@ -1415,8 +1415,8 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate then withdraw, stakes change as expected", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(400));
-      await kncToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(400));
+      await NIMToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
       await stakingContract.deposit(mulPrecision(400), {from: victor});
 
       await stakingContract.delegate(loi, {from: victor});
@@ -1452,8 +1452,8 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate then withdraw after new deposit, stakes change as expected", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(400));
-      await kncToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(400));
+      await NIMToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
       await stakingContract.deposit(mulPrecision(300), {from: victor});
 
       await stakingContract.delegate(loi, {from: victor});
@@ -1494,8 +1494,8 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate at end and beginning of an epoch", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(400));
-      await kncToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(400));
+      await NIMToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
       await stakingContract.deposit(mulPrecision(300), {from: victor});
 
       await Helper.setNextBlockTimestamp(
@@ -1531,16 +1531,16 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate circulation, data changes as expect", async function() {
       await deployStakingContract(10, currentBlock + 20);
 
-      await kncToken.transfer(victor, mulPrecision(400));
-      await kncToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(400));
+      await NIMToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
-      await kncToken.transfer(mike, mulPrecision(400));
-      await kncToken.approve(stakingContract.address, mulPrecision(400), {from: mike});
+      await NIMToken.transfer(mike, mulPrecision(400));
+      await NIMToken.approve(stakingContract.address, mulPrecision(400), {from: mike});
       await stakingContract.deposit(mulPrecision(200), {from: mike});
 
-      await kncToken.transfer(loi, mulPrecision(400));
-      await kncToken.approve(stakingContract.address, mulPrecision(400), {from: loi});
+      await NIMToken.transfer(loi, mulPrecision(400));
+      await NIMToken.approve(stakingContract.address, mulPrecision(400), {from: loi});
       await stakingContract.deposit(mulPrecision(300), {from: loi});
 
       await stakingContract.delegate(mike, {from: victor});
@@ -1600,8 +1600,8 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate, then delegate to another, deposit + withdraw stakes change as expected", async function() {
       await deployStakingContract(10, currentBlock + 20);
 
-      await kncToken.transfer(victor, mulPrecision(400));
-      await kncToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(400));
+      await NIMToken.approve(stakingContract.address, mulPrecision(400), {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
       await stakingContract.delegate(mike, {from: victor});
@@ -1641,8 +1641,8 @@ contract('KyberStaking', function(accounts) {
     it("Test delegate data is inited correctly", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
 
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(3 * epochPeriod + startBlock)
@@ -1714,8 +1714,8 @@ contract('KyberStaking', function(accounts) {
       await stakingContract.delegate(victor, {from: victor});
 
       // make deposit
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
       await stakingContract.deposit(mulPrecision(10), {from: victor});
 
       await Helper.setNextBlockTimestamp(
@@ -1767,8 +1767,8 @@ contract('KyberStaking', function(accounts) {
     it("Test get functions return default value when calling epoch > current epoch + 1", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
       await stakingContract.deposit(mulPrecision(50), {from: victor});
 
       Helper.assertEqual(0, await stakingContract.getStake(victor, 100), "get stakes should return 0");
@@ -1779,8 +1779,8 @@ contract('KyberStaking', function(accounts) {
     it("Test getStake returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
       await stakingContract.deposit(mulPrecision(50), {from: victor});
 
       Helper.assertEqual(0, await stakingContract.getStake(victor, 0), "get stakes should return 0");
@@ -1821,8 +1821,8 @@ contract('KyberStaking', function(accounts) {
     it("Test getDelegatedStake returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
       await stakingContract.deposit(mulPrecision(50), {from: victor});
       await stakingContract.delegate(mike, {from: victor});
 
@@ -1881,8 +1881,8 @@ contract('KyberStaking', function(accounts) {
       Helper.assertEqual(victor, await stakingContract.getRepresentative(victor, 0), "get representative should return correct data");
       Helper.assertEqual(victor, await stakingContract.getRepresentative(victor, 1), "get representative should return correct data");
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
       await stakingContract.delegate(mike, {from: victor});
 
       Helper.assertEqual(victor, await stakingContract.getRepresentative(victor, 0), "get representative should return correct data");
@@ -1918,10 +1918,10 @@ contract('KyberStaking', function(accounts) {
     it("Test getStake returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
-      await kncToken.transfer(mike, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: mike});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(mike, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: mike});
 
       let data = await stakingContract.getStakerRawData(victor, 0);
       Helper.assertEqual(0, data[0], "stake is wrong");
@@ -2021,8 +2021,8 @@ contract('KyberStaking', function(accounts) {
     it("Test get latest stake returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
 
       Helper.assertEqual(0, await stakingContract.getLatestStakeBalance(victor), "latest stake is wrong");
 
@@ -2068,14 +2068,14 @@ contract('KyberStaking', function(accounts) {
     it("Test get latest delegated stake returns correct data", async function() {
       await deployStakingContract(6, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
 
-      await kncToken.transfer(mike, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: mike});
+      await NIMToken.transfer(mike, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: mike});
 
-      await kncToken.transfer(loi, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: loi});
+      await NIMToken.transfer(loi, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: loi});
 
       Helper.assertEqual(0, await stakingContract.getLatestDelegatedStake(mike), "latest delegated stake is wrong");
       Helper.assertEqual(0, await stakingContract.getLatestDelegatedStake(loi), "latest delegated stake is wrong");
@@ -2203,11 +2203,11 @@ contract('KyberStaking', function(accounts) {
       stakerData = await stakingContract.getStakerData(mike, 0);
       verifyStakerData(stakerData, 0, 0, mike);
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
 
-      await kncToken.transfer(mike, mulPrecision(300));
-      await kncToken.approve(stakingContract.address, mulPrecision(300), {from: mike});
+      await NIMToken.transfer(mike, mulPrecision(300));
+      await NIMToken.approve(stakingContract.address, mulPrecision(300), {from: mike});
 
       await stakingContract.deposit(mulPrecision(200), {from: victor});
       await stakingContract.deposit(mulPrecision(300), {from: mike});
@@ -2279,14 +2279,14 @@ contract('KyberStaking', function(accounts) {
       stakerData = await stakingContract.getLatestStakerData(victor);
       verifyStakerData(stakerData, 0, 0, victor);
 
-      await kncToken.transfer(victor, mulPrecision(200));
-      await kncToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(200));
+      await NIMToken.approve(stakingContract.address, mulPrecision(200), {from: victor});
 
-      await kncToken.transfer(mike, mulPrecision(300));
-      await kncToken.approve(stakingContract.address, mulPrecision(300), {from: mike});
+      await NIMToken.transfer(mike, mulPrecision(300));
+      await NIMToken.approve(stakingContract.address, mulPrecision(300), {from: mike});
 
-      await kncToken.transfer(loi, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: loi});
+      await NIMToken.transfer(loi, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: loi});
 
       await stakingContract.deposit(mulPrecision(200), {from: victor});
       await stakingContract.deposit(mulPrecision(300), {from: mike});
@@ -2363,23 +2363,23 @@ contract('KyberStaking', function(accounts) {
       verifyStakerData(stakerData, mulPrecision(100), 0, mike);
     });
 
-    it("Test get staker data for current epoch called by KyberDao", async function() {
-      kyberDao = accounts[1];
+    it("Test get staker data for current epoch called by nimbleDao", async function() {
+      nimbleDao = accounts[1];
       await deployStakingContract(15, currentBlock + 15);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
 
-      await kncToken.transfer(mike, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: mike});
+      await NIMToken.transfer(mike, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: mike});
 
-      await kncToken.transfer(loi, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: loi});
+      await NIMToken.transfer(loi, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: loi});
 
-      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, kyberDao);
+      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, nimbleDao);
 
       await stakingContract.deposit(mulPrecision(100), {from: victor});
-      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, kyberDao);
+      await checkInitAndReturnStakerDataForCurrentEpoch(victor, 0, 0, victor, nimbleDao);
 
       // delay to epoch 2
       await Helper.setNextBlockTimestamp(
@@ -2390,7 +2390,7 @@ contract('KyberStaking', function(accounts) {
 
       // victor: stake (100), delegated stake (0), representative (victor)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, victor, kyberDao
+        victor, mulPrecision(100), 0, victor, nimbleDao
       );
       Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 2), "should inited value for epoch 2");
       Helper.assertEqual(true, await stakingContract.getHasInitedValue(victor, 3), "should inited value for epoch 3");
@@ -2398,12 +2398,12 @@ contract('KyberStaking', function(accounts) {
       await stakingContract.delegate(mike, {from: victor});
       // victor: stake (100), delegated stake (0), representative (victor)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, victor, kyberDao
+        victor, mulPrecision(100), 0, victor, nimbleDao
       );
 
       // mike: stake (0), delegated stake (0), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, 0, 0, mike, kyberDao
+        mike, 0, 0, mike, nimbleDao
       );
 
       await stakingContract.deposit(mulPrecision(200), {from: mike});
@@ -2414,34 +2414,34 @@ contract('KyberStaking', function(accounts) {
 
       // victor: stake (100), delegated stake (0), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        victor, mulPrecision(100), 0, mike, kyberDao
+        victor, mulPrecision(100), 0, mike, nimbleDao
       );
 
       // mike: stake (200), delegated stake (100), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, kyberDao
+        mike, mulPrecision(200), mulPrecision(100), mike, nimbleDao
       );
 
       await stakingContract.delegate(loi, {from: victor});
 
       // mike: stake (200), delegated stake (100), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, kyberDao
+        mike, mulPrecision(200), mulPrecision(100), mike, nimbleDao
       );
       // loi: stake (0), delegated stake (0), representative (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, 0, loi, kyberDao
+        loi, 0, 0, loi, nimbleDao
       );
 
       await stakingContract.deposit(mulPrecision(10), {from: victor});
       // loi: stake (0), delegated stake (0), representative (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, 0, loi, kyberDao
+        loi, 0, 0, loi, nimbleDao
       );
 
       // mike: stake (200), delegated stake (100), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), mulPrecision(100), mike, kyberDao
+        mike, mulPrecision(200), mulPrecision(100), mike, nimbleDao
       );
 
       await Helper.setNextBlockTimestamp(
@@ -2450,71 +2450,71 @@ contract('KyberStaking', function(accounts) {
 
       // mike: stake (200), delegated stake (0), representative (mike)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        mike, mulPrecision(200), 0, mike, kyberDao
+        mike, mulPrecision(200), 0, mike, nimbleDao
       );
 
       // loi: stake (0), delegated stake (90), representative (loi)
       await checkInitAndReturnStakerDataForCurrentEpoch(
-        loi, 0, mulPrecision(110), loi, kyberDao
+        loi, 0, mulPrecision(110), loi, nimbleDao
       );
     });
   });
 
   describe("#Revert Tests", () => {
     it("Test constructor should revert with invalid arguments", async function() {
-      // knc is 0
+      // NIM is 0
       await expectRevert(
         StakingContract.new(
           zeroAddress,
           blocksToSeconds(20),
           blockToTimestamp(currentBlock + 10),
-          kyberDao
+          nimbleDao
         ),
-        "ctor: kncToken 0"
+        "ctor: NIMToken 0"
       );
       // epoch period is 0
       await expectRevert(
         StakingContract.new(
-          kncToken.address,
+          NIMToken.address,
           blocksToSeconds(0),
           blockToTimestamp(currentBlock + 10),
-          kyberDao
+          nimbleDao
         ),
         "ctor: epoch period is 0"
       )
       // start timestamp is in the past
       await expectRevert(
         StakingContract.new(
-          kncToken.address,
+          NIMToken.address,
           blocksToSeconds(20),
           blockToTimestamp(currentBlock - 1),
-          kyberDao
+          nimbleDao
         ),
         "ctor: start in the past"
       )
       // dao setter is 0
       await expectRevert(
         StakingContract.new(
-          kncToken.address,
+          NIMToken.address,
           blocksToSeconds(20),
           blockToTimestamp(currentBlock + 10),
           zeroAddress
         ),
-        "ctor: kyberDao 0"
+        "ctor: nimbleDao 0"
       )
       stakingContract = await StakingContract.new(
-        kncToken.address,
+        NIMToken.address,
         blocksToSeconds(20),
         blockToTimestamp(currentBlock + 10),
-        kyberDao
+        nimbleDao
       )
     });
 
     it("Test deposit should revert when amount is 0", async function() {
       await deployStakingContract(6, currentBlock + 6);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
 
       await expectRevert(
         stakingContract.deposit(0, {from: victor}),
@@ -2527,8 +2527,8 @@ contract('KyberStaking', function(accounts) {
       await deployStakingContract(10, currentBlock + 10);
 
       // has 100 tokens, approve enough but try to deposit more
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
       await expectRevert(
         stakingContract.deposit(mulPrecision(200), {from: victor}),
         "transfer more then allowed"
@@ -2537,7 +2537,7 @@ contract('KyberStaking', function(accounts) {
       await stakingContract.deposit(mulPrecision(10), {from: victor});
 
       // has more tokens, approve small amounts and try to deposit more than allowances
-      await kncToken.transfer(mike, mulPrecision(1000));
+      await NIMToken.transfer(mike, mulPrecision(1000));
       // not approve yet, should revert
       await expectRevert(
         stakingContract.deposit(mulPrecision(100), {from: mike}),
@@ -2545,7 +2545,7 @@ contract('KyberStaking', function(accounts) {
       )
 
       // approve and deposit more than allowance
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: mike});
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: mike});
       await expectRevert(
         stakingContract.deposit(mulPrecision(200), {from: mike}),
         "transfer more then allowed"
@@ -2562,20 +2562,20 @@ contract('KyberStaking', function(accounts) {
     });
 
     it("Test get staker data for current epoch should revert when sender is not dao", async function() {
-      kyberDao = accounts[1];
+      nimbleDao = accounts[1];
       await deployStakingContract(10, currentBlock + 10);
       await expectRevert(
         stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: mike}),
-        "initAndReturnData: only kyberDao"
+        "initAndReturnData: only nimbleDao"
       )
-      await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: kyberDao});
+      await stakingContract.initAndReturnStakerDataForCurrentEpoch(mike, {from: nimbleDao});
     });
 
     it("Test withdraw should revert amount is 0", async function() {
       await deployStakingContract(10, currentBlock + 20);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
       await expectRevert(
@@ -2588,16 +2588,16 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw should revert when amount more than current deposited amount", async function() {
       await deployStakingContract(10, currentBlock + 20);
 
-      await kncToken.transfer(victor, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
-      await kncToken.transfer(mike, mulPrecision(100));
-      await kncToken.approve(stakingContract.address, mulPrecision(100), {from: mike});
+      await NIMToken.transfer(mike, mulPrecision(100));
+      await NIMToken.approve(stakingContract.address, mulPrecision(100), {from: mike});
       await stakingContract.deposit(mulPrecision(100), {from: mike});
 
-      await kncToken.transfer(loi, mulPrecision(800));
-      await kncToken.approve(stakingContract.address, mulPrecision(800), {from: loi});
+      await NIMToken.transfer(loi, mulPrecision(800));
+      await NIMToken.approve(stakingContract.address, mulPrecision(800), {from: loi});
       await stakingContract.deposit(mulPrecision(800), {from: loi});
 
       Helper.assertEqual(0, await stakingContract.getStake(victor, 0), "stake at epoch 0 is wrong");
@@ -2632,8 +2632,8 @@ contract('KyberStaking', function(accounts) {
     it("Test withdraw should revert when no stakes but has delegated stake", async function() {
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(100), {from: victor});
 
       await stakingContract.delegate(mike, {from: victor});
@@ -2732,16 +2732,16 @@ contract('KyberStaking', function(accounts) {
   };
 
   describe("Test Withdrawal shouldn't revert", () => {
-    it("Test withdraw shouldn't revert when handleWithdrawal in KyberDao reverted", async function() {
-      let dao = await MockKyberDaoWithdrawFailed.new(
+    it("Test withdraw shouldn't revert when handleWithdrawal in nimbleDao reverted", async function() {
+      let dao = await MocknimbleDaoWithdrawFailed.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10)
       );
-      kyberDao = dao.address;
+      nimbleDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
 
       await stakingContract.deposit(mulPrecision(500), {from: victor});
 
@@ -2751,21 +2751,21 @@ contract('KyberStaking', function(accounts) {
       await Helper.increaseNextBlockTimestamp(
         blocksToSeconds(epochPeriod)
       );
-      // shoule call KyberDao, but shouldn't revert, all data is updated
+      // shoule call nimbleDao, but shouldn't revert, all data is updated
       await withdrawAndCheckData(victor, mulPrecision(100), false);
-      kyberDao = accounts[1];
+      nimbleDao = accounts[1];
     });
 
-    it("Test withdraw shouldn't revert when handleWithdrawal in KyberDao reverted - delegation", async function() {
-      let dao = await MockKyberDaoWithdrawFailed.new(
+    it("Test withdraw shouldn't revert when handleWithdrawal in nimbleDao reverted - delegation", async function() {
+      let dao = await MocknimbleDaoWithdrawFailed.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10)
       );
-      kyberDao = dao.address;
+      nimbleDao = dao.address;
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
 
       await Helper.mineNewBlockAt(blockToTimestamp(startBlock));
 
@@ -2777,22 +2777,22 @@ contract('KyberStaking', function(accounts) {
       );
       await stakingContract.delegate(loi, {from: victor});
 
-      // shoule call KyberDao, but shouldn't revert, all data is updated
+      // shoule call nimbleDao, but shouldn't revert, all data is updated
       await withdrawAndCheckData(victor, mulPrecision(100), false);
       // delegate back to self and check
       await stakingContract.delegate(victor, {from: victor});
       await withdrawAndCheckData(victor, mulPrecision(100), false);
       await stakingContract.delegate(mike, {from: victor});
       await withdrawAndCheckData(victor, mulPrecision(100), false);
-      kyberDao = accounts[1];
+      nimbleDao = accounts[1];
     });
 
-    it("Test withdraw shouldn't revert when KyberDao does not have handleWithdrawl func", async function() {
-      kyberDao = accounts[1];
+    it("Test withdraw shouldn't revert when nimbleDao does not have handleWithdrawl func", async function() {
+      nimbleDao = accounts[1];
       await deployStakingContract(10, currentBlock + 10);
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
 
       await stakingContract.deposit(mulPrecision(500), {from: victor});
 
@@ -2806,20 +2806,20 @@ contract('KyberStaking', function(accounts) {
       await withdrawAndCheckData(victor, mulPrecision(100), false);
     });
 
-    it("Test withdraw shouldn't revert with re-entrancy from KyberDao", async() => {
+    it("Test withdraw shouldn't revert with re-entrancy from nimbleDao", async() => {
       await deployStakingContract(10, currentBlock + 10);
       let maliciousDao = await MaliciousDaoReentrancy.new(
         blocksToSeconds(10),
         blockToTimestamp(currentBlock + 10),
         stakingContract.address,
-        kncToken.address
+        NIMToken.address
       );
 
-      await kncToken.transfer(maliciousDao.address, mulPrecision(100));
+      await NIMToken.transfer(maliciousDao.address, mulPrecision(100));
 
       await maliciousDao.deposit(mulPrecision(80));
 
-      // delay to epoch 1, so withdraw will call KyberDao to handle withdrawal
+      // delay to epoch 1, so withdraw will call nimbleDao to handle withdrawal
       await Helper.setNextBlockTimestamp(
         blockToTimestamp(startBlock)
       );
@@ -2843,14 +2843,14 @@ contract('KyberStaking', function(accounts) {
       epochPeriod = 10;
       startBlock = currentBlock + 20;
       stakingContract = await MaliciousStaking.new(
-        kncToken.address,
+        NIMToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        kyberDao
+        nimbleDao
       );
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(500), {from: victor});
 
       // reduce next epoch stake, so withdraw will check and revert
@@ -2865,14 +2865,14 @@ contract('KyberStaking', function(accounts) {
       epochPeriod = 10;
       startBlock = currentBlock + 20;
       stakingContract = await MaliciousStaking.new(
-        kncToken.address,
+        NIMToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        kyberDao
+        nimbleDao
       );
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(500), {from: victor});
       await stakingContract.delegate(mike, {from: victor});
 
@@ -2891,18 +2891,18 @@ contract('KyberStaking', function(accounts) {
   })
 
   describe("#Malicious Staking", () => {
-    it("Test withdraw should revert, pass checking but not enough knc to withdraw", async function() {
+    it("Test withdraw should revert, pass checking but not enough NIM to withdraw", async function() {
       epochPeriod = 10;
       startBlock = currentBlock + 20;
       stakingContract = await MaliciousStaking.new(
-        kncToken.address,
+        NIMToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        kyberDao
+        nimbleDao
       );
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(500), {from: victor});
 
       // reduce next epoch stake, so withdraw will check and revert
@@ -2919,14 +2919,14 @@ contract('KyberStaking', function(accounts) {
       epochPeriod = 10;
       startBlock = currentBlock + 20;
       stakingContract = await MaliciousStaking.new(
-        kncToken.address,
+        NIMToken.address,
         blocksToSeconds(epochPeriod),
         blockToTimestamp(startBlock),
-        kyberDao
+        nimbleDao
       );
 
-      await kncToken.transfer(victor, mulPrecision(500));
-      await kncToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
+      await NIMToken.transfer(victor, mulPrecision(500));
+      await NIMToken.approve(stakingContract.address, mulPrecision(500), {from: victor});
       await stakingContract.deposit(mulPrecision(500), {from: victor});
       await stakingContract.delegate(mike, {from: victor});
 

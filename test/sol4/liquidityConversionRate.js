@@ -1,6 +1,6 @@
 let LiquidityConversionRates = artifacts.require("./LiquidityConversionRates.sol");
 let TestToken = artifacts.require("./mockContracts/TestToken.sol");
-let Reserve = artifacts.require("./KyberReserve");
+let Reserve = artifacts.require("./nimbleReserve");
 let SanityRates = artifacts.require("./SanityRates");
 
 let Helper = require("../helper.js");
@@ -580,7 +580,7 @@ contract('LiquidityConversionRates', function(accounts) {
 });
 
 
-contract('kyberReserve for Liquidity', function(accounts) {
+contract('nimbleReserve for Liquidity', function(accounts) {
     it("should init globals. init ConversionRates Inst, token, set liquidity params .", async function () {
         // set account addresses
         admin = accounts[0];

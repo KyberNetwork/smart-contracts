@@ -8,10 +8,10 @@ Admin
 Operator
 0xFC2610fD2423EE2CBAFbCBdcE2Ea822796dE7Cc5
 
-KyberNetwork
+nimbleNetwork
 0x94b420138e829Bbf65F24c1273967C180133BB43
 
-KyberReserve
+nimbleReserve
 0x85A6763Fe323bAc4c123f582f160A8e7D1251357
 
 ConversionRates
@@ -78,8 +78,8 @@ Set the BaseRate for BLABSCoin. BaseBuy: 100, BaseSell: 200, Buy: 0x1, Sell: 0x2
 - [x] https://kovan.etherscan.io/tx/0x98e7770e52247dd6a6c45bc4298cafbdad5762e47a88fda8a16c8dc378fe413f
 
 Deployed a new FeeBurner contract because I needed to deploy a new BurnableToken to burn for fees
-(New "KNC" Token 0x3ddf45d413ccdc9c08fea1bcb6c8e5282c2e00c9)
+(New "NIM" Token 0x3ddf45d413ccdc9c08fea1bcb6c8e5282c2e00c9)
 - [x] https://kovan.etherscan.io/address/0x60e40E0a782b2Ec9a189F1e62D272ee4Db4f425a
 
-Trade with KyberNetwork. Buying BLABS Coin for ETH
+Trade with nimbleNetwork. Buying BLABS Coin for ETH
 - [x] https://kovan.etherscan.io/tx/0x253e71217cc4c4e8310ccb3a236bae7fe7af9fbc8d3ba9011893aa6a847ee61b

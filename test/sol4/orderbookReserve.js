@@ -1,6 +1,6 @@
 // const TestToken = artifacts.require("TestToken.sol");
-// const NetworkProxy = artifacts.require("KyberNetworkProxy.sol");
-// const KyberNetwork = artifacts.require("KyberNetwork.sol");
+// const NetworkProxy = artifacts.require("nimbleNetworkProxy.sol");
+// const nimbleNetwork = artifacts.require("nimbleNetwork.sol");
 // const FeeBurner = artifacts.require("FeeBurner.sol");
 // const OrderList = artifacts.require("OrderList.sol");
 // const OrderListFactory = artifacts.require("OrderListFactory.sol");
@@ -9,7 +9,7 @@
 // const TestTokenFailing = artifacts.require("TestTokenFailing.sol");
 // const TestTokenTransferFailing = artifacts.require("TestTokenTransferFailing.sol");
 // const MockMedianizer = artifacts.require("MockMedianizer.sol");
-// const MockKyberNetwork = artifacts.require("MockKyberNetwork.sol");
+// const MocknimbleNetwork = artifacts.require("MocknimbleNetwork.sol");
 // const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
 // const MockUtils = artifacts.require("MockUtils.sol");
 
@@ -23,8 +23,8 @@
 // const PRECISION = new BN(10).pow(new BN(18));
 // const gasPrice = new BN(50).mul(new BN(String(10 ** 9)));
 // const negligibleRateDiff = new BN(11);
-// const initialEthKncRate = new BN(280);
-// const initialEthToKncRatePrecision = PRECISION.mul(new BN(initialEthKncRate));
+// const initialEthNIMRate = new BN(280);
+// const initialEthToNIMRatePrecision = PRECISION.mul(new BN(initialEthNIMRate));
 // const BPS = new BN(10000);
 // const ethDecimals = new BN(18);
 // const token18Dec = new BN(10).pow(new BN(18));
@@ -46,8 +46,8 @@
 // //tokens data
 // let token;
 // let tokenAdd;
-// let KNCToken;
-// let kncAddress;
+// let NIMToken;
+// let NIMAddress;
 // const tokenDecimals = 18;
 
 // let headId;
@@ -74,7 +74,7 @@
 // let maxOrdersPerTrade = 10;
 // let minOrderSizeDollar = 1000;
 // let minNewOrderWei;
-// let baseKncPerEthRatePrecision;
+// let baseNIMPerEthRatePrecision;
 // let dollarsPerEthPrecision = PRECISION.mul(new BN(500));
 
 // contract('OrderbookReserve', async (accounts) => {
@@ -91,10 +91,10 @@
 //         token = await TestToken.new("the token", "TOK", tokenDecimals);
 //         tokenAdd = token.address;
 
-//         KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
-//         kncAddress = KNCToken.address;
+//         NIMToken = await TestToken.new("nimble Crystals", "NIM", 18);
+//         NIMAddress = NIMToken.address;
 
-//         feeBurner = await FeeBurner.new(admin, kncAddress, network, initialEthToKncRatePrecision);
+//         feeBurner = await FeeBurner.new(admin, NIMAddress, network, initialEthToNIMRatePrecision);
 
 //         ordersFactory = await OrderListFactory.new();
 //         medianizer = await MockMedianizer.new();
@@ -103,7 +103,7 @@
 
 //         currentBlock = await Helper.getCurrentBlock();
 
-//         reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address,
+//         reserve = await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address,
 //             ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //         await reserve.init();
 //         numOrderIdsPerMaker = await reserve.NUM_ORDERS();
@@ -117,7 +117,7 @@
 //         let rxLimits = await reserve.limits();
 //         minNewOrderWei = rxLimits[2];
 
-//         baseKncPerEthRatePrecision = await reserve.kncPerEthBaseRatePrecision();
+//         baseNIMPerEthRatePrecision = await reserve.NIMPerEthBaseRatePrecision();
 //         firstFreeOrderIdPerReserveList = (await orders.nextFreeId());
 
 //         let mockUtils = await MockUtils.new();
@@ -126,7 +126,7 @@
 //     });
 
 //     beforeEach('setup contract for each test', async () => {
-//         reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address,
+//         reserve = await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address,
 //             ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //         await reserve.init();
 //     });
@@ -152,7 +152,7 @@
 
 //     it("test globals.", async () => {
 //         let rxContracts = await reserve.contracts();
-//         Helper.assertEqual(rxContracts[0], kncAddress);
+//         Helper.assertEqual(rxContracts[0], NIMAddress);
 //         Helper.assertEqual(rxContracts[1], tokenAdd);
 //         Helper.assertEqual(rxContracts[2], feeBurner.address);
 //         Helper.assertEqual(rxContracts[3], network);
@@ -164,14 +164,14 @@
 //         Helper.assertEqual(rxLimits[2], PRECISION.mul(new BN(2)));
 //         Helper.assertEqual(rxLimits[3], PRECISION.mul(new BN(1)));
 
-//         let rxBaseKncPerEthPrecision = await reserve.kncPerEthBaseRatePrecision();
-//         Helper.assertEqual(initialEthToKncRatePrecision, rxBaseKncPerEthPrecision);
+//         let rxBaseNIMPerEthPrecision = await reserve.NIMPerEthBaseRatePrecision();
+//         Helper.assertEqual(initialEthToNIMRatePrecision, rxBaseNIMPerEthPrecision);
 
 //         let burnFees = await reserve.makerBurnFeeBps();
 //         Helper.assertEqual(burnFees, makerBurnFeeBps);
 
 //         let localFeeBps = 70;
-//         let reserve2 = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, localFeeBps);
+//         let reserve2 = await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, localFeeBps);
 //         burnFees = await reserve2.makerBurnFeeBps();
 //         Helper.assertEqual(burnFees, localFeeBps);
 
@@ -185,9 +185,9 @@
 
 //     it("test events, 'take full order' event, 'take partial order' event", async()=> {
 //         let tokenWeiDepositAmount = token18Dec.mul(new BN(60));
-//         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //         let valueWei = PRECISION.mul(new BN(2));
 //         let valueTwei = token18Dec.mul(new BN(12));
@@ -233,7 +233,7 @@
 //     describe("test various revert scenarios", function() {
 //         it("verify ctor parameters for order book reserve. no zero values", async() => {
 
-//             await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 
 //             try {
 //                 await OrderbookReserve.new(zeroAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
@@ -243,55 +243,55 @@
 //             }
 
 //             try {
-//                 await OrderbookReserve.new(kncAddress, zeroAddress, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//                 await OrderbookReserve.new(NIMAddress, zeroAddress, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
 
 //             try {
-//                 await OrderbookReserve.new(kncAddress, tokenAdd, zeroAddress, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//                 await OrderbookReserve.new(NIMAddress, tokenAdd, zeroAddress, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
 
 //             try {
-//                 await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, zeroAddress, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//                 await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, zeroAddress, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
 
 //             try {
-//                 await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, zeroAddress, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//                 await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, zeroAddress, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
 
 //             try {
-//                 await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, zeroAddress, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//                 await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, zeroAddress, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
 
 //             try {
-//                 await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, 0, maxOrdersPerTrade, makerBurnFeeBps);
+//                 await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, 0, maxOrdersPerTrade, makerBurnFeeBps);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
 
 //             try {
-//                 await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, 0, makerBurnFeeBps);
+//                 await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, 0, makerBurnFeeBps);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
 //             try {
-//                 await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, 0);
+//                 await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, 0);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -300,7 +300,7 @@
 //             let maxBurnFee = await reserve.MAX_BURN_FEE_BPS();
 
 //             try {
-//                 await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, maxBurnFee.add(new BN(1)));
+//                 await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, maxBurnFee.add(new BN(1)));
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -308,7 +308,7 @@
 //         });
 
 //         it("take partial order revert conditions", async() => {
-//             let res = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             let res = await MockOrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 
 //             try {
 //                 await res.testTakePartialOrder(maker1, 3, ethAddress, tokenAdd, 100, 200, 199, 101);
@@ -336,12 +336,12 @@
 //         })
 
 //         it("verify can't deploy reserve if eth to dollar price is not valid", async() => {
-//             let res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             let res = await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 
 //             await medianizer.setValid(false);
 
 //             try {
-//                 res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//                 res = await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -385,23 +385,23 @@
 //             await medianizer.setValid(true);
 //         })
 
-//         it("verify can't construct order book reserve if approve knc to burner fails.", async() => {
+//         it("verify can't construct order book reserve if approve NIM to burner fails.", async() => {
 //             let res;
 
-//             let failingKnc = await TestTokenFailing.new("kyber no approve", "KNC", 18);
+//             let failingNIM = await TestTokenFailing.new("nimble no approve", "NIM", 18);
 
 //             try {
-//                 await OrderbookReserve.new(failingKnc.address, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//                 await OrderbookReserve.new(failingNIM.address, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e) {
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
 
-//             await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //         });
 
 //         it("verify 2nd init call for same token works OK.", async() => {
-//             let res = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             let res = await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 
 //             await res.init({from: accounts[1]});
 
@@ -486,9 +486,9 @@
 
 //         it("verify get update order hint reverts if Eth value is below min order value", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(30));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(3));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let weiAmount = new BN(minNewOrderWei);
 //             let tweiAmount = new BN(String(9 * 10 ** 12));
@@ -518,9 +518,9 @@
 
 //         it("verify trade with token source only works for token->Eth. other options revert", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = PRECISION.mul(new BN(5));
 //             let valueTwei = token18Dec.mul(new BN(15));
@@ -566,9 +566,9 @@
 
 //         it("verify trade with eth source only works for Eth->token. other options revert", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(60));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = PRECISION.mul(new BN(5));
 //             let valueTwei = token18Dec.mul(new BN(15));
@@ -607,9 +607,9 @@
 
 //         it("verify trade illegal message eth value revert", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(90));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(5));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = PRECISION.mul(new BN(5));
 //             let valueTwei = token18Dec.mul(new BN(15));
@@ -654,9 +654,9 @@
 
 //         it("verify trade token to eth with not enough tokens approved to reserve, reverts", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(5));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = PRECISION.mul(new BN(5));
 //             let valueTwei = token18Dec.mul(new BN(15));
@@ -689,18 +689,18 @@
 //         it("verify trade eth to token reverts if token transfer fails", async() => {
 //             let failToken = await TestTokenTransferFailing.new("failing", "fail", 18, {from: network});
 //             let failAdd = failToken.address;
-//             let aReserve = await OrderbookReserve.new(kncAddress, failAdd, feeBurner.address, network, medianizer.address,
+//             let aReserve = await OrderbookReserve.new(NIMAddress, failAdd, feeBurner.address, network, medianizer.address,
 //                         ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //             await aReserve.init();
 
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(20));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(5));
 
 //             await failToken.approve(aReserve.address, tokenWeiDepositAmount, {from: network});
 //             await aReserve.depositToken(maker1, tokenWeiDepositAmount, {from: network});
-//             await KNCToken.approve(aReserve.address, kncTweiDepositAmount);
-//             await aReserve.depositKncForFee(maker1, kncTweiDepositAmount);
+//             await NIMToken.approve(aReserve.address, NIMTweiDepositAmount);
+//             await aReserve.depositNIMForFee(maker1, NIMTweiDepositAmount);
 //             await aReserve.depositEther(maker1, {from: maker1, value: ethWeiDepositAmount});
 
 //             let valueWei = PRECISION.mul(new BN(5));
@@ -722,8 +722,8 @@
 
 //         it("verify trade when actual rate too low reverts", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(6)).add(new BN(20000));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(500)); // 2 ether
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -760,9 +760,9 @@
 
 //         it("verify add order batch with bad array sizes reverts", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             orderSrc = PRECISION.mul(new BN(2));
 //             orderDst = PRECISION.mul(new BN(6));
@@ -788,7 +788,7 @@
 //                                         isAfterMyPrevOrder, {from: maker1});
 
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             //failing batch orders
 //             try {
@@ -833,9 +833,9 @@
 
 //         it("verify update order batch with bad array sizes reverts", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             orderSrc = PRECISION.mul(new BN(2));
 //             orderDst = PRECISION.mul(new BN(6));
@@ -914,9 +914,9 @@
 
 //         it("verify trade not from network reverts", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(90));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = PRECISION.mul(new BN(5));
 //             let valueTwei = token18Dec.mul(new BN(15));
@@ -941,9 +941,9 @@
 
 //         it("verify trade with src Amount >= max qty reverts.", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(7));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = PRECISION.mul(new BN(2));
 //             let valueTwei = MAX_QTY.sub(new BN(1));
@@ -974,9 +974,9 @@
 
 //         it("verify get rate with src Amount >= max qty reverts.", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(7));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = PRECISION.mul(new BN(2));
 //             let valueTwei = MAX_QTY.sub(new BN(1));
@@ -1002,9 +1002,9 @@
 
 //         it("verify trade with not enough tokens for taker src amount, reverts.", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(7));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = PRECISION.mul(new BN(2));
 //             let valueTwei = token18Dec.mul(new BN(9));
@@ -1027,21 +1027,21 @@
 //     });
 
 //     describe ("deposit funds, bind funds, withdraw funds", function() {
-//         it("maker deposit tokens, ethers, knc, validate updated in contract", async () => {
+//         it("maker deposit tokens, ethers, NIM, validate updated in contract", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(50));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2));
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let rxNumTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(rxNumTwei, tokenWeiDepositAmount);
 
-//             let rxKncTwei = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(rxKncTwei, kncTweiDepositAmount);
+//             let rxNIMTwei = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(rxNIMTwei, NIMTweiDepositAmount);
 
-//             rxKncTwei = await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(rxKncTwei, 0);
+//             rxNIMTwei = await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(rxNIMTwei, 0);
 
 //             //makerDepositEther
 //             let rxWei = await reserve.makerFunds(maker1, ethAddress);
@@ -1052,21 +1052,21 @@
 //             Helper.assertEqual(rxWei, 0);
 //         });
 
-//         it("maker deposit tokens, ethers, knc, withdraw and see sums updated", async () => {
+//         it("maker deposit tokens, ethers, NIM, withdraw and see sums updated", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(50));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(60));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(60));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2));
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let rxNumTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(rxNumTwei, tokenWeiDepositAmount);
 
-//             let rxKncTwei = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(rxKncTwei, kncTweiDepositAmount);
+//             let rxNIMTwei = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(rxNIMTwei, NIMTweiDepositAmount);
 
-//             rxKncTwei = await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(rxKncTwei, 0);
+//             rxNIMTwei = await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(rxNIMTwei, 0);
 
 //             let rxWei = await reserve.makerFunds(maker1, ethAddress);
 //             Helper.assertEqual(rxWei, ethWeiDepositAmount);
@@ -1081,10 +1081,10 @@
 //             rxTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(rxTwei, (tokenWeiDepositAmount.div(new BN(2))));
 
-//             //withdraw knc
-//             await reserve.withdrawKncFee(kncTweiDepositAmount.div(new BN(2)), {from: maker1})
-//             rxKncTwei = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(rxKncTwei, (kncTweiDepositAmount.div(new BN(2))));
+//             //withdraw NIM
+//             await reserve.withdrawNIMFee(NIMTweiDepositAmount.div(new BN(2)), {from: maker1})
+//             rxNIMTwei = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(rxNIMTwei, (NIMTweiDepositAmount.div(new BN(2))));
 //         });
 
 //         it("test deposit token reverts when maker address 0", async()=> {
@@ -1134,42 +1134,42 @@
 //             await reserve.depositEther(maker1, {value: 1000});
 //         })
 
-//         it("test deposit knc reverts when maker address 0", async()=> {
+//         it("test deposit NIM reverts when maker address 0", async()=> {
 //             let tokenTweiDepositAmount = token18Dec.mul(new BN(2));
 
-//             await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
+//             await NIMToken.approve(reserve.address, tokenTweiDepositAmount);
 //             try {
-//                 await reserve.depositKncForFee(zeroAddress, tokenTweiDepositAmount);
+//                 await reserve.depositNIMForFee(zeroAddress, tokenTweiDepositAmount);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e){
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
 //         })
 
-//         it("test deposit knc reverts when approve amount < deposit token call amount", async()=> {
+//         it("test deposit NIM reverts when approve amount < deposit token call amount", async()=> {
 //             let tokenTweiDepositAmount = token18Dec.mul(new BN(2));
 
-//             await KNCToken.approve(reserve.address, tokenTweiDepositAmount.sub(new BN(1)));
+//             await NIMToken.approve(reserve.address, tokenTweiDepositAmount.sub(new BN(1)));
 //             try {
-//                 await reserve.depositKncForFee(maker1, tokenTweiDepositAmount);
+//                 await reserve.depositNIMForFee(maker1, tokenTweiDepositAmount);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e){
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
-//             await reserve.depositKncForFee(maker1, tokenTweiDepositAmount.sub(new BN(1)));
+//             await reserve.depositNIMForFee(maker1, tokenTweiDepositAmount.sub(new BN(1)));
 //         })
 
-//         it("test deposit knc reverts when amount >= maxQty", async()=> {
+//         it("test deposit NIM reverts when amount >= maxQty", async()=> {
 //             let tokenTweiDepositAmount = MAX_QTY;
 
-//             await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
+//             await NIMToken.approve(reserve.address, tokenTweiDepositAmount);
 //             try {
-//                 await reserve.depositKncForFee(maker1, tokenTweiDepositAmount);
+//                 await reserve.depositNIMForFee(maker1, tokenTweiDepositAmount);
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e){
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
-//             await reserve.depositKncForFee(maker1, tokenTweiDepositAmount.sub(new BN(1)));
+//             await reserve.depositNIMForFee(maker1, tokenTweiDepositAmount.sub(new BN(1)));
 //         })
 
 //         it("test withdraw token reverts when amount above free amount", async() => {
@@ -1202,7 +1202,7 @@
 
 //         it("test withdraw token reverts if token transfer doesn't return true =~ fails", async() => {
 //             let failingTok = await TestTokenTransferFailing.new("no transfer", "NTNC", 11);
-//             let aReserve = await OrderbookReserve.new(kncAddress, failingTok.address, feeBurner.address, network,
+//             let aReserve = await OrderbookReserve.new(NIMAddress, failingTok.address, feeBurner.address, network,
 //                         medianizer.address, ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //             await aReserve.init();
 
@@ -1218,24 +1218,24 @@
 //             }
 //         })
 
-//         it("test withdraw KNC reverts when amount above total maker knc amount", async() => {
+//         it("test withdraw NIM reverts when amount above total maker NIM amount", async() => {
 //             let tokenTweiDepositAmount = token18Dec.mul(new BN(20));
-//             await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
-//             await reserve.depositKncForFee(maker1, tokenTweiDepositAmount);
+//             await NIMToken.approve(reserve.address, tokenTweiDepositAmount);
+//             await reserve.depositNIMForFee(maker1, tokenTweiDepositAmount);
 
 //             try {
-//                 await reserve.withdrawKncFee(tokenTweiDepositAmount.add(new BN(1)), {from: maker1});
+//                 await reserve.withdrawNIMFee(tokenTweiDepositAmount.add(new BN(1)), {from: maker1});
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e){
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
-//             await reserve.withdrawKncFee(tokenTweiDepositAmount, {from: maker1});
+//             await reserve.withdrawNIMFee(tokenTweiDepositAmount, {from: maker1});
 //         })
 
-//         it("test withdraw KNC reverts when amount above maker unlocked knc amount", async() => {
+//         it("test withdraw NIM reverts when amount above maker unlocked NIM amount", async() => {
 //             let tokenTweiDepositAmount = token18Dec.mul(new BN(20));
-//             await KNCToken.approve(reserve.address, tokenTweiDepositAmount);
-//             await reserve.depositKncForFee(maker1, tokenTweiDepositAmount);
+//             await NIMToken.approve(reserve.address, tokenTweiDepositAmount);
+//             await reserve.depositNIMForFee(maker1, tokenTweiDepositAmount);
 
 //             let orderWei = PRECISION.mul(new BN(2));
 //             let orderTwei = token18Dec.mul(new BN(1));
@@ -1244,50 +1244,50 @@
 
 //             await reserve.submitEthToTokenOrder(orderWei, orderTwei, {from: maker1});
 
-//             let unlockedKnc = await reserve.makerUnlockedKnc(maker1);
+//             let unlockedNIM = await reserve.makerUnlockedNIM(maker1);
 
 //             try {
-//                 await reserve.withdrawKncFee(unlockedKnc.add(new BN(1)), {from: maker1});
+//                 await reserve.withdrawNIMFee(unlockedNIM.add(new BN(1)), {from: maker1});
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e){
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
-//             await reserve.withdrawKncFee(unlockedKnc, {from: maker1});
+//             await reserve.withdrawNIMFee(unlockedNIM, {from: maker1});
 //         })
 
-//         it("test withdraw KNC reverts if knc transfer doesn't return true =~ fails", async() => {
-//             let failingKnc = await TestTokenTransferFailing.new("KNC no transfer", "NTNC", 11);
-//             let aReserve = await OrderbookReserve.new(failingKnc.address, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//         it("test withdraw NIM reverts if NIM transfer doesn't return true =~ fails", async() => {
+//             let failingNIM = await TestTokenTransferFailing.new("NIM no transfer", "NTNC", 11);
+//             let aReserve = await OrderbookReserve.new(failingNIM.address, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //             await aReserve.init();
 
 //             let tokenTweiDepositAmount = token18Dec.mul(new BN(20));
-//             await failingKnc.approve(aReserve.address, tokenTweiDepositAmount);
-//             await aReserve.depositKncForFee(maker1, tokenTweiDepositAmount);
+//             await failingNIM.approve(aReserve.address, tokenTweiDepositAmount);
+//             await aReserve.depositNIMForFee(maker1, tokenTweiDepositAmount);
 
 //             try {
-//                 await aReserve.withdrawKncFee(tokenTweiDepositAmount, {from: maker1});
+//                 await aReserve.withdrawNIMFee(tokenTweiDepositAmount, {from: maker1});
 //                 assert(false, "throw was expected in line above.")
 //             } catch(e){
 //                 assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //             }
 //         })
 
-//         it("perform few knc deposits from same maker. later knc deposit from other maker. see sums correct.", async () => {
+//         it("perform few NIM deposits from same maker. later NIM deposit from other maker. see sums correct.", async () => {
 //             let tokenWeiDepositAmount = new BN(500);
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(10));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(10));
 //             let ethWeiDepositAmount = new BN(300);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             //maker1 balances
 //             let rxNumTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(rxNumTwei, tokenWeiDepositAmount.mul(new BN(3)));
 
-//             let rxKncTwei = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(rxKncTwei, kncTweiDepositAmount.mul(new BN(3)));
+//             let rxNIMTwei = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(rxNIMTwei, NIMTweiDepositAmount.mul(new BN(3)));
 
 //             let rxWei = await reserve.makerFunds(maker1, ethAddress);
 //             Helper.assertEqual(rxWei, ethWeiDepositAmount.mul(new BN(3)));
@@ -1296,23 +1296,23 @@
 //             rxNumTwei = await reserve.makerFunds(maker2, tokenAdd);
 //             Helper.assertEqual(rxNumTwei, tokenWeiDepositAmount.mul(new BN(2)));
 
-//             rxKncTwei = await reserve.makerUnlockedKnc(maker2);
-//             Helper.assertEqual(rxKncTwei, kncTweiDepositAmount.mul(new BN(2)));
+//             rxNIMTwei = await reserve.makerUnlockedNIM(maker2);
+//             Helper.assertEqual(rxNIMTwei, NIMTweiDepositAmount.mul(new BN(2)));
 
 //             rxWei = await reserve.makerFunds(maker2, ethAddress);
 //             Helper.assertEqual(rxWei, ethWeiDepositAmount.mul(new BN(2)));
 //         });
 
-//         it("perform few knc deposits from same maker. later knc deposit from other maker. see allocated order IDs correct.", async () => {
+//         it("perform few NIM deposits from same maker. later NIM deposit from other maker. see allocated order IDs correct.", async () => {
 //             let tokenWeiDepositAmount = new BN(500);
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(300));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(300));
 //             let ethWeiDepositAmount = PRECISION;
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -1328,77 +1328,77 @@
 //             Helper.assertEqual(orderId, (firstFreeOrderIdPerReserveList  * 1 + 1 * numOrderIdsPerMaker));
 //         });
 
-//         it("maker deposit knc, test bind knc.", async () => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(2));
+//         it("maker deposit NIM, test bind NIM.", async () => {
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(2));
 
-//             let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             let mockReserve = await MockOrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //             await mockReserve.init();
 
-//             await makerDepositFull(maker1, mockReserve, token, 0, 0, kncTweiDepositAmount);
-//             let stakedKnc = await mockReserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(stakedKnc, 0);
+//             await makerDepositFull(maker1, mockReserve, token, 0, 0, NIMTweiDepositAmount);
+//             let stakedNIM = await mockReserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(stakedNIM, 0);
 
-//             let freeKnc = await mockReserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount);
+//             let freeNIM = await mockReserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount);
 
 //             let weiValueForStakeCalc = new BN(String(10 ** 16));
-//             let expectedStake = await mockReserve.calcKncStake(weiValueForStakeCalc);
-//             Helper.assertLesser(expectedStake, kncTweiDepositAmount, "expected Stake: " + expectedStake +
-//                 " !< " + kncTweiDepositAmount);
+//             let expectedStake = await mockReserve.calcNIMStake(weiValueForStakeCalc);
+//             Helper.assertLesser(expectedStake, NIMTweiDepositAmount, "expected Stake: " + expectedStake +
+//                 " !< " + NIMTweiDepositAmount);
 
 //             await mockReserve.testBindStakes(maker1, weiValueForStakeCalc);
 
-//             stakedKnc = await mockReserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(stakedKnc, expectedStake);
+//             stakedNIM = await mockReserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(stakedNIM, expectedStake);
 
-//             freeKnc = await mockReserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount.sub(expectedStake));
+//             freeNIM = await mockReserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount.sub(expectedStake));
 
 //             let weiValueForStakeCalc2nd = new BN(String(10 ** 15));
 //             await mockReserve.testBindStakes(maker1, weiValueForStakeCalc2nd);
-//             let expectedStake2nd = await mockReserve.calcKncStake(weiValueForStakeCalc2nd);
+//             let expectedStake2nd = await mockReserve.calcNIMStake(weiValueForStakeCalc2nd);
 //             expectedStake = expectedStake.add(expectedStake2nd);
 
-//             stakedKnc = await mockReserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(stakedKnc, expectedStake);
+//             stakedNIM = await mockReserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(stakedNIM, expectedStake);
 
-//             freeKnc = await mockReserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount.sub(expectedStake));
+//             freeNIM = await mockReserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount.sub(expectedStake));
 //         });
 
-//         it("maker deposit knc, bind knc. test release knc stakes", async () => {
-//              let kncTweiDepositAmount = PRECISION.mul(new BN(2));
+//         it("maker deposit NIM, bind NIM. test release NIM stakes", async () => {
+//              let NIMTweiDepositAmount = PRECISION.mul(new BN(2));
 
-//             let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             let mockReserve = await MockOrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //             await mockReserve.init();
 
-//             await makerDepositFull(maker1, mockReserve, token, 0, 0, kncTweiDepositAmount);
+//             await makerDepositFull(maker1, mockReserve, token, 0, 0, NIMTweiDepositAmount);
 //             let weiValueForStakeCalc = new BN(String(10 ** 17));
 //             await mockReserve.testBindStakes(maker1, weiValueForStakeCalc);
 
-//             let initialStakedKnc = await mockReserve.makerRequiredKncStake(maker1);
-//             let freeKnc = await mockReserve.makerUnlockedKnc(maker1);
+//             let initialStakedNIM = await mockReserve.makerRequiredNIMStake(maker1);
+//             let freeNIM = await mockReserve.makerUnlockedNIM(maker1);
 
 //             // now release
 //             let releaseAmountWei = new BN(String(10 ** 17));
 //             await mockReserve.testHandleStakes(maker1, releaseAmountWei, 0);
-//             let expectedKncRelease = await mockReserve.calcKncStake(releaseAmountWei);
+//             let expectedNIMRelease = await mockReserve.calcNIMStake(releaseAmountWei);
 
-//             let stakedKnc = await mockReserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(stakedKnc, initialStakedKnc.sub(expectedKncRelease));
+//             let stakedNIM = await mockReserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(stakedNIM, initialStakedNIM.sub(expectedNIMRelease));
 
-//             let expectedFreeKnc = freeKnc.add(expectedKncRelease);
-//             freeKnc = await mockReserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, expectedFreeKnc);
+//             let expectedFreeNIM = freeNIM.add(expectedNIMRelease);
+//             freeNIM = await mockReserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, expectedFreeNIM);
 //         });
 
 //         it("test release order stakes(using bind stakes). doesn't underflow if released wei amount is higher the total orders wei", async () => {
-//              let kncTweiDepositAmount = PRECISION.mul(new BN(2));
+//              let NIMTweiDepositAmount = PRECISION.mul(new BN(2));
 
-//             let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             let mockReserve = await MockOrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //             await mockReserve.init();
 
-//             await makerDepositFull(maker1, mockReserve, token, 0, 0, kncTweiDepositAmount);
+//             await makerDepositFull(maker1, mockReserve, token, 0, 0, NIMTweiDepositAmount);
 
 //             let weiValueToBindStake = new BN(String(10 ** 17));
 //             await mockReserve.testBindStakes(maker1, weiValueToBindStake);
@@ -1415,12 +1415,12 @@
 //         });
 
 //         it("test release order stakes(using release stakes). doesn't underflow if released wei amount is higher the total orders wei", async () => {
-//              let kncTweiDepositAmount = PRECISION.mul(new BN(2));
+//              let NIMTweiDepositAmount = PRECISION.mul(new BN(2));
 
-//             let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             let mockReserve = await MockOrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //             await mockReserve.init();
 
-//             await makerDepositFull(maker1, mockReserve, token, 0, 0, kncTweiDepositAmount);
+//             await makerDepositFull(maker1, mockReserve, token, 0, 0, NIMTweiDepositAmount);
 
 //             let weiValueToBindStake = new BN(String(10 ** 17));
 //             await mockReserve.testBindStakes(maker1, weiValueToBindStake);
@@ -1436,12 +1436,12 @@
 //         });
 
 //         it("test release order stakes, if weiForBurn > weiToRelease, reverts", async () => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(2));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(2));
 
-//             let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             let mockReserve = await MockOrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //             await mockReserve.init();
 
-//             await makerDepositFull(maker1, mockReserve, token, 0, 0, kncTweiDepositAmount);
+//             await makerDepositFull(maker1, mockReserve, token, 0, 0, NIMTweiDepositAmount);
 
 //             let weiValueToBindStake = new BN(String(10 ** 17));
 //             await mockReserve.testBindStakes(maker1, weiValueToBindStake);
@@ -1460,13 +1460,13 @@
 //             }
 //         });
 
-//         it("change knc rate so stake amount < burn amount, see unlocked knc return 0 - no underflow", async() => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(30));
+//         it("change NIM rate so stake amount < burn amount, see unlocked NIM return 0 - no underflow", async() => {
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(30));
 
-//             let mockReserve = await MockOrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
+//             let mockReserve = await MockOrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address, ordersFactory.address,  minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //             await mockReserve.init();
 
-//             await makerDepositFull(maker1, mockReserve, token, 0, new BN(10).pow(new BN(19)), kncTweiDepositAmount);
+//             await makerDepositFull(maker1, mockReserve, token, 0, new BN(10).pow(new BN(19)), NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //             let orderDstWei = new BN(minNewOrderWei);
@@ -1476,25 +1476,25 @@
 //             let rate = await mockReserve.getConversionRate(ethAddress, tokenAdd, new BN(10).pow(new BN(8)), 522);
 //             Helper.assertGreater(rate, 0);
 
-//             let freeKnc1 = await mockReserve.makerUnlockedKnc(maker1);
-//             await mockReserve.withdrawKncFee(freeKnc1, {from: maker1});
+//             let freeNIM1 = await mockReserve.makerUnlockedNIM(maker1);
+//             await mockReserve.withdrawNIMFee(freeNIM1, {from: maker1});
 
-//             let kncPerEthRate = await mockReserve.kncPerEthBaseRatePrecision();
+//             let NIMPerEthRate = await mockReserve.NIMPerEthBaseRatePrecision();
 
-//             await mockReserve.setBaseKncPerEthRate(kncPerEthRate.mul(new BN(2)));
-//             let requiredStake = await mockReserve.makerRequiredKncStake(maker1);
-//             let makerKnc = await mockReserve.makerKnc(maker1);
-// //            assert(requiredStake > makerKnc, "makerKnc " + makerKnc + " require stake " + requiredStake)
+//             await mockReserve.setBaseNIMPerEthRate(NIMPerEthRate.mul(new BN(2)));
+//             let requiredStake = await mockReserve.makerRequiredNIMStake(maker1);
+//             let makerNIM = await mockReserve.makerNIM(maker1);
+// //            assert(requiredStake > makerNIM, "makerNIM " + makerNIM + " require stake " + requiredStake)
 
-//             let freeKnc = await mockReserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, 0);
+//             let freeNIM = await mockReserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, 0);
 //         });
 
 //         it("maker add buy token order. see funds updated.", async () => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(200));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -1515,8 +1515,8 @@
 //     describe("add and remove orders", function() {
 //         it("test getMakerOrders eth to token", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(20));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -1561,9 +1561,9 @@
 
 //         it("test getMakerOrders eth to token with two makers", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(20));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
-//             await makerDeposit(maker2, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
+//             await makerDeposit(maker2, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -1626,9 +1626,9 @@
 
 //         it("test getMakerOrders token to eth with two makers", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(80));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker2, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker2, 0, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcTwei = token18Dec.mul(new BN(2));
 //             let dstWei = PRECISION.mul(new BN(9));
@@ -1691,8 +1691,8 @@
 
 //         it("maker add buy token order. see rate updated. verify order details.", async () => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(20));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -1720,8 +1720,8 @@
 
 //         it("maker add eth to token order. rate > MAX_RATE, see revert for add and update.", async () => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(20));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             srcAmountWei = PRECISION.mul(new BN(2));
 //             orderDstTwei = new BN(String(2 * 10 ** 12));
@@ -1766,9 +1766,9 @@
 
 //         it("test min eth to token order size. see revert when wei size below min", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(20));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let tokenTweiDepositAmount = token18Dec.mul(new BN(0));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenTweiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenTweiDepositAmount, NIMTweiDepositAmount);
 
 //             let weiAmount = new BN(minNewOrderWei);
 //             let tweiAmount = new BN(String(9 * 10 ** 12));
@@ -1795,9 +1795,9 @@
 
 //         it("test min token to eth order size. see revert when wei size below min", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let tokenTweiDepositAmount = token18Dec.mul(new BN(2));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenTweiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenTweiDepositAmount, NIMTweiDepositAmount);
 
 //             let weiAmount = new BN(minNewOrderWei);
 //             let tweiAmount = new BN(String(9 * 10 ** 12));
@@ -1824,8 +1824,8 @@
 
 //         it("maker add token to eth order. rate > MAX_RATE, see revert for 'add' and 'update'.", async () => {
 //             let tokenTweiDepositAmount = new BN(20).mul(new BN(10).pow(new BN(25)));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, 0, tokenTweiDepositAmount, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, 0, tokenTweiDepositAmount, NIMTweiDepositAmount);
 
 //             srcAmountTwei = new BN(2).mul(new BN(10).pow(new BN(24)));
 //             orderDstWei = PRECISION.mul(new BN(2));
@@ -1888,9 +1888,9 @@
 //         });
 
 //         it("maker add sell token order. see rate updated. verify order details.", async () => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(9)).add(new BN(3000));
-//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(9));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -1920,14 +1920,14 @@
 
 //         it("verify 'add order' with src / dst amount above MAX_QTY revert", async() => {
 //             let tokenWeiDepositAmount = MAX_QTY.div(new BN(4));
-//             let kncTweiDepositAmount = MAX_QTY.sub(new BN(1));
+//             let NIMTweiDepositAmount = MAX_QTY.sub(new BN(1));
 //             let ethWeiDepositAmount = new BN(0);
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = MAX_QTY.sub(new BN(1));
 //             let valueTwei = MAX_QTY.sub(new BN(1));
@@ -1952,14 +1952,14 @@
 
 //         it("verify 'update order' with src / dst amount above MAX_QTY revert", async() => {
 //             let tokenWeiDepositAmount = MAX_QTY.div(new BN(4));
-//             let kncTweiDepositAmount = MAX_QTY.sub(new BN(1));
+//             let NIMTweiDepositAmount = MAX_QTY.sub(new BN(1));
 //             let ethWeiDepositAmount = new BN(0);
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = MAX_QTY.sub(new BN(1));
 //             let valueTwei = MAX_QTY.sub(new BN(1));
@@ -1985,8 +1985,8 @@
 
 //         it("maker add buy token order. update to smaller illegal amount, see reverted.", async () => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(700));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -2004,11 +2004,11 @@
 //             Helper.assertEqual(rxFreeWei, expectedFreeWei );
 
 
-//             let expectedStake = await reserve.calcKncStake(srcAmountWei);
-//             let actualStake = await reserve.makerRequiredKncStake(maker1);
+//             let expectedStake = await reserve.calcNIMStake(srcAmountWei);
+//             let actualStake = await reserve.makerRequiredNIMStake(maker1);
 //             Helper.assertEqual(expectedStake, actualStake);
-//             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount.sub(expectedStake));
+//             let freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount.sub(expectedStake));
 //             let updatedSource = PRECISION.mul(new BN(2)).sub(new BN(100));
 
 //             // update source amount
@@ -2022,17 +2022,17 @@
 //             rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
 //             Helper.assertEqual(rxFreeWei, expectedFreeWei);
 
-//             expectedStake = await reserve.calcKncStake(srcAmountWei);
-//             actualStake = await reserve.makerRequiredKncStake(maker1);
+//             expectedStake = await reserve.calcNIMStake(srcAmountWei);
+//             actualStake = await reserve.makerRequiredNIMStake(maker1);
 //             Helper.assertEqual(expectedStake, actualStake);
-//             freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount.sub(expectedStake));
+//             freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount.sub(expectedStake));
 //         });
 
 //         it("maker add few buy orders. update order with/out change position. see position correct", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(8)).add(new BN(6000));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300)); // 2 ether
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -2095,8 +2095,8 @@
 
 //         it("verify order sorting can handle minimum value differences.", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(6)).add(new BN(6000));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300)); // 2 ether
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -2121,8 +2121,8 @@
 
 //         it("maker add few buy orders. update order with correct hints. with / without move position. see success and print gas", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(8)).add(new BN(6000));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300)); // 2 ether
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -2185,8 +2185,8 @@
 
 //         it("maker adds buy orders. compare gas for update with / without hint", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(8)).add(new BN(6000));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(500)); // 2 ether
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -2220,8 +2220,8 @@
 
 //         it("maker add 2 buy orders. get hint for next buy order and see correct", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(4)).add(new BN(6000));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(500)); // 2 ether
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -2256,8 +2256,8 @@
 
 //         it("maker add 2 sell orders. get hint for next sell order and see correct", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(500)); // 500 tokens
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderDestWei = PRECISION.mul(new BN(2)).add(new BN(2000)); // 2 ether
 //             let srcAmountTwei = token18Dec.mul(new BN(9));
@@ -2291,8 +2291,8 @@
 
 //         it("maker add 3 buy orders. test get hint for updating last order to different amounts", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(6)).add(new BN(20000));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(500)); // 2 ether
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -2336,8 +2336,8 @@
 
 //         it("maker add 3 sell orders. test get hint for updating last order to different amounts", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(500)); // 500 tokens
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderDestWei = PRECISION.mul(new BN(2)).add(new BN(800)); // 2 ether
 //             let srcAmountTwei = token18Dec.mul(new BN(9));
@@ -2381,8 +2381,8 @@
 
 //         it("maker add few buy orders. update order with wrong hint. see success and print gas", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(8)).add(new BN(9000));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(800)); // 2 ether
 //             let orderDstTwei = new BN(String(1.4 * PRECISION));
@@ -2435,8 +2435,8 @@
 
 //         it("maker add buy order. update order with another maker. see reverted.", async() => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(9000));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300)); // 2 ether
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -2466,10 +2466,10 @@
 
 //         it("maker add few buy and sell orders and perform batch update - only amounts. compare gas no hint and good hint.", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(500)); // 500 tokens
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(4)).add(new BN(3000));
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(250)); // 2 ether
 //             let dstAmountTwei = token18Dec.mul(new BN(9));
@@ -2545,10 +2545,10 @@
 
 //         it("maker add few buy and sell orders and perform batch update + move position. compare gas no hint and good hint.", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(500)); // 500 tokens
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(700));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(6)).add(new BN(3000));
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(200)); // 2 ether
 //             let dstAmountTwei = token18Dec.mul(new BN(9));
@@ -2633,9 +2633,9 @@
 
 //         it("maker add a few buy orders. see orders added in correct position. print gas price per order", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(200)); // 2 ether
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -2703,9 +2703,9 @@
 
 //         it("maker - check gas price for order reuse is better.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(2000)); // 2 ether
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -2779,9 +2779,9 @@
 
 //         it("use batch add order - 3 orders. print gas for using hint array.", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(6));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             orderSrc = PRECISION.mul(new BN(2));
 //             orderDst = PRECISION.mul(new BN(6));
@@ -2801,9 +2801,9 @@
 
 //         it("use batch add order. print gas for using special add array.", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(6));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             orderSrc = PRECISION.mul(new BN(2));
 //             orderDst = PRECISION.mul(new BN(6));
@@ -2821,9 +2821,9 @@
 
 //         it("use batch add order. print gas when using no hints.", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(6));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             orderSrc = PRECISION.mul(new BN(2));
 //             orderDst = PRECISION.mul(new BN(6));
@@ -2841,9 +2841,9 @@
 
 //         it("maker - compare gas price for making 5 buy orders. one by one in order vs batch add.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             orderSrc = PRECISION.mul(new BN(2));
 //             orderDst = PRECISION.mul(new BN(6));
@@ -2870,7 +2870,7 @@
 //             let isAfterMyPrevOrder = [false, false, false, false, false];
 //             let isBuyOrder = [true, true, true, true, true];
 
-//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             rc = await reserve.addOrderBatch(isBuyOrder, makeOrdersSrcAmounts, makeOrdersDstAmount, hintArray, isAfterMyPrevOrder, {from: maker2});
 
@@ -2881,9 +2881,9 @@
 
 //         it("make order - compare gas price. add 5th order with / without hint.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             orderSrc = PRECISION.mul(new BN(2));
 //             orderDst = PRECISION.mul(new BN(6));
@@ -2905,7 +2905,7 @@
 //             }
 
 //             //now run same data with maker 2. add last with hint
-//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             for (let i = 0; i < makeOrdersSrcAmounts.length - 1; i++) {
 //                 rc = await reserve.submitEthToTokenOrderWHint(makeOrdersSrcAmounts[i], makeOrdersDstAmount[i], 0, {from: maker2});
@@ -2929,9 +2929,9 @@
 
 //         it("maker add a few sell orders. see orders added in correct position.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(500));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(0)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(9));
 //             let orderDstWei = PRECISION.mul(new BN(2)).add(new BN(2000));
@@ -3004,9 +3004,9 @@
 //             const MAX_ORDERS_PER_MAKER = numOrderIdsPerMaker;
 
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(3000));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(300000));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(300000));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(3));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -3049,7 +3049,7 @@
 //             let addGasLastIdWithHint = rc.receipt.gasUsed;
 
 //             //now max orders for maker2
-//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             for(let i = 0; i < MAX_ORDERS_PER_MAKER; i++) {
 //                 let prevId = rc.logs[0].args.orderId;
@@ -3062,9 +3062,9 @@
 
 //         it("test can't 'revive' deleted (tok to eth) order by setting it as prev ID (in empty list)", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(500));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(0)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(9));
 //             let orderDstWei = PRECISION.mul(new BN(2)).add(new BN(2000));
@@ -3086,9 +3086,9 @@
 
 //         it("test can't 'revive' deleted (tok to eth) order by setting it as prev ID (in non empty list)", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(500));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(0)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(9));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -3113,9 +3113,9 @@
 
 //         it("test can't 'revive' canceled (tok to eth) order by updating it", async() => {
 //             const tokenWeiDepositAmount = token18Dec.mul(new BN(500));
-//             const kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             const NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             const ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(9));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -3143,9 +3143,9 @@
 
 //         it("test can't cancel canceled (tok to eth) order", async() => {
 //             const tokenWeiDepositAmount = token18Dec.mul(new BN(500));
-//             const kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             const NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             const ethWeiDepositAmount = new BN(0);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(9));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -3167,9 +3167,9 @@
 
 //         it("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in empty list)", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderTwei = token18Dec.mul(new BN(9));
 //             let orderWei = PRECISION.mul(new BN(2)).add(new BN(2000));
@@ -3191,9 +3191,9 @@
 
 //         it("test can't 'revive' deleted (eth to tok) order by setting it as prev ID (in non empty list)", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderTwei = token18Dec.mul(new BN(9));
 //             let orderWei = PRECISION.mul(new BN(2));
@@ -3217,11 +3217,11 @@
 //         })
 //     });
 
-//     describe("knc stakes and burn", function() {
-//         it("maker add sell token order. see funds & knc stakes updated.", async () => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//     describe("NIM stakes and burn", function() {
+//         it("maker add sell token order. see funds & NIM stakes updated.", async () => {
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let tokenWeiDepositAmount = new BN(String(PRECISION * 11.1));
-//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(9));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -3229,10 +3229,10 @@
 //             //check maker free token funds
 //             let rxFreeTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(rxFreeTwei, tokenWeiDepositAmount );
-//             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount);
-//             let stakedKnc =  await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(stakedKnc, 0);
+//             let freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount);
+//             let stakedNIM =  await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(stakedNIM, 0);
 
 //             //add order
 //             let rc = await reserve.submitTokenToEthOrderWHint(orderSrcAmountTwei, orderDstWei, 0, {from: maker1});
@@ -3241,19 +3241,19 @@
 //             rxFreeTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(rxFreeTwei, expectedFreeTwei);
 
-//             expectedStakedKnc = await reserve.calcKncStake(orderDstWei);
-//             stakedKnc =  await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(stakedKnc, expectedStakedKnc);
-//             freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount.sub(expectedStakedKnc));
+//             expectedStakedNIM = await reserve.calcNIMStake(orderDstWei);
+//             stakedNIM =  await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(stakedNIM, expectedStakedNIM);
+//             freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount.sub(expectedStakedNIM));
 //             rxFreeTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(rxFreeTwei, tokenWeiDepositAmount.sub(orderSrcAmountTwei) );
 //         });
 
-//         it("maker add buy token order. see funds & knc stakes updated.", async () => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         it("maker add buy token order. see funds & NIM stakes updated.", async () => {
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(700));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let orderSrcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(5));
@@ -3261,10 +3261,10 @@
 //             //check maker free token funds
 //             let rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
 //             Helper.assertEqual(rxFreeWei, ethWeiDepositAmount );
-//             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount);
-//             let stakedKnc =  await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(stakedKnc, 0);
+//             let freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount);
+//             let stakedNIM =  await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(stakedNIM, 0);
 
 //             //add order
 //             let rc = await reserve.submitEthToTokenOrder(orderSrcAmountWei, orderDstTwei, {from: maker1});
@@ -3273,17 +3273,17 @@
 //             rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
 //             Helper.assertEqual(rxFreeWei, expectedFreeWei);
 
-//             expectedStakedKnc = await reserve.calcKncStake(orderSrcAmountWei);
-//             stakedKnc =  await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(stakedKnc, expectedStakedKnc);
-//             freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount.sub(expectedStakedKnc));
+//             expectedStakedNIM = await reserve.calcNIMStake(orderSrcAmountWei);
+//             stakedNIM =  await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(stakedNIM, expectedStakedNIM);
+//             freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount.sub(expectedStakedNIM));
 //         });
 
-//         it("maker add buy token orders. take orders. see total orders wei and knc stakes updated.", async () => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         it("maker add buy token orders. take orders. see total orders wei and NIM stakes updated.", async () => {
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(6)).add(new BN(700));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let orderSrcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = new BN(String(2 * 10 ** 14));
@@ -3297,13 +3297,13 @@
 //             rxOrdersWei = await reserve.makerTotalOrdersWei(maker1);
 //             Helper.assertEqual(rxOrdersWei, expectedTotalWeiInOrders);
 
-//             let expectedStakedKnc = await reserve.calcKncStake(expectedTotalWeiInOrders);
-//             rxKncStakes = await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(rxKncStakes, expectedStakedKnc);
+//             let expectedStakedNIM = await reserve.calcNIMStake(expectedTotalWeiInOrders);
+//             rxNIMStakes = await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(rxNIMStakes, expectedStakedNIM);
 
-//             expectedFreeKnc = kncTweiDepositAmount.sub(expectedStakedKnc);
-//             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(expectedFreeKnc, rxFreeKnc);
+//             expectedFreeNIM = NIMTweiDepositAmount.sub(expectedStakedNIM);
+//             rxFreeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(expectedFreeNIM, rxFreeNIM);
 
 //             //take one full order
 //             await token.transfer(network, orderDstTwei);
@@ -3315,14 +3315,14 @@
 //             rxOrdersWei = await reserve.makerTotalOrdersWei(maker1);
 //             Helper.assertEqual(rxOrdersWei, expectedTotalWeiInOrders);
 
-//             expectedStakedKnc = await reserve.calcKncStake(expectedTotalWeiInOrders);
-//             rxKncStakes = await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(rxKncStakes, expectedStakedKnc);
+//             expectedStakedNIM = await reserve.calcNIMStake(expectedTotalWeiInOrders);
+//             rxNIMStakes = await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(rxNIMStakes, expectedStakedNIM);
 
 //             let burnedAmount = await reserve.calcBurnAmount(orderSrcAmountWei.add(new BN(300)));
-//             expectedFreeKnc = kncTweiDepositAmount.sub(expectedStakedKnc.add(burnedAmount));
-//             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(expectedFreeKnc, rxFreeKnc);
+//             expectedFreeNIM = NIMTweiDepositAmount.sub(expectedStakedNIM.add(burnedAmount));
+//             rxFreeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(expectedFreeNIM, rxFreeNIM);
 
 //             //take half order
 //             await token.transfer(network, orderDstTwei.div(new BN(2)));
@@ -3334,20 +3334,20 @@
 //             rxOrdersWei = await reserve.makerTotalOrdersWei(maker1);
 //             Helper.assertEqual(rxOrdersWei, expectedTotalWeiInOrders);
 
-//             expectedStakedKnc = await reserve.calcKncStake(expectedTotalWeiInOrders);
-//             rxKncStakes = await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(rxKncStakes, expectedStakedKnc);
+//             expectedStakedNIM = await reserve.calcNIMStake(expectedTotalWeiInOrders);
+//             rxNIMStakes = await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(rxNIMStakes, expectedStakedNIM);
 
 //             burnAmount = await reserve.calcBurnAmount(orderSrcAmountWei.div(new BN(2)).add(new BN(100)));
-//             expectedFreeKnc = expectedFreeKnc.add(burnAmount.mul(burnToStakeFactor.sub(new BN(1))));
-//             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(expectedFreeKnc, rxFreeKnc);
+//             expectedFreeNIM = expectedFreeNIM.add(burnAmount.mul(burnToStakeFactor.sub(new BN(1))));
+//             rxFreeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(expectedFreeNIM, rxFreeNIM);
 //         });
 
-//         it("maker add sell token orders. take orders. see total orders wei and knc stakes updated.", async () => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         it("maker add sell token orders. take orders. see total orders wei and NIM stakes updated.", async () => {
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let tokenTweiDepositAmount = PRECISION.mul(new BN(16)).add(new BN(700));
-//             await makerDeposit(maker1, 0, tokenTweiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, 0, tokenTweiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountTwei = token18Dec.mul(new BN(3));
 //             let dstWei = PRECISION.mul(new BN(2));
@@ -3361,13 +3361,13 @@
 //             rxOrdersWei = await reserve.makerTotalOrdersWei(maker1);
 //             Helper.assertEqual(rxOrdersWei, expectedTotalWeiInOrders);
 
-//             let expectedStakedKnc = await reserve.calcKncStake(expectedTotalWeiInOrders);
-//             rxKncStakes = await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(rxKncStakes, expectedStakedKnc);
+//             let expectedStakedNIM = await reserve.calcNIMStake(expectedTotalWeiInOrders);
+//             rxNIMStakes = await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(rxNIMStakes, expectedStakedNIM);
 
-//             expectedFreeKnc = kncTweiDepositAmount.sub(expectedStakedKnc);
-//             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(expectedFreeKnc, rxFreeKnc);
+//             expectedFreeNIM = NIMTweiDepositAmount.sub(expectedStakedNIM);
+//             rxFreeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(expectedFreeNIM, rxFreeNIM);
 
 //             //take one full order
 //             let rate = await reserve.getConversionRate(ethAddress, tokenAdd, dstWei, 0);
@@ -3377,14 +3377,14 @@
 //             rxOrdersWei = await reserve.makerTotalOrdersWei(maker1);
 //             Helper.assertEqual(rxOrdersWei, expectedTotalWeiInOrders);
 
-//             expectedStakedKnc = await reserve.calcKncStake(expectedTotalWeiInOrders);
-//             rxKncStakes = await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(rxKncStakes, expectedStakedKnc);
+//             expectedStakedNIM = await reserve.calcNIMStake(expectedTotalWeiInOrders);
+//             rxNIMStakes = await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(rxNIMStakes, expectedStakedNIM);
 
 //             let burnAmount = await reserve.calcBurnAmount(dstWei);
-//             expectedFreeKnc = kncTweiDepositAmount.sub(expectedStakedKnc.add(burnAmount));
-//             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(expectedFreeKnc, rxFreeKnc);
+//             expectedFreeNIM = NIMTweiDepositAmount.sub(expectedStakedNIM.add(burnAmount));
+//             rxFreeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(expectedFreeNIM, rxFreeNIM);
 
 //             //take half order
 //             rate = await reserve.getConversionRate(ethAddress, tokenAdd, dstWei.div(new BN(2)), 0);
@@ -3394,20 +3394,20 @@
 //             rxOrdersWei = await reserve.makerTotalOrdersWei(maker1);
 //             Helper.assertEqual(rxOrdersWei, expectedTotalWeiInOrders);
 
-//             expectedStakedKnc = await reserve.calcKncStake(expectedTotalWeiInOrders);
-//             rxKncStakes = await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(rxKncStakes, expectedStakedKnc);
+//             expectedStakedNIM = await reserve.calcNIMStake(expectedTotalWeiInOrders);
+//             rxNIMStakes = await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(rxNIMStakes, expectedStakedNIM);
 
 //             burnAmount = await reserve.calcBurnAmount(dstWei.div(new BN(2)));
-//             expectedFreeKnc = expectedFreeKnc.add(burnAmount.mul(burnToStakeFactor.sub(new BN(1))));
-//             rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(expectedFreeKnc, rxFreeKnc);
+//             expectedFreeNIM = expectedFreeNIM.add(burnAmount.mul(burnToStakeFactor.sub(new BN(1))));
+//             rxFreeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(expectedFreeNIM, rxFreeNIM);
 //         });
 
-//         it("maker add sell token order. cancel order. verify order removed and funds & knc updated.", async () => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         it("maker add sell token order. cancel order. verify order removed and funds & NIM updated.", async () => {
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let tokenWeiDepositAmount = new BN(String(PRECISION * 11.1));
-//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(9));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -3417,7 +3417,7 @@
 
 //             let orderList = await reserve.getTokenToEthOrderList();
 //             Helper.assertEqual(orderList.length, 1);
-//             //see funds and knc stakes
+//             //see funds and NIM stakes
 //             let expectedFreeTwei = tokenWeiDepositAmount.sub(orderSrcAmountTwei);
 //             let rxFreeTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(rxFreeTwei, expectedFreeTwei );
@@ -3430,16 +3430,16 @@
 //             //see all values back to start state
 //             rxFreeTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(rxFreeTwei, tokenWeiDepositAmount );
-//             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount);
-//             let stakedKnc =  await reserve.makerRequiredKncStake(maker1);
-//             Helper.assertEqual(stakedKnc, 0);
+//             let freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount);
+//             let stakedNIM =  await reserve.makerRequiredNIMStake(maker1);
+//             Helper.assertEqual(stakedNIM, 0);
 //         });
 
-//         it("maker add sell order. update to smaller amount, see funds and knc stakes updated", async() => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         it("maker add sell order. update to smaller amount, see funds and NIM stakes updated", async() => {
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let tokenWeiDepositAmount = new BN(String(PRECISION * 11.1));
-//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(9));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -3461,20 +3461,20 @@
 //             freeTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(freeTwei, tokenWeiDepositAmount.sub(updatedSource));
 
-//             let expectedStake = await reserve.calcKncStake(updateDest);
-//             let actualStake = await reserve.makerRequiredKncStake(maker1);
+//             let expectedStake = await reserve.calcNIMStake(updateDest);
+//             let actualStake = await reserve.makerRequiredNIMStake(maker1);
 //             Helper.assertEqual(expectedStake, actualStake);
-//             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount.sub(expectedStake));
+//             let freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount.sub(expectedStake));
 
 //             let orderList = await reserve.getTokenToEthOrderList();
 //             Helper.assertEqual(orderList.length, 1);
 //         });
 
-//         it("maker add buy token order. update to smaller amount, see funds & knc updated.", async () => {
+//         it("maker add buy token order. update to smaller amount, see funds & NIM updated.", async () => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(700));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2)).add(new BN(300));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -3498,17 +3498,17 @@
 //             rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
 //             Helper.assertEqual(rxFreeWei, ethWeiDepositAmount.sub(updatedSource));
 
-//             let expectedStake = await reserve.calcKncStake(updatedSource);
-//             let actualStake = await reserve.makerRequiredKncStake(maker1);
+//             let expectedStake = await reserve.calcNIMStake(updatedSource);
+//             let actualStake = await reserve.makerRequiredNIMStake(maker1);
 //             Helper.assertEqual(expectedStake, actualStake);
-//             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount.sub(expectedStake));
+//             let freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount.sub(expectedStake));
 //         });
 
-//         it("maker add sell order. update to bigger amount, see funds and knc stakes updated", async() => {
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         it("maker add sell order. update to bigger amount, see funds and NIM stakes updated", async() => {
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let tokenWeiDepositAmount = new BN(String(PRECISION * 11.1));
-//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, 0, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(9));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -3530,20 +3530,20 @@
 //             freeTwei = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(freeTwei, tokenWeiDepositAmount.sub(updatedSource));
 
-//             let expectedStake = await reserve.calcKncStake(updateDest);
-//             let actualStake = await reserve.makerRequiredKncStake(maker1);
+//             let expectedStake = await reserve.calcNIMStake(updateDest);
+//             let actualStake = await reserve.makerRequiredNIMStake(maker1);
 //             Helper.assertEqual(expectedStake, actualStake);
-//             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount.sub(expectedStake));
+//             let freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount.sub(expectedStake));
 
 //             let orderList = await reserve.getTokenToEthOrderList();
 //             Helper.assertEqual(orderList.length, 1);
 //         });
 
-//         it("maker add buy token order. update to bigger amount, see funds & knc updated.", async () => {
+//         it("maker add buy token order. update to bigger amount, see funds & NIM updated.", async () => {
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(700));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
-//             await makerDeposit(maker1, ethWeiDepositAmount, 0, kncTweiDepositAmount);
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
+//             await makerDeposit(maker1, ethWeiDepositAmount, 0, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -3567,20 +3567,20 @@
 //             rxFreeWei = await reserve.makerFunds(maker1, ethAddress);
 //             Helper.assertEqual(rxFreeWei, ethWeiDepositAmount.sub(updatedSource));
 
-//             let expectedStake = await reserve.calcKncStake(updatedSource);
-//             let actualStake = await reserve.makerRequiredKncStake(maker1);
+//             let expectedStake = await reserve.calcNIMStake(updatedSource);
+//             let actualStake = await reserve.makerRequiredNIMStake(maker1);
 //             Helper.assertEqual(expectedStake, actualStake);
-//             let freeKnc = await reserve.makerUnlockedKnc(maker1);
-//             Helper.assertEqual(freeKnc, kncTweiDepositAmount.sub(expectedStake));
+//             let freeNIM = await reserve.makerUnlockedNIM(maker1);
+//             Helper.assertEqual(freeNIM, NIMTweiDepositAmount.sub(expectedStake));
 //         });
 //     })
 
 //     describe("trade (add orders and take)", function() {
 //         it("maker add sell order. take using trade. see amounts updated in contracts. see funds transferred.", async() => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(10));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let makerTokenBalance = await reserve.makerFunds(maker1, tokenAdd);
 //             Helper.assertEqual(makerTokenBalance, tokenWeiDepositAmount);
@@ -3612,9 +3612,9 @@
 
 //         it("maker - make 5 buy orders and take in one trade. see gas for take.", async () => {
 //             const tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             const kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             const NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             const ethWeiDepositAmount = PRECISION.mul(new BN(10)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             orderSrc = PRECISION.mul(new BN(2));
 //             orderDst = PRECISION.mul(new BN(6));
@@ -3641,27 +3641,27 @@
 //         });
 
 //         it("calc expected stake and calc burn amount. validate match", async () => {
-//             baseKncPerEthRatePrecision = await reserve.kncPerEthBaseRatePrecision();
+//             baseNIMPerEthRatePrecision = await reserve.NIMPerEthBaseRatePrecision();
 
 //             let weiValue = PRECISION.mul(new BN(2));
 //             let feeBps = await reserve.makerBurnFeeBps();
 
-//             let expectedBurn = weiValue.mul(feeBps).mul(baseKncPerEthRatePrecision).div(PRECISION.mul(new BN(BPS)));
+//             let expectedBurn = weiValue.mul(feeBps).mul(baseNIMPerEthRatePrecision).div(PRECISION.mul(new BN(BPS)));
 
 //             let calcBurn = await reserve.calcBurnAmount(weiValue);
 //             Helper.assertEqual(expectedBurn, calcBurn);
 
 //             let calcExpectedStake = expectedBurn.mul(burnToStakeFactor);
-//             let calcStake = await reserve.calcKncStake(weiValue);
+//             let calcStake = await reserve.calcNIMStake(weiValue);
 //             Helper.assertEqual(calcStake, calcExpectedStake);
 //             Helper.assertLesser(calcBurn, calcStake);
 //         });
 
 //         it("maker add buy order. user takes order. see taken order removed as expected.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -3692,9 +3692,9 @@
 
 //         it("maker add a few buy orders. user takes full orders. see user gets traded wei. maker gets tokens.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(6)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -3742,9 +3742,9 @@
 
 //         it("buy orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining removed", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(700));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(12)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -3781,9 +3781,9 @@
 
 //         it("buy orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining not removed", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(700));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(12)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));;
 //             let orderDstTwei = token18Dec.mul(new BN(9));
@@ -3824,9 +3824,9 @@
 
 //         it("test over flows for get rate on partial order. tests overflow in dest amount calculation", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(700));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(10));
 //             let orderDstTwei = token18Dec.mul(new BN(1000));
@@ -3849,14 +3849,14 @@
 
 //         it("test over flows in trade partial order. use MAX_QTY i.e. overflow in dest amount calculation", async () => {
 //             let tokenWeiDepositAmount = MAX_QTY.div(new BN(4));
-//             let kncTweiDepositAmount = MAX_QTY.sub(new BN(1));
+//             let NIMTweiDepositAmount = MAX_QTY.sub(new BN(1));
 //             let ethWeiDepositAmount = new BN(0);
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueWei = MAX_QTY.sub(new BN(1));
 //             let valueTwei = MAX_QTY.sub(new BN(1));
@@ -3877,14 +3877,14 @@
 
 //         it("test over flows in trade partial order. use MAX_QTY i.e. overflow in dest amount calculation", async () => {
 //             let tokenWeiDepositAmount = MAX_QTY.div(new BN(4));
-//             let kncTweiDepositAmount = MAX_QTY.sub(new BN(1));
+//             let NIMTweiDepositAmount = MAX_QTY.sub(new BN(1));
 //             let ethWeiDepositAmount = new BN(0);
 
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let valueTwei = MAX_QTY.sub(new BN(1));
 
@@ -3909,9 +3909,9 @@
 
 //         it("test over flows for get rate on partial order use MAX_QTY.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(700));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(10));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(10));
 //             let orderDstTwei = token18Dec.mul(new BN(1000));
@@ -3934,9 +3934,9 @@
 
 //         it("test over flows in trade partial order. i.e. overflow in dest amount calculation", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(700));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(20));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(20));
 //             let orderDstTwei = token18Dec.mul(new BN(2000));
@@ -3961,9 +3961,9 @@
 
 //         it("maker add buy order. user takes partial. remaining order stays in book.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(700));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(7));
@@ -3994,9 +3994,9 @@
 
 //         it("maker add buy order. user takes partial. remaining order removed.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(2)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(7));
@@ -4029,9 +4029,9 @@
 
 //         it("maker add a few sell orders. user takes orders. see taken orders are removed. user gets token. maker get eth.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -4060,9 +4060,9 @@
 
 //         it("sell orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining removed", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(700));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -4099,9 +4099,9 @@
 
 //         it("sell orders print gas for taking 0.5 order 1.5 order 2.5 orders. remaining not removed", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(700));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(700));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //             let orderDstWei = PRECISION.mul(new BN(2));
@@ -4145,9 +4145,9 @@
 
 //         it("add 9 buy orders 1 maker. user takes all orders. print gas", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(1100));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(1100));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(20)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(7));
@@ -4180,9 +4180,9 @@
 
 //         it("add 10 buy orders. user takes all and last partial. remaining order stays in book. print gas", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(1400));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(1400));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(20)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(7));
@@ -4215,9 +4215,9 @@
 
 //         it("add 10 buy orders. user takes all and last partial. remaining order removed.", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(1500));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(1500));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(20)).add(new BN(30000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(7));
@@ -4255,11 +4255,11 @@
 
 //         it("add 3 buy orders per 3 makers. take all orders in one trade. see each maker gets his part of tokens", async () => {
 //             let tokenWeiDepositAmount = token18Dec.mul(new BN(0));
-//             let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//             let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //             let ethWeiDepositAmount = PRECISION.mul(new BN(6)).add(new BN(3000));
-//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
-//             await makerDeposit(maker3, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//             await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker2, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
+//             await makerDeposit(maker3, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //             let srcAmountWei = PRECISION.mul(new BN(2));
 //             let orderDstTwei = token18Dec.mul(new BN(7));
@@ -4328,9 +4328,9 @@
 //         await Helper.sendEtherWithPromise(user1, maker2, PRECISION.mul(new BN(6)));
 
 //         let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //         // first getConversionRate should return 0
 //         let rate = await reserve.getConversionRate(token.address, ethAddress, PRECISION, 0);
@@ -4416,17 +4416,17 @@
 
 //         token = await TestToken.new("the token", "tok", 18);
 //         tokenAdd = token.address;
-//         KNCToken = await TestToken.new("kyber crystals", "knc", 18);
-//         kncAddress = KNCToken.address;
+//         NIMToken = await TestToken.new("nimble crystals", "NIM", 18);
+//         NIMAddress = NIMToken.address;
 
-//         // prepare kyber network
-//         mockNetwork = await MockKyberNetwork.new(admin);
+//         // prepare nimble network
+//         mockNetwork = await MocknimbleNetwork.new(admin);
 
 //         feeBurner = await FeeBurner.new(
 //             admin,
-//             kncAddress,
+//             NIMAddress,
 //             mockNetwork.address,
-//             initialEthToKncRatePrecision
+//             initialEthToNIMRatePrecision
 //         );
 
 //         ordersFactory = await OrderListFactory.new();
@@ -4435,13 +4435,13 @@
 //         await medianizer.setValid(true);
 //         await medianizer.setEthPrice(dollarsPerEthPrecision);
 
-//         reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address,
+//         reserve = await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address,
 //             ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //         await reserve.init();
 
 //         let rxLimits = await reserve.limits();
 //         minNewOrderWei = rxLimits[2];
-//         baseKncPerEthRatePrecision = await reserve.kncPerEthBaseRatePrecision();
+//         baseNIMPerEthRatePrecision = await reserve.NIMPerEthBaseRatePrecision();
 //         burnToStakeFactor = await reserve.BURN_TO_STAKE_FACTOR();
 //         let ordersAdd = await reserve.tokenToEthList();
 //         let orders = await OrderList.at(ordersAdd);
@@ -4451,29 +4451,29 @@
 //     });
 
 //     beforeEach('setup reserve contract for each test', async () => {
-//         ethKncRate = new BN(initialEthKncRate);
-//         let ethToKncRatePrecision = PRECISION.mul(ethKncRate);
-//         let kncToEthRatePrecision = PRECISION.div(ethKncRate);
+//         ethNIMRate = new BN(initialEthNIMRate);
+//         let ethToNIMRatePrecision = PRECISION.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = PRECISION.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         await feeBurner.setKNCRate();
+//         await feeBurner.setNIMRate();
 
-//         reserve = await OrderbookReserve.new(kncAddress, tokenAdd, feeBurner.address, network, medianizer.address,
+//         reserve = await OrderbookReserve.new(NIMAddress, tokenAdd, feeBurner.address, network, medianizer.address,
 //                 ordersFactory.address, minOrderSizeDollar, maxOrdersPerTrade, makerBurnFeeBps);
 //         await reserve.init();
 
-//         await reserve.setKncPerEthBaseRate();
+//         await reserve.setNIMPerEthBaseRate();
 
-//         baseKncPerEthRatePrecision = await reserve.kncPerEthBaseRatePrecision();
+//         baseNIMPerEthRatePrecision = await reserve.NIMPerEthBaseRatePrecision();
 //     });
 
-//     it("add orders modify knc rate to lower knc value, see unlocked knc and staked knc don't change", async() => {
+//     it("add orders modify NIM rate to lower NIM value, see unlocked NIM and staked NIM don't change", async() => {
 //         let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //         let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //         let orderDstWei = new BN(minNewOrderWei);
@@ -4483,43 +4483,43 @@
 //             rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(new BN(400)), {from: maker1});
 //             rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(new BN(200)), {from: maker1});
 
-//         let freeKnc1 = await reserve.makerUnlockedKnc(maker1);
-//         let stakedKnc1 = await reserve.makerRequiredKncStake(maker1);
+//         let freeNIM1 = await reserve.makerUnlockedNIM(maker1);
+//         let stakedNIM1 = await reserve.makerRequiredNIMStake(maker1);
 
-//         let rate = await mockNetwork.getExpectedRate(ethAddress, kncAddress, PRECISION);
+//         let rate = await mockNetwork.getExpectedRate(ethAddress, NIMAddress, PRECISION);
 
-//         ethKncRate = initialEthKncRate.mul(new BN(2));
-//         let ethToKncRatePrecision = PRECISION.mul(ethKncRate);
-//         let kncToEthRatePrecision = PRECISION.div(ethKncRate);
+//         ethNIMRate = initialEthNIMRate.mul(new BN(2));
+//         let ethToNIMRatePrecision = PRECISION.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = PRECISION.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         rate = await mockNetwork.getExpectedRate(ethAddress, kncAddress, PRECISION);
-//         Helper.assertEqual(ethToKncRatePrecision, rate[0]);
-//         rate = await mockNetwork.getExpectedRate(kncAddress, ethAddress, PRECISION);
-//         Helper.assertEqual(kncToEthRatePrecision, rate[0]);
+//         rate = await mockNetwork.getExpectedRate(ethAddress, NIMAddress, PRECISION);
+//         Helper.assertEqual(ethToNIMRatePrecision, rate[0]);
+//         rate = await mockNetwork.getExpectedRate(NIMAddress, ethAddress, PRECISION);
+//         Helper.assertEqual(NIMToEthRatePrecision, rate[0]);
 
-//         await feeBurner.setKNCRate();
-//         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
-//         let stakedKnc2 = await reserve.makerRequiredKncStake(maker1);
-//         Helper.assertEqual(stakedKnc2, stakedKnc1);
-//         Helper.assertEqual(freeKnc2, freeKnc1);
+//         await feeBurner.setNIMRate();
+//         let freeNIM2 = await reserve.makerUnlockedNIM(maker1);
+//         let stakedNIM2 = await reserve.makerRequiredNIMStake(maker1);
+//         Helper.assertEqual(stakedNIM2, stakedNIM1);
+//         Helper.assertEqual(freeNIM2, freeNIM1);
 
-//         await reserve.setKncPerEthBaseRate();
+//         await reserve.setNIMPerEthBaseRate();
 
-//         freeKnc2 = await reserve.makerUnlockedKnc(maker1);
-//         stakedKnc2 = await reserve.makerRequiredKncStake(maker1);
+//         freeNIM2 = await reserve.makerUnlockedNIM(maker1);
+//         stakedNIM2 = await reserve.makerRequiredNIMStake(maker1);
 
-//         Helper.assertEqual(stakedKnc2, stakedKnc1);
-//         Helper.assertEqual(freeKnc2, freeKnc1);
+//         Helper.assertEqual(stakedNIM2, stakedNIM1);
+//         Helper.assertEqual(freeNIM2, freeNIM1);
 //     })
 
-//     it("create knc rate change, so stakes per order aren't enough. see can still take order", async() => {
+//     it("create NIM rate change, so stakes per order aren't enough. see can still take order", async() => {
 //         let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //         let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //         let orderDstWei = new BN(minNewOrderWei);
@@ -4529,12 +4529,12 @@
 //             rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(new BN(400)), {from: maker1});
 //             rc = await reserve.submitTokenToEthOrder(orderSrcAmountTwei, orderDstWei.add(new BN(200)), {from: maker1});
 
-//         let freeKnc1 = await reserve.makerUnlockedKnc(maker1);
-//         let stakedKnc1 = await reserve.makerRequiredKncStake(maker1);
-//         await reserve.withdrawKncFee(freeKnc1, {from: maker1});
+//         let freeNIM1 = await reserve.makerUnlockedNIM(maker1);
+//         let stakedNIM1 = await reserve.makerRequiredNIMStake(maker1);
+//         await reserve.withdrawNIMFee(freeNIM1, {from: maker1});
 
-//         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
-//         Helper.assertEqual(freeKnc2, 0);
+//         let freeNIM2 = await reserve.makerUnlockedNIM(maker1);
+//         Helper.assertEqual(freeNIM2, 0);
         
 //         //see can't add orders
 //         try {
@@ -4544,24 +4544,24 @@
 //             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //         }
 
-//         ethKncRate = initialEthKncRate.mul(new BN(2));
-//         let ethToKncRatePrecision = PRECISION.mul(ethKncRate);
-//         let kncToEthRatePrecision = PRECISION.div(ethKncRate);
+//         ethNIMRate = initialEthNIMRate.mul(new BN(2));
+//         let ethToNIMRatePrecision = PRECISION.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = PRECISION.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         let rate = await mockNetwork.getExpectedRate(ethAddress, kncAddress, PRECISION);
-//         Helper.assertEqual(ethToKncRatePrecision, rate[0]);
-//         rate = await mockNetwork.getExpectedRate(kncAddress, ethAddress, PRECISION);
-//         Helper.assertEqual(kncToEthRatePrecision, rate[0]);
+//         let rate = await mockNetwork.getExpectedRate(ethAddress, NIMAddress, PRECISION);
+//         Helper.assertEqual(ethToNIMRatePrecision, rate[0]);
+//         rate = await mockNetwork.getExpectedRate(NIMAddress, ethAddress, PRECISION);
+//         Helper.assertEqual(NIMToEthRatePrecision, rate[0]);
 
-//         await feeBurner.setKNCRate();
-//         freeKnc2 = await reserve.makerUnlockedKnc(maker1);
-//         let stakedKnc2 = await reserve.makerRequiredKncStake(maker1);
+//         await feeBurner.setNIMRate();
+//         freeNIM2 = await reserve.makerUnlockedNIM(maker1);
+//         let stakedNIM2 = await reserve.makerRequiredNIMStake(maker1);
 
-//         Helper.assertEqual(stakedKnc2, stakedKnc1);
-//         Helper.assertEqual(freeKnc2, 0);
+//         Helper.assertEqual(stakedNIM2, stakedNIM1);
+//         Helper.assertEqual(freeNIM2, 0);
 
 //         //see can't add orders
 //         try {
@@ -4576,11 +4576,11 @@
 //         rc = await reserve.trade(ethAddress, totalPayValue, tokenAdd, user1, lowRate, false, {from:network, value: totalPayValue});
 //     });
 
-//     it("create knc rate that sets stake amount equal to expected burn amount, see can take order", async() => {
+//     it("create NIM rate that sets stake amount equal to expected burn amount, see can take order", async() => {
 //         let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //         let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //         let orderDstWei = new BN(minNewOrderWei);
@@ -4590,33 +4590,33 @@
 //         let rate = await reserve.getConversionRate(ethAddress, tokenAdd, PRECISION, 100);
 //         Helper.assertGreater(rate, 0);
 
-//         let freeKnc1 = await reserve.makerUnlockedKnc(maker1);
-//         let stakedKnc1 = await reserve.makerRequiredKncStake(maker1);
+//         let freeNIM1 = await reserve.makerUnlockedNIM(maker1);
+//         let stakedNIM1 = await reserve.makerRequiredNIMStake(maker1);
 //         let expectedBurn1 = await reserve.calcBurnAmount(orderDstWei);
-//         await reserve.withdrawKncFee(freeKnc1, {from: maker1});
-//         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
-//         Helper.assertEqual(freeKnc2, 0);
+//         await reserve.withdrawNIMFee(freeNIM1, {from: maker1});
+//         let freeNIM2 = await reserve.makerUnlockedNIM(maker1);
+//         Helper.assertEqual(freeNIM2, 0);
 
-//         // set lower Eth to KNC rate (more knc per eth)
-//         ethKncRate = initialEthKncRate.mul(new BN(burnToStakeFactor));
-//         let ethToKncRatePrecision = PRECISION.mul(ethKncRate);
-//         let kncToEthRatePrecision = PRECISION.div(ethKncRate);
+//         // set lower Eth to NIM rate (more NIM per eth)
+//         ethNIMRate = initialEthNIMRate.mul(new BN(burnToStakeFactor));
+//         let ethToNIMRatePrecision = PRECISION.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = PRECISION.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         await feeBurner.setKNCRate();
+//         await feeBurner.setNIMRate();
 
 //         // now staked amount shouldn't change and should equal expected burn amount.
-//         freeKnc2 = await reserve.makerUnlockedKnc(maker1);
-//         Helper.assertEqual(freeKnc2, 0);
+//         freeNIM2 = await reserve.makerUnlockedNIM(maker1);
+//         Helper.assertEqual(freeNIM2, 0);
 
-//         let stakedKnc2 = await reserve.makerRequiredKncStake(maker1);
-//         Helper.assertEqual(stakedKnc2, stakedKnc1);
+//         let stakedNIM2 = await reserve.makerRequiredNIMStake(maker1);
+//         Helper.assertEqual(stakedNIM2, stakedNIM1);
 //         let expectedBurn2 = await reserve.calcBurnAmount(orderDstWei);
 //         Helper.assertEqual(expectedBurn2, expectedBurn1);
 //         let expectedBurnFeeBurner = await reserve.calcBurnAmountFromFeeBurner(orderDstWei);
-//         Helper.assertEqual(expectedBurnFeeBurner, stakedKnc2);
+//         Helper.assertEqual(expectedBurnFeeBurner, stakedNIM2);
 
 //         //see can take order
 //         let totalPayValue = orderDstWei;
@@ -4625,9 +4625,9 @@
 
 //     it("see when calling getConversionRate with srcQty 0 it returns 0", async() => {
 //         let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //         let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //         let orderDstWei = new BN(minNewOrderWei);
@@ -4641,11 +4641,11 @@
 //         Helper.assertEqual(rate, 0);
 //     });
 
-//     it("change knc rate so stake amount < burn amount, see get rate blocked == returns 0", async() => {
+//     it("change NIM rate so stake amount < burn amount, see get rate blocked == returns 0", async() => {
 //         let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //         let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //         let orderDstWei = new BN(minNewOrderWei);
@@ -4655,41 +4655,41 @@
 //         let rate = await reserve.getConversionRate(ethAddress, tokenAdd, PRECISION, 522);
 //         Helper.assertGreater(rate, 0);
 
-//         let freeKnc1 = await reserve.makerUnlockedKnc(maker1);
-//         await reserve.withdrawKncFee(freeKnc1, {from: maker1});
+//         let freeNIM1 = await reserve.makerUnlockedNIM(maker1);
+//         await reserve.withdrawNIMFee(freeNIM1, {from: maker1});
 
-//         // set lower Eth to KNC rate (more knc per eth)
-//         ethKncRate = initialEthKncRate.mul(new BN(String(burnToStakeFactor * 1 + 1 * 1)));
-//         let ethToKncRatePrecision = PRECISION.mul(ethKncRate);
-//         let kncToEthRatePrecision = PRECISION.div(ethKncRate);
+//         // set lower Eth to NIM rate (more NIM per eth)
+//         ethNIMRate = initialEthNIMRate.mul(new BN(String(burnToStakeFactor * 1 + 1 * 1)));
+//         let ethToNIMRatePrecision = PRECISION.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = PRECISION.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         await feeBurner.setKNCRate();
-//         await reserve.setKncPerEthBaseRate();
+//         await feeBurner.setNIMRate();
+//         await reserve.setNIMPerEthBaseRate();
 
-//         // now staked amount should be bigger then maker knc amount. get rate should be blocked
+//         // now staked amount should be bigger then maker NIM amount. get rate should be blocked
 //         rate = await reserve.getConversionRate(ethAddress, tokenAdd, PRECISION, 522);
 //         Helper.assertEqual(rate, 0);
 
-//         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
-//         Helper.assertEqual(freeKnc2, 0);
+//         let freeNIM2 = await reserve.makerUnlockedNIM(maker1);
+//         Helper.assertEqual(freeNIM2, 0);
 
-//         let makerKncAmount = await reserve.makerKnc(maker1);
+//         let makerNIMAmount = await reserve.makerNIM(maker1);
 //         let expectedBurn2 = await reserve.calcBurnAmountFromFeeBurner(orderDstWei);
-//         Helper.assertGreater(expectedBurn2, makerKncAmount);
+//         Helper.assertGreater(expectedBurn2, makerNIMAmount);
 
 //         //see now conversion rate 0
 //         rate = await reserve.getConversionRate(ethAddress, tokenAdd, PRECISION, 52);
 //         Helper.assertEqual(rate, 0);
 //     });
 
-//     it("change knc rate so less stake required. see reflected in burn amount calculation", async() => {
+//     it("change NIM rate so less stake required. see reflected in burn amount calculation", async() => {
 //         let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //         let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //         let orderDstWei = new BN(minNewOrderWei);
@@ -4699,35 +4699,35 @@
 //         let rate = await reserve.getConversionRate(ethAddress, tokenAdd, PRECISION, 522);
 //         Helper.assertGreater(rate, 0);
 
-//         let freeKnc1 = await reserve.makerUnlockedKnc(maker1);
-//         await reserve.withdrawKncFee(freeKnc1, {from: maker1});
+//         let freeNIM1 = await reserve.makerUnlockedNIM(maker1);
+//         await reserve.withdrawNIMFee(freeNIM1, {from: maker1});
 
-//         freeKnc1 = await reserve.makerUnlockedKnc(maker1);
-//         Helper.assertEqual(freeKnc1, 0);
+//         freeNIM1 = await reserve.makerUnlockedNIM(maker1);
+//         Helper.assertEqual(freeNIM1, 0);
 
-//         let stakedKnc1 = await reserve.makerRequiredKncStake(maker1);
+//         let stakedNIM1 = await reserve.makerRequiredNIMStake(maker1);
 
-//         // set higher Eth to KNC rate (less knc per eth)
-//         ethKncRate = initialEthKncRate.div(new BN(2));
-//         let ethToKncRatePrecision = PRECISION.mul(ethKncRate);
-//         let kncToEthRatePrecision = PRECISION.div(ethKncRate);
+//         // set higher Eth to NIM rate (less NIM per eth)
+//         ethNIMRate = initialEthNIMRate.div(new BN(2));
+//         let ethToNIMRatePrecision = PRECISION.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = PRECISION.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
 //         //burn amount should equal for fee burner and local rate
 //         let expectedBurnLocal1 = await reserve.calcBurnAmount(orderDstWei);
 //         let expectedBurnFeeBurnRate1 = await reserve.calcBurnAmountFromFeeBurner(orderDstWei);
 //         Helper.assertEqual(expectedBurnLocal1, expectedBurnFeeBurnRate1);
 
-//         await feeBurner.setKNCRate();
+//         await feeBurner.setNIMRate();
 
 //         let expectedBurnLocal2 = await reserve.calcBurnAmount(orderDstWei);
 //         let expectedBurnFeeBurnRate2 = await reserve.calcBurnAmountFromFeeBurner(orderDstWei);
 //         Helper.assertEqual(expectedBurnLocal1, expectedBurnLocal2);
 //         Helper.assertEqual(expectedBurnFeeBurnRate2.mul(new BN(2)), expectedBurnFeeBurnRate1);
 
-//         await reserve.setKncPerEthBaseRate();
+//         await reserve.setNIMPerEthBaseRate();
 
 //         let expectedBurnLocal3 = await reserve.calcBurnAmount(orderDstWei);
 //         let expectedBurnFeeBurnRate3 = await reserve.calcBurnAmountFromFeeBurner(orderDstWei);
@@ -4735,11 +4735,11 @@
 //         Helper.assertEqual(expectedBurnFeeBurnRate3, expectedBurnFeeBurnRate2);
 //     });
 
-//     it("change knc rate so less stake required. see reflected", async() => {
+//     it("change NIM rate so less stake required. see reflected", async() => {
 //         let tokenWeiDepositAmount = token18Dec.mul(new BN(70));
-//         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 //         let ethWeiDepositAmount = PRECISION.mul(new BN(0));
-//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, kncTweiDepositAmount);
+//         await makerDeposit(maker1, ethWeiDepositAmount, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //         let orderSrcAmountTwei = token18Dec.mul(new BN(6));
 //         let orderDstWei = new BN(minNewOrderWei);
@@ -4749,45 +4749,45 @@
 //         let rate = await reserve.getConversionRate(ethAddress, tokenAdd, PRECISION, 522);
 //         Helper.assertGreater(rate, 0);
 
-//         let freeKnc1 = await reserve.makerUnlockedKnc(maker1);
-//         await reserve.withdrawKncFee(freeKnc1, {from: maker1});
+//         let freeNIM1 = await reserve.makerUnlockedNIM(maker1);
+//         await reserve.withdrawNIMFee(freeNIM1, {from: maker1});
 
-//         freeKnc1 = await reserve.makerUnlockedKnc(maker1);
-//         Helper.assertEqual(freeKnc1, 0);
+//         freeNIM1 = await reserve.makerUnlockedNIM(maker1);
+//         Helper.assertEqual(freeNIM1, 0);
 
-//         let stakedKnc1 = await reserve.makerRequiredKncStake(maker1);
+//         let stakedNIM1 = await reserve.makerRequiredNIMStake(maker1);
 
-//         // set higher Eth to KNC rate (less knc per eth)
-//         ethKncRate = initialEthKncRate.div(new BN(2));
-//         let ethToKncRatePrecision = PRECISION.mul(ethKncRate);
-//         let kncToEthRatePrecision = PRECISION.div(ethKncRate);
+//         // set higher Eth to NIM rate (less NIM per eth)
+//         ethNIMRate = initialEthNIMRate.div(new BN(2));
+//         let ethToNIMRatePrecision = PRECISION.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = PRECISION.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         await feeBurner.setKNCRate();
+//         await feeBurner.setNIMRate();
 
-//         let freeKnc2 = await reserve.makerUnlockedKnc(maker1);
-//         Helper.assertEqual(freeKnc2, 0);
-//         let stakedKnc2 = await reserve.makerRequiredKncStake(maker1);
-//         Helper.assertEqual(stakedKnc1, stakedKnc2)
+//         let freeNIM2 = await reserve.makerUnlockedNIM(maker1);
+//         Helper.assertEqual(freeNIM2, 0);
+//         let stakedNIM2 = await reserve.makerRequiredNIMStake(maker1);
+//         Helper.assertEqual(stakedNIM1, stakedNIM2)
 
-//         await reserve.setKncPerEthBaseRate();
-//         stakedKnc2 = await reserve.makerRequiredKncStake(maker1);
-//         Helper.assertEqual(stakedKnc1.div(new BN(2)), stakedKnc2)
+//         await reserve.setNIMPerEthBaseRate();
+//         stakedNIM2 = await reserve.makerRequiredNIMStake(maker1);
+//         Helper.assertEqual(stakedNIM1.div(new BN(2)), stakedNIM2)
 
-//         freeKnc2 = await reserve.makerUnlockedKnc(maker1);
-//         Helper.assertEqual(freeKnc2, stakedKnc1.div(new BN(2)));
+//         freeNIM2 = await reserve.makerUnlockedNIM(maker1);
+//         Helper.assertEqual(freeNIM2, stakedNIM1.div(new BN(2)));
 
 //         rate = await reserve.getConversionRate(ethAddress, tokenAdd, PRECISION, 52);
 //         Helper.assertGreater(rate, 0);
 //     });
 
-//     it("add order. reduce knc rate by factor. see can't take order if not enough burn amount", async() => {
+//     it("add order. reduce NIM rate by factor. see can't take order if not enough burn amount", async() => {
 //         let tokenWeiDepositAmount = token18Dec.mul(new BN(6));
-//         let kncTweiDepositAmount = PRECISION.mul(new BN(600));
+//         let NIMTweiDepositAmount = PRECISION.mul(new BN(600));
 
-//         await makerDeposit(maker1, 0, tokenWeiDepositAmount, kncTweiDepositAmount);
+//         await makerDeposit(maker1, 0, tokenWeiDepositAmount, NIMTweiDepositAmount);
 
 //         let srcTwei = PRECISION.mul(new BN(3));
 //         let dstWei = new BN(minNewOrderWei);
@@ -4795,17 +4795,17 @@
 //         //add order
 //         await reserve.submitTokenToEthOrder(srcTwei, dstWei, {from: maker1});
 
-//         rxFreeKnc = await reserve.makerUnlockedKnc(maker1);
-//         await reserve.withdrawKncFee(rxFreeKnc, {from: maker1});
+//         rxFreeNIM = await reserve.makerUnlockedNIM(maker1);
+//         await reserve.withdrawNIMFee(rxFreeNIM, {from: maker1});
 
-//         let ethKncRate = initialEthKncRate.mul(new BN(String(burnToStakeFactor * 1 + 1 * 1)));
-//         let ethToKncRatePrecision = PRECISION.mul(ethKncRate);
-//         let kncToEthRatePrecision = PRECISION.div(ethKncRate);
+//         let ethNIMRate = initialEthNIMRate.mul(new BN(String(burnToStakeFactor * 1 + 1 * 1)));
+//         let ethToNIMRatePrecision = PRECISION.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = PRECISION.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         await feeBurner.setKNCRate();
+//         await feeBurner.setNIMRate();
 
 //         let totalPayValue = dstWei;
 
@@ -4827,18 +4827,18 @@
 //     console.log(str);
 // }
 
-// async function makerDeposit(maker, ethWei, tokenTwei, kncTwei) {
+// async function makerDeposit(maker, ethWei, tokenTwei, NIMTwei) {
 //     await token.approve(reserve.address, tokenTwei, {from: admin});
 //     await reserve.depositToken(maker, tokenTwei, {from: admin});
-//     await KNCToken.approve(reserve.address, kncTwei, {from: admin});
-//     await reserve.depositKncForFee(maker, kncTwei, {from: admin});
+//     await NIMToken.approve(reserve.address, NIMTwei, {from: admin});
+//     await reserve.depositNIMForFee(maker, NIMTwei, {from: admin});
 //     await reserve.depositEther(maker, {from: maker, value: ethWei});
 // }
 
-// async function makerDepositFull(maker, otherReserve, someToken, ethWei, tokenTwei, kncTwei) {
+// async function makerDepositFull(maker, otherReserve, someToken, ethWei, tokenTwei, NIMTwei) {
 //     await someToken.approve(otherReserve.address, tokenTwei);
 //     await otherReserve.depositToken(maker, tokenTwei);
-//     await KNCToken.approve(otherReserve.address, kncTwei);
-//     await otherReserve.depositKncForFee(maker, kncTwei);
+//     await NIMToken.approve(otherReserve.address, NIMTwei);
+//     await otherReserve.depositNIMForFee(maker, NIMTwei);
 //     await otherReserve.depositEther(maker, {from: maker, value: ethWei});
 // }

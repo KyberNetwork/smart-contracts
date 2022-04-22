@@ -1,6 +1,6 @@
 let TestToken = artifacts.require("Token.sol");
 let MockBancorNetwork = artifacts.require("MockBancorNetwork.sol");
-let KyberBancorReserve = artifacts.require("KyberBancorReserve.sol");
+let nimbleBancorReserve = artifacts.require("nimbleBancorReserve.sol");
 
 let Helper = require("../helper.js");
 const BN = web3.utils.BN;
@@ -35,7 +35,7 @@ let bancorETHBNTToken;
 let bntToEthPath;
 let ethToBntPath;
 
-contract('KyberBancorNetwork', function(accounts) {
+contract('nimbleBancorNetwork', function(accounts) {
     before("one time init", async() => {
         admin = accounts[5];
         network = accounts[1];
@@ -49,7 +49,7 @@ contract('KyberBancorNetwork', function(accounts) {
         ethToBntPath = [bancorEthToken.address, bancorETHBNTToken.address, bancorBntToken.address];
         bntToEthPath = [bancorBntToken.address, bancorETHBNTToken.address, bancorEthToken.address];
         bancorNetwork = await MockBancorNetwork.new(bancorBntToken.address, ethToBntPath, bntToEthPath);
-        reserve = await KyberBancorReserve.new(
+        reserve = await nimbleBancorReserve.new(
             bancorNetwork.address,
             network,
             bancorBntToken.address,
@@ -68,7 +68,7 @@ contract('KyberBancorNetwork', function(accounts) {
     });
 
     it("Should test correct data set after init", async function() {
-        let curNetwork = await reserve.kyberNetwork();
+        let curNetwork = await reserve.nimbleNetwork();
         assert.equal(network, curNetwork, "network is not set correctly");
 
         let curBancorContract = await reserve.bancorNetwork();
@@ -166,7 +166,7 @@ contract('KyberBancorNetwork', function(accounts) {
         let newEthToBnt = [bancorEthToken.address, testNewToken.address, bancorBntToken.address];
         let newBntToEth = [bancorBntToken.address, testNewToken.address, bancorEthToken.address];
         let testBancorNetwork = await MockBancorNetwork.new(bancorBntToken.address, newEthToBnt, newBntToEth);
-        let testReserve = await KyberBancorReserve.new(
+        let testReserve = await nimbleBancorReserve.new(
             testBancorNetwork.address,
             network,
             bancorBntToken.address,
@@ -203,7 +203,7 @@ contract('KyberBancorNetwork', function(accounts) {
     // test init reserve contract
     it("Should test can not init reserve contract with invalid arguments", async function() {
         try {
-            _ = await KyberBancorReserve.new(
+            _ = await nimbleBancorReserve.new(
                 zeroAddress,
                 network,
                 bancorBntToken.address,
@@ -214,7 +214,7 @@ contract('KyberBancorNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         try {
-            _ = await KyberBancorReserve.new(
+            _ = await nimbleBancorReserve.new(
                 bancorNetwork.address,
                 zeroAddress,
                 bancorBntToken.address,
@@ -225,7 +225,7 @@ contract('KyberBancorNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         try {
-            _ = await KyberBancorReserve.new(
+            _ = await nimbleBancorReserve.new(
                 bancorNetwork.address,
                 network,
                 zeroAddress,
@@ -235,7 +235,7 @@ contract('KyberBancorNetwork', function(accounts) {
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
-        _ = await KyberBancorReserve.new(
+        _ = await nimbleBancorReserve.new(
             bancorNetwork.address,
             network,
             bancorBntToken.address,
@@ -280,7 +280,7 @@ contract('KyberBancorNetwork', function(accounts) {
     // test setting contracts
     it("Should test can not set contracts with invalid network or bancor network", async function() {
         try {
-            await reserve.setKyberNetwork(zeroAddress, {from: admin});
+            await reserve.setnimbleNetwork(zeroAddress, {from: admin});
             assert(false, "throw was expected in line above.")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -292,7 +292,7 @@ contract('KyberBancorNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
         try {
-            await reserve.setKyberNetwork(network, {from: user});
+            await reserve.setnimbleNetwork(network, {from: user});
             assert(false, "throw was expected in line above.")
         } catch (e) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -304,7 +304,7 @@ contract('KyberBancorNetwork', function(accounts) {
             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
         }
 
-        await reserve.setKyberNetwork(network, {from: admin});
+        await reserve.setnimbleNetwork(network, {from: admin});
         await reserve.setBancorContract(bancorNetwork.address, {from: admin});
     });
 
@@ -613,9 +613,9 @@ contract('KyberBancorNetwork', function(accounts) {
         await reserve.setBancorContract(bancorNetwork.address, {from: admin});
     });
 
-    it("Should test few buys and sells after changing kyber network", async function() {
+    it("Should test few buys and sells after changing nimble network", async function() {
         let newNetwork = accounts[8];
-        await reserve.setKyberNetwork(newNetwork, {from: admin});
+        await reserve.setnimbleNetwork(newNetwork, {from: admin});
         await bancorBntToken.approve(reserve.address, new BN(2).pow(new BN(255)), {from: newNetwork});
         await bancorBntToken.approve(reserve.address, 0, {from: network});
 
@@ -653,7 +653,7 @@ contract('KyberBancorNetwork', function(accounts) {
             let userBalanceAfter = await Helper.getBalancePromise(user);
             Helper.assertEqual(expectedUserBalance, userBalanceAfter, "user balance must change as expected")
         }
-        await reserve.setKyberNetwork(network, {from: admin});
+        await reserve.setnimbleNetwork(network, {from: admin});
         await bancorBntToken.approve(reserve.address, 0, {from: newNetwork});
         await bancorBntToken.approve(reserve.address, new BN(2).pow(new BN(255)), {from: network});
     });

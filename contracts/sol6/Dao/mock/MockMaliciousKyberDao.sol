@@ -1,13 +1,13 @@
 pragma solidity 0.6.6;
 
-import "../KyberDao.sol";
+import "../nimbleDao.sol";
 
 
-contract MockMaliciousKyberDao is KyberDao {
+contract MockMaliciousnimbleDao is nimbleDao {
     constructor(
         uint256 _epochPeriod,
         uint256 _startTimestamp,
-        IERC20 _knc,
+        IERC20 _NIM,
         uint256 _minCampDuration,
         uint256 _defaultNetworkFeeBps,
         uint256 _defaultRewardBps,
@@ -15,10 +15,10 @@ contract MockMaliciousKyberDao is KyberDao {
         address _admin
     )
         public
-        KyberDao(
+        nimbleDao(
             _epochPeriod,
             _startTimestamp,
-            _knc,
+            _NIM,
             _defaultNetworkFeeBps,
             _defaultRewardBps,
             _defaultRebateBps,

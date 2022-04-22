@@ -1,16 +1,16 @@
 pragma solidity 0.6.6;
 
-import "./IKyberReserve.sol";
-import "./IKyberNetwork.sol";
-import "./IKyberStorage.sol";
+import "./InimbleReserve.sol";
+import "./InimbleNetwork.sol";
+import "./InimbleStorage.sol";
 
 
-interface IKyberMatchingEngine {
+interface InimbleMatchingEngine {
     enum ProcessWithRate {NotRequired, Required}
 
     function setNegligibleRateDiffBps(uint256 _negligibleRateDiffBps) external;
 
-    function setKyberStorage(IKyberStorage _kyberStorage) external;
+    function setnimbleStorage(InimbleStorage _nimbleStorage) external;
 
     function getNegligibleRateDiffBps() external view returns (uint256);
 

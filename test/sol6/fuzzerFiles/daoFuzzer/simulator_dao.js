@@ -45,7 +45,7 @@ module.exports.submitCampaign = function (
   cInPrecision,
   tInPrecision,
   options,
-  totalKNCSupply
+  totalNIMSupply
 ) {
   numberCampaigns = numberCampaigns.add(new BN(1));
   let epoch = getEpochNumber(epochPeriod, startTime, startCampaignTime);
@@ -79,7 +79,7 @@ module.exports.submitCampaign = function (
     cInPrecision,
     tInPrecision,
     options: options,
-    totalKNCSupply: totalKNCSupply,
+    totalNIMSupply: totalNIMSupply,
     campaignVoteData
   };
 };
@@ -140,7 +140,7 @@ module.exports.vote = function (campaignId, option, staker, totalStake, epoch) {
 module.exports.getCampaignWinningOptionAndValue = function (campaignID) {
   assert(campaignID in campaignData, 'campaignId not exits in DaoSimulator.campaignData');
   campaign = campaignData[campaignID];
-  let totalSupply = campaign.totalKNCSupply;
+  let totalSupply = campaign.totalNIMSupply;
   Helper.assertGreater(totalSupply, new BN(0), 'zero total supply');
   let totalVotes = campaign.campaignVoteData.totalVotes;
   let voteCounts = campaign.campaignVoteData.votePerOption;

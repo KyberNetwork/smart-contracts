@@ -75,7 +75,7 @@ let hint;
 let hints;
 let revertMsg;
 
-contract('KyberHintHandler', function(accounts) {
+contract('nimbleHintHandler', function(accounts) {
     before('one time init, admin account, and setup hint parser', async() => {
         admin = accounts[0];
         hintHandler = await MockHintHandler.new();

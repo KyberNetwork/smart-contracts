@@ -1,7 +1,7 @@
 // const TestToken = artifacts.require("TestToken.sol");
-// const KyberNetwork = artifacts.require("KyberNetwork.sol");
-// const KyberNetworkFailsListing = artifacts.require("MockNetworkFailsListing.sol");
-// const KyberNetworkProxy = artifacts.require("KyberNetworkProxy.sol");
+// const nimbleNetwork = artifacts.require("nimbleNetwork.sol");
+// const nimbleNetworkFailsListing = artifacts.require("MockNetworkFailsListing.sol");
+// const nimbleNetworkProxy = artifacts.require("nimbleNetworkProxy.sol");
 // const FeeBurner = artifacts.require("FeeBurner.sol");
 // const WhiteList = artifacts.require("WhiteList.sol");
 
@@ -9,7 +9,7 @@
 // const PermissionlessOrderbookReserveLister = artifacts.require("PermissionlessOrderbookReserveLister.sol");
 // const OrderListFactory = artifacts.require("OrderListFactory.sol");
 // const MockMedianizer = artifacts.require("MockMedianizer.sol");
-// const MockKyberNetwork = artifacts.require("./MockKyberNetwork.sol");
+// const MocknimbleNetwork = artifacts.require("./MocknimbleNetwork.sol");
 
 // const Helper = require("../helper.js");
 // const BN = web3.utils.BN;
@@ -34,7 +34,7 @@
 // let feeBurner;
 // let whiteList;
 // let expectedRate;
-// let kyberProxy;
+// let nimbleProxy;
 // let reserveLister;
 // let orderFactory;
 // let medianizer;
@@ -43,11 +43,11 @@
 // ////////////
 // let token;
 // let tokenAdd;
-// let KNCToken;
-// let kncAddress;
+// let NIMToken;
+// let NIMAddress;
 
 // const negligibleRateDiff = 11;
-// const ethToKncRatePrecision = precisionUnits.mul(new BN(550));
+// const ethToNIMRatePrecision = precisionUnits.mul(new BN(550));
 // const maxOrdersPerTrade = 5;
 // const minNewOrderValueUsd = 1000;
 // let dollarsPerEthPrecision = precisionUnits.mul(new BN(200));
@@ -83,7 +83,7 @@
 //         admin = accounts[0];
 //         whiteList = accounts[1];
 //         expectedRate = accounts[2];
-//         kyberProxy = accounts[3];
+//         nimbleProxy = accounts[3];
 //         operator = accounts[4];
 //         maker1 = accounts[5];
 //         user1 = accounts[6];
@@ -91,10 +91,10 @@
 //         token = await TestToken.new("the token", "TOK", 18);
 //         tokenAdd = token.address;
 
-//         KNCToken = await TestToken.new("Kyber Crystals", "KNC", 18);
-//         kncAddress = KNCToken.address;
-//         network = await KyberNetwork.new(admin);
-//         feeBurner = await FeeBurner.new(admin, kncAddress, network.address, ethToKncRatePrecision);
+//         NIMToken = await TestToken.new("nimble Crystals", "NIM", 18);
+//         NIMAddress = NIMToken.address;
+//         network = await nimbleNetwork.new(admin);
+//         feeBurner = await FeeBurner.new(admin, NIMAddress, network.address, ethToNIMRatePrecision);
 //         orderFactory = await OrderListFactory.new();
 //         medianizer = await MockMedianizer.new();
 //         await medianizer.setValid(true);
@@ -104,7 +104,7 @@
 //     it("init network and reserveLister. see init success.", async function () {
 
 //         //set contracts
-//         await network.setKyberProxy(kyberProxy);
+//         await network.setnimbleProxy(nimbleProxy);
 //         await network.setWhiteList(whiteList);
 //         await network.setExpectedRate(expectedRate);
 //         await network.setFeeBurner(feeBurner.address);
@@ -120,12 +120,12 @@
 //         unsupportedTokens.push(unSupportedTok2.address);
 //         unsupportedTokens.push(unSupportedTok3.address);
 
-// //log(network.address + " " + feeBurnerResolver.address + " " + kncAddress)
+// //log(network.address + " " + feeBurnerResolver.address + " " + NIMAddress)
 //         reserveLister = await PermissionlessOrderbookReserveLister.new(
 //             network.address,
 //             orderFactory.address,
 //             medianizer.address,
-//             kncAddress,
+//             NIMAddress,
 //             unsupportedTokens,
 //             maxOrdersPerTrade,
 //             minNewOrderValueUsd
@@ -136,14 +136,14 @@
 //         const feeBurnerOperators = await feeBurner.getOperators();
 //         feeBurnerOperators.should.include(reserveLister.address);
 
-//         let kyberAdd = await reserveLister.kyberNetworkContract();
-//         Helper.assertEqual(kyberAdd, network.address);
+//         let nimbleAdd = await reserveLister.nimbleNetworkContract();
+//         Helper.assertEqual(nimbleAdd, network.address);
 
 //         add = await reserveLister.orderFactoryContract();
 //         Helper.assertEqual(add, orderFactory.address);
 
-//         let rxKnc = await reserveLister.kncToken();
-//         Helper.assertEqual(rxKnc, kncAddress);
+//         let rxNIM = await reserveLister.NIMToken();
+//         Helper.assertEqual(rxNIM, NIMAddress);
 
 //         await network.addOperator(reserveLister.address);
 //     });
@@ -153,12 +153,12 @@
 //         let address = await reserveLister.medianizerContract();
 //         Helper.assertEqual(address, medianizer.address);
 // //        log("address" + medianizer.address)
-//         address = await reserveLister.kyberNetworkContract();
+//         address = await reserveLister.nimbleNetworkContract();
 //         Helper.assertEqual(address, network.address)
 //         address = await reserveLister.orderFactoryContract();
 //         Helper.assertEqual(address, orderFactory.address)
-//         address = await reserveLister.kncToken();
-//         Helper.assertEqual(address, kncAddress)
+//         address = await reserveLister.NIMToken();
+//         Helper.assertEqual(address, NIMAddress)
 
 //         let value = await reserveLister.ORDERBOOK_BURN_FEE_BPS();
 //         Helper.assertEqual(value, 25);
@@ -188,7 +188,7 @@
 //         minNewOrderWei = rxLimits[2];
 
 //         let rxContracts = await reserve.contracts();
-//         Helper.assertEqual(rxContracts[0], kncAddress);
+//         Helper.assertEqual(rxContracts[0], NIMAddress);
 //         Helper.assertEqual(rxContracts[1], token.address);
 //         Helper.assertEqual(rxContracts[2], feeBurner.address);
 //         Helper.assertEqual(rxContracts[3], network.address);
@@ -234,9 +234,9 @@
 //     it("verify if network list token pairs fails, listing is reverted.", async() => {
 // //set contracts
 //         const tok = await TestToken.new("sdf", "sdf", 14);
-//         const networkFail = await KyberNetworkFailsListing.new(admin);
+//         const networkFail = await nimbleNetworkFailsListing.new(admin);
 
-//         await networkFail.setKyberProxy(kyberProxy);
+//         await networkFail.setnimbleProxy(nimbleProxy);
 //         await networkFail.setExpectedRate(expectedRate);
 //         await networkFail.setFeeBurner(feeBurner.address);
 //         await networkFail.setParams(gasPrice, negligibleRateDiff);
@@ -246,7 +246,7 @@
 //             networkFail.address,
 //             orderFactory.address,
 //             medianizer.address,
-//             kncAddress,
+//             NIMAddress,
 //             unsupportedTokens,
 //             maxOrdersPerTrade,
 //             minNewOrderValueUsd
@@ -380,24 +380,24 @@
 //         }
 //     })
 
-//     it("test reserve - maker deposit tokens, ethers, knc, validate updated in contract", async function () {
+//     it("test reserve - maker deposit tokens, ethers, NIM, validate updated in contract", async function () {
 
 //         let amountTwei = precisionUnits.mul(new BN(500)); //500 tokens
-//         let amountKnc = precisionUnits.mul(new BN(600));
+//         let amountNIM = precisionUnits.mul(new BN(600));
 //         let amountEth = precisionUnits.mul(new BN(2));
 
 //         let res = await OrderbookReserve.at(await reserveLister.reserves(tokenAdd));
 
-//         await makerDeposit(res, maker1, amountEth, amountTwei, amountKnc, KNCToken);
+//         await makerDeposit(res, maker1, amountEth, amountTwei, amountNIM, NIMToken);
 
 //         let rxNumTwei = await res.makerFunds(maker1, tokenAdd);
 //         Helper.assertEqual(rxNumTwei, amountTwei);
 
-//         let rxKncTwei = await res.makerUnlockedKnc(maker1);
-//         Helper.assertEqual(rxKncTwei, amountKnc);
+//         let rxNIMTwei = await res.makerUnlockedNIM(maker1);
+//         Helper.assertEqual(rxNIMTwei, amountNIM);
 
-//         rxKncTwei = await res.makerRequiredKncStake(maker1);
-//         Helper.assertEqual(rxKncTwei, 0);
+//         rxNIMTwei = await res.makerRequiredNIMStake(maker1);
+//         Helper.assertEqual(rxNIMTwei, 0);
 
 //         //makerDepositEther
 //         let rxWei = await res.makerFunds(maker1, ethAddress);
@@ -441,21 +441,21 @@
 //         let newLister;
 
 //         try {
-//             newLister = await PermissionlessOrderbookReserveLister.new(zeroAddress, orderFactory.address, medianizer.address, kncAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
+//             newLister = await PermissionlessOrderbookReserveLister.new(zeroAddress, orderFactory.address, medianizer.address, NIMAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
 //             assert(false, "throw was expected in line above.")
 //         } catch(e){
 //             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //         }
 
 //         try {
-//             newLister = await PermissionlessOrderbookReserveLister.new(network.address, zeroAddress, medianizer.address, kncAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
+//             newLister = await PermissionlessOrderbookReserveLister.new(network.address, zeroAddress, medianizer.address, NIMAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
 //             assert(false, "throw was expected in line above.")
 //         } catch(e){
 //             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //         }
 
 //         try {
-//             newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, zeroAddress, kncAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
+//             newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, zeroAddress, NIMAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
 //             assert(false, "throw was expected in line above.")
 //         } catch(e){
 //             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
@@ -470,39 +470,39 @@
 
 //         let unsupported = [zeroAddress, unSupportedTok1.address]
 //         try {
-//             newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, unsupported, maxOrdersPerTrade, minNewOrderValueUsd);
+//             newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, NIMAddress, unsupported, maxOrdersPerTrade, minNewOrderValueUsd);
 //             assert(false, "throw was expected in line above.")
 //         } catch(e){
 //             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //         }
 
 //         try {
-//             newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, unsupportedTokens, 1, minNewOrderValueUsd);
+//             newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, NIMAddress, unsupportedTokens, 1, minNewOrderValueUsd);
 //             assert(false, "throw was expected in line above.")
 //         } catch(e){
 //             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //         }
 
 //         try {
-//             newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, unsupportedTokens, maxOrdersPerTrade, 0);
+//             newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, NIMAddress, unsupportedTokens, maxOrdersPerTrade, 0);
 //             assert(false, "throw was expected in line above.")
 //         } catch(e){
 //             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //         }
 
 //         //and now. at last.
-//         newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, kncAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
+//         newLister = await PermissionlessOrderbookReserveLister.new(network.address, orderFactory.address, medianizer.address, NIMAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
 
 //         assert (newLister.address != 0);
 //     })
 
-//     it("verify if order book reserve init fails. can't list it on kyber.", async() => {
+//     it("verify if order book reserve init fails. can't list it on nimble.", async() => {
 
 //         let newLister;
 
 //         let dummyOrdersFactory = accounts[8];
 
-//         newLister = await PermissionlessOrderbookReserveLister.new(network.address, dummyOrdersFactory, medianizer.address, kncAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
+//         newLister = await PermissionlessOrderbookReserveLister.new(network.address, dummyOrdersFactory, medianizer.address, NIMAddress, unsupportedTokens, maxOrdersPerTrade, minNewOrderValueUsd);
 
 //         let rc = await newLister.addOrderbookContract(tokenAdd);
 
@@ -518,7 +518,7 @@
 //         Helper.assertEqual(listingStage[1], LISTING_STATE_ADDED);
 //     })
 
-//     it("verify if listing on kyber fails. reserve listing reverts and stage will stay in init stage.", async() => {
+//     it("verify if listing on nimble fails. reserve listing reverts and stage will stay in init stage.", async() => {
 
 //         newToken = await TestToken.new("new token", "NEW", 18);
 //         newTokenAdd = newToken.address;
@@ -529,7 +529,7 @@
 //         let listingStage =  await reserveLister.getOrderbookListingStage(newTokenAdd);
 //         Helper.assertEqual(listingStage[1], LISTING_STATE_INIT);
 
-//         //remove permissions on kyber.
+//         //remove permissions on nimble.
 //         await network.removeOperator(reserveLister.address)
 
 //         try {
@@ -542,7 +542,7 @@
 //         listingStage =  await reserveLister.getOrderbookListingStage(newTokenAdd);
 //         Helper.assertEqual(listingStage[1], LISTING_STATE_INIT);
 
-//         //add permissions on kyber.
+//         //add permissions on nimble.
 //         await network.addOperator(reserveLister.address)
 
 //         rc = await reserveLister.listOrderbookContract(newTokenAdd);
@@ -557,8 +557,8 @@
 
 //     let orderFactory;
 //     let medianizer;
-//     let kncToken;
-//     let kncAddress;
+//     let NIMToken;
+//     let NIMAddress;
 
 //     before("one time init", async() => {
 //         orderFactory = await OrderListFactory.new();
@@ -566,8 +566,8 @@
 //         await medianizer.setValid(true);
 //         await medianizer.setEthPrice(dollarsPerEthPrecision);
 //         token = await TestToken.new("the token", "tok", 18);
-//         kncToken = await TestToken.new("kyber crystals", "knc", 18);
-//         kncAddress = kncToken.address;
+//         NIMToken = await TestToken.new("nimble crystals", "NIM", 18);
+//         NIMAddress = NIMToken.address;
 //     })
 
 //     beforeEach('setup contract before all tests', async () => {
@@ -580,27 +580,27 @@
 
 //     it("listing orderbook reserve so that it could burn fees", async () => {
 
-//         // prepare kyber network
-//         const kyberNetwork = await KyberNetwork.new(admin);
+//         // prepare nimble network
+//         const nimbleNetwork = await nimbleNetwork.new(admin);
 
-//         const kyberProxy = await KyberNetworkProxy.new(admin);
-//         await kyberProxy.setKyberNetworkContract(
-//             kyberNetwork.address,
+//         const nimbleProxy = await nimbleNetworkProxy.new(admin);
+//         await nimbleProxy.setnimbleNetworkContract(
+//             nimbleNetwork.address,
 //             {from: admin}
 //         );
 
 //         const feeBurner = await FeeBurner.new(
 //             admin,
-//             kncToken.address,
-//             kyberNetwork.address,
-//             ethToKncRatePrecision
+//             NIMToken.address,
+//             nimbleNetwork.address,
+//             ethToNIMRatePrecision
 //         );
 
 //         const lister = await PermissionlessOrderbookReserveLister.new(
-//             kyberNetwork.address,
+//             nimbleNetwork.address,
 //             orderFactory.address,
 //             medianizer.address,
-//             kncToken.address,
+//             NIMToken.address,
 //             unsupportedTokens,
 //             maxOrdersPerTrade,
 //             minNewOrderValueUsd
@@ -611,20 +611,20 @@
 
 
 //         // setup WhiteList
-//         const whiteList = await WhiteList.new(admin, kncToken.address);
+//         const whiteList = await WhiteList.new(admin, NIMToken.address);
 //         await whiteList.addOperator(operator, {from: admin});
 //         await whiteList.setCategoryCap(0, 1000, {from: operator});
 //         await whiteList.setSgdToEthRate(new BN(30000).mul(new BN(10).pow(new BN(18))), {from: operator});
 
-//         // configure kyber network
-//         await kyberNetwork.setKyberProxy(kyberProxy.address);
-//         await kyberNetwork.setWhiteList(whiteList.address);
-//         await kyberNetwork.setExpectedRate(expectedRate);
-//         await kyberNetwork.setFeeBurner(feeBurner.address);
-//         await kyberNetwork.setParams(gasPrice, negligibleRateDiff);
-//         await kyberNetwork.addOperator(operator);
-//         await kyberNetwork.setEnable(true);
-//         await kyberNetwork.addOperator(lister.address);
+//         // configure nimble network
+//         await nimbleNetwork.setnimbleProxy(nimbleProxy.address);
+//         await nimbleNetwork.setWhiteList(whiteList.address);
+//         await nimbleNetwork.setExpectedRate(expectedRate);
+//         await nimbleNetwork.setFeeBurner(feeBurner.address);
+//         await nimbleNetwork.setParams(gasPrice, negligibleRateDiff);
+//         await nimbleNetwork.addOperator(operator);
+//         await nimbleNetwork.setEnable(true);
+//         await nimbleNetwork.addOperator(lister.address);
 
 //         // list an order book reserve
 //         await lister.addOrderbookContract(token.address);
@@ -640,7 +640,7 @@
 //         minNewOrderWei = rxLimits[2];
 
 //         let amountTokenInWei = new BN(0);
-//         let amountKncInWei = precisionUnits.mul(new BN(600));
+//         let amountNIMInWei = precisionUnits.mul(new BN(600));
 //         let amountEthInWei = new BN(minNewOrderWei);
 
 //         await makerDeposit(
@@ -648,8 +648,8 @@
 //             maker,
 //             amountEthInWei /* ethWei */,
 //             amountTokenInWei /* tokenTwei */,
-//             amountKncInWei /* kncTwei */,
-//             kncToken
+//             amountNIMInWei /* NIMTwei */,
+//             NIMToken
 //         );
 
 //         const tokenTweiToSwap = precisionUnits.mul(new BN(12));
@@ -662,8 +662,8 @@
 
 //         // swap token to ETH
 //         await token.transfer(taker, tokenTweiToSwap);
-//         await token.approve(kyberProxy.address, tokenTweiToSwap, {from: taker});
-//         let tradeLog = await kyberProxy.swapTokenToEther(
+//         await token.approve(nimbleProxy.address, tokenTweiToSwap, {from: taker});
+//         let tradeLog = await nimbleProxy.swapTokenToEther(
 //             token.address /* token */,
 //             tokenTweiToSwap /* src amount*/,
 //             1 /* minConversionRate */,
@@ -682,44 +682,44 @@
 //         burnAssignedFeesEvent.event.should.equal('BurnAssignedFees');
 //         burnAssignedFeesEvent.args.reserve.should.equal(reserve.address);
 
-//         const ethKncRatePrecision = await feeBurner.kncPerEthRatePrecision();
+//         const ethNIMRatePrecision = await feeBurner.NIMPerEthRatePrecision();
 //         const burnReserveFeeBps = await lister.ORDERBOOK_BURN_FEE_BPS();
 
-//         // (ethWeiToSwap * (ethKncRatePrecision) * (25: BURN_FEE_BPS) / 10000) - 1
-//         const kncAmount = actualWeiValue.mul(ethKncRatePrecision).div(precisionUnits);
-//         const expectedBurnFeesInKncWei = kncAmount.mul(burnReserveFeeBps).div(new BN(10000)).sub(new BN(1));
+//         // (ethWeiToSwap * (ethNIMRatePrecision) * (25: BURN_FEE_BPS) / 10000) - 1
+//         const NIMAmount = actualWeiValue.mul(ethNIMRatePrecision).div(precisionUnits);
+//         const expectedBurnFeesInNIMWei = NIMAmount.mul(burnReserveFeeBps).div(new BN(10000)).sub(new BN(1));
 
-//         Helper.assertEqual(burnAssignedFeesEvent.args.quantity, expectedBurnFeesInKncWei);
+//         Helper.assertEqual(burnAssignedFeesEvent.args.quantity, expectedBurnFeesInNIMWei);
 //     });
 
-//     it("list order book reserve. see can't unlist if knc rate is in boundaries. can unlist when knc rate too low", async() => {
-//         // prepare kyber network
-//         const kyberNetwork = await KyberNetwork.new(admin);
-//         const mockNetwork = await MockKyberNetwork.new(admin);
+//     it("list order book reserve. see can't unlist if NIM rate is in boundaries. can unlist when NIM rate too low", async() => {
+//         // prepare nimble network
+//         const nimbleNetwork = await nimbleNetwork.new(admin);
+//         const mockNetwork = await MocknimbleNetwork.new(admin);
 
-//         let ethKncRate = new BN(100);
-//         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
+//         let ethNIMRate = new BN(100);
+//         let ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
 
 //         const feeBurner = await FeeBurner.new(
 //             admin,
-//             kncToken.address,
+//             NIMToken.address,
 //             mockNetwork.address,
-//             ethToKncRatePrecision
+//             ethToNIMRatePrecision
 //         );
 
-//         ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-//         let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+//         ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = precisionUnits.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         await feeBurner.setKNCRate();
+//         await feeBurner.setNIMRate();
 
 //         const lister = await PermissionlessOrderbookReserveLister.new(
-//             kyberNetwork.address,
+//             nimbleNetwork.address,
 //             orderFactory.address,
 //             medianizer.address,
-//             kncAddress,
+//             NIMAddress,
 //             unsupportedTokens,
 //             maxOrdersPerTrade,
 //             minNewOrderValueUsd
@@ -728,9 +728,9 @@
 //         // configure feeburner
 //         await feeBurner.addOperator(lister.address, {from: admin});
 
-//         // configure kyber network
-//         await kyberNetwork.setFeeBurner(feeBurner.address);
-//         await kyberNetwork.addOperator(lister.address);
+//         // configure nimble network
+//         await nimbleNetwork.setFeeBurner(feeBurner.address);
+//         await nimbleNetwork.addOperator(lister.address);
 
 //         // list an order book reserve
 //         await lister.addOrderbookContract(token.address);
@@ -742,10 +742,10 @@
 //             await lister.reserves(token.address)
 //         );
 
-//         let baseKncEthRate = await reserve.kncPerEthBaseRatePrecision();
+//         let baseNIMEthRate = await reserve.NIMPerEthBaseRatePrecision();
 
 //         let reserveIndex = 0;
-//         let address = await kyberNetwork.reserves(reserveIndex);
+//         let address = await nimbleNetwork.reserves(reserveIndex);
 //         Helper.assertEqual(address, reserve.address);
 
 //          // see unlist fails
@@ -757,19 +757,19 @@
 //         }
 
 //         let stakeFactor = await reserve.BURN_TO_STAKE_FACTOR();
-//         ethKncRate = ethKncRate.mul(stakeFactor.add(new BN(1)));
+//         ethNIMRate = ethNIMRate.mul(stakeFactor.add(new BN(1)));
 
-//         ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-//         kncToEthRatePrecision = precisionUnits.div(ethKncRate.mul(new BN(101)).div(new BN(100)));
+//         ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
+//         NIMToEthRatePrecision = precisionUnits.div(ethNIMRate.mul(new BN(101)).div(new BN(100)));
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         let tradeBlocked = await reserve.kncRateBlocksTrade();
+//         let tradeBlocked = await reserve.NIMRateBlocksTrade();
 //         Helper.assertEqual(tradeBlocked, false);
 
-//         await feeBurner.setKNCRate();
-//         tradeBlocked = await reserve.kncRateBlocksTrade();
+//         await feeBurner.setNIMRate();
+//         tradeBlocked = await reserve.NIMRateBlocksTrade();
 //         Helper.assertEqual(tradeBlocked, true);
 
 //         await lister.unlistOrderbookContract(token.address, reserveIndex);
@@ -780,33 +780,33 @@
 
 //     it("lister. see list and unlist fail when lister not operator in network", async() => {
 
-//         // prepare kyber network
-//         const kyberNetwork = await KyberNetwork.new(admin);
-//         const mockNetwork = await MockKyberNetwork.new(admin);
+//         // prepare nimble network
+//         const nimbleNetwork = await nimbleNetwork.new(admin);
+//         const mockNetwork = await MocknimbleNetwork.new(admin);
 
-//         let ethKncRate = new BN(100);
-//         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
+//         let ethNIMRate = new BN(100);
+//         let ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
 
 //         const feeBurner = await FeeBurner.new(
 //             admin,
-//             kncToken.address,
+//             NIMToken.address,
 //             mockNetwork.address,
-//             ethToKncRatePrecision
+//             ethToNIMRatePrecision
 //         );
 
-//         ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-//         let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+//         ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = precisionUnits.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         await feeBurner.setKNCRate();
+//         await feeBurner.setNIMRate();
 
 //         const lister = await PermissionlessOrderbookReserveLister.new(
-//             kyberNetwork.address,
+//             nimbleNetwork.address,
 //             orderFactory.address,
 //             medianizer.address,
-//             kncAddress,
+//             NIMAddress,
 //             unsupportedTokens,
 //             maxOrdersPerTrade,
 //             minNewOrderValueUsd
@@ -815,8 +815,8 @@
 //         // configure feeburner
 //         await feeBurner.addOperator(lister.address, {from: admin});
 
-//         // configure kyber network
-//         await kyberNetwork.setFeeBurner(feeBurner.address);
+//         // configure nimble network
+//         await nimbleNetwork.setFeeBurner(feeBurner.address);
 
 //         // list an order book reserve
 //         await lister.addOrderbookContract(token.address);
@@ -829,7 +829,7 @@
 //             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //         }
 
-//         await kyberNetwork.addOperator(lister.address);
+//         await nimbleNetwork.addOperator(lister.address);
 //         //now should succeed
 //         await lister.listOrderbookContract(token.address);
 
@@ -839,15 +839,15 @@
 
 //         //create a large rate change so unlisting is possible
 //         let stakeFactor = await reserve.BURN_TO_STAKE_FACTOR();
-//         ethKncRate = ethKncRate.mul(new BN(stakeFactor).add(new BN(1)));
-//         ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-//         kncToEthRatePrecision = precisionUnits.div(ethKncRate.mul(new BN(101)).div(new BN(100)));
+//         ethNIMRate = ethNIMRate.mul(new BN(stakeFactor).add(new BN(1)));
+//         ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
+//         NIMToEthRatePrecision = precisionUnits.div(ethNIMRate.mul(new BN(101)).div(new BN(100)));
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
-//         await feeBurner.setKNCRate();
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
+//         await feeBurner.setNIMRate();
 
-//         await kyberNetwork.removeOperator(lister.address);
+//         await nimbleNetwork.removeOperator(lister.address);
 
 //         let reserveIndex = 0;
 
@@ -858,47 +858,47 @@
 //             assert(Helper.isRevertErrorMessage(e), "expected throw but got: " + e);
 //         }
 
-//         await kyberNetwork.addOperator(lister.address);
+//         await nimbleNetwork.addOperator(lister.address);
 //         await lister.unlistOrderbookContract(token.address, reserveIndex);
 //     })
 
 //     it("see listing fails when lister not operator in fee burner", async() => {
 
-//         // prepare kyber network
-//         const kyberNetwork = await KyberNetwork.new(admin);
-//         const mockNetwork = await MockKyberNetwork.new(admin);
+//         // prepare nimble network
+//         const nimbleNetwork = await nimbleNetwork.new(admin);
+//         const mockNetwork = await MocknimbleNetwork.new(admin);
 
-//         let ethKncRate = new BN(100);
-//         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
+//         let ethNIMRate = new BN(100);
+//         let ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
 
 //         const feeBurner = await FeeBurner.new(
 //             admin,
-//             kncToken.address,
+//             NIMToken.address,
 //             mockNetwork.address,
-//             ethToKncRatePrecision
+//             ethToNIMRatePrecision
 //         );
 
-//         ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-//         let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+//         ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = precisionUnits.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         await feeBurner.setKNCRate();
+//         await feeBurner.setNIMRate();
 
 //         const lister = await PermissionlessOrderbookReserveLister.new(
-//             kyberNetwork.address,
+//             nimbleNetwork.address,
 //             orderFactory.address,
 //             medianizer.address,
-//             kncAddress,
+//             NIMAddress,
 //             unsupportedTokens,
 //             maxOrdersPerTrade,
 //             minNewOrderValueUsd
 //         );
 
-//         // configure kyber network
-//         await kyberNetwork.setFeeBurner(feeBurner.address);
-//         await kyberNetwork.addOperator(lister.address);
+//         // configure nimble network
+//         await nimbleNetwork.setFeeBurner(feeBurner.address);
+//         await nimbleNetwork.addOperator(lister.address);
 
 //         // list an order book reserve
 //         await lister.addOrderbookContract(token.address);
@@ -920,33 +920,33 @@
 
 //     it("see unlisting possible only for reserves that are fully listed (list stage)", async() => {
 
-//         // prepare kyber network
-//         const kyberNetwork = await KyberNetwork.new(admin);
-//         const mockNetwork = await MockKyberNetwork.new(admin);
+//         // prepare nimble network
+//         const nimbleNetwork = await nimbleNetwork.new(admin);
+//         const mockNetwork = await MocknimbleNetwork.new(admin);
 
-//         let ethKncRate = new BN(100);
-//         let ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
+//         let ethNIMRate = new BN(100);
+//         let ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
 
 //         const feeBurner = await FeeBurner.new(
 //             admin,
-//             kncToken.address,
+//             NIMToken.address,
 //             mockNetwork.address,
-//             ethToKncRatePrecision
+//             ethToNIMRatePrecision
 //         );
 
-//         ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-//         let kncToEthRatePrecision = precisionUnits.div(ethKncRate);
+//         ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
+//         let NIMToEthRatePrecision = precisionUnits.div(ethNIMRate);
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
 
-//         await feeBurner.setKNCRate();
+//         await feeBurner.setNIMRate();
 
 //         const lister = await PermissionlessOrderbookReserveLister.new(
-//             kyberNetwork.address,
+//             nimbleNetwork.address,
 //             orderFactory.address,
 //             medianizer.address,
-//             kncAddress,
+//             NIMAddress,
 //             unsupportedTokens,
 //             maxOrdersPerTrade,
 //             minNewOrderValueUsd
@@ -955,9 +955,9 @@
 //         // configure feeburner
 //         await feeBurner.addOperator(lister.address, {from: admin});
 
-//         // configure kyber network
-//         await kyberNetwork.setFeeBurner(feeBurner.address);
-//         await kyberNetwork.addOperator(lister.address);
+//         // configure nimble network
+//         await nimbleNetwork.setFeeBurner(feeBurner.address);
+//         await nimbleNetwork.addOperator(lister.address);
 
 //         // list an order book reserve
 //         await lister.addOrderbookContract(token.address);
@@ -968,14 +968,14 @@
 
 //         //create a large rate change so unlisting is possible
 //         let stakeFactor = await reserve.BURN_TO_STAKE_FACTOR();
-//         ethKncRate = ethKncRate.mul(new BN(stakeFactor).add(new BN(1)));
+//         ethNIMRate = ethNIMRate.mul(new BN(stakeFactor).add(new BN(1)));
 
-//         ethToKncRatePrecision = precisionUnits.mul(ethKncRate);
-//         kncToEthRatePrecision = precisionUnits.div(ethKncRate.mul(new BN(101)).div(new BN(100)));
+//         ethToNIMRatePrecision = precisionUnits.mul(ethNIMRate);
+//         NIMToEthRatePrecision = precisionUnits.div(ethNIMRate.mul(new BN(101)).div(new BN(100)));
 
-//         await mockNetwork.setPairRate(ethAddress, kncAddress, ethToKncRatePrecision);
-//         await mockNetwork.setPairRate(kncAddress, ethAddress, kncToEthRatePrecision);
-//         await feeBurner.setKNCRate();
+//         await mockNetwork.setPairRate(ethAddress, NIMAddress, ethToNIMRatePrecision);
+//         await mockNetwork.setPairRate(NIMAddress, ethAddress, NIMToEthRatePrecision);
+//         await feeBurner.setNIMRate();
 
 //         let reserveIndex = 0;
 
@@ -1017,10 +1017,10 @@
 //     console.log(str);
 // }
 
-// async function makerDeposit(res, maker, ethWei, tokenTwei, kncTwei, kncToken) {
+// async function makerDeposit(res, maker, ethWei, tokenTwei, NIMTwei, NIMToken) {
 //     await token.approve(res.address, tokenTwei, {from: admin});
 //     await res.depositToken(maker, tokenTwei, {from: admin});
-//     await kncToken.approve(res.address, kncTwei, {from: admin});
-//     await res.depositKncForFee(maker, kncTwei, {from: admin});
+//     await NIMToken.approve(res.address, NIMTwei, {from: admin});
+//     await res.depositNIMForFee(maker, NIMTwei, {from: admin});
 //     await res.depositEther(maker, {from: maker, value: ethWei});
 // }

@@ -8,8 +8,8 @@
       "internal use": true,
       "listed": true
     },
-    "KNC": {
-      "name": "KyberNetwork",
+    "NIM": {
+      "name": "nimbleNetwork",
       "decimals": 18,
       "address": "0xdd974D5C2e2928deA5F71b9825b8b646686BD200",
       "minimalRecordResolution": "1000000000000000",
@@ -419,7 +419,7 @@
     "binance": {
       "ETH": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "OMG": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
-      "KNC": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
+      "NIM": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "SNT": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "ELF": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
       "POWR": "0x1ae659f93ba2fc0a1f379545cf9335adb75fa547",
@@ -464,7 +464,7 @@
     }
   },
   "permission": {
-    "KyberNetwork": {
+    "nimbleNetwork": {
       "admin": "0xd0643BC0D0C879F175556509dbcEe9373379D5C3",
       "operator": [
         "0xd0643BC0D0C879F175556509dbcEe9373379D5C3"
@@ -479,7 +479,7 @@
       ],
       "alerter": []
     },
-    "KyberReserve": {
+    "nimbleReserve": {
       "admin": "0xd0643BC0D0C879F175556509dbcEe9373379D5C3",
       "operator": [
         "0x8C3151b751F2409697E35F62D016713593F64Eef"
@@ -608,8 +608,8 @@
   "max gas price": "50000000000",
   "neg diff in bps": 20,
   "min expected rate slippage": 300,
-  "KNC wallet": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
-  "KNC to ETH rate": 550,
+  "NIM wallet": "0xd0643bc0d0c879f175556509dbcee9373379d5c3",
+  "NIM to ETH rate": 550,
   "valid duration block": 60,
   "tax fees bps": 2000,
   "tax wallet address": "0x1BE6064cA70e40A39473372bE0ac8a5e16F7Be45",
@@ -621,7 +621,7 @@
   "feeburner": "0x39682a7b8e4a03b2c8dc6da6e0146aee4e29a306",
   "feeburner wrapper": "0x21F259eE25b7AA43DC19BFe7DBB3f149D6231d1b",
   "feeburner wrapper proxy": "0xa2617f04cc74ffb8099D1eb94C3927025a4e5401",
-  "kyber register wallet": "0xa3f1f577b6Dd7Aaf3FdE5cC12fa99c4406f7C800",
+  "nimble register wallet": "0xa3f1f577b6Dd7Aaf3FdE5cC12fa99c4406f7C800",
   "whitelist": "0x1b8a28d2185a7ab86ae40303b39f33278cc42130",
   "orderbook reserve lister": "0xCeB57217A2d5cE4bb681601791bCdB135497F03a",
   "third_party_reserves": [

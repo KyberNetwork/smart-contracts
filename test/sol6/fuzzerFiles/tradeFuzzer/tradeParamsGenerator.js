@@ -59,7 +59,7 @@ const RevertType = {
 
     // Not tested
     // Revert from proxy
-    NETWORK_RETURNED_WRONG_DEST: "kyberNetwork returned wrong amount",
+    NETWORK_RETURNED_WRONG_DEST: "nimbleNetwork returned wrong amount",
     ACTUAL_DEST_MORE_THAN_MAX_DEST: "actual dest amount exceeds maxDestAmount",
     RATE_BELOW_MIN_RATE: "rate below minConversionRate",
     WRONG_DEST_AMOUNT: "wrong amount in destination address",

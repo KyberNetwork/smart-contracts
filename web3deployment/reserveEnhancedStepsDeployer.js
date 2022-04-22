@@ -151,7 +151,7 @@ function parseInput( jsonInput ) {
       });
     });
 
-    reservePermissions = jsonInput.permission["KyberReserve"];
+    reservePermissions = jsonInput.permission["nimbleReserve"];
     conversionRatesPermissions = jsonInput.permission["ConversionRates"];
     validDurationBlock = jsonInput["valid duration block"];
 
@@ -201,8 +201,8 @@ async function main() {
     [conversionRatesAddress,conversionRatesContract] = await deployContract(output, "EnhancedStepFunctions.sol:EnhancedStepFunctions", [sender]);
     console.log("enhanced steps fpr pricing contract", conversionRatesAddress);
 
-    console.log("deploying kyber reserve");
-    [reserveAddress,reserveContract] = await deployContract(output, "KyberReserve.sol:KyberReserve", [networkAddress,conversionRatesAddress,sender]);
+    console.log("deploying nimble reserve");
+    [reserveAddress,reserveContract] = await deployContract(output, "nimbleReserve.sol:nimbleReserve", [networkAddress,conversionRatesAddress,sender]);
 
     console.log("reserve", reserveAddress);
 

@@ -96,7 +96,7 @@ async function deployContract(solcOutput, contractName, ctorArgs) {
 
 //token addresses
 let dgxTokenAddress;
-let kncTokenAddress;
+let NIMTokenAddress;
 let wethTokenAddress;
 
 //contract addresses
@@ -138,7 +138,7 @@ class Reserve {
   constructor(jsonInput) {
     this.address = jsonInput["address"];
     this.fees = jsonInput["fees"];
-    this.wallet = jsonInput["KNCWallet"];
+    this.wallet = jsonInput["NIMWallet"];
     this.tokens = jsonInput["tokens"];
   }
 }
@@ -170,7 +170,7 @@ function parseInput( jsonInput ) {
       walletDataArray.push(new Wallet(wallet));
     });
 
-    networkPermissions = jsonInput.permission["KyberNetwork"];
+    networkPermissions = jsonInput.permission["nimbleNetwork"];
     feeBurnerPermissions = jsonInput.permission["FeeBurner"];
     wrapFeeBurnerPermissions = jsonInput.permission["WrapFeeBurner"];
     expectedRatePermissions = jsonInput.permission["ExpectedRate"];
@@ -181,10 +181,10 @@ function parseInput( jsonInput ) {
     defaultWalletFeesBps = jsonInput["default wallet fees bps"].toString();
     taxFeesBps = jsonInput["tax fees bps"].toString();
     taxWalletAddress = jsonInput["tax wallet address"];
-    initialKncToEthRatePrecision = jsonInput["KNC to ETH rate"].toString();
+    initialNIMToEthRatePrecision = jsonInput["NIM to ETH rate"].toString();
 
     dgxTokenAddress = jsonInput["addresses"].dgx;
-    kncTokenAddress = jsonInput["addresses"].knc;
+    NIMTokenAddress = jsonInput["addresses"].NIM;
     wethTokenAddress = jsonInput["addresses"].weth;
     medianizerAddress = jsonInput["addresses"].medianizer;
     proxyAddress = jsonInput["addresses"].proxy;
@@ -291,16 +291,16 @@ async function waitForEth() {
 }
 
 async function deployAllContacts(output) {
-  console.log("deploying kyber network");
-  [networkAddress,networkContract] = await deployContract(output, "KyberNetwork.sol:KyberNetwork", [sender]);
+  console.log("deploying nimble network");
+  [networkAddress,networkContract] = await deployContract(output, "nimbleNetwork.sol:nimbleNetwork", [sender]);
   console.log("network", networkAddress);
 
   console.log("deploying fee burner");
-  [feeBurnerAddress, feeBurnerContract] = await deployContract(output, "FeeBurner.sol:FeeBurner", [sender,kncTokenAddress,networkAddress, initialKncToEthRatePrecision]);
+  [feeBurnerAddress, feeBurnerContract] = await deployContract(output, "FeeBurner.sol:FeeBurner", [sender,NIMTokenAddress,networkAddress, initialNIMToEthRatePrecision]);
   console.log("fee burner", feeBurnerAddress);
 
   console.log("deploying expected rates");
-  [expectedRateAddress, expectedRateContract] = await deployContract(output, "ExpectedRate.sol:ExpectedRate", [networkAddress,kncTokenAddress,sender]);
+  [expectedRateAddress, expectedRateContract] = await deployContract(output, "ExpectedRate.sol:ExpectedRate", [networkAddress,NIMTokenAddress,sender]);
   console.log("expected rate", expectedRateAddress);
 
   console.log("deploy orderbook factory");
@@ -314,7 +314,7 @@ async function deployAllContacts(output) {
         networkAddress,
         factoryAddress,
         medianizerAddress,
-        kncTokenAddress,
+        NIMTokenAddress,
         [dgxTokenAddress, wethTokenAddress],
         maxOrdersPerTrade,
         minOrderValueUsd
@@ -336,7 +336,7 @@ async function initialiseContractInstances(output) {
   permissionlessOrderbookReserveListerAddress = "";
   wrapFeeBurnerAddress = "";
 
-  networkContract = new web3.eth.Contract(JSON.parse(output.contracts["KyberNetwork.sol:KyberNetwork"].interface), networkAddress);
+  networkContract = new web3.eth.Contract(JSON.parse(output.contracts["nimbleNetwork.sol:nimbleNetwork"].interface), networkAddress);
   feeBurnerContract = new web3.eth.Contract(JSON.parse(output.contracts["FeeBurner.sol:FeeBurner"].interface), feeBurnerAddress);
   expectedRateContract = new web3.eth.Contract(JSON.parse(output.contracts["ExpectedRate.sol:ExpectedRate"].interface), expectedRateAddress);
   factoryContract = new web3.eth.Contract(JSON.parse(output.contracts["OrderListFactory.sol:OrderListFactory"].interface), factoryAddress);
@@ -350,7 +350,7 @@ async function initialiseContractInstances(output) {
 async function setNetworkAddresses() {
   // set proxy of network
   console.log("set proxy of network");
-  await sendTx(networkContract.methods.setKyberProxy(proxyAddress));
+  await sendTx(networkContract.methods.setnimbleProxy(proxyAddress));
 
   // set whitelist
   console.log("set whitelist address");
@@ -422,8 +422,8 @@ async function configureAndEnableNetwork() {
 
 async function configureFeeBurner() {
   // burn fee
-  console.log("set KNC to ETH rate");
-  await sendTx(feeBurnerContract.methods.setKNCRate());
+  console.log("set NIM to ETH rate");
+  await sendTx(feeBurnerContract.methods.setNIMRate());
   if (taxFeesBps != 0) {
     console.log("set tax fees bps");
     await sendTx(feeBurnerContract.methods.setTaxInBps(taxFeesBps));

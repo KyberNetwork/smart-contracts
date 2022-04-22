@@ -5,11 +5,11 @@ import "./OrderListInterface.sol";
 import "./OrderIdManager.sol";
 import "./OrderbookReserveInterface.sol";
 import "../../../Utils2.sol";
-import "../../../KyberReserveInterface.sol";
+import "../../../nimbleReserveInterface.sol";
 
 
 contract FeeBurnerRateInterface {
-    uint public kncPerEthRatePrecision;
+    uint public NIMPerEthRatePrecision;
 }
 
 
@@ -18,7 +18,7 @@ interface MedianizerInterface {
 }
 
 
-contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, OrderbookReserveInterface {
+contract OrderbookReserve is OrderIdManager, Utils2, nimbleReserveInterface, OrderbookReserveInterface {
 
     uint public constant BURN_TO_STAKE_FACTOR = 5;      // stake per order must be xfactor expected burn amount.
     uint public constant MAX_BURN_FEE_BPS = 100;        // 1%
@@ -35,13 +35,13 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         uint minOrderSizeWei;       // below this value order will be removed.
     }
 
-    uint public kncPerEthBaseRatePrecision; // according to base rate all stakes are calculated.
+    uint public NIMPerEthBaseRatePrecision; // according to base rate all stakes are calculated.
 
     struct ExternalContracts {
-        ERC20 kncToken;          // not constant. to enable testing while not on main net
+        ERC20 NIMToken;          // not constant. to enable testing while not on main net
         ERC20 token;             // only supported token.
         FeeBurnerRateInterface feeBurner;
-        address kyberNetwork;
+        address nimbleNetwork;
         MedianizerInterface medianizer; // price feed Eth - USD from maker DAO.
         OrderListFactoryInterface orderListFactory;
     }
@@ -65,17 +65,17 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
     //funds data
     mapping(address => mapping(address => uint)) public makerFunds; // deposited maker funds.
-    mapping(address => uint) public makerKnc;            // for knc staking.
+    mapping(address => uint) public makerNIM;            // for NIM staking.
     mapping(address => uint) public makerTotalOrdersWei; // per maker how many Wei in orders, for stake calculation.
 
-    uint public makerBurnFeeBps;    // knc burn fee per order that is taken.
+    uint public makerBurnFeeBps;    // NIM burn fee per order that is taken.
 
     //each maker will have orders that will be reused.
     mapping(address => OrderIdData) public makerOrdersTokenToEth;
     mapping(address => OrderIdData) public makerOrdersEthToToken;
 
     function OrderbookReserve(
-        ERC20 knc,
+        ERC20 NIM,
         ERC20 reserveToken,
         address burner,
         address network,
@@ -88,7 +88,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         public
     {
 
-        require(knc != address(0));
+        require(NIM != address(0));
         require(reserveToken != address(0));
         require(burner != address(0));
         require(network != address(0));
@@ -99,11 +99,11 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require(maxOrdersPerTrade != 0);
         require(minNewOrderUsd > 0);
 
-        contracts.kyberNetwork = network;
+        contracts.nimbleNetwork = network;
         contracts.feeBurner = FeeBurnerRateInterface(burner);
         contracts.medianizer = medianizer;
         contracts.orderListFactory = factory;
-        contracts.kncToken = knc;
+        contracts.NIMToken = NIM;
         contracts.token = reserveToken;
 
         makerBurnFeeBps = burnFeeBps;
@@ -112,12 +112,12 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         require(setMinOrderSizeEth());
     
-        require(contracts.kncToken.approve(contracts.feeBurner, (2**255)));
+        require(contracts.NIMToken.approve(contracts.feeBurner, (2**255)));
 
         //can only support tokens with decimals() API
         setDecimals(contracts.token);
 
-        kncPerEthBaseRatePrecision = contracts.feeBurner.kncPerEthRatePrecision();
+        NIMPerEthBaseRatePrecision = contracts.feeBurner.NIMPerEthRatePrecision();
     }
 
     ///@dev separate init function for this contract, if this init is in the C'tor. gas consumption too high.
@@ -131,10 +131,10 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
-    function setKncPerEthBaseRate() public {
-        uint kncPerEthRatePrecision = contracts.feeBurner.kncPerEthRatePrecision();
-        if (kncPerEthRatePrecision < kncPerEthBaseRatePrecision) {
-            kncPerEthBaseRatePrecision = kncPerEthRatePrecision;
+    function setNIMPerEthBaseRate() public {
+        uint NIMPerEthRatePrecision = contracts.feeBurner.NIMPerEthRatePrecision();
+        if (NIMPerEthRatePrecision < NIMPerEthBaseRatePrecision) {
+            NIMPerEthBaseRatePrecision = NIMPerEthRatePrecision;
         }
     }
 
@@ -143,7 +143,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         require((src == contracts.token) || (dst == contracts.token));
         require(srcQty <= MAX_QTY);
 
-        if (kncRateBlocksTrade() || (srcQty == 0)) return 0;
+        if (NIMRateBlocksTrade() || (srcQty == 0)) return 0;
 
         blockNumber; // in this reserve no order expiry == no use for blockNumber. here to avoid compiler warning.
 
@@ -194,7 +194,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         payable
         returns(bool)
     {
-        require(msg.sender == contracts.kyberNetwork);
+        require(msg.sender == contracts.nimbleNetwork);
         require((srcToken == ETH_TOKEN_ADDRESS) || (dstToken == ETH_TOKEN_ADDRESS));
         require((srcToken == contracts.token) || (dstToken == contracts.token));
         require(srcAmount <= MAX_QTY);
@@ -430,18 +430,18 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         EtherDeposited(maker, msg.value);
     }
 
-    event KncFeeDeposited(address indexed maker, uint amount);
+    event NIMFeeDeposited(address indexed maker, uint amount);
 
-    // knc will be staked per order. part of the amount will be used as fee.
-    function depositKncForFee(address maker, uint amount) public {
+    // NIM will be staked per order. part of the amount will be used as fee.
+    function depositNIMForFee(address maker, uint amount) public {
         require(maker != address(0));
         require(amount < MAX_QTY);
 
-        require(contracts.kncToken.transferFrom(msg.sender, this, amount));
+        require(contracts.NIMToken.transferFrom(msg.sender, this, amount));
 
-        makerKnc[maker] += amount;
+        makerNIM[maker] += amount;
 
-        KncFeeDeposited(maker, amount);
+        NIMFeeDeposited(maker, amount);
 
         if (orderAllocationRequired(makerOrdersTokenToEth[maker])) {
             require(allocateOrderIds(
@@ -482,16 +482,16 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         maker.transfer(amount);
     }
 
-    function withdrawKncFee(uint amount) public {
+    function withdrawNIMFee(uint amount) public {
 
         address maker = msg.sender;
         
-        require(makerKnc[maker] >= amount);
-        require(makerUnlockedKnc(maker) >= amount);
+        require(makerNIM[maker] >= amount);
+        require(makerUnlockedNIM(maker) >= amount);
 
-        makerKnc[maker] -= amount;
+        makerNIM[maker] -= amount;
 
-        require(contracts.kncToken.transfer(maker, amount));
+        require(contracts.NIMToken.transfer(maker, amount));
     }
 
     function cancelTokenToEthOrder(uint32 orderId) public returns(bool) {
@@ -526,10 +526,10 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
-    ///@dev Each maker stakes per order KNC that is factor of the required burn amount.
-    ///@dev If Knc per Eth rate becomes lower by more then factor, stake will not be enough and trade will be blocked.
-    function kncRateBlocksTrade() public view returns (bool) {
-        return (contracts.feeBurner.kncPerEthRatePrecision() > kncPerEthBaseRatePrecision * BURN_TO_STAKE_FACTOR);
+    ///@dev Each maker stakes per order NIM that is factor of the required burn amount.
+    ///@dev If NIM per Eth rate becomes lower by more then factor, stake will not be enough and trade will be blocked.
+    function NIMRateBlocksTrade() public view returns (bool) {
+        return (contracts.feeBurner.NIMPerEthRatePrecision() > NIMPerEthBaseRatePrecision * BURN_TO_STAKE_FACTOR);
     }
 
     function getTokenToEthAddOrderHint(uint128 srcAmount, uint128 dstAmount) public view returns (uint32) {
@@ -604,26 +604,26 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return ethToTokenList.getOrderDetails(orderId);
     }
 
-    function makerRequiredKncStake(address maker) public view returns (uint) {
-        return(calcKncStake(makerTotalOrdersWei[maker]));
+    function makerRequiredNIMStake(address maker) public view returns (uint) {
+        return(calcNIMStake(makerTotalOrdersWei[maker]));
     }
 
-    function makerUnlockedKnc(address maker) public view returns (uint) {
-        uint requiredKncStake = makerRequiredKncStake(maker);
-        if (requiredKncStake > makerKnc[maker]) return 0;
-        return (makerKnc[maker] - requiredKncStake);
+    function makerUnlockedNIM(address maker) public view returns (uint) {
+        uint requiredNIMStake = makerRequiredNIMStake(maker);
+        if (requiredNIMStake > makerNIM[maker]) return 0;
+        return (makerNIM[maker] - requiredNIMStake);
     }
 
-    function calcKncStake(uint weiAmount) public view returns(uint) {
+    function calcNIMStake(uint weiAmount) public view returns(uint) {
         return(calcBurnAmount(weiAmount) * BURN_TO_STAKE_FACTOR);
     }
 
     function calcBurnAmount(uint weiAmount) public view returns(uint) {
-        return(weiAmount * makerBurnFeeBps * kncPerEthBaseRatePrecision / (10000 * PRECISION));
+        return(weiAmount * makerBurnFeeBps * NIMPerEthBaseRatePrecision / (10000 * PRECISION));
     }
 
     function calcBurnAmountFromFeeBurner(uint weiAmount) public view returns(uint) {
-        return(weiAmount * makerBurnFeeBps * contracts.feeBurner.kncPerEthRatePrecision() / (10000 * PRECISION));
+        return(weiAmount * makerBurnFeeBps * contracts.feeBurner.NIMPerEthRatePrecision() / (10000 * PRECISION));
     }
 
     ///@dev This function is not fully optimized gas wise. Consider before calling on chain.
@@ -787,7 +787,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     ///@param maker is the maker address
-    ///@param weiAmount is the wei amount inside order that should result in knc staking
+    ///@param weiAmount is the wei amount inside order that should result in NIM staking
     function bindOrderStakes(address maker, int weiAmount) internal returns(bool) {
 
         if (weiAmount < 0) {
@@ -797,7 +797,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
             return true;
         }
 
-        require(makerKnc[maker] >= calcKncStake(makerTotalOrdersWei[maker] + uint(weiAmount)));
+        require(makerNIM[maker] >= calcNIMStake(makerTotalOrdersWei[maker] + uint(weiAmount)));
 
         makerTotalOrdersWei[maker] += uint(weiAmount);
 
@@ -805,7 +805,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
     }
 
     ///@dev if totalWeiAmount is 0 we only release stakes.
-    ///@dev if totalWeiAmount == weiForBurn. all staked amount will be burned. so no knc returned to maker
+    ///@dev if totalWeiAmount == weiForBurn. all staked amount will be burned. so no NIM returned to maker
     ///@param maker is the maker address
     ///@param totalWeiAmount is total wei amount that was released from order - including taken wei amount.
     ///@param weiForBurn is the part in order wei amount that was taken and should result in burning.
@@ -823,13 +823,13 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
 
         uint burnAmount = calcBurnAmountFromFeeBurner(weiForBurn);
 
-        require(makerKnc[maker] >= burnAmount);
-        makerKnc[maker] -= burnAmount;
+        require(makerNIM[maker] >= burnAmount);
+        makerNIM[maker] -= burnAmount;
 
         return true;
     }
 
-    ///@dev funds are valid only when required knc amount can be staked for this order.
+    ///@dev funds are valid only when required NIM amount can be staked for this order.
     function secureAddOrderFunds(address maker, bool isEthToToken, uint128 srcAmount, uint128 dstAmount)
         internal returns(bool)
     {
@@ -842,7 +842,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         return true;
     }
 
-    ///@dev funds are valid only when required knc amount can be staked for this order.
+    ///@dev funds are valid only when required NIM amount can be staked for this order.
     function secureUpdateOrderFunds(address maker, bool isEthToToken, uint128 prevSrcAmount, uint128 prevDstAmount,
         uint128 newSrcAmount, uint128 newDstAmount)
         internal
@@ -947,7 +947,7 @@ contract OrderbookReserve is OrderIdManager, Utils2, KyberReserveInterface, Orde
         makerFunds[maker][userSrc] += userSrcAmount;
 
         // send dst tokens in one batch. not here
-        //handle knc stakes and fee. releasedWeiValue was released and not traded.
+        //handle NIM stakes and fee. releasedWeiValue was released and not traded.
         return releaseOrderStakes(maker, (weiAmount + additionalReleasedWei), weiAmount);
     }
 

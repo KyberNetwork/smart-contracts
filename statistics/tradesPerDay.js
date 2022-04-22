@@ -5,7 +5,7 @@ const networkABI =
 
 
 //const url = "https://mainnet.infura.io";
-const url = 'https://semi-node.kyber.network';
+const url = 'https://semi-node.nimble.network';
 
 const web3 = new Web3(new Web3.providers.HttpProvider(url));
 const networkAddress = "0x964F35fAe36d75B1e72770e244F6595B68508CF5";

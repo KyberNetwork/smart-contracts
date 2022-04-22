@@ -14,14 +14,14 @@ interface IGST2 {
 
 
 contract GasHelper is IGasHelper, WithdrawableNoModifiers {
-    address kyberNetwork;
+    address nimbleNetwork;
 
     IGST2 constant GST2 = IGST2(0x0000000000b3F879cb30FE243b4Dfee438691c04);
     uint256 constant MIN_ACTIVATE_PRICE = 8 * 1000 * 1000 * 1000; // 8 gwei
 
-    constructor(address _kyberNetwork, address _admin) public WithdrawableNoModifiers(_admin) {
-        require(_kyberNetwork != address(0));
-        kyberNetwork = _kyberNetwork;
+    constructor(address _nimbleNetwork, address _admin) public WithdrawableNoModifiers(_admin) {
+        require(_nimbleNetwork != address(0));
+        nimbleNetwork = _nimbleNetwork;
     }
 
     function freeGas(
@@ -32,7 +32,7 @@ contract GasHelper is IGasHelper, WithdrawableNoModifiers {
         bytes32[] calldata t2eReserveIds,
         bytes32[] calldata e2tReserveIds
     ) external override {
-        require(msg.sender == kyberNetwork);
+        require(msg.sender == nimbleNetwork);
         if (tx.gasprice <= MIN_ACTIVATE_PRICE) return;
 
         platformWallet;

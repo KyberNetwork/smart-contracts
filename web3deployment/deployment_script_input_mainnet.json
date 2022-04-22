@@ -1,6 +1,6 @@
 {
   "permission": { 
-    "KyberNetwork": { 
+    "nimbleNetwork": { 
       "admin": "0xbc33a1f908612640f2849b56b67a4de4d179c151",
       "operator": [
         "0x6e8138188a413ab4eb6528d356e6c98ed0f1ce71",
@@ -37,7 +37,7 @@
   "addresses": {
     "dgx": "0x4f3afec4e5a3f2a6a1a411def7d7dfe50ee057bf",
     "feeBurnerWrapperProxy": "0x1dabb09c85d80d6593e1570ded731cdd6e8d1dce",
-    "knc": "0xdd974d5c2e2928dea5f71b9825b8b646686bd200",
+    "NIM": "0xdd974d5c2e2928dea5f71b9825b8b646686bd200",
     "medianizer": "0x729d19f657bd0614b4985cf1d82531c67569197b",
     "proxy": "0x818e6fecd516ecc3849daf6845e3ec868087b755",
     "weth": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
@@ -47,7 +47,7 @@
   "reserves":[ 
     { 
       "address":"0x63825c174ab367968EC60f061753D3bbD36A0D8F",
-      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "NIMWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "fees":"25",
       "tokens":[ 
         { 
@@ -259,7 +259,7 @@
     },
     { 
       "address":"0x21433Dec9Cb634A23c6A4BbcCe08c83f5aC2EC18",
-      "KNCWallet":"0x69Aa7b8534A18Bec89272B847501F9d7b2159c7E",
+      "NIMWallet":"0x69Aa7b8534A18Bec89272B847501F9d7b2159c7E",
       "fees":"13",
       "tokens":[ 
         { 
@@ -331,7 +331,7 @@
     },
     { 
       "address":"0x2295fc6BC32cD12fdBb852cFf4014cEAc6d79C10",
-      "KNCWallet":"0x0000000000000000000000000000000000000000",
+      "NIMWallet":"0x0000000000000000000000000000000000000000",
       "fees":"0",
       "tokens":[ 
         { 
@@ -343,7 +343,7 @@
     },
     { 
       "address":"0x742e8BB8e6bDE9CB2DF5449f8de7510798727fB1",
-      "KNCWallet":"0xE0E1f00A2537Eccdbb993929A4265658353Affc6",
+      "NIMWallet":"0xE0E1f00A2537Eccdbb993929A4265658353Affc6",
       "fees":"25",
       "tokens":[ 
         { 
@@ -355,7 +355,7 @@
     },
     { 
       "address":"0x57f8160e1c59D16C01BbE181fD94db4E56b60495",
-      "KNCWallet":"0x0000000000000000000000000000000000000000",
+      "NIMWallet":"0x0000000000000000000000000000000000000000",
       "fees":"0",
       "tokens":[ 
         { 
@@ -367,7 +367,7 @@
     },
     { 
       "address":"0x3e9FFBA3C3eB91f501817b031031a71de2d3163B",
-      "KNCWallet":"0xb059f003cA875d9914AfF142743A902cC9e5cA03",
+      "NIMWallet":"0xb059f003cA875d9914AfF142743A902cC9e5cA03",
       "fees":"25",
       "tokens":[ 
         { 
@@ -379,7 +379,7 @@
     },
     { 
       "address":"0x0232Ba609782Cea145Ec3663F52CF7aEb4AC773C",
-      "KNCWallet":"0xAa6c7076212375814c92Ed3C04A3BAB762985ba9",
+      "NIMWallet":"0xAa6c7076212375814c92Ed3C04A3BAB762985ba9",
       "fees":"25",
       "tokens":[ 
         { 
@@ -391,7 +391,7 @@
     },
     { 
       "address":"0xa33c7c22d0BB673c2aEa2C048BB883b679fa1BE9",
-      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "NIMWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "fees":"25",
       "tokens":[ 
         { 
@@ -403,7 +403,7 @@
     },
     { 
       "address":"0x04A487aFd662c4F9DEAcC07A7B10cFb686B682A4",
-      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "NIMWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "fees":"25",
       "tokens":[ 
         { 
@@ -415,7 +415,7 @@
     },
     { 
       "address":"0xD6000fda0b38f4Bff4CfAb188E0bd18e8725a5e7",
-      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "NIMWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "fees":"25",
       "tokens":[ 
         { 
@@ -447,7 +447,7 @@
     },
     { 
       "address":"0x45eb33D008801d547990cAF3b63B4F8aE596EA57",
-      "KNCWallet":"0x5565d64f29Ea17355106DF3bA5903Eb793B3e139",
+      "NIMWallet":"0x5565d64f29Ea17355106DF3bA5903Eb793B3e139",
       "fees":"25",
       "tokens":[ 
         { 
@@ -459,7 +459,7 @@
     },
     { 
       "address":"0x5D154c145Db2ca90B8aB5e8Fe3E716AfA4AB7Ff0",
-      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "NIMWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "fees":"25",
       "tokens":[ 
         { 
@@ -506,7 +506,7 @@
     },
     { 
       "address":"0xA467b88BBF9706622be2784aF724C4B44a9d26F4",
-      "KNCWallet":"0x5565d64f29Ea17355106DF3bA5903Eb793B3e139",
+      "NIMWallet":"0x5565d64f29Ea17355106DF3bA5903Eb793B3e139",
       "fees":"25",
       "tokens":[ 
         { 
@@ -518,7 +518,7 @@
     },
     { 
       "address":"0x1670DFb52806DE7789D5cF7D5c005cf7083f9A5D",
-      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "NIMWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "fees":"25",
       "tokens":[ 
         { 
@@ -530,7 +530,7 @@
     },
     { 
       "address":"0xAA14DCAA0AdbE79cBF00edC6cC4ED17ed39240AC",
-      "KNCWallet":"0xB399C994a03D4Ea83990927Fe6B091236E4C887d",
+      "NIMWallet":"0xB399C994a03D4Ea83990927Fe6B091236E4C887d",
       "fees":"25",
       "tokens":[ 
         { 
@@ -542,7 +542,7 @@
     },
     { 
       "address":"0x7a3370075a54B187d7bD5DceBf0ff2B5552d4F7D",
-      "KNCWallet":"0x30d89B0Ad7bF97a77d9d71D1F87C06356EB9953D",
+      "NIMWallet":"0x30d89B0Ad7bF97a77d9d71D1F87C06356EB9953D",
       "fees":"13",
       "tokens":[ 
         { 
@@ -584,7 +584,7 @@
     },
     { 
       "address":"0x05461124C86C0AD7C5d8E012e1499fd9109fFb7d",
-      "KNCWallet":"0xD2b3D480Db9Fb08Ea55c349C0299b81892F31544",
+      "NIMWallet":"0xD2b3D480Db9Fb08Ea55c349C0299b81892F31544",
       "fees":"25",
       "tokens":[ 
         { 
@@ -596,7 +596,7 @@
     },
     { 
       "address":"0x1833AD67362249823515B59A8aA8b4f6B4358d1B",
-      "KNCWallet":"0x2ABE2A10E6A4791B7D413dE5088695Dd46E4A363",
+      "NIMWallet":"0x2ABE2A10E6A4791B7D413dE5088695Dd46E4A363",
       "fees":"25",
       "tokens":[ 
         { 
@@ -608,7 +608,7 @@
     },
     { 
       "address":"0x302B35bd0B01312ec2652783c04955D7200C3D9b",
-      "KNCWallet":"0x3333Ee56a2D9dC70de0f59A1D9Da7fB815516E43",
+      "NIMWallet":"0x3333Ee56a2D9dC70de0f59A1D9Da7fB815516E43",
       "fees":"25",
       "tokens":[ 
         { 
@@ -620,7 +620,7 @@
     },
     { 
       "address":"0x6b84DBd29643294703dBabf8Ed97cDef74EDD227",
-      "KNCWallet":"0x89bc568e74D16775a95e56Cf6032Bc323dCfA616",
+      "NIMWallet":"0x89bc568e74D16775a95e56Cf6032Bc323dCfA616",
       "fees":"25",
       "tokens":[ 
         { 
@@ -632,7 +632,7 @@
     },
     { 
       "address":"0x7e2fd015616263Add31a2AcC2A437557cEe80Fc4",
-      "KNCWallet":"0x17EbaA440fae1d97465D7588987b08301Fe903C4",
+      "NIMWallet":"0x17EbaA440fae1d97465D7588987b08301Fe903C4",
       "fees":"25",
       "tokens":[ 
         { 
@@ -644,7 +644,7 @@
     },
     { 
       "address":"0x485c4Ec93D18eBd16623D455567886475aE28D04",
-      "KNCWallet":"0x6f636A1A8d60747f398aA4Ce6f7BD23D83D89956",
+      "NIMWallet":"0x6f636A1A8d60747f398aA4Ce6f7BD23D83D89956",
       "fees":"13",
       "tokens":[ 
         { 
@@ -656,7 +656,7 @@
     },
     { 
       "address":"0xa107dfa919c3f084a7893A260b99586981beb528",
-      "KNCWallet":"0xA97Bc5dD7B32003398645EDEb2178c91087f86D8",
+      "NIMWallet":"0xA97Bc5dD7B32003398645EDEb2178c91087f86D8",
       "fees":"25",
       "tokens":[ 
         { 
@@ -668,7 +668,7 @@
     },
     { 
       "address":"0x3480E12B6C2438e02319e34b4c23770679169190",
-      "KNCWallet":"0x1464797981B1C9fDb67d20939fbeB82917d110a7",
+      "NIMWallet":"0x1464797981B1C9fDb67d20939fbeB82917d110a7",
       "fees":"25",
       "tokens":[ 
         { 
@@ -680,7 +680,7 @@
     },
     { 
       "address":"0x08030715560a146E306b87CA93Fd618bb2A80363",
-      "KNCWallet":"0x5390B4DDf69505393D6338cAF37667fad8FC7156",
+      "NIMWallet":"0x5390B4DDf69505393D6338cAF37667fad8FC7156",
       "fees":"25",
       "tokens":[ 
         { 
@@ -692,7 +692,7 @@
     },
     { 
       "address":"0x95f1f428485Bd41729938D620af61718Ea9B1F9E",
-      "KNCWallet":"0x33892b7722fA55E75DB5C3a3931Fd31A8A49A044",
+      "NIMWallet":"0x33892b7722fA55E75DB5C3a3931Fd31A8A49A044",
       "fees":"25",
       "tokens":[ 
         { 
@@ -704,7 +704,7 @@
     },
     { 
       "address":"0xb45C8956a080d336934cEE52A35D4dbABF025b6F",
-      "KNCWallet":"0xbEE7f7795d90DCf976cD2990cb5F79FAE9207419",
+      "NIMWallet":"0xbEE7f7795d90DCf976cD2990cb5F79FAE9207419",
       "fees":"25",
       "tokens":[ 
         { 
@@ -716,7 +716,7 @@
     },
     { 
       "address":"0x751Eea622edd1E3D768C18afbCaeC7DcE7750C65",
-      "KNCWallet":"0x67119627409ab17bfEb6b8c6c308d614F2AA6264",
+      "NIMWallet":"0x67119627409ab17bfEb6b8c6c308d614F2AA6264",
       "fees":"25",
       "tokens":[ 
         { 
@@ -728,7 +728,7 @@
     },
     { 
       "address":"0xCf1394C5e2e879969fdB1f464cE1487147863dCb",
-      "KNCWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
+      "NIMWallet":"0xBC33a1F908612640F2849b56b67a4De4d179C151",
       "fees":"25",
       "tokens":[ 
         { 
@@ -1326,7 +1326,7 @@
   "max gas price" : "50000000000",
   "neg diff in bps" : 20,
   "min expected rate slippage" : 300,
-  "KNC to ETH rate" : 1000,
+  "NIM to ETH rate" : 1000,
   "default wallet fees bps": 3000,
   "tax fees bps": 0,
   "tax wallet address": "0x0000000000000000000000000000000000000000",

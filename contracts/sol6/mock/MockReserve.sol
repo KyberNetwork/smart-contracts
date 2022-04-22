@@ -1,22 +1,22 @@
 pragma solidity 0.6.6;
 
-import "../IKyberReserve.sol";
-import "../IKyberSanity.sol";
+import "../InimbleReserve.sol";
+import "../InimbleSanity.sol";
 import "../utils/Utils5.sol";
 import "../utils/zeppelin/SafeERC20.sol";
 
 
-contract MockReserve is IKyberReserve, Utils5 {
+contract MockReserve is InimbleReserve, Utils5 {
     using SafeERC20 for IERC20;
 
-    IKyberSanity public sanityRatesContract;
+    InimbleSanity public sanityRatesContract;
     mapping(address => uint256) public buyTokenRates;
     mapping(address => uint256) public sellTokenRates;
 
     receive() external payable {}
 
     function setContracts(
-        IKyberSanity _sanityRates
+        InimbleSanity _sanityRates
     ) public {
         sanityRatesContract = _sanityRates;
     }

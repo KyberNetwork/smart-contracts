@@ -7,14 +7,14 @@ import "../../../FeeBurnerInterface.sol";
 
 contract InternalNetworkInterface {
     function addReserve(
-        KyberReserveInterface reserve,
+        nimbleReserveInterface reserve,
         bool isPermissionless
     )
         public
         returns(bool);
 
     function removeReserve(
-        KyberReserveInterface reserve,
+        nimbleReserveInterface reserve,
         uint index
     )
         public
@@ -35,16 +35,16 @@ contract InternalNetworkInterface {
 
 
 contract PermissionlessOrderbookReserveLister {
-    // KNC burn fee per wei value of an order. 25 in BPS = 0.25%.
+    // NIM burn fee per wei value of an order. 25 in BPS = 0.25%.
     uint constant public ORDERBOOK_BURN_FEE_BPS = 25;
 
     uint public minNewOrderValueUsd = 1000; // set in order book minimum USD value of a new limit order
     uint public maxOrdersPerTrade;          // set in order book maximum orders to be traversed in rate query and trade
 
-    InternalNetworkInterface public kyberNetworkContract;
+    InternalNetworkInterface public nimbleNetworkContract;
     OrderListFactoryInterface public orderFactoryContract;
     MedianizerInterface public medianizerContract;
-    ERC20 public kncToken;
+    ERC20 public NIMToken;
 
     enum ListingStage {NO_RESERVE, RESERVE_ADDED, RESERVE_INIT, RESERVE_LISTED}
 
@@ -53,27 +53,27 @@ contract PermissionlessOrderbookReserveLister {
     mapping(address => bool) tokenListingBlocked;
 
     function PermissionlessOrderbookReserveLister(
-        InternalNetworkInterface kyber,
+        InternalNetworkInterface nimble,
         OrderListFactoryInterface factory,
         MedianizerInterface medianizer,
-        ERC20 knc,
+        ERC20 NIM,
         address[] unsupportedTokens,
         uint maxOrders,
         uint minOrderValueUsd
     )
         public
     {
-        require(kyber != address(0));
+        require(nimble != address(0));
         require(factory != address(0));
         require(medianizer != address(0));
-        require(knc != address(0));
+        require(NIM != address(0));
         require(maxOrders > 1);
         require(minOrderValueUsd > 0);
 
-        kyberNetworkContract = kyber;
+        nimbleNetworkContract = nimble;
         orderFactoryContract = factory;
         medianizerContract = medianizer;
-        kncToken = knc;
+        NIMToken = NIM;
         maxOrdersPerTrade = maxOrders;
         minNewOrderValueUsd = minOrderValueUsd;
 
@@ -91,10 +91,10 @@ contract PermissionlessOrderbookReserveLister {
         require(!(tokenListingBlocked[token]));
 
         reserves[token] = new OrderbookReserve({
-            knc: kncToken,
+            NIM: NIMToken,
             reserveToken: token,
-            burner: kyberNetworkContract.feeBurnerContract(),
-            network: kyberNetworkContract,
+            burner: nimbleNetworkContract.feeBurnerContract(),
+            network: nimbleNetworkContract,
             medianizer: medianizerContract,
             factory: orderFactoryContract,
             minNewOrderUsd: minNewOrderValueUsd,
@@ -123,15 +123,15 @@ contract PermissionlessOrderbookReserveLister {
         require(reserveListingStage[token] == ListingStage.RESERVE_INIT);
 
         require(
-            kyberNetworkContract.addReserve(
-                KyberReserveInterface(reserves[token]),
+            nimbleNetworkContract.addReserve(
+                nimbleReserveInterface(reserves[token]),
                 true
             )
         );
 
         require(
-            kyberNetworkContract.listPairForReserve(
-                KyberReserveInterface(reserves[token]),
+            nimbleNetworkContract.listPairForReserve(
+                nimbleReserveInterface(reserves[token]),
                 token,
                 true,
                 true,
@@ -139,12 +139,12 @@ contract PermissionlessOrderbookReserveLister {
             )
         );
 
-        FeeBurnerInterface feeBurner = FeeBurnerInterface(kyberNetworkContract.feeBurnerContract());
+        FeeBurnerInterface feeBurner = FeeBurnerInterface(nimbleNetworkContract.feeBurnerContract());
 
         feeBurner.setReserveData(
             reserves[token], /* reserve */
             ORDERBOOK_BURN_FEE_BPS, /* fee */
-            reserves[token] /* kncWallet */
+            reserves[token] /* NIMWallet */
         );
 
         reserveListingStage[token] = ListingStage.RESERVE_LISTED;
@@ -154,8 +154,8 @@ contract PermissionlessOrderbookReserveLister {
 
     function unlistOrderbookContract(ERC20 token, uint hintReserveIndex) public {
         require(reserveListingStage[token] == ListingStage.RESERVE_LISTED);
-        require(reserves[token].kncRateBlocksTrade());
-        require(kyberNetworkContract.removeReserve(KyberReserveInterface(reserves[token]), hintReserveIndex));
+        require(reserves[token].NIMRateBlocksTrade());
+        require(nimbleNetworkContract.removeReserve(nimbleReserveInterface(reserves[token]), hintReserveIndex));
         reserveListingStage[token] = ListingStage.NO_RESERVE;
         reserves[token] = OrderbookReserveInterface(0);
         TokenOrderbookListingStage(token, ListingStage.NO_RESERVE);

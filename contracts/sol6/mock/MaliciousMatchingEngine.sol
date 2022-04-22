@@ -1,15 +1,15 @@
 pragma solidity 0.6.6;
 
-import "../IKyberMatchingEngine.sol";
+import "../InimbleMatchingEngine.sol";
 import "../utils/Utils5.sol";
 
 contract MaliciousMatchingEngine is Utils5 {
-    IKyberStorage public kyberStorage;
+    InimbleStorage public nimbleStorage;
     uint256 splitLength;
     bool badValues;
 
-    function setKyberStorage(IKyberStorage _kyberStorage) external {
-        kyberStorage = _kyberStorage;
+    function setnimbleStorage(InimbleStorage _nimbleStorage) external {
+        nimbleStorage = _nimbleStorage;
     }
 
     function setSplitLength(uint length) external {
@@ -31,17 +31,17 @@ contract MaliciousMatchingEngine is Utils5 {
         returns (
             bytes32[] memory reserveIds,
             uint256[] memory splitValuesBps,
-            IKyberMatchingEngine.ProcessWithRate processWithRate
+            InimbleMatchingEngine.ProcessWithRate processWithRate
         )
     {
         isTokenToToken;
         hint;
         reserveIds = (dest == ETH_TOKEN_ADDRESS)
-            ? kyberStorage.getReserveIdsPerTokenSrc(src)
-            : kyberStorage.getReserveIdsPerTokenDest(dest);
+            ? nimbleStorage.getReserveIdsPerTokenSrc(src)
+            : nimbleStorage.getReserveIdsPerTokenDest(dest);
 
         splitValuesBps = populateSplitValuesBps();
-        processWithRate = IKyberMatchingEngine.ProcessWithRate.Required;
+        processWithRate = InimbleMatchingEngine.ProcessWithRate.Required;
     }
 
     function doMatch(

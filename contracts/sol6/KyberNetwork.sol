@@ -4,25 +4,25 @@ import "./utils/WithdrawableNoModifiers.sol";
 import "./utils/Utils5.sol";
 import "./utils/zeppelin/ReentrancyGuard.sol";
 import "./utils/zeppelin/SafeERC20.sol";
-import "./IKyberNetwork.sol";
-import "./IKyberReserve.sol";
-import "./IKyberFeeHandler.sol";
-import "./IKyberDao.sol";
-import "./IKyberMatchingEngine.sol";
-import "./IKyberStorage.sol";
+import "./InimbleNetwork.sol";
+import "./InimbleReserve.sol";
+import "./InimbleFeeHandler.sol";
+import "./InimbleDao.sol";
+import "./InimbleMatchingEngine.sol";
+import "./InimbleStorage.sol";
 import "./IGasHelper.sol";
 
 
 /**
- *   @title kyberNetwork main contract
+ *   @title nimbleNetwork main contract
  *   Interacts with contracts:
- *       kyberDao: to retrieve fee data
- *       kyberFeeHandler: accumulates and distributes trade fees
- *       kyberMatchingEngine: parse user hint and run reserve matching algorithm
- *       kyberStorage: store / access reserves, token listings and contract addresses
- *       kyberReserve(s): query rate and trade
+ *       nimbleDao: to retrieve fee data
+ *       nimbleFeeHandler: accumulates and distributes trade fees
+ *       nimbleMatchingEngine: parse user hint and run reserve matching algorithm
+ *       nimbleStorage: store / access reserves, token listings and contract addresses
+ *       nimbleReserve(s): query rate and trade
  */
-contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, ReentrancyGuard {
+contract nimbleNetwork is WithdrawableNoModifiers, Utils5, InimbleNetwork, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     struct NetworkFeeData {
@@ -33,7 +33,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @notice Stores work data for reserves (either for token -> eth, or eth -> token)
     /// @dev Variables are in-place, ie. reserve with addresses[i] has id of ids[i], offers rate of rates[i], etc.
     /// @param addresses List of reserve addresses selected for the trade
-    /// @param ids List of reserve ids, to be used for KyberTrade event
+    /// @param ids List of reserve ids, to be used for nimbleTrade event
     /// @param rates List of rates that were offered by the reserves
     /// @param isFeeAccountedFlags List of reserves requiring users to pay network fee
     /// @param isEntitledRebateFlags List of reserves eligible for rebates
@@ -42,7 +42,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param srcAmounts Source amount per reserve.
     /// @param decimals Token decimals. Src decimals when for src -> eth, dest decimals when eth -> dest
     struct ReservesData {
-        IKyberReserve[] addresses;
+        InimbleReserve[] addresses;
         bytes32[] ids;
         uint256[] rates;
         bool[] isFeeAccountedFlags;
@@ -59,7 +59,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param tradeWei Trade amount in ether wei, before deducting fees.
     /// @param networkFeeWei Network fee in ether wei. For t2t trades, it can go up to 200% of networkFeeBps
     /// @param platformFeeWei Platform fee in ether wei
-    /// @param networkFeeBps Network fee bps determined by kyberDao, or default value
+    /// @param networkFeeBps Network fee bps determined by nimbleDao, or default value
     /// @param numEntitledRebateReserves No. of reserves that are eligible for rebates
     /// @param feeAccountedBps Proportion of this trade that fee is accounted to, in BPS. Up to 2 * BPS
     struct TradeData {
@@ -87,30 +87,30 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     uint256 internal constant PERM_HINT_GET_RATE = 1 << 255; // for backwards compatibility
-    uint256 internal constant DEFAULT_NETWORK_FEE_BPS = 25; // till we read value from kyberDao
+    uint256 internal constant DEFAULT_NETWORK_FEE_BPS = 25; // till we read value from nimbleDao
     uint256 internal constant MAX_APPROVED_PROXIES = 2; // limit number of proxies that can trade here
 
-    IKyberFeeHandler internal kyberFeeHandler;
-    IKyberDao internal kyberDao;
-    IKyberMatchingEngine internal kyberMatchingEngine;
-    IKyberStorage internal kyberStorage;
+    InimbleFeeHandler internal nimbleFeeHandler;
+    InimbleDao internal nimbleDao;
+    InimbleMatchingEngine internal nimbleMatchingEngine;
+    InimbleStorage internal nimbleStorage;
     IGasHelper internal gasHelper;
 
     NetworkFeeData internal networkFeeData; // data is feeBps and expiry timestamp
     uint256 internal maxGasPriceValue = 50 * 1000 * 1000 * 1000; // 50 gwei
     bool internal isEnabled = false; // is network enabled
 
-    mapping(address => bool) internal kyberProxyContracts;
+    mapping(address => bool) internal nimbleProxyContracts;
 
     event EtherReceival(address indexed sender, uint256 amount);
-    event KyberFeeHandlerUpdated(IKyberFeeHandler newKyberFeeHandler);
-    event KyberMatchingEngineUpdated(IKyberMatchingEngine newKyberMatchingEngine);
+    event nimbleFeeHandlerUpdated(InimbleFeeHandler newnimbleFeeHandler);
+    event nimbleMatchingEngineUpdated(InimbleMatchingEngine newnimbleMatchingEngine);
     event GasHelperUpdated(IGasHelper newGasHelper);
-    event KyberDaoUpdated(IKyberDao newKyberDao);
-    event KyberNetworkParamsSet(uint256 maxGasPrice, uint256 negligibleRateDiffBps);
-    event KyberNetworkSetEnable(bool isEnabled);
-    event KyberProxyAdded(address kyberProxy);
-    event KyberProxyRemoved(address kyberProxy);
+    event nimbleDaoUpdated(InimbleDao newnimbleDao);
+    event nimbleNetworkParamsSet(uint256 maxGasPrice, uint256 negligibleRateDiffBps);
+    event nimbleNetworkSetEnable(bool isEnabled);
+    event nimbleProxyAdded(address nimbleProxy);
+    event nimbleProxyRemoved(address nimbleProxy);
 
     event ListedReservesForToken(
         IERC20 indexed token,
@@ -118,12 +118,12 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         bool add
     );
 
-    constructor(address _admin, IKyberStorage _kyberStorage)
+    constructor(address _admin, InimbleStorage _nimbleStorage)
         public
         WithdrawableNoModifiers(_admin)
     {
         updateNetworkFee(now, DEFAULT_NETWORK_FEE_BPS);
-        kyberStorage = _kyberStorage;
+        nimbleStorage = _nimbleStorage;
     }
 
     receive() external payable {
@@ -209,7 +209,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         return trade(tradeData, hint);
     }
 
-    /// @notice Can be called only by kyberStorage
+    /// @notice Can be called only by nimbleStorage
     /// @dev Allow or prevent to trade token -> eth for a reserve
     /// @param reserve The reserve address
     /// @param token Token address
@@ -219,7 +219,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         IERC20 token,
         bool add
     ) external override {
-        require(msg.sender == address(kyberStorage), "only kyberStorage");
+        require(msg.sender == address(nimbleStorage), "only nimbleStorage");
 
         if (add) {
             token.safeApprove(reserve, MAX_ALLOWANCE);
@@ -250,7 +250,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             return;
         }
 
-        address[] memory reserves = kyberStorage.getReserveAddressesPerTokenSrc(
+        address[] memory reserves = nimbleStorage.getReserveAddressesPerTokenSrc(
             token, startIndex, endIndex
         );
 
@@ -272,20 +272,20 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     function setContracts(
-        IKyberFeeHandler _kyberFeeHandler,
-        IKyberMatchingEngine _kyberMatchingEngine,
+        InimbleFeeHandler _nimbleFeeHandler,
+        InimbleMatchingEngine _nimbleMatchingEngine,
         IGasHelper _gasHelper
     ) external virtual {
         onlyAdmin();
 
-        if (kyberFeeHandler != _kyberFeeHandler) {
-            kyberFeeHandler = _kyberFeeHandler;
-            emit KyberFeeHandlerUpdated(_kyberFeeHandler);
+        if (nimbleFeeHandler != _nimbleFeeHandler) {
+            nimbleFeeHandler = _nimbleFeeHandler;
+            emit nimbleFeeHandlerUpdated(_nimbleFeeHandler);
         }
 
-        if (kyberMatchingEngine != _kyberMatchingEngine) {
-            kyberMatchingEngine = _kyberMatchingEngine;
-            emit KyberMatchingEngineUpdated(_kyberMatchingEngine);
+        if (nimbleMatchingEngine != _nimbleMatchingEngine) {
+            nimbleMatchingEngine = _nimbleMatchingEngine;
+            emit nimbleMatchingEngineUpdated(_nimbleMatchingEngine);
         }
 
         if ((_gasHelper != IGasHelper(0)) && (_gasHelper != gasHelper)) {
@@ -293,64 +293,64 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             emit GasHelperUpdated(_gasHelper);
         }
 
-        kyberStorage.setContracts(address(_kyberFeeHandler), address(_kyberMatchingEngine));
-        require(_kyberFeeHandler != IKyberFeeHandler(0));
-        require(_kyberMatchingEngine != IKyberMatchingEngine(0));
+        nimbleStorage.setContracts(address(_nimbleFeeHandler), address(_nimbleMatchingEngine));
+        require(_nimbleFeeHandler != InimbleFeeHandler(0));
+        require(_nimbleMatchingEngine != InimbleMatchingEngine(0));
     }
 
-    function setKyberDaoContract(IKyberDao _kyberDao) external {
-        // enable setting null kyberDao address
+    function setnimbleDaoContract(InimbleDao _nimbleDao) external {
+        // enable setting null nimbleDao address
         onlyAdmin();
-        if (kyberDao != _kyberDao) {
-            kyberDao = _kyberDao;
-            kyberStorage.setKyberDaoContract(address(_kyberDao));
-            emit KyberDaoUpdated(_kyberDao);
+        if (nimbleDao != _nimbleDao) {
+            nimbleDao = _nimbleDao;
+            nimbleStorage.setnimbleDaoContract(address(_nimbleDao));
+            emit nimbleDaoUpdated(_nimbleDao);
         }
     }
 
     function setParams(uint256 _maxGasPrice, uint256 _negligibleRateDiffBps) external {
         onlyAdmin();
         maxGasPriceValue = _maxGasPrice;
-        kyberMatchingEngine.setNegligibleRateDiffBps(_negligibleRateDiffBps);
-        emit KyberNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
+        nimbleMatchingEngine.setNegligibleRateDiffBps(_negligibleRateDiffBps);
+        emit nimbleNetworkParamsSet(maxGasPriceValue, _negligibleRateDiffBps);
     }
 
     function setEnable(bool enable) external {
         onlyAdmin();
 
         if (enable) {
-            require(kyberFeeHandler != IKyberFeeHandler(0));
-            require(kyberMatchingEngine != IKyberMatchingEngine(0));
-            require(kyberStorage.isKyberProxyAdded());
+            require(nimbleFeeHandler != InimbleFeeHandler(0));
+            require(nimbleMatchingEngine != InimbleMatchingEngine(0));
+            require(nimbleStorage.isnimbleProxyAdded());
         }
 
         isEnabled = enable;
 
-        emit KyberNetworkSetEnable(isEnabled);
+        emit nimbleNetworkSetEnable(isEnabled);
     }
 
-    /// @dev No. of kyberProxies is capped
-    function addKyberProxy(address kyberProxy) external virtual {
+    /// @dev No. of nimbleProxies is capped
+    function addnimbleProxy(address nimbleProxy) external virtual {
         onlyAdmin();
-        kyberStorage.addKyberProxy(kyberProxy, MAX_APPROVED_PROXIES);
-        require(kyberProxy != address(0));
-        require(!kyberProxyContracts[kyberProxy]);
+        nimbleStorage.addnimbleProxy(nimbleProxy, MAX_APPROVED_PROXIES);
+        require(nimbleProxy != address(0));
+        require(!nimbleProxyContracts[nimbleProxy]);
 
-        kyberProxyContracts[kyberProxy] = true;
+        nimbleProxyContracts[nimbleProxy] = true;
 
-        emit KyberProxyAdded(kyberProxy);
+        emit nimbleProxyAdded(nimbleProxy);
     }
 
-    function removeKyberProxy(address kyberProxy) external virtual {
+    function removenimbleProxy(address nimbleProxy) external virtual {
         onlyAdmin();
 
-        kyberStorage.removeKyberProxy(kyberProxy);
+        nimbleStorage.removenimbleProxy(nimbleProxy);
 
-        require(kyberProxyContracts[kyberProxy]);
+        require(nimbleProxyContracts[nimbleProxy]);
 
-        kyberProxyContracts[kyberProxy] = false;
+        nimbleProxyContracts[nimbleProxy] = false;
 
-        emit KyberProxyRemoved(kyberProxy);
+        emit nimbleProxyRemoved(nimbleProxy);
     }
 
     /// @dev gets the expected rates when trading src -> dest token, with / without fees
@@ -442,7 +442,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     /// @param negligibleDiffBps Negligible rate difference (in basis pts) when searching best rate
     /// @param networkFeeBps Network fees to be charged (in basis pts)
     /// @param expiryTimestamp Timestamp for which networkFeeBps will expire,
-    ///     and needs to be updated by calling kyberDao contract / set to default
+    ///     and needs to be updated by calling nimbleDao contract / set to default
     function getNetworkData()
         external
         view
@@ -454,7 +454,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         )
     {
         (networkFeeBps, expiryTimestamp) = readNetworkFeeData();
-        negligibleDiffBps = kyberMatchingEngine.getNegligibleRateDiffBps();
+        negligibleDiffBps = nimbleMatchingEngine.getNegligibleRateDiffBps();
         return (negligibleDiffBps, networkFeeBps, expiryTimestamp);
     }
 
@@ -462,21 +462,21 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         external
         view
         returns (
-            IKyberFeeHandler kyberFeeHandlerAddress,
-            IKyberDao kyberDaoAddress,
-            IKyberMatchingEngine kyberMatchingEngineAddress,
-            IKyberStorage kyberStorageAddress,
+            InimbleFeeHandler nimbleFeeHandlerAddress,
+            InimbleDao nimbleDaoAddress,
+            InimbleMatchingEngine nimbleMatchingEngineAddress,
+            InimbleStorage nimbleStorageAddress,
             IGasHelper gasHelperAddress,
-            IKyberNetworkProxy[] memory kyberProxyAddresses
+            InimbleNetworkProxy[] memory nimbleProxyAddresses
         )
     {
         return (
-            kyberFeeHandler,
-            kyberDao,
-            kyberMatchingEngine,
-            kyberStorage,
+            nimbleFeeHandler,
+            nimbleDao,
+            nimbleMatchingEngine,
+            nimbleStorage,
             gasHelper,
-            kyberStorage.getKyberProxies()
+            nimbleStorage.getnimbleProxies()
         );
     }
 
@@ -490,7 +490,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         return isEnabled;
     }
 
-    /// @notice Gets network fee from the kyberDao (or use default).
+    /// @notice Gets network fee from the nimbleDao (or use default).
     ///     For trade function, so that data can be updated and cached.
     /// @dev Note that this function can be triggered by anyone, so that
     ///     the first trader of a new epoch can avoid incurring extra gas costs
@@ -499,14 +499,14 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         (networkFeeBps, expiryTimestamp) = readNetworkFeeData();
 
-        if (expiryTimestamp < now && kyberDao != IKyberDao(0)) {
-            (networkFeeBps, expiryTimestamp) = kyberDao.getLatestNetworkFeeDataWithCache();
+        if (expiryTimestamp < now && nimbleDao != InimbleDao(0)) {
+            (networkFeeBps, expiryTimestamp) = nimbleDao.getLatestNetworkFeeDataWithCache();
             updateNetworkFee(expiryTimestamp, networkFeeBps);
         }
     }
 
     /// @notice Calculates platform fee and reserve rebate percentages for the trade.
-    ///     Transfers eth and rebate wallet data to kyberFeeHandler
+    ///     Transfers eth and rebate wallet data to nimbleFeeHandler
     function handleFees(TradeData memory tradeData) internal {
         uint256 sentFee = tradeData.networkFeeWei + tradeData.platformFeeWei;
         //no need to handle fees if total fee is zero
@@ -520,7 +520,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         ) = calculateRebates(tradeData);
 
         // send total fee amount to fee handler with reserve data
-        kyberFeeHandler.handleFees{value: sentFee}(
+        nimbleFeeHandler.handleFees{value: sentFee}(
             ETH_TOKEN_ADDRESS,
             rebateWallets,
             rebatePercentBps,
@@ -640,7 +640,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     }
 
     /// @notice Use token address ETH_TOKEN_ADDRESS for ether
-    /// @dev Trade API for kyberNetwork
+    /// @dev Trade API for nimbleNetwork
     /// @param tradeData Main trade data object for trade info to be stored
     function trade(TradeData memory tradeData, bytes memory hint)
         internal
@@ -700,7 +700,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         handleFees(tradeData);
 
-        emit KyberTrade({
+        emit nimbleTrade({
             src: tradeData.input.src,
             dest: tradeData.input.dest,
             ethWeiValue: tradeData.tradeWei,
@@ -779,8 +779,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
     /// @notice This function does all calculations to find trade dest amount without accounting 
     ///        for maxDestAmount. Part of this process includes:
-    ///        - Call kyberMatchingEngine to parse hint and get an optional reserve list to trade.
-    ///        - Query reserve rates and call kyberMatchingEngine to use best reserve.
+    ///        - Call nimbleMatchingEngine to parse hint and get an optional reserve list to trade.
+    ///        - Query reserve rates and call nimbleMatchingEngine to use best reserve.
     ///        - Calculate trade values and fee values.
     ///     This function should set all TradeData information so that it can be later used without 
     ///         any ambiguity
@@ -856,11 +856,11 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             return srcAmount;
         }
 
-        IKyberMatchingEngine.ProcessWithRate processWithRate;
+        InimbleMatchingEngine.ProcessWithRate processWithRate;
 
-        // get reserve list from kyberMatchingEngine
+        // get reserve list from nimbleMatchingEngine
         (reservesData.ids, reservesData.splitsBps, processWithRate) =
-            kyberMatchingEngine.getTradingReserves(
+            nimbleMatchingEngine.getTradingReserves(
             src,
             dest,
             (tradeData.input.src != ETH_TOKEN_ADDRESS) && (tradeData.input.dest != ETH_TOKEN_ADDRESS),
@@ -868,7 +868,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         );
         bool areAllReservesListed;
         (areAllReservesListed, reservesData.isFeeAccountedFlags, reservesData.isEntitledRebateFlags, reservesData.addresses)
-            = kyberStorage.getReservesData(reservesData.ids, src, dest);
+            = nimbleStorage.getReservesData(reservesData.ids, src, dest);
 
         if(!areAllReservesListed) {
             return 0;
@@ -890,8 +890,8 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         );
 
         // if matching engine requires processing with rate data. call doMatch and update reserve list
-        if (processWithRate == IKyberMatchingEngine.ProcessWithRate.Required) {
-            uint256[] memory selectedIndexes = kyberMatchingEngine.doMatch(
+        if (processWithRate == InimbleMatchingEngine.ProcessWithRate.Required) {
+            uint256[] memory selectedIndexes = nimbleMatchingEngine.doMatch(
                 src,
                 dest,
                 reservesData.srcAmounts,
@@ -988,7 +988,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
             tradeData.feeAccountedBps
         );
 
-        rebateWallets = kyberStorage.getRebateWalletsFromIds(rebateReserveIds);
+        rebateWallets = nimbleStorage.getRebateWalletsFromIds(rebateReserveIds);
     }
 
     function createRebateEntitledList(
@@ -1015,7 +1015,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
     function validateTradeInput(TradeInput memory input) internal view
     {
         require(isEnabled, "network disabled");
-        require(kyberProxyContracts[msg.sender], "bad sender");
+        require(nimbleProxyContracts[msg.sender], "bad sender");
         require(tx.gasprice <= maxGasPriceValue, "gas price");
         require(input.srcAmount <= MAX_QTY, "srcAmt > MAX_QTY");
         require(input.srcAmount != 0, "0 srcAmt");
@@ -1023,21 +1023,21 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(input.src != input.dest, "src = dest");
 
         if (input.src == ETH_TOKEN_ADDRESS) {
-            require(msg.value == input.srcAmount); // kyberProxy issues message here
+            require(msg.value == input.srcAmount); // nimbleProxy issues message here
         } else {
-            require(msg.value == 0); // kyberProxy issues message here
+            require(msg.value == 0); // nimbleProxy issues message here
             // funds should have been moved to this contract already.
             require(input.src.balanceOf(address(this)) >= input.srcAmount, "no tokens");
         }
     }
 
-    /// @notice Gets the network fee from kyberDao (or use default). View function for getExpectedRate
+    /// @notice Gets the network fee from nimbleDao (or use default). View function for getExpectedRate
     function getNetworkFee() internal view returns (uint256 networkFeeBps) {
         uint256 expiryTimestamp;
         (networkFeeBps, expiryTimestamp) = readNetworkFeeData();
 
-        if (expiryTimestamp < now && kyberDao != IKyberDao(0)) {
-            (networkFeeBps, expiryTimestamp) = kyberDao.getLatestNetworkFeeData();
+        if (expiryTimestamp < now && nimbleDao != InimbleDao(0)) {
+            (networkFeeBps, expiryTimestamp) = nimbleDao.getLatestNetworkFeeData();
         }
     }
 
@@ -1054,7 +1054,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
         require(input.platformFeeBps + networkFeeBps + networkFeeBps < BPS, "fees high");
     }
 
-    /// @notice Update reserve data with selected reserves from kyberMatchingEngine
+    /// @notice Update reserve data with selected reserves from nimbleMatchingEngine
     function updateReservesList(ReservesData memory reservesData, uint256[] memory selectedIndexes)
         internal
         pure
@@ -1063,7 +1063,7 @@ contract KyberNetwork is WithdrawableNoModifiers, Utils5, IKyberNetwork, Reentra
 
         require(numReserves <= reservesData.addresses.length, "doMatch: too many reserves");
 
-        IKyberReserve[] memory reserveAddresses = new IKyberReserve[](numReserves);
+        InimbleReserve[] memory reserveAddresses = new InimbleReserve[](numReserves);
         bytes32[] memory reserveIds = new bytes32[](numReserves);
         uint256[] memory splitsBps = new uint256[](numReserves);
         bool[] memory isFeeAccountedFlags = new bool[](numReserves);

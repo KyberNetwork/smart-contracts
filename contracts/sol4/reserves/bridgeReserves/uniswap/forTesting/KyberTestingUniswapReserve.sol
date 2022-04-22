@@ -1,16 +1,16 @@
 pragma solidity 0.4.18;
 
-import "../KyberUniswapReserve.sol";
+import "../nimbleUniswapReserve.sol";
 
 
-contract TestingKyberUniswapReserve is KyberUniswapReserve {
-    function TestingKyberUniswapReserve(
+contract TestingnimbleUniswapReserve is nimbleUniswapReserve {
+    function TestingnimbleUniswapReserve(
         UniswapFactory _uniswapFactory,
         address _admin,
-        address _kyberNetwork
+        address _nimbleNetwork
     )
         public
-        KyberUniswapReserve(_uniswapFactory, _admin, _kyberNetwork)
+        nimbleUniswapReserve(_uniswapFactory, _admin, _nimbleNetwork)
     {
     }
 

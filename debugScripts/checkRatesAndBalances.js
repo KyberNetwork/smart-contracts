@@ -22,10 +22,10 @@ var input = {
   "FeeBurnerInterface.sol" : fs.readFileSync(contractPath + 'FeeBurnerInterface.sol', 'utf8'),
   "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'VolumeImbalanceRecorder.sol', 'utf8'),
   "WhiteListInterface.sol" : fs.readFileSync(contractPath + 'WhiteListInterface.sol', 'utf8'),
-  "KyberNetwork.sol" : fs.readFileSync(contractPath + 'KyberNetwork.sol', 'utf8'),
-  "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
+  "nimbleNetwork.sol" : fs.readFileSync(contractPath + 'nimbleNetwork.sol', 'utf8'),
+  "nimbleReserveInterface.sol" : fs.readFileSync(contractPath + 'nimbleReserveInterface.sol', 'utf8'),
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-  "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
+  "nimbleReserve.sol" : fs.readFileSync(contractPath + 'nimbleReserve.sol', 'utf8'),
  };
 
 let solcOutput;
@@ -45,7 +45,7 @@ let ratesAdd = [];      // one per reserve
 let sanityRateAdd = []; // one per reserve
 let ERC20Inst = [];
 let ERC20Adds = [];
-let kncInst;
+let NIMInst;
 
 //contract instances
 let Network;
@@ -58,7 +58,7 @@ let deploymentJson;
 let addressesToNames = {};
 let tokenSymbolToAddress = {};
 let jsonTokenList = [];
-let jsonKyberTokenList = [];
+let jsonnimbleTokenList = [];
 let jsonWithdrawAddresses = [];
 let minRecordResolutionPerToken = {};
 let maxPerBlockImbalancePerToken = {};
@@ -68,7 +68,7 @@ let whiteListedAddresses = [];
 let jsonTestersCat;
 let jsonReserveAdd;
 
-let kyberNetworkAdd = '0x0';
+let nimbleNetworkAdd = '0x0';
 let ouputLogString = "";
 let ouputErrString = "";
 let nodeId = 0;
@@ -77,7 +77,7 @@ let nodeId = 0;
 ////////
 ////////
 const mainnetUrls = ['https://mainnet.infura.io',
-                     'https://semi-node.kyber.network',
+                     'https://semi-node.nimble.network',
                      'https://api.mycryptoapi.com/eth',
                      'https://api.myetherapi.com/eth',
                      'https://mew.giveth.io/'];
@@ -109,7 +109,7 @@ async function main (){
         return;
     };
 
-    await readKyberNetwork(kyberNetworkAdd);
+    await readnimbleNetwork(nimbleNetworkAdd);
 
     //write output logs
     let fileName = deployInputJsonPath + ".log";
@@ -186,16 +186,16 @@ function printHelp () {
 }
 
 
-async function readKyberNetwork(kyberNetworkAdd){
-    let abi = solcOutput.contracts["KyberNetwork.sol:KyberNetwork"].interface;
-    Network = await new web3.eth.Contract(JSON.parse(abi), kyberNetworkAdd);
+async function readnimbleNetwork(nimbleNetworkAdd){
+    let abi = solcOutput.contracts["nimbleNetwork.sol:nimbleNetwork"].interface;
+    Network = await new web3.eth.Contract(JSON.parse(abi), nimbleNetworkAdd);
 
     //verify binary as expected.
-    let blockCode = await web3.eth.getCode(kyberNetworkAdd);
-    let solcCode = '0x' + (solcOutput.contracts["KyberNetwork.sol:KyberNetwork"].runtimeBytecode);
+    let blockCode = await web3.eth.getCode(nimbleNetworkAdd);
+    let solcCode = '0x' + (solcOutput.contracts["nimbleNetwork.sol:nimbleNetwork"].runtimeBytecode);
 
     myLog(0, 0, (""));
-    myLog(0, 0, ("kyberNetworkAdd: " + kyberNetworkAdd));
+    myLog(0, 0, ("nimbleNetworkAdd: " + nimbleNetworkAdd));
     myLog(0, 0, ("------------------------------------------------------------"));
 
     numReserves = await Network.methods.getNumReserves().call();
@@ -214,11 +214,11 @@ async function readKyberNetwork(kyberNetworkAdd){
 let reserveABI;
 let needReadReserveABI = 1;
 
-async function readReserve(reserveAdd, index, isKyberReserve){
+async function readReserve(reserveAdd, index, isnimbleReserve){
     if (needReadReserveABI == 1) {
         needReadReserveABI = 0;
         try {
-            let abi = solcOutput.contracts["KyberReserve.sol:KyberReserve"].interface;
+            let abi = solcOutput.contracts["nimbleReserve.sol:nimbleReserve"].interface;
             reserveABI = JSON.parse(abi);
         } catch (e) {
             myLog(0, 0, e);
@@ -229,7 +229,7 @@ async function readReserve(reserveAdd, index, isKyberReserve){
     Reserves[index] = await new web3.eth.Contract(reserveABI, reserveAdd);
     let Reserve = Reserves[index];
 
-    let abi = solcOutput.contracts["KyberReserve.sol:KyberReserve"].interface;
+    let abi = solcOutput.contracts["nimbleReserve.sol:nimbleReserve"].interface;
     ExpectedRate = await new web3.eth.Contract(JSON.parse(abi), reserveAdd);
 
     myLog(0, 0, '');
@@ -249,7 +249,7 @@ async function readReserve(reserveAdd, index, isKyberReserve){
     await reportReserveBalance(reserveAdd);
 
     //call contracts
-    await readConversionRate(ratesAdd[index], reserveAdd, index, isKyberReserve);
+    await readConversionRate(ratesAdd[index], reserveAdd, index, isnimbleReserve);
 };
 
 async function reportReserveBalance(reserveAddress) {
@@ -271,7 +271,7 @@ async function reportReserveBalance(reserveAddress) {
 let conversionRatesABI;
 let needReadRatesABI = 1;
 
-async function readConversionRate(conversionRateAddress, reserveAddress, index, isKyberReserve) {
+async function readConversionRate(conversionRateAddress, reserveAddress, index, isnimbleReserve) {
     if (needReadRatesABI == 1) {
         needReadRatesABI = 0;
         try {
@@ -303,11 +303,11 @@ async function readConversionRate(conversionRateAddress, reserveAddress, index, 
     let numTokens = tokensPerReserve[index].length;
 
     for (let i = 0; i < numTokens; i++) {
-        await readTokenRatesInConversionRate(conversionRateAddress, tokensPerReserve[index][i], index, isKyberReserve);
+        await readTokenRatesInConversionRate(conversionRateAddress, tokensPerReserve[index][i], index, isnimbleReserve);
     }
 };
 
-async function readTokenRatesInConversionRate(conversionRateAddress, tokenAdd, reserveIndex, isKyberReserve) {
+async function readTokenRatesInConversionRate(conversionRateAddress, tokenAdd, reserveIndex, isnimbleReserve) {
     let Rate = ConversionRates[reserveIndex];
     tokenAdd = tokenAdd.toLowerCase();
 
@@ -322,12 +322,12 @@ async function readTokenRatesInConversionRate(conversionRateAddress, tokenAdd, r
     let buyRate1Eth = await Rate.methods.getRate(tokenAdd, blockNum, true, ether).call();
     let etherToToken = (web3.utils.toBN(buyRate1Eth.valueOf()).div(precisionPartial)) / 1000000;
 
-    let raiseFlag = isKyberReserve && (buyRate1Eth == 0);
+    let raiseFlag = isnimbleReserve && (buyRate1Eth == 0);
     myLog(raiseFlag, 0, ("for 1 eth. eth to " + a2n(tokenAdd, 0) + " rate is: " + buyRate1Eth +
         " (1 eth = " + etherToToken + " " + a2n(tokenAdd, 0) + ")"));
     let sellRate100Tokens = await Rate.methods.getRate(tokenAdd, blockNum, false, 100).call();
     tokens100ToEth = (web3.utils.toBN(sellRate100Tokens).div(precisionPartial)) / 10000;
-    raiseFlag = isKyberReserve && (sellRate100Tokens == 0);
+    raiseFlag = isnimbleReserve && (sellRate100Tokens == 0);
     myLog(raiseFlag, 0, ("for 100 " + a2n(tokenAdd, 0) + " tokens. Token to eth rate is " +
         sellRate100Tokens + " (100 " + a2n(tokenAdd, 0) + " = " + tokens100ToEth + " ether)"));
 };
@@ -475,8 +475,8 @@ async function readDeploymentJSON(filePath) {
 
 
     address = (json["network"]).toLowerCase();
-    addressesToNames[address] = "kyber-network";
-    kyberNetworkAdd = address;
+    addressesToNames[address] = "nimble-network";
+    nimbleNetworkAdd = address;
 
     address = (json["reserve"]).toLowerCase();
     addressesToNames[address] = "reserve";
@@ -512,8 +512,8 @@ async function readDeploymentJSON(filePath) {
     jsonMaxGasPrice = json["max gas price"];
     jsonNegDiffBps = json["neg diff in bps"];
     jsonMinExpectedRateSlippage = json["min expected rate slippage"];
-    jsonKNCWallet = (json["KNC wallet"]).toLowerCase();
-    jsonKNC2EthRate = json["KNC to ETH rate"];
+    jsonNIMWallet = (json["NIM wallet"]).toLowerCase();
+    jsonNIM2EthRate = json["NIM to ETH rate"];
     try {
         jsonTaxFeeBps = json["tax fees bps"];
         jsonTaxWalletAddress = json["tax wallet address"];
@@ -551,7 +551,7 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     tokenSymbolToAddress[symbol] = address;
     jsonTokenList.push(address);
     if (internalUse == true) {
-        jsonKyberTokenList.push(address);
+        jsonnimbleTokenList.push(address);
     }
     decimalsPerToken[address] = decimals;
 
@@ -566,9 +566,9 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     // read from web: symbol, name, decimal and see matching what we have
     let abi = solcOutput.contracts["MockERC20.sol:MockERC20"].interface;
     let ERC20 = await new web3.eth.Contract(JSON.parse(abi), address);
-    if (symbol == 'KNC') {
-        kncInst = ERC20;
-        jsonKNCAddress = address;
+    if (symbol == 'NIM') {
+        NIMInst = ERC20;
+        jsonNIMAddress = address;
     }
     ERC20Inst.push(ERC20);
     ERC20Adds.push(address);

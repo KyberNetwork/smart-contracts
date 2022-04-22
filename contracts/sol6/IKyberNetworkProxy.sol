@@ -3,7 +3,7 @@ pragma solidity 0.6.6;
 import "./IERC20.sol";
 
 
-interface IKyberNetworkProxy {
+interface InimbleNetworkProxy {
 
     event ExecuteTrade(
         address indexed trader,

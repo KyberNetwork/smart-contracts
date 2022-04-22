@@ -1,14 +1,14 @@
 {
   "token": {
-      "name": "KyberNetwork",
-      "symbol": "KNC",
+      "name": "nimbleNetwork",
+      "symbol": "NIM",
       "decimals": 18,
       "address": "0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6"
   },
 
   "whitelistedAddresses": {
       "ETH": ["0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"],
-      "KNC": ["0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"] 
+      "NIM": ["0x44d34a119ba21a42167ff8b77a88f0fc7bb2db90"] 
   },
 
   "permission" : {

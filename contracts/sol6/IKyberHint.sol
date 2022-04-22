@@ -1,9 +1,9 @@
 pragma solidity 0.6.6;
 
-import "./IKyberReserve.sol";
+import "./InimbleReserve.sol";
 
 
-interface IKyberHint {
+interface InimbleHint {
     enum TradeType {BestOfAll, MaskIn, MaskOut, Split}
     enum HintErrors {
         NoError, // Hint is valid
@@ -49,7 +49,7 @@ interface IKyberHint {
         returns (
             TradeType tokenToEthType,
             bytes32[] memory tokenToEthReserveIds,
-            IKyberReserve[] memory tokenToEthAddresses,
+            InimbleReserve[] memory tokenToEthAddresses,
             uint256[] memory tokenToEthSplits
         );
 
@@ -59,7 +59,7 @@ interface IKyberHint {
         returns (
             TradeType ethToTokenType,
             bytes32[] memory ethToTokenReserveIds,
-            IKyberReserve[] memory ethToTokenAddresses,
+            InimbleReserve[] memory ethToTokenAddresses,
             uint256[] memory ethToTokenSplits
         );
 
@@ -69,11 +69,11 @@ interface IKyberHint {
         returns (
             TradeType tokenToEthType,
             bytes32[] memory tokenToEthReserveIds,
-            IKyberReserve[] memory tokenToEthAddresses,
+            InimbleReserve[] memory tokenToEthAddresses,
             uint256[] memory tokenToEthSplits,
             TradeType ethToTokenType,
             bytes32[] memory ethToTokenReserveIds,
-            IKyberReserve[] memory ethToTokenAddresses,
+            InimbleReserve[] memory ethToTokenAddresses,
             uint256[] memory ethToTokenSplits
         );
 }

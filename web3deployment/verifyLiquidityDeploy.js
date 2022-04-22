@@ -7,7 +7,7 @@ const RLP = require('rlp');
 const BigNumber = require('bignumber.js');
 
 const mainnetUrls = ['https://mainnet.infura.io',
-                     'https://semi-node.kyber.network',
+                     'https://semi-node.nimble.network',
                      'https://api.mycryptoapi.com/eth',
                      'https://api.myetherapi.com/eth',
                      'https://mew.giveth.io/'];
@@ -48,8 +48,8 @@ const input = {
   "SanityRatesInterface.sol" : fs.readFileSync(contractPath + 'SanityRatesInterface.sol', 'utf8'),
   "Utils.sol" : fs.readFileSync(contractPath + 'Utils.sol', 'utf8'),
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-  "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
-  "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
+  "nimbleReserve.sol" : fs.readFileSync(contractPath + 'nimbleReserve.sol', 'utf8'),
+  "nimbleReserveInterface.sol" : fs.readFileSync(contractPath + 'nimbleReserveInterface.sol', 'utf8'),
 };
 
 let solcOutput;
@@ -103,7 +103,7 @@ async function readReserve(reserveAdd){
     if (needReadReserveABI == 1) {
         needReadReserveABI = 0;
         try {
-            let abi = solcOutput.contracts["KyberReserve.sol:KyberReserve"].interface;
+            let abi = solcOutput.contracts["nimbleReserve.sol:nimbleReserve"].interface;
             reserveABI = JSON.parse(abi);
         } catch (e) {
             myLog(0, 0, e);
@@ -113,7 +113,7 @@ async function readReserve(reserveAdd){
 
     let Reserve = await new web3.eth.Contract(reserveABI, reserveAdd);
 
-    let abi = solcOutput.contracts["KyberReserve.sol:KyberReserve"].interface;
+    let abi = solcOutput.contracts["nimbleReserve.sol:nimbleReserve"].interface;
     ExpectedRate = await new web3.eth.Contract(JSON.parse(abi), reserveAdd);
 
     myLog(0, 0, '');
@@ -124,7 +124,7 @@ async function readReserve(reserveAdd){
 
     //verify binary as expected.
     let blockCode = await web3.eth.getCode(reserveAdd);
-    let solcCode = '0x' + (solcOutput.contracts["KyberReserve.sol:KyberReserve"].runtimeBytecode);
+    let solcCode = '0x' + (solcOutput.contracts["nimbleReserve.sol:nimbleReserve"].runtimeBytecode);
 
     if (blockCode != solcCode){
 //        myLog(1, 0, "blockchain Code:");
@@ -381,8 +381,8 @@ async function readDeploymentJSON(filePath) {
 
 
     address = (json["network"]).toLowerCase();
-    addressesToNames[address] = "kyber-network";
-    kyberNetworkAdd = address;
+    addressesToNames[address] = "nimble-network";
+    nimbleNetworkAdd = address;
 
     address = (json["reserve"]).toLowerCase();
     addressesToNames[address] = "reserve";
@@ -418,8 +418,8 @@ async function readDeploymentJSON(filePath) {
     jsonMaxGasPrice = json["max gas price"];
     jsonNegDiffBps = json["neg diff in bps"];
     jsonMinExpectedRateSlippage = json["min expected rate slippage"];
-    jsonKNCWallet = (json["KNC wallet"]).toLowerCase();
-    jsonKNC2EthRate = json["KNC to ETH rate"];
+    jsonNIMWallet = (json["NIM wallet"]).toLowerCase();
+    jsonNIM2EthRate = json["NIM to ETH rate"];
     try {
         jsonTaxFeeBps = json["tax fees bps"];
         jsonTaxWalletAddress = json["tax wallet address"];
@@ -457,7 +457,7 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     tokenSymbolToAddress[symbol] = address;
     jsonTokenList.push(address);
     if (internalUse == true) {
-        jsonKyberTokenList.push(address);
+        jsonnimbleTokenList.push(address);
     }
     decimalsPerToken[address] = decimals;
 
@@ -472,9 +472,9 @@ async function jsonVerifyTokenData (tokenData, symbol) {
     // read from web: symbol, name, decimal and see matching what we have
     let abi = solcOutput.contracts["MockERC20.sol:MockERC20"].interface;
     let ERC20 = await new web3.eth.Contract(JSON.parse(abi), address);
-    if (symbol == 'KNC') {
-        kncInst = ERC20;
-        jsonKNCAddress = address;
+    if (symbol == 'NIM') {
+        NIMInst = ERC20;
+        jsonNIMAddress = address;
     }
     ERC20Inst.push(ERC20);
     ERC20Adds.push(address);

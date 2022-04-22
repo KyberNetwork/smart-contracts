@@ -1,22 +1,22 @@
 pragma solidity 0.6.6;
 
-import "../KyberStorage.sol";
+import "../nimbleStorage.sol";
 
 
-contract MockStorage is KyberStorage {
+contract MockStorage is nimbleStorage {
     constructor(
         address _admin,
-        IKyberHistory _networkHistory,
-        IKyberHistory _feeHandlerHistory,
-        IKyberHistory _kyberDaoHistory,
-        IKyberHistory _matchingEngineHistory
+        InimbleHistory _networkHistory,
+        InimbleHistory _feeHandlerHistory,
+        InimbleHistory _nimbleDaoHistory,
+        InimbleHistory _matchingEngineHistory
     )
         public
-        KyberStorage(
+        nimbleStorage(
             _admin,
             _networkHistory,
             _feeHandlerHistory,
-            _kyberDaoHistory,
+            _nimbleDaoHistory,
             _matchingEngineHistory
         )
     {}

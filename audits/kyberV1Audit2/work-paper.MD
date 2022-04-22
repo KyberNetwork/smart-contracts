@@ -1,5 +1,5 @@
 .-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                                            ../kyber-contracts/contracts/ConversionRates.sol                                                                                             |
+|                                                                                            ../nimble-contracts/contracts/ConversionRates.sol                                                                                             |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract        | Function                                               | Visibility | Constant | Returns             | Modifiers               | Static Analysis    | Test Coverage      | Functional Analysis |
 |:----------------|:-------------------------------------------------------|:-----------|:---------|:--------------------|:------------------------|:-------------------|:-------------------|:--------------------|
@@ -29,75 +29,75 @@
 | ConversionRates | abs(int)                                               | internal   | false    | uint                | pure                    | :white_check_mark: | :white_check_mark: |                     |
 '-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
 .-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                                ../kyber-contracts/contracts/ExpectedRate.sol                                                                                |
+|                                                                                ../nimble-contracts/contracts/ExpectedRate.sol                                                                                |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract     | Function                           | Visibility | Constant | Returns                   | Modifiers    | Static Analysis    | Test Coverage      | Functional Analysis |
 |:-------------|:-----------------------------------|:-----------|:---------|:--------------------------|:-------------|:-------------------|:-------------------|:--------------------|
-| ExpectedRate | ExpectedRate(KyberNetwork,address) | public     | false    |                           |              | :white_check_mark: | :white_check_mark: |                     |
+| ExpectedRate | ExpectedRate(nimbleNetwork,address) | public     | false    |                           |              | :white_check_mark: | :white_check_mark: |                     |
 | ExpectedRate | setQuantityFactor(uint)            | public     | false    |                           | onlyOperator | :white_check_mark: | :white_check_mark: |                     |
 | ExpectedRate | setMinSlippageFactor(uint)         | public     | false    |                           | onlyOperator | :white_check_mark: | :white_check_mark: |                     |
 | ExpectedRate | getExpectedRate(ERC20,ERC20,uint)  | public     | false    | expectedRate,slippageRate | view         | :white_check_mark: | :white_check_mark: |                     |
 '-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
 .---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                      ../kyber-contracts/contracts/FeeBurner.sol                                                                       |
+|                                                                      ../nimble-contracts/contracts/FeeBurner.sol                                                                       |
 |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract  | Function                             | Visibility | Constant | Returns | Modifiers | Static Analysis    | Test Coverage      | Functional Analysis |
 |:----------|:-------------------------------------|:-----------|:---------|:--------|:----------|:-------------------|:-------------------|:--------------------|
 | FeeBurner | FeeBurner(address,BurnableToken)     | public     | false    |         |           | :white_check_mark: | :white_check_mark: |                     |
 | FeeBurner | setReserveData(address,uint,address) | public     | false    |         | onlyAdmin | :white_check_mark: | :white_check_mark: |                     |
 | FeeBurner | setWalletFees(address,uint)          | public     | false    |         | onlyAdmin | :white_check_mark: | :white_check_mark: |                     |
-| FeeBurner | setKyberNetwork(address)             | public     | false    |         | onlyAdmin | :white_check_mark: | :white_check_mark: |                     |
-| FeeBurner | setKNCRate(uint)                     | public     | false    |         | onlyAdmin | :white_check_mark: |                    |                     |
+| FeeBurner | setnimbleNetwork(address)             | public     | false    |         | onlyAdmin | :white_check_mark: | :white_check_mark: |                     |
+| FeeBurner | setNIMRate(uint)                     | public     | false    |         | onlyAdmin | :white_check_mark: |                    |                     |
 | FeeBurner | handleFees(uint,address,address)     | public     | false    | bool    |           | :white_check_mark: |                    |                     |
 | FeeBurner | burnReserveFees(address)             | public     | false    |         |           | :white_check_mark: |                    |                     |
 | FeeBurner | sendFeeToWallet(address,address)     | public     | false    |         |           | :white_check_mark: |                    |                     |
 '---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 .-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                                                       ../kyber-contracts/contracts/KyberNetwork.sol                                                                                                       |
+|                                                                                                       ../nimble-contracts/contracts/nimbleNetwork.sol                                                                                                       |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract     | Function                                                                         | Visibility | Constant | Returns                   | Modifiers    | Static Analysis    | Test Coverage      | Functional Analysis |
 |:-------------|:---------------------------------------------------------------------------------|:-----------|:---------|:--------------------------|:-------------|:-------------------|:-------------------|:--------------------|
-| KyberNetwork | KyberNetwork(address)                                                            | public     | false    |                           |              | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | ()                                                                               | public     | false    |                           | payable      | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | trade(ERC20,uint,ERC20,address,uint,uint,address)                                | public     | false    | uint                      | payable      | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | addReserve(KyberReserveInterface,bool)                                           | public     | false    |                           | onlyAdmin    | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | listPairForReserve(address,ERC20,ERC20,bool)                                     | public     | false    |                           | onlyAdmin    | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | setParams(WhiteListInterface,ExpectedRateInterface,FeeBurnerInterface,uint,uint) | public     | false    |                           | onlyAdmin    | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | setEnable(bool)                                                                  | public     | false    |                           | onlyAdmin    | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | setInfo(bytes32,uint)                                                            | public     | false    |                           | onlyOperator | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | getNumReserves()                                                                 | public     | false    | uint                      | view         | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | getReserves()                                                                    | public     | false    |                           | view         | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | getBalance(ERC20,address)                                                        | public     | false    | uint                      | view         | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | findBestRate(ERC20,ERC20,uint)                                                   | public     | false    | uint,uint                 | view         | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | getExpectedRate(ERC20,ERC20,uint)                                                | public     | false    | expectedRate,slippageRate | view         | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | getUserCapInWei(address)                                                         | public     | false    | uint                      | view         | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | doTrade(ERC20,uint,ERC20,address,uint,uint,address)                              | internal   | false    | uint                      |              | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | doReserveTrade(ERC20,uint,ERC20,address,uint,KyberReserveInterface,uint,bool)    | internal   | false    | bool                      |              | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | calcDestAmount(ERC20,ERC20,uint,uint)                                            | internal   | false    | uint                      | view         | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | calcSrcAmount(ERC20,ERC20,uint,uint)                                             | internal   | false    | uint                      | view         | :white_check_mark: | :white_check_mark: |                     |
-| KyberNetwork | validateTradeInput(ERC20,uint,address)                                           | internal   | false    | bool                      | view         | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | nimbleNetwork(address)                                                            | public     | false    |                           |              | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | ()                                                                               | public     | false    |                           | payable      | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | trade(ERC20,uint,ERC20,address,uint,uint,address)                                | public     | false    | uint                      | payable      | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | addReserve(nimbleReserveInterface,bool)                                           | public     | false    |                           | onlyAdmin    | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | listPairForReserve(address,ERC20,ERC20,bool)                                     | public     | false    |                           | onlyAdmin    | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | setParams(WhiteListInterface,ExpectedRateInterface,FeeBurnerInterface,uint,uint) | public     | false    |                           | onlyAdmin    | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | setEnable(bool)                                                                  | public     | false    |                           | onlyAdmin    | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | setInfo(bytes32,uint)                                                            | public     | false    |                           | onlyOperator | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | getNumReserves()                                                                 | public     | false    | uint                      | view         | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | getReserves()                                                                    | public     | false    |                           | view         | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | getBalance(ERC20,address)                                                        | public     | false    | uint                      | view         | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | findBestRate(ERC20,ERC20,uint)                                                   | public     | false    | uint,uint                 | view         | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | getExpectedRate(ERC20,ERC20,uint)                                                | public     | false    | expectedRate,slippageRate | view         | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | getUserCapInWei(address)                                                         | public     | false    | uint                      | view         | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | doTrade(ERC20,uint,ERC20,address,uint,uint,address)                              | internal   | false    | uint                      |              | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | doReserveTrade(ERC20,uint,ERC20,address,uint,nimbleReserveInterface,uint,bool)    | internal   | false    | bool                      |              | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | calcDestAmount(ERC20,ERC20,uint,uint)                                            | internal   | false    | uint                      | view         | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | calcSrcAmount(ERC20,ERC20,uint,uint)                                             | internal   | false    | uint                      | view         | :white_check_mark: | :white_check_mark: |                     |
+| nimbleNetwork | validateTradeInput(ERC20,uint,address)                                           | internal   | false    | bool                      | view         | :white_check_mark: | :white_check_mark: |                     |
 '-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
 .----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                                       ../kyber-contracts/contracts/KyberReserve.sol                                                                                        |
+|                                                                                       ../nimble-contracts/contracts/nimbleReserve.sol                                                                                        |
 |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract     | Function                                                            | Visibility | Constant | Returns | Modifiers    | Static Analysis    | Test Coverage      | Functional Analysis |
 |:-------------|:--------------------------------------------------------------------|:-----------|:---------|:--------|:-------------|:-------------------|:-------------------|:--------------------|
-| KyberReserve | KyberReserve(address,ConversionRatesInterface,address)              | public     | false    |         |              | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | ()                                                                  | public     | false    |         | payable      | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | trade(ERC20,uint,ERC20,address,uint,bool)                           | public     | false    | bool    | payable      | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | enableTrade()                                                       | public     | false    | bool    | onlyAdmin    | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | disableTrade()                                                      | public     | false    | bool    | onlyAlerter  | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | approveWithdrawAddress(ERC20,address,bool)                          | public     | false    |         | onlyAdmin    | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | withdraw(ERC20,uint,address)                                        | public     | false    | bool    | onlyOperator | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | setContracts(address,ConversionRatesInterface,SanityRatesInterface) | public     | false    |         | onlyAdmin    | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | getBalance(ERC20)                                                   | public     | false    | uint    | view         | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | getDestQty(ERC20,ERC20,uint,uint)                                   | public     | false    | uint    | view         | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | getSrcQty(ERC20,ERC20,uint,uint)                                    | public     | false    | uint    | view         | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | getConversionRate(ERC20,ERC20,uint,uint)                            | public     | false    | uint    | view         | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
-| KyberReserve | doTrade(ERC20,uint,ERC20,address,uint,bool)                         | internal   | false    | bool    |              | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | nimbleReserve(address,ConversionRatesInterface,address)              | public     | false    |         |              | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | ()                                                                  | public     | false    |         | payable      | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | trade(ERC20,uint,ERC20,address,uint,bool)                           | public     | false    | bool    | payable      | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | enableTrade()                                                       | public     | false    | bool    | onlyAdmin    | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | disableTrade()                                                      | public     | false    | bool    | onlyAlerter  | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | approveWithdrawAddress(ERC20,address,bool)                          | public     | false    |         | onlyAdmin    | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | withdraw(ERC20,uint,address)                                        | public     | false    | bool    | onlyOperator | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | setContracts(address,ConversionRatesInterface,SanityRatesInterface) | public     | false    |         | onlyAdmin    | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | getBalance(ERC20)                                                   | public     | false    | uint    | view         | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | getDestQty(ERC20,ERC20,uint,uint)                                   | public     | false    | uint    | view         | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | getSrcQty(ERC20,ERC20,uint,uint)                                    | public     | false    | uint    | view         | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | getConversionRate(ERC20,ERC20,uint,uint)                            | public     | false    | uint    | view         | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
+| nimbleReserve | doTrade(ERC20,uint,ERC20,address,uint,bool)                         | internal   | false    | bool    |              | :white_check_mark: | :white_check_mark: | :white_check_mark:  |
 '----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
 .-----------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                              ../kyber-contracts/contracts/Migrations.sol                                                              |
+|                                                              ../nimble-contracts/contracts/Migrations.sol                                                              |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract   | Function           | Visibility | Constant | Returns | Modifiers  | Static Analysis                           | Test Coverage      | Functional Analysis |
 |:-----------|:-------------------|:-----------|:---------|:--------|:-----------|:------------------------------------------|:-------------------|:--------------------|
@@ -106,7 +106,7 @@
 | Migrations | upgrade(address)   | public     | false    |         | restricted | :white_check_mark::ballot_box_with_check: | :white_check_mark: | :white_check_mark:  |
 '-----------------------------------------------------------------------------------------------------------------------------------------------------------------------'
 .---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                   ../kyber-contracts/contracts/PermissionGroups.sol                                                                   |
+|                                                                   ../nimble-contracts/contracts/PermissionGroups.sol                                                                   |
 |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract         | Function                      | Visibility | Constant | Returns | Modifiers | Static Analysis                           | Test Coverage      | Functional Analysis |
 |:-----------------|:------------------------------|:-----------|:---------|:--------|:----------|:------------------------------------------|:-------------------|:--------------------|
@@ -122,7 +122,7 @@
 | PermissionGroups | removeOperator(address)       | public     | false    |         | onlyAdmin | :white_check_mark::ballot_box_with_check: | :white_check_mark: | :white_check_mark:  |
 '---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
 .-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                    ../kyber-contracts/contracts/SanityRates.sol                                                                     |
+|                                                                    ../nimble-contracts/contracts/SanityRates.sol                                                                     |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract    | Function                      | Visibility | Constant | Returns | Modifiers    | Static Analysis                           | Test Coverage      | Functional Analysis |
 |:------------|:------------------------------|:-----------|:---------|:--------|:-------------|:------------------------------------------|:-------------------|:--------------------|
@@ -132,7 +132,7 @@
 | SanityRates | getSanityRate(ERC20,ERC20)    | public     | false    | uint    | view         | :white_check_mark::ballot_box_with_check: | :white_check_mark: | :white_check_mark:  |
 '-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
 .---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                     ../kyber-contracts/contracts/Utils.sol                                                                      |
+|                                                                     ../nimble-contracts/contracts/Utils.sol                                                                      |
 |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract | Function                        | Visibility | Constant | Returns | Modifiers | Static Analysis                           | Test Coverage      | Functional Analysis |
 |:---------|:--------------------------------|:-----------|:---------|:--------|:----------|:------------------------------------------|:-------------------|:--------------------|
@@ -142,7 +142,7 @@
 | Utils    | calcSrcQty(uint,uint,uint,uint) | internal   | false    | uint    | pure      | :white_check_mark::ballot_box_with_check: | :white_check_mark: | :white_check_mark:  |
 '---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
 .------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                                         ../kyber-contracts/contracts/VolumeImbalanceRecorder.sol                                                                                         |
+|                                                                                         ../nimble-contracts/contracts/VolumeImbalanceRecorder.sol                                                                                         |
 |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract                | Function                                     | Visibility | Constant | Returns                              | Modifiers | Static Analysis                           | Test Coverage      | Functional Analysis |
 |:------------------------|:---------------------------------------------|:-----------|:---------|:-------------------------------------|:----------|:------------------------------------------|:-------------------|:--------------------|
@@ -160,7 +160,7 @@
 | VolumeImbalanceRecorder | decodeTokenImbalanceData(uint)               | internal   | false    | TokenImbalanceData                   | pure      | :white_check_mark::ballot_box_with_check: | :white_check_mark: | :white_check_mark:  |
 '------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
 .--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                      ../kyber-contracts/contracts/WhiteList.sol                                                                      |
+|                                                                      ../nimble-contracts/contracts/WhiteList.sol                                                                      |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract  | Function                      | Visibility | Constant | Returns    | Modifiers    | Static Analysis                           | Test Coverage      | Functional Analysis |
 |:----------|:------------------------------|:-----------|:---------|:-----------|:-------------|:------------------------------------------|:-------------------|:--------------------|
@@ -171,7 +171,7 @@
 | WhiteList | setSgdToEthRate(uint)         | public     | false    |            | onlyOperator | :white_check_mark::ballot_box_with_check: | :white_check_mark: | :white_check_mark:  |
 '--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
 .---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------.
-|                                                                     ../kyber-contracts/contracts/Withdrawable.sol                                                                     |
+|                                                                     ../nimble-contracts/contracts/Withdrawable.sol                                                                     |
 |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Contract     | Function                          | Visibility | Constant | Returns | Modifiers | Static Analysis                           | Test Coverage      | Functional Analysis |
 |:-------------|:----------------------------------|:-----------|:---------|:--------|:----------|:------------------------------------------|:-------------------|:--------------------|

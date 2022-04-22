@@ -3,8 +3,8 @@ pragma solidity 0.6.6;
 import "./IERC20.sol";
 
 
-interface IKyberNetwork {
-    event KyberTrade(
+interface InimbleNetwork {
+    event nimbleTrade(
         IERC20 indexed src,
         IERC20 indexed dest,
         uint256 ethWeiValue,

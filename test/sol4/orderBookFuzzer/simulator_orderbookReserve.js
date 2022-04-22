@@ -3,7 +3,7 @@ const BigNumber = require('bignumber.js');
 
 // reserve constants
 let minNewOrderWei;
-let kncPerEthBaseRatePrecision;
+let NIMPerEthBaseRatePrecision;
 let burnFeeBps = 25;
 let burn_to_stake_factor = 5;
 let tokenDecimals;
@@ -28,7 +28,7 @@ let makerTotalWeiInOrders = [];
 let ethToTokenList = [];
 let tokenToEthList = [];
 
-module.exports.reset = function reserve_reset(minNewOrder, kncPerEth, tokenDec) {
+module.exports.reset = function reserve_reset(minNewOrder, NIMPerEth, tokenDec) {
     nextFreeIdTokToEth = 3;
     nextFreeIdEthToTok = 3;
 
@@ -44,18 +44,18 @@ module.exports.reset = function reserve_reset(minNewOrder, kncPerEth, tokenDec) 
     list_init(tokenToEthList);
 
     minNewOrderWei = new BigNumber(minNewOrder);
-    kncPerEthBaseRatePrecision = new BigNumber(kncPerEth);
+    NIMPerEthBaseRatePrecision = new BigNumber(NIMPerEth);
 
     tokenDecimals = tokenDec;
 }
 
 
-module.exports.deposit = function reserve_deposit(maker, ethAmount, tokenAmount, kncAmount) {
-    reserve_depositKnc(maker, kncAmount);
+module.exports.deposit = function reserve_deposit(maker, ethAmount, tokenAmount, NIMAmount) {
+    reserve_depositNIM(maker, NIMAmount);
     reserve_depositEther(maker, ethAmount);
     reserve_depositToken(maker, tokenAmount);
 
-//    log("maker " + maker + " eth " + ethAmount + " token " + tokenAmount +  " knc " + kncAmount);
+//    log("maker " + maker + " eth " + ethAmount + " token " + tokenAmount +  " NIM " + NIMAmount);
 }
 
 module.exports.getConversionRate = function reserve_getConversionRate(isEthToToken, srcQty) {
@@ -251,20 +251,20 @@ function reserve_removeOrder(isEthToToken, list, orderId) {
     reserve_returnOrderId(!isEthToToken, maker, orderId);
 }
 
-function reserve_depositKnc(maker, amountKnc) {
+function reserve_depositNIM(maker, amountNIM) {
     if (makerFunds[maker] == undefined) {
         makerFunds[maker] = {};
     }
 
-    let startKnc = new BigNumber(0);
+    let startNIM = new BigNumber(0);
 
-    if(makerFunds[maker]['knc'] == undefined){
-        makerFunds[maker]['knc'] = new BigNumber(0);
+    if(makerFunds[maker]['NIM'] == undefined){
+        makerFunds[maker]['NIM'] = new BigNumber(0);
     }
 
-    let newKnc = (makerFunds[maker]['knc']).add(amountKnc);
+    let newNIM = (makerFunds[maker]['NIM']).add(amountNIM);
 
-    makerFunds[maker]['knc'] = newKnc;
+    makerFunds[maker]['NIM'] = newNIM;
 
     if (makerEthToTokenOrderIds[maker] == undefined) {
         let idArr = [];
@@ -373,7 +373,7 @@ module.exports.submitEthToToken = function reserve_submitEthToToken (maker, srcA
 
     //enough funds
     if(!utils_checkHasEnoughEther(maker, src)) {return false;}
-    if(!utils_checkHasEnoughStake(maker, src)) {log("not enough knc stake"); return false;}
+    if(!utils_checkHasEnoughStake(maker, src)) {log("not enough NIM stake"); return false;}
 
     // amount reversed. since rate is from take perspective
     if(!utils_isValidRate(true, dstAmount, srcAmount)) {log("above max rate"); return false;}
@@ -409,7 +409,7 @@ module.exports.submitTokenToEth = function reserve_submitTokenToEth (maker, srcA
 
     //enough funds
     if(!utils_checkHasEnoughTokens(maker, src)) {log("not enough tokens"); return false;}
-    if(!utils_checkHasEnoughStake(maker, dst)) {log("not enough knc stake"); return false;}
+    if(!utils_checkHasEnoughStake(maker, dst)) {log("not enough NIM stake"); return false;}
     // amount reversed. since rate is from take perspective
     if(!utils_isValidRate(false, dstAmount, srcAmount)) {log("above max rate"); return false;}
     if(!utils_isValidQtys(srcAmount, dstAmount)) {log("above max qty"); return false;}
@@ -451,7 +451,7 @@ module.exports.updateEthToToken = function reserve_updateEthToToken (maker, orde
     if(newSrc.gt(currentSrc)) {
         //enough funds
         if(!utils_checkHasEnoughEther(maker, newSrc.sub(currentSrc))) {return false;}
-        if(!utils_checkHasEnoughStake(maker, newSrc.sub(currentSrc))) {log("not enough knc stake"); return false;}
+        if(!utils_checkHasEnoughStake(maker, newSrc.sub(currentSrc))) {log("not enough NIM stake"); return false;}
     }
 
     // amount reversed. since rate is from take perspective
@@ -499,7 +499,7 @@ module.exports.updateTokenToEth = function reserve_updateTokenToEth (maker, orde
     }
 
     if(newDst.gt(currentDst)) {
-        if(!utils_checkHasEnoughStake(maker, newDst.sub(currentDst))) {log("not enough knc stake"); return false;}
+        if(!utils_checkHasEnoughStake(maker, newDst.sub(currentDst))) {log("not enough NIM stake"); return false;}
     }
 
     // amount reversed. since rate is from take perspective
@@ -577,7 +577,7 @@ module.exports.cancelTokenToEth = function reserve_updateTokenToEth (maker, orde
 module.exports.getMakerFunds = function reserve_makerFunds(maker) {
     let funds = makerFunds[maker];
     funds['totalWei'] = makerTotalWeiInOrders[maker];
-    funds['unlockedKnc'] = utils_getUnlockedKnc(maker);
+    funds['unlockedNIM'] = utils_getUnlockedNIM(maker);
     return funds;
 }
 
@@ -592,14 +592,14 @@ module.exports.withdraw = function reserve_withdraw(maker, fund, amount) {
 
             break;
 
-        case 'knc':
+        case 'NIM':
 
-            let freeKnc = utils_getUnlockedKnc(maker);
+            let freeNIM = utils_getUnlockedNIM(maker);
             amount = new BigNumber(amount);
 
-            if (amount.gt(freeKnc)) return false;
+            if (amount.gt(freeNIM)) return false;
 
-            makerFunds[maker]['knc'] = makerFunds[maker]['knc'].sub(amount);
+            makerFunds[maker]['NIM'] = makerFunds[maker]['NIM'].sub(amount);
 
             break;
 
@@ -613,21 +613,21 @@ module.exports.withdraw = function reserve_withdraw(maker, fund, amount) {
 }
 
 function utils_checkHasEnoughStake(maker, addedWeiAmount) {
-    if(makerFunds[maker] == undefined || makerFunds[maker]['knc'] == undefined) return false;
+    if(makerFunds[maker] == undefined || makerFunds[maker]['NIM'] == undefined) return false;
 
     if(makerTotalWeiInOrders[maker] == undefined) makerTotalWeiInOrders[maker] = new BigNumber(0);
     expectedWei = (makerTotalWeiInOrders[maker]).add(addedWeiAmount);
 
-    let stake = utils_calcKncStake(expectedWei);
-    if ((makerFunds[maker]['knc']).lt(stake)) return false;
+    let stake = utils_calcNIMStake(expectedWei);
+    if ((makerFunds[maker]['NIM']).lt(stake)) return false;
 
     return true;
 }
 
-function utils_getUnlockedKnc(maker) {
-    let stake = utils_calcKncStake(makerTotalWeiInOrders[maker]);
-    let freeKnc = ((makerFunds[maker]['knc']).sub(stake));
-    return freeKnc;
+function utils_getUnlockedNIM(maker) {
+    let stake = utils_calcNIMStake(makerTotalWeiInOrders[maker]);
+    let freeNIM = ((makerFunds[maker]['NIM']).sub(stake));
+    return freeNIM;
 }
 
 function utils_checkHasEnoughTokens(maker, addedWeiAmount) {
@@ -667,14 +667,14 @@ function utils_removeStakeAndBurn(maker, removedWeiAmount, takenWeiAmount) {
 
     let burn = utils_calcBurnAmount(takenWeiAmount);
 
-    makerFunds[maker]['knc'] = (makerFunds[maker]['knc']).sub(burn);
+    makerFunds[maker]['NIM'] = (makerFunds[maker]['NIM']).sub(burn);
 }
 
 function utils_calcBurnAmount(weiAmount) {
-    return (weiAmount.mul(burnFeeBps).mul(kncPerEthBaseRatePrecision).div(PRECISION.mul(BPS))).floor();
+    return (weiAmount.mul(burnFeeBps).mul(NIMPerEthBaseRatePrecision).div(PRECISION.mul(BPS))).floor();
 }
 
-function utils_calcKncStake(weiAmount) {
+function utils_calcNIMStake(weiAmount) {
     let burn = utils_calcBurnAmount(weiAmount);
     return burn.mul(burn_to_stake_factor);
 }

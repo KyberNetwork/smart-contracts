@@ -1,7 +1,7 @@
 const TestToken = artifacts.require("./TestToken.sol");
-const Reserve = artifacts.require("./KyberReserve.sol");
-const Network = artifacts.require("./KyberNetwork.sol");
-const NetworkProxy = artifacts.require("./KyberNetworkProxy.sol");
+const Reserve = artifacts.require("./nimbleReserve.sol");
+const Network = artifacts.require("./nimbleNetwork.sol");
+const NetworkProxy = artifacts.require("./nimbleNetworkProxy.sol");
 const ConversionRates = artifacts.require("./ConversionRates.sol");
 const Bank   = artifacts.require("./MockCentralBank.sol");
 const Whitelist  = artifacts.require("./WhiteList.sol");
@@ -12,9 +12,9 @@ const CentralizedExchange = artifacts.require("./MockExchange.sol");
 const BigNumber = require('bignumber.js');
 
 var tokenSymbol = [];//["OMG", "DGD", "CVC", "FUN", "MCO", "GNT", "ADX", "PAY",
-                   //"BAT", "KNC", "EOS", "LINK"];
+                   //"BAT", "NIM", "EOS", "LINK"];
 var tokenName = [];//[ "OmiseGO", "Digix", "Civic", "FunFair", "Monaco", "Golem",
-//"Adex", "TenX", "BasicAttention", "KyberNetwork", "Eos", "ChainLink" ];
+//"Adex", "TenX", "BasicAttention", "nimbleNetwork", "Eos", "ChainLink" ];
 
 var internalUseTokens = []
 var listedTokens = []
@@ -26,9 +26,9 @@ var tokenInitialReserveBalance = [];
 var reserveInitialEth;
 
 var tokenInstance = [];
-var kncInstance;
+var NIMInstance;
 var kgtInstance;
-const kgtName = "Kyber genesis token";
+const kgtName = "nimble genesis token";
 const kgtSymbol = "KGT";
 const kgtDec = 0;
 
@@ -160,9 +160,9 @@ var deployTokens = function( owner ){
            var decimals = tokenDecimals[item];
            return TestToken.new(name, symbol, decimals, {from:owner});
        }).then(function(instance){
-           if( tokenSymbol[item] === "KNC" ) {
-             console.log("found knc");
-             kncInstance = instance;
+           if( tokenSymbol[item] === "NIM" ) {
+             console.log("found NIM");
+             NIMInstance = instance;
            }
            tokenInstance.push(instance);
        })
@@ -630,12 +630,12 @@ contract('Deployment', function(accounts) {
 
   it("create burning fees", function() {
     this.timeout(31000000);
-    initialKncRate = precisionUnits.mul(431);
-    return FeeBurner.new(accounts[0],kncInstance.address, network.address, initialKncRate).then(function(instance){
+    initialNIMRate = precisionUnits.mul(431);
+    return FeeBurner.new(accounts[0],NIMInstance.address, network.address, initialNIMRate).then(function(instance){
         feeBurner = instance;
         return feeBurner.addOperator(accounts[0],{from:accounts[0]});
     }).then(function(result){
-      return kncInstance.approve(feeBurner.address, new BigNumber(10**18).mul(10000),{from:accounts[0]});
+      return NIMInstance.approve(feeBurner.address, new BigNumber(10**18).mul(10000),{from:accounts[0]});
     }).then(function(){
       // set fees for reserve
       // 0.25% from accounts
@@ -651,7 +651,7 @@ contract('Deployment', function(accounts) {
 
   it("create expected rate", function() {
     this.timeout(31000000);
-    return ExpectedRate.new(network.address, kncInstance.address, accounts[0]).then(function(instance){
+    return ExpectedRate.new(network.address, NIMInstance.address, accounts[0]).then(function(instance){
         expectedRate = instance;
     }).then(function(){
         return expectedRate.addOperator(accounts[0]);
@@ -663,7 +663,7 @@ contract('Deployment', function(accounts) {
   it("set network proxy params", function() {
     this.timeout(31000000);
     // set contracts and enable network
-    return networkProxy.setKyberNetworkContract(network.address);
+    return networkProxy.setnimbleNetworkContract(network.address);
   });
 
   it("set network params", function() {
@@ -675,7 +675,7 @@ contract('Deployment', function(accounts) {
     }).then(function(){
         return network.setFeeBurner(feeBurner.address);
     }).then(function(){
-        return network.setKyberProxy(networkProxy.address);
+        return network.setnimbleProxy(networkProxy.address);
     }).then(function(){
         return network.setParams(50*10**9, 15); //50 gwei, 15 negligible diff
     }).then( function() {
@@ -774,12 +774,12 @@ contract('Deployment', function(accounts) {
 
 
 it("make some optimizations", function() {
-  // send 1 twei to kyber network
+  // send 1 twei to nimble network
   return tokenInstance[1].transfer(network.address,0).then(function(){
-    // send 1 wei of knc to fee burner
+    // send 1 wei of NIM to fee burner
     return tokenInstance[1].transfer("0x001adbc838ede392b5b054a47f8b8c28f2fa9f3c",1);
   }).then(function(){
-    return kncInstance.transfer(feeBurner.address,1);
+    return NIMInstance.transfer(feeBurner.address,1);
   }).then(function(){
     return tokenInstance[1].balanceOf(network.address);
   }).then(function(result){

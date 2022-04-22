@@ -3,7 +3,7 @@ pragma solidity 0.4.18;
 import "../ERC20Interface.sol";
 import "../Utils2.sol";
 import "../Withdrawable.sol";
-import "../KyberReserveInterface.sol";
+import "../nimbleReserveInterface.sol";
 
 
 contract WethInterface is ERC20 {
@@ -12,21 +12,21 @@ contract WethInterface is ERC20 {
 }
 
 
-contract KyberWethReserve is KyberReserveInterface, Withdrawable, Utils2 {
+contract nimbleWethReserve is nimbleReserveInterface, Withdrawable, Utils2 {
 
     uint constant internal COMMON_DECIMALS = 18;
     address public sanityRatesContract = 0;
-    address public kyberNetwork;
+    address public nimbleNetwork;
     WethInterface public wethToken;
     bool public tradeEnabled;
 
-    function KyberWethReserve(address _kyberNetwork, WethInterface _wethToken, address _admin) public {
+    function nimbleWethReserve(address _nimbleNetwork, WethInterface _wethToken, address _admin) public {
         require(_admin != address(0));
-        require(_kyberNetwork != address(0));
+        require(_nimbleNetwork != address(0));
         require(_wethToken != address(0));
         require(getDecimals(_wethToken) == COMMON_DECIMALS);
 
-        kyberNetwork = _kyberNetwork;
+        nimbleNetwork = _nimbleNetwork;
         wethToken = _wethToken;
         tradeEnabled = true;
         admin = _admin;
@@ -59,7 +59,7 @@ contract KyberWethReserve is KyberReserveInterface, Withdrawable, Utils2 {
     {
 
         require(tradeEnabled);
-        require(msg.sender == kyberNetwork);
+        require(msg.sender == nimbleNetwork);
 
         require(doTrade(srcToken, srcAmount, destToken, destAddress, conversionRate, validate));
 
@@ -82,13 +82,13 @@ contract KyberWethReserve is KyberReserveInterface, Withdrawable, Utils2 {
         return true;
     }
 
-    event KyberNetworkSet(address kyberNetwork);
+    event nimbleNetworkSet(address nimbleNetwork);
 
-    function setKyberNetwork(address _kyberNetwork) public onlyAdmin {
-        require(_kyberNetwork != address(0));
+    function setnimbleNetwork(address _nimbleNetwork) public onlyAdmin {
+        require(_nimbleNetwork != address(0));
 
-        kyberNetwork = _kyberNetwork;
-        KyberNetworkSet(kyberNetwork);
+        nimbleNetwork = _nimbleNetwork;
+        nimbleNetworkSet(nimbleNetwork);
     }
 
     function getConversionRate(ERC20 src, ERC20 dest, uint srcQty, uint blockNumber) public view returns(uint) {
@@ -117,7 +117,7 @@ contract KyberWethReserve is KyberReserveInterface, Withdrawable, Utils2 {
         require((ETH_TOKEN_ADDRESS == srcToken) || (ETH_TOKEN_ADDRESS == destToken));
         require((wethToken == srcToken) || (wethToken == destToken));
 
-        // can skip validation if done at kyber network level
+        // can skip validation if done at nimble network level
         if (validate) {
             require(conversionRate > 0);
             if (srcToken == ETH_TOKEN_ADDRESS)

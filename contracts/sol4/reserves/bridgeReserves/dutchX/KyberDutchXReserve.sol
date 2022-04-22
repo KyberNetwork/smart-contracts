@@ -2,7 +2,7 @@ pragma solidity 0.4.18;
 
 
 import "../../../Withdrawable.sol";
-import "../../../KyberReserveInterface.sol";
+import "../../../nimbleReserveInterface.sol";
 import "../../../Utils2.sol";
 
 
@@ -33,17 +33,17 @@ interface DutchXExchange {
 }
 
 
-contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
+contract nimbleDutchXReserve is nimbleReserveInterface, Withdrawable, Utils2 {
 
     uint public constant BPS = 10000;
-    uint public constant DEFAULT_KYBER_FEE_BPS = 25;
+    uint public constant DEFAULT_nimble_FEE_BPS = 25;
 
-    uint public feeBps = DEFAULT_KYBER_FEE_BPS;
+    uint public feeBps = DEFAULT_nimble_FEE_BPS;
     uint public dutchXFeeNum;
     uint public dutchXFeeDen;
 
     DutchXExchange public dutchX;
-    address public kyberNetwork;
+    address public nimbleNetwork;
     WETH9 public weth;
 
     mapping(address => bool) public listedTokens;
@@ -53,22 +53,22 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
     /**
         Constructor
     */
-    function KyberDutchXReserve(
+    function nimbleDutchXReserve(
         DutchXExchange _dutchX,
         address _admin,
-        address _kyberNetwork,
+        address _nimbleNetwork,
         WETH9 _weth
     )
         public
     {
         require(address(_dutchX) != address(0));
         require(_admin != address(0));
-        require(_kyberNetwork != address(0));
+        require(_nimbleNetwork != address(0));
         require(_weth != WETH9(0));
 
         dutchX = _dutchX;
         admin = _admin;
-        kyberNetwork = _kyberNetwork;
+        nimbleNetwork = _nimbleNetwork;
         weth = _weth;
 
         setDutchXFee();
@@ -128,7 +128,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
             return 0;
         }
 
-        // if source is Eth, reduce kyber fee from source.
+        // if source is Eth, reduce nimble fee from source.
         uint actualSrcQty = (src == ETH_TOKEN_ADDRESS) ? srcQty * (BPS - feeBps) / BPS : srcQty;
 
         if (actualSrcQty == 0 || actualSrcQty * auctionData.priceDen < actualSrcQty) return 0;
@@ -137,10 +137,10 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         // reduce dutchX fees
         convertedQty = convertedQty * (dutchXFeeDen - dutchXFeeNum) / dutchXFeeDen;
 
-        // if destination is Eth, reduce kyber fee from destination.
+        // if destination is Eth, reduce nimble fee from destination.
         convertedQty = (dest == ETH_TOKEN_ADDRESS) ? convertedQty * (BPS - feeBps) / BPS : convertedQty;
 
-        // here use original srcQty, which will give the real rate (as seen by internal kyberNetwork)
+        // here use original srcQty, which will give the real rate (as seen by internal nimbleNetwork)
         return calcRateFromQty(
             srcQty, /* srcAmount */
             convertedQty, /* destAmount */
@@ -174,7 +174,7 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         validate;
 
         require(tradeEnabled);
-        require(msg.sender == kyberNetwork);
+        require(msg.sender == nimbleNetwork);
 
         AuctionData memory auctionData = getAuctionData(srcToken, destToken);
         require(auctionData.index != 0);
@@ -306,19 +306,19 @@ contract KyberDutchXReserve is KyberReserveInterface, Withdrawable, Utils2 {
         return true;
     }
 
-    event KyberNetworkSet(
-        address kyberNetwork
+    event nimbleNetworkSet(
+        address nimbleNetwork
     );
 
-    function setKyberNetwork(
-        address _kyberNetwork
+    function setnimbleNetwork(
+        address _nimbleNetwork
     )
         public
         onlyAdmin
     {
-        require(_kyberNetwork != address(0));
-        kyberNetwork = _kyberNetwork;
-        KyberNetworkSet(kyberNetwork);
+        require(_nimbleNetwork != address(0));
+        nimbleNetwork = _nimbleNetwork;
+        nimbleNetworkSet(nimbleNetwork);
     }
 
     event Execution(bool success, address caller, address destination, uint value, bytes data);

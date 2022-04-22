@@ -1,7 +1,7 @@
 const TestToken = artifacts.require('TestToken.sol');
-const DAOContract = artifacts.require('MockKyberDaoMoreGetters.sol');
+const DAOContract = artifacts.require('MocknimbleDaoMoreGetters.sol');
 // using mock contract here, as we need to read the hasInited value
-const KyberStaking = artifacts.require('KyberStaking.sol');
+const nimbleStaking = artifacts.require('nimbleStaking.sol');
 
 const Helper = require('../helper.js');
 const {precisionUnits, zeroBN, zeroAddress, BPS} = require('../helper.js');
@@ -23,13 +23,13 @@ const DaoSimulator = require('./fuzzerFiles/daoFuzzer/simulator_dao.js');
 const StakeGenerator = require('./fuzzerFiles/stakingFuzzer/stakingActionsGenerator.js');
 const DaoGenerator = require('./fuzzerFiles/daoFuzzer/daoActionsGenerator.js');
 
-let kncToken;
+let NIMToken;
 let tokenDecimals = new BN(18);
 let admin;
 let daoSetter;
 let stakingContract;
 let daoContract;
-let totalKNC;
+let totalNIM;
 
 const POWER_128 = new BN(2).pow(new BN(128));
 
@@ -40,7 +40,7 @@ let minCampPeriod = 0;
 let latestNetworkFee = 25;
 let latestRewardBps = new BN(3000); // 30%
 let latestRebateBps = new BN(2000); // 20%
-let link = web3.utils.fromAscii('https://kyberswap.com');
+let link = web3.utils.fromAscii('https://nimbleswap.com');
 
 let NUM_RUNS = 500;
 let progressIterations = 20;
@@ -71,16 +71,16 @@ const logger = winston.createLogger({
   ]
 });
 
-contract('KyberDAO fuzz', function (accounts) {
-  before('one time init: Stakers, KyberStaking, KNC token', async () => {
+contract('nimbleDAO fuzz', function (accounts) {
+  before('one time init: Stakers, nimbleStaking, NIM token', async () => {
     admin = accounts[1];
     daoSetter = accounts[2];
     campCreator = accounts[3];
-    stakers = accounts.slice(1); // first account used to mint KNC tokens
-    kncToken = await TestToken.new('kyber Crystals', 'KNC', tokenDecimals);
-    kncAddress = kncToken.address;
+    stakers = accounts.slice(1); // first account used to mint NIM tokens
+    NIMToken = await TestToken.new('nimble Crystals', 'NIM', tokenDecimals);
+    NIMAddress = NIMToken.address;
 
-    // prepare kyber staking
+    // prepare nimble staking
     firstBlockTimestamp = await Helper.getCurrentBlockTime();
 
     startTime = (await firstBlockTimestamp) + 10;
@@ -88,7 +88,7 @@ contract('KyberDAO fuzz', function (accounts) {
     daoContract = await DAOContract.new(
       epochPeriod,
       startTime,
-      kncToken.address,
+      NIMToken.address,
       minCampPeriod,
       latestNetworkFee,
       latestRewardBps,
@@ -96,24 +96,24 @@ contract('KyberDAO fuzz', function (accounts) {
       campCreator
     );
 
-    stakingContract = await KyberStaking.at(await daoContract.staking());
-    // 10k KNC token
-    let kncTweiDepositAmount = new BN(10000).mul(precisionUnits);
+    stakingContract = await nimbleStaking.at(await daoContract.staking());
+    // 10k NIM token
+    let NIMTweiDepositAmount = new BN(10000).mul(precisionUnits);
     let maxAllowance = new BN(2).pow(new BN(255));
-    totalKNC = new BN(0);
+    totalNIM = new BN(0);
     for (let i = 0; i < stakers.length; i++) {
-      await kncToken.transfer(stakers[i], kncTweiDepositAmount);
-      let expectedResult = await kncToken.balanceOf(stakers[i]);
-      Helper.assertEqual(expectedResult, kncTweiDepositAmount, 'staker did not receive tokens');
-      await kncToken.approve(stakingContract.address, maxAllowance, {from: stakers[i]});
-      expectedResult = await kncToken.allowance(stakers[i], stakingContract.address);
+      await NIMToken.transfer(stakers[i], NIMTweiDepositAmount);
+      let expectedResult = await NIMToken.balanceOf(stakers[i]);
+      Helper.assertEqual(expectedResult, NIMTweiDepositAmount, 'staker did not receive tokens');
+      await NIMToken.approve(stakingContract.address, maxAllowance, {from: stakers[i]});
+      expectedResult = await NIMToken.allowance(stakers[i], stakingContract.address);
       Helper.assertEqual(expectedResult, maxAllowance, 'staker did not give sufficient allowance');
-      totalKNC = totalKNC.add(kncTweiDepositAmount);
+      totalNIM = totalNIM.add(NIMTweiDepositAmount);
     }
-    // burn the rest of knc, so the random campaign can be success
-    await kncToken.burn(await kncToken.balanceOf(accounts[0]));
+    // burn the rest of NIM, so the random campaign can be success
+    await NIMToken.burn(await NIMToken.balanceOf(accounts[0]));
 
-    Helper.assertEqual(totalKNC, await kncToken.totalSupply(), 'total token in account is not match with total suppy');
+    Helper.assertEqual(totalNIM, await NIMToken.totalSupply(), 'total token in account is not match with total suppy');
     //set time for the simulator
     DaoSimulator.setTime(startTime, epochPeriod);
   });
@@ -186,7 +186,7 @@ contract('KyberDAO fuzz', function (accounts) {
   }
 
   async function deposit (currentBlockTime, epoch) {
-    result = await StakeGenerator.genDeposit(kncToken, stakers);
+    result = await StakeGenerator.genDeposit(NIMToken, stakers);
     result.delegatedAddress = await stakingContract.getLatestRepresentative(result.staker);
     logger.debug(`Deposit: %j`, result);
     await Helper.setNextBlockTimestamp(currentBlockTime);
@@ -273,7 +273,7 @@ contract('KyberDAO fuzz', function (accounts) {
         result.cInPrecision,
         result.tInPrecision,
         result.options,
-        totalKNC
+        totalNIM
       );
     } else {
       await expectRevert(

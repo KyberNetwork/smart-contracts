@@ -112,15 +112,15 @@ const input = {
   "VolumeImbalanceRecorder.sol" : fs.readFileSync(contractPath + 'VolumeImbalanceRecorder.sol', 'utf8'),
   "FeeBurner.sol" : fs.readFileSync(contractPath + 'FeeBurner.sol', 'utf8'),
   "WhiteListInterface.sol" : fs.readFileSync(contractPath + 'WhiteListInterface.sol', 'utf8'),
-  "KyberNetwork.sol" : fs.readFileSync(contractPath + 'KyberNetwork.sol', 'utf8'),
-  "KyberNetworkInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkInterface.sol', 'utf8'),
-  "KyberNetworkProxyInterface.sol" : fs.readFileSync(contractPath + 'KyberNetworkProxyInterface.sol', 'utf8'),
-  "KyberNetworkProxy.sol" : fs.readFileSync(contractPath + 'KyberNetworkProxy.sol', 'utf8'),
+  "nimbleNetwork.sol" : fs.readFileSync(contractPath + 'nimbleNetwork.sol', 'utf8'),
+  "nimbleNetworkInterface.sol" : fs.readFileSync(contractPath + 'nimbleNetworkInterface.sol', 'utf8'),
+  "nimbleNetworkProxyInterface.sol" : fs.readFileSync(contractPath + 'nimbleNetworkProxyInterface.sol', 'utf8'),
+  "nimbleNetworkProxy.sol" : fs.readFileSync(contractPath + 'nimbleNetworkProxy.sol', 'utf8'),
   "SimpleNetworkInterface.sol" : fs.readFileSync(contractPath + 'SimpleNetworkInterface.sol', 'utf8'),
   "WhiteList.sol" : fs.readFileSync(contractPath + 'WhiteList.sol', 'utf8'),
-  "KyberReserveInterface.sol" : fs.readFileSync(contractPath + 'KyberReserveInterface.sol', 'utf8'),
+  "nimbleReserveInterface.sol" : fs.readFileSync(contractPath + 'nimbleReserveInterface.sol', 'utf8'),
   "Withdrawable.sol" : fs.readFileSync(contractPath + 'Withdrawable.sol', 'utf8'),
-  "KyberReserve.sol" : fs.readFileSync(contractPath + 'KyberReserve.sol', 'utf8'),
+  "nimbleReserve.sol" : fs.readFileSync(contractPath + 'nimbleReserve.sol', 'utf8'),
   "Wrapper.sol" : fs.readFileSync(contractPath + 'mockContracts/Wrapper.sol', 'utf8')
 };
 
@@ -144,8 +144,8 @@ let expectedRatePermissions;
 
 let maxGasPrice = 50 * 1000 * 1000 * 1000;
 let negDiffInBps = 15;
-let kncWallet;
-let kncToEthRate = 307;
+let NIMWallet;
+let NIMToEthRate = 307;
 let taxWalletAddress = 0x0;
 let taxFeesBps = 1000;
 let minExpectedRateSlippage = 300;
@@ -155,7 +155,7 @@ class Reserve {
     this.name = name;
     this.address = jsonInput["address"];
     this.fees = jsonInput["fees"];
-    this.wallet = jsonInput["KNC wallet"];
+    this.wallet = jsonInput["NIM wallet"];
     this.tokens = jsonInput["tokens"];
   }
 }
@@ -188,15 +188,15 @@ function parseInput( jsonInput ) {
       walletDataArray.push(new Wallet(walletData[wallet],wallet));
     });
 
-    networkPermissions = jsonInput.permission["KyberNetwork"];
+    networkPermissions = jsonInput.permission["nimbleNetwork"];
     feeBurnerPermissions = jsonInput.permission["FeeBurner"];
     expectedRatePermissions = jsonInput.permission["ExpectedRate"];
 
     maxGasPrice =  web3.utils.toBN(jsonInput["max gas price"]);
     negDiffInBps = web3.utils.toBN(jsonInput["neg diff in bps"]);
     minExpectedRateSlippage = web3.utils.toBN(jsonInput["min expected rate slippage"]);
-    kncWallet = jsonInput["KNC wallet"];
-    kncToEthRate = web3.utils.toBN(jsonInput["KNC to ETH rate"]);
+    NIMWallet = jsonInput["NIM wallet"];
+    NIMToEthRate = web3.utils.toBN(jsonInput["NIM to ETH rate"]);
     taxFeesBps = jsonInput["tax fees bps"];
     taxWalletAddress = jsonInput["tax wallet address"];
     whitelistAddress = jsonInput["whitelist"];
@@ -241,10 +241,10 @@ async function main() {
     await waitForEth();
   }
 
-  console.log("deploying kyber network proxy");
-  [proxyAddress,proxyContract] = await deployContract(output, "KyberNetworkProxy.sol:KyberNetworkProxy", [sender]);
-  console.log("deploying kyber network");
-  [networkAddress,networkContract] = await deployContract(output, "KyberNetwork.sol:KyberNetwork", [sender]);
+  console.log("deploying nimble network proxy");
+  [proxyAddress,proxyContract] = await deployContract(output, "nimbleNetworkProxy.sol:nimbleNetworkProxy", [sender]);
+  console.log("deploying nimble network");
+  [networkAddress,networkContract] = await deployContract(output, "nimbleNetwork.sol:nimbleNetwork", [sender]);
   console.log("deploying fee burner");
   [feeBurnerAddress, feeBurnerContract] = await deployContract(output, "FeeBurner.sol:FeeBurner", [sender,"0xdd974D5C2e2928deA5F71b9825b8b646686BD200",networkAddress]);
   console.log("deploying expected rates");
@@ -257,7 +257,7 @@ async function main() {
 
   // set network in proxy
   console.log("set network in proxy");
-  await sendTx(proxyContract.methods.setKyberNetworkContract(networkAddress));
+  await sendTx(proxyContract.methods.setnimbleNetworkContract(networkAddress));
 
   // set permissions
   console.log("set proxy permissions");
@@ -265,7 +265,7 @@ async function main() {
 
   // set proxy of network
   console.log("set proxy of network");
-  await sendTx(networkContract.methods.setKyberProxy(proxyAddress));
+  await sendTx(networkContract.methods.setnimbleProxy(proxyAddress));
 
   // set whitelist
   console.log("set whitelist address");
@@ -308,8 +308,8 @@ async function main() {
   await setPermissions(networkContract, networkPermissions);
 
   // burn fee
-  console.log("set KNC to ETH rate");
-  await sendTx(feeBurnerContract.methods.setKNCRate(kncToEthRate));
+  console.log("set NIM to ETH rate");
+  await sendTx(feeBurnerContract.methods.setNIMRate(NIMToEthRate));
   console.log("set tax fees bps");
   await sendTx(feeBurnerContract.methods.setTaxInBps(taxFeesBps));
   if(taxWalletAddress != '' && taxWalletAddress != 0) {
@@ -358,8 +358,8 @@ function printParams(jsonInput) {
     dictOutput["max gas price"] = jsonInput["max gas price"];
     dictOutput["neg diff in bps"] = jsonInput["neg diff in bps"];
     dictOutput["min expected rate slippage"] = jsonInput["min expected rate slippage"];
-    dictOutput["KNC wallet"] = kncWallet;
-    dictOutput["KNC to ETH rate"] = jsonInput["KNC to ETH rate"];
+    dictOutput["NIM wallet"] = NIMWallet;
+    dictOutput["NIM to ETH rate"] = jsonInput["NIM to ETH rate"];
     dictOutput["tax wallet address"] = jsonInput["tax wallet address"];
     dictOutput["tax fees bps"] = jsonInput["tax fees bps"];
     dictOutput["valid duration block"] = jsonInput["valid duration block"];

@@ -11,8 +11,8 @@ const CANCEL_ORDER = 'cancel';
 const WITHDRAW_ORDER = 'withdraw';
 
 const ETHER = 'ether';
-const KNC = 'token';
-const TOKEN = 'knc';
+const NIM = 'token';
+const TOKEN = 'NIM';
 
 let makerFunds = [];
 let makerOrders = [];
@@ -43,7 +43,7 @@ module.exports.updateTakerFunds = function gen_updateTakerFunds(taker, ethAmount
     takerFunds[taker][ETHER] = ethAmount;
 }
 
-module.exports.updateMakerFunds = function gen_updateMakerFunds(maker, ethAmount, kncAmount, tokenAmount) {
+module.exports.updateMakerFunds = function gen_updateMakerFunds(maker, ethAmount, NIMAmount, tokenAmount) {
     if(makerFunds[maker] == undefined) {
         makerFunds[maker] = {};
         makerOrders[maker] = {};
@@ -51,7 +51,7 @@ module.exports.updateMakerFunds = function gen_updateMakerFunds(maker, ethAmount
     }
 
     makerFunds[maker][TOKEN] = tokenAmount;
-    makerFunds[maker][KNC] = kncAmount;
+    makerFunds[maker][NIM] = NIMAmount;
     makerFunds[maker][ETHER] = ethAmount;
 
     let orders = [];
@@ -227,7 +227,7 @@ module.exports.getNextWithdraw = function get_getNextWithdraw() {
     if(withdrawOperation < 4) {
         withdraw['fund'] = 'token';
     } else if(withdrawOperation < 8) {
-        withdraw['fund'] = 'knc';
+        withdraw['fund'] = 'NIM';
     } else {
         withdraw['fund'] = 'ether';
     }

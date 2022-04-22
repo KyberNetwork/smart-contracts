@@ -7,7 +7,7 @@ import "../OrderbookReserve.sol";
 contract MockOrderbookReserve is OrderbookReserve {
 
     function MockOrderbookReserve(
-        ERC20 knc,
+        ERC20 NIM,
         ERC20 reserveToken,
         address burner,
         address network,
@@ -18,7 +18,7 @@ contract MockOrderbookReserve is OrderbookReserve {
         uint burnFeeBps
     )
         public
-        OrderbookReserve(knc, reserveToken, burner, network, medianizer, factory, minNewOrderDollar, maxOrdersPerTrade,
+        OrderbookReserve(NIM, reserveToken, burner, network, medianizer, factory, minNewOrderDollar, maxOrdersPerTrade,
             burnFeeBps)
     {
     }
@@ -31,8 +31,8 @@ contract MockOrderbookReserve is OrderbookReserve {
         releaseOrderStakes(maker, weiAmount, burnWeiAmount);
     }
 
-    function setBaseKncPerEthRate(uint rate) public {
-        kncPerEthBaseRatePrecision = rate;
+    function setBaseNIMPerEthRate(uint rate) public {
+        NIMPerEthBaseRatePrecision = rate;
     }
 
     function testTakePartialOrder(

@@ -12,10 +12,10 @@
       "internal use": true,
       "listed": true
     },
-    "KNC": {
+    "NIM": {
       "rate": "0.00256856",
-      "symbol": "KNC",
-      "name": "KyberNetwork",
+      "symbol": "NIM",
+      "name": "nimbleNetwork",
       "decimals": 18,
       "address": "0x4E470dc7321E84CA96FcAEDD0C8aBCebbAEB68C6",
       "minimalRecordResolution": "1000000000000000",
@@ -296,7 +296,7 @@
   "exchanges": {
     "binance": {
       "OMG": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
-      "KNC": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
+      "NIM": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
       "EOS": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
       "SNT": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
       "ELF": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
@@ -322,7 +322,7 @@
     }
   },
   "permission": {
-    "KyberNetwork": {
+    "nimbleNetwork": {
       "admin": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
       "operator": [
         "0x1be6064ca70e40a39473372be0ac8a5e16f7be45"
@@ -337,7 +337,7 @@
       ],
       "alerter": []
     },
-    "KyberReserve": {
+    "nimbleReserve": {
       "admin": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
       "operator": [
         "0x1be6064ca70e40a39473372be0ac8a5e16f7be45"
@@ -398,8 +398,8 @@
   "max gas price": "50000000000",
   "neg diff in bps": 20,
   "min expected rate slippage": 300,
-  "KNC wallet": "0xeb52ce516a8d054a574905bdc3d4a176d3a2d51a",
-  "KNC to ETH rate": 300,
+  "NIM wallet": "0xeb52ce516a8d054a574905bdc3d4a176d3a2d51a",
+  "NIM to ETH rate": 300,
   "tax wallet address": "0x1be6064ca70e40a39473372be0ac8a5e16f7be45",
   "tax fees bps": 2000,
   "valid duration block": 600000000,
