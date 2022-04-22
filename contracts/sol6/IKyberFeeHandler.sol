@@ -3,11 +3,11 @@ pragma solidity 0.6.6;
 import "./IERC20.sol";
 
 
-interface IKyberFeeHandler {
+interface INimbleFeeHandler {
     event RewardPaid(address indexed staker, uint256 indexed epoch, IERC20 indexed token, uint256 amount);
     event RebatePaid(address indexed rebateWallet, IERC20 indexed token, uint256 amount);
     event PlatformFeePaid(address indexed platformWallet, IERC20 indexed token, uint256 amount);
-    event KncBurned(uint256 kncTWei, IERC20 indexed token, uint256 amount);
+    event nimBurned(uint256 nimTWei, IERC20 indexed token, uint256 amount);
 
     function handleFees(
         IERC20 token,
