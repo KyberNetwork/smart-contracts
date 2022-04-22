@@ -4,8 +4,8 @@ pragma solidity 0.4.18;
 import "./ERC20Interface.sol";
 
 
-/// @title Kyber Network interface
-interface KyberNetworkInterface {
+/// @title nimble Network interface
+interface nimbleNetworkInterface {
     function maxGasPrice() public view returns(uint);
     function getUserCapInWei(address user) public view returns(uint);
     function getUserCapInTokenWei(address user, ERC20 token) public view returns(uint);
