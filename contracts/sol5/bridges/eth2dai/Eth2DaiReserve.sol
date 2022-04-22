@@ -1,7 +1,7 @@
 pragma solidity 0.5.11;
 
 import "../../IERC20.sol";
-import "../../IKyberReserve.sol";
+import "../../InimbleReserve.sol";
 import "../../utils/Withdrawable2.sol";
 import "../../utils/Utils4.sol";
 import "./mock/IOtc.sol";
@@ -11,7 +11,7 @@ contract IWeth is IERC20 {
     function withdraw(uint) public;
 }
 
-contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
+contract Eth2DaiReserve is InimbleReserve, Withdrawable2, Utils4 {
 
     // constants
     uint constant internal INVALID_ID = uint(-1);
@@ -20,7 +20,7 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
     uint constant internal BPS = 10000; // 10^4
 
     // values
-    address public kyberNetwork;
+    address public nimbleNetwork;
     bool public tradeEnabled;
     uint public feeBps;
 
@@ -66,10 +66,10 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
         uint id;
     }
 
-    constructor(address _kyberNetwork, uint _feeBps, address _otc, address _weth, address _admin) 
+    constructor(address _nimbleNetwork, uint _feeBps, address _otc, address _weth, address _admin) 
         public Withdrawable2(_admin)
     {
-        require(_kyberNetwork != address(0), "constructor: kyberNetwork's address is missing");
+        require(_nimbleNetwork != address(0), "constructor: nimbleNetwork's address is missing");
         require(_otc != address(0), "constructor: otc's address is missing");
         require(_weth != address(0), "constructor: weth's address is missing");
         require(_feeBps < BPS, "constructor: fee >= bps");
@@ -78,7 +78,7 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
         require(getDecimals(wethToken) == MAX_DECIMALS, "constructor: wethToken's decimals is not MAX_DECIMALS");
         require(wethToken.approve(_otc, 2**255), "constructor: failed to approve otc (wethToken)");
 
-        kyberNetwork = _kyberNetwork;
+        nimbleNetwork = _nimbleNetwork;
         otc = IOtc(_otc);
         feeBps = _feeBps;
         admin = _admin;
@@ -174,7 +174,7 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
         returns(bool)
     {
         require(tradeEnabled, "trade: tradeEnabled is false");
-        require(msg.sender == kyberNetwork, "trade: not call from kyberNetwork's contract");
+        require(msg.sender == nimbleNetwork, "trade: not call from nimbleNetwork's contract");
         require(srcToken == ETH_TOKEN_ADDRESS || destToken == ETH_TOKEN_ADDRESS, "trade: srcToken or destToken must be ETH");
 
         IERC20 token = srcToken == ETH_TOKEN_ADDRESS ? destToken : srcToken;
@@ -231,13 +231,13 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
         return true;
     }
 
-    event ContractsSet(address kyberNetwork, address otc);
+    event ContractsSet(address nimbleNetwork, address otc);
 
-    function setContracts(address _kyberNetwork, address _otc) public onlyAdmin {
-        require(_kyberNetwork != address(0), "setContracts: kyberNetwork's address is missing");
+    function setContracts(address _nimbleNetwork, address _otc) public onlyAdmin {
+        require(_nimbleNetwork != address(0), "setContracts: nimbleNetwork's address is missing");
         require(_otc != address(0), "setContracts: otc's address is missing");
 
-        kyberNetwork = _kyberNetwork;
+        nimbleNetwork = _nimbleNetwork;
 
         if (_otc != address(otc)) {
             // new otc address
@@ -246,7 +246,7 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
             require(wethToken.approve(_otc, 2**255), "setContracts: failed to approve otc (wethToken)");
         }
 
-        emit ContractsSet(_kyberNetwork, _otc);
+        emit ContractsSet(_nimbleNetwork, _otc);
     }
 
     event InternalInventoryDataSet(uint minToken, uint maxToken, uint pricePremiumBps, uint minSpreadBps);
@@ -387,7 +387,7 @@ contract Eth2DaiReserve is IKyberReserve, Withdrawable2, Utils4 {
         internal
         returns(bool)
     {
-        // can skip validation if done at kyber network level
+        // can skip validation if done at nimble network level
         if (validate) {
             require(conversionRate > 0, "doTrade: conversionRate is 0");
             if (srcToken == ETH_TOKEN_ADDRESS)
