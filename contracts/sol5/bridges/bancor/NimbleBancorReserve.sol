@@ -1,16 +1,16 @@
 pragma solidity 0.5.11;
 
 import "../../IERC20.sol";
-import "../../IKyberReserve.sol";
+import "../../INimbleReserve.sol";
 import "../../utils/Withdrawable2.sol";
 import "../../utils/Utils4.sol";
 import "./mock/IBancorNetwork.sol";
 
-contract KyberBancorReserve is IKyberReserve, Withdrawable2, Utils4 {
+contract NimbleBancorReserve is INimbleReserve, Withdrawable2, Utils4 {
 
     uint constant ETH_BNT_DECIMALS = 18;
 
-    address public kyberNetwork;
+    address public nimbleNetwork;
     bool public tradeEnabled;
 
     IBancorNetwork public bancorNetwork;
@@ -21,20 +21,20 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable2, Utils4 {
 
     constructor(
         address _bancorNetwork,
-        address _kyberNetwork,
+        address _nimbleNetwork,
         address _bancorToken,
         address _admin
     )
         public Withdrawable2(_admin)
     {
         require(_bancorNetwork != address(0), "constructor: bancorNetwork address is missing");
-        require(_kyberNetwork != address(0), "constructor: kyberNetwork address is missing");
+        require(_nimbleNetwork != address(0), "constructor: nimbleNetwork address is missing");
         require(_bancorToken != address(0), "constructor: bancorToken address is missing");
         
         bancorNetwork = IBancorNetwork(_bancorNetwork);
         bancorToken = IERC20(_bancorToken);
 
-        kyberNetwork = _kyberNetwork;
+        nimbleNetwork = _nimbleNetwork;
         admin = _admin;
         tradeEnabled = true;
 
@@ -87,7 +87,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable2, Utils4 {
     {
 
         require(tradeEnabled, "trade: trade is not enabled");
-        require(msg.sender == kyberNetwork, "trade: sender is not network");
+        require(msg.sender == nimbleNetwork, "trade: sender is not network");
         require(srcAmount > 0, "trade: src amount must be greater than 0");
         require(srcToken == ETH_TOKEN_ADDRESS || destToken == ETH_TOKEN_ADDRESS, "trade: src or dest must be ETH");
         require(srcToken == bancorToken || destToken == bancorToken, "trade: src or dest must be BNT");
@@ -97,13 +97,13 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable2, Utils4 {
         return true;
     }
 
-    event KyberNetworkSet(address kyberNetwork);
+    event NimbleNetworkSet(address nimbleNetwork);
 
-    function setKyberNetwork(address _kyberNetwork) public onlyAdmin {
-        require(_kyberNetwork != address(0), "setKyberNetwork: kyberNetwork address is missing");
+    function setNimbleNetwork(address _nimbleNetwork) public onlyAdmin {
+        require(_nimbleNetwork != address(0), "setNimbleNetwork: nimbleNetwork address is missing");
 
-        kyberNetwork = _kyberNetwork;
-        emit KyberNetworkSet(_kyberNetwork);
+        nimbleNetwork = _nimbleNetwork;
+        emit NimbleNetworkSet(_nimbleNetwork);
     }
 
     event BancorNetworkSet(address _bancorNetwork);
@@ -169,7 +169,7 @@ contract KyberBancorReserve is IKyberReserve, Withdrawable2, Utils4 {
         internal
         returns(bool)
     {
-        // can skip validation if done at kyber network level
+        // can skip validation if done at nimble network level
         if (validate) {
             require(conversionRate > 0);
             if (srcToken == ETH_TOKEN_ADDRESS)
